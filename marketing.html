@@ -331,6 +331,33 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
 
 /* Offer items scroll */
 .offer-items-list{max-height:200px;overflow-y:auto}
+
+/* ── Desktop Sidebar ── */
+#dsb{
+  position:fixed;left:0;top:0;bottom:0;width:220px;
+  background:var(--surf);border-right:1px solid var(--bord);
+  display:flex;flex-direction:column;z-index:200;overflow-y:auto;
+}
+.dsb-logo{
+  display:flex;align-items:center;gap:10px;
+  padding:20px 16px 14px;border-bottom:1px solid var(--bord);
+}
+.dsb-brand{font-family:var(--font-h);font-size:15px;font-weight:800;color:var(--acc)}
+.dsb-nav{flex:1;padding:10px 8px;display:flex;flex-direction:column;gap:2px;overflow-y:auto}
+.dsb-item{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 12px;border-radius:10px;cursor:pointer;
+  text-decoration:none;color:var(--t2);font-size:13px;font-weight:600;
+  transition:.15s ease;white-space:nowrap;border:none;background:none;width:100%;
+}
+.dsb-item:hover{background:var(--surf2);color:var(--text)}
+.dsb-item.active{background:rgba(245,166,35,.12);color:var(--acc)}
+.dsb-item.fab-sb{background:linear-gradient(135deg,#F5A623,#FF8A00);color:#fff;margin:4px 0 8px;font-weight:700}
+.dsb-item.fab-sb:hover{opacity:.88}
+.dsb-ic{font-size:17px;width:22px;text-align:center;flex-shrink:0}
+.dsb-footer{padding:8px;border-top:1px solid var(--bord)}
+.dsb-ver{font-size:10px;color:var(--t3);text-align:center;padding:8px 0 4px}
+@media(max-width:1023px){#dsb{display:none!important}}
 </style>
 <link rel="stylesheet" href="fix.css">
 </head>
@@ -871,6 +898,14 @@ function loadInsights(){
   const customers = getCustomers();
   const products = getProducts();
 
+  // Helper: get items from bill (supports both Supabase & local format)
+  function getItems(b){ return b.bill_items||b.items||[]; }
+  function itemName(it){ return it.item_name||it.nm||it.name||'Unknown'; }
+  function itemQty(it){ return parseFloat(it.quantity||it.q||it.qty||1); }
+  function itemAmt(it){ return parseFloat(it.amount||it.total_amount||it.amt||(itemQty(it)*(parseFloat(it.rate||it.price||0)))); }
+  function billTotal(b){ return parseFloat(b.grand_total||b.total||0); }
+  function billCust(b){ return b.customer_name||b.cust_name||'Walk-in'; }
+
   // ── Revenue Trend (last 6 months) ──
   const now = new Date();
   const months = [];
@@ -885,7 +920,7 @@ function loadInsights(){
   bills.forEach(b=>{
     const ym=(b.invoice_date||b.created_at||'').slice(0,7);
     const m=months.find(x=>x.key===ym);
-    if(m) m.total+=parseFloat(b.total||b.grand_total||0);
+    if(m) m.total+=billTotal(b);
   });
   const maxRev=Math.max(...months.map(m=>m.total),1);
   const chartEl=document.getElementById('revenue-chart');
@@ -921,11 +956,11 @@ function loadInsights(){
   const thisYM=now.toISOString().slice(0,7);
   const prodMap={};
   bills.filter(b=>(b.invoice_date||b.created_at||'').startsWith(thisYM)).forEach(b=>{
-    (b.items||[]).forEach(it=>{
-      const nm=it.nm||it.name||'Unknown';
+    getItems(b).forEach(it=>{
+      const nm=itemName(it);
       if(!prodMap[nm]) prodMap[nm]={name:nm,qty:0,revenue:0};
-      prodMap[nm].qty+=parseFloat(it.q||it.qty||1);
-      prodMap[nm].revenue+=parseFloat(it.amt||it.amount||(it.q||1)*(it.rate||it.price||0));
+      prodMap[nm].qty+=itemQty(it);
+      prodMap[nm].revenue+=itemAmt(it);
     });
   });
   const topProds=Object.values(prodMap).sort((a,b)=>b.revenue-a.revenue).slice(0,5);
@@ -948,9 +983,9 @@ function loadInsights(){
   const thirtyAgo=new Date();thirtyAgo.setDate(thirtyAgo.getDate()-30);
   const recentSales={};
   bills.filter(b=>new Date(b.created_at||b.invoice_date||0)>thirtyAgo).forEach(b=>{
-    (b.items||[]).forEach(it=>{
-      const nm=(it.nm||it.name||'').toLowerCase();
-      recentSales[nm]=(recentSales[nm]||0)+parseFloat(it.q||1);
+    getItems(b).forEach(it=>{
+      const nm=itemName(it).toLowerCase();
+      recentSales[nm]=(recentSales[nm]||0)+itemQty(it);
     });
   });
   const slowItems=products.filter(p=>{
@@ -1006,7 +1041,8 @@ function loadInsights(){
   // ── Customers at Risk (inactive 30+ days) ──
   const activeNames=new Set();
   bills.filter(b=>new Date(b.created_at||b.invoice_date||0)>thirtyAgo).forEach(b=>{
-    if(b.cust_name) activeNames.add(b.cust_name);
+    const cn=billCust(b);
+    if(cn && cn!=='Walk-in') activeNames.add(cn);
   });
   const churnList=customers.filter(c=>c.name&&!activeNames.has(c.name)&&c.name!=='Walk-in Customer'&&c.name!=='Cash Customer');
   document.getElementById('churn-count').textContent=churnList.length;
@@ -1033,9 +1069,9 @@ function loadInsights(){
   // ── Top Customers by Revenue ──
   const custRev={};
   bills.forEach(b=>{
-    const nm=b.cust_name||'Walk-in';
-    if(nm==='Walk-in Customer'||nm==='Cash Customer') return;
-    custRev[nm]=(custRev[nm]||0)+parseFloat(b.total||b.grand_total||0);
+    const nm=billCust(b);
+    if(nm==='Walk-in Customer'||nm==='Cash Customer'||nm==='Walk-in') return;
+    custRev[nm]=(custRev[nm]||0)+billTotal(b);
   });
   const topCusts=Object.entries(custRev).sort((a,b)=>b[1]-a[1]).slice(0,5);
   const topCustEl=document.getElementById('top-customers');
@@ -1846,6 +1882,48 @@ document.addEventListener('DOMContentLoaded',function(){
     });
   }
   */
+});
+
+/* ══ Desktop Sidebar ══ */
+(function(){
+  if(window.innerWidth<1024)return;
+  var page=(window.location.pathname.split('/').pop()||'dashboard.html');
+  var nav=[
+    {ic:'🏠',lb:'Dashboard',     url:'dashboard.html'},
+    {ic:'🧾',lb:'New Bill',      url:'billing.html',    fab:true},
+    {ic:'📋',lb:'Bills',         url:'bills.html'},
+    {ic:'👥',lb:'Customers',     url:'customers.html'},
+    {ic:'📦',lb:'Inventory',     url:'stock.html'},
+    {ic:'📊',lb:'Reports',       url:'reports.html'},
+    {ic:'🛒',lb:'POS Admin',     url:'pos-admin.html'},
+    {ic:'💬',lb:'WhatsApp',      url:'wa-center.html'},
+    {ic:'📢',lb:'Marketing',     url:'marketing.html'},
+    {ic:'💰',lb:'Cash Register', url:'cash-register.html'},
+    {ic:'🚚',lb:'Suppliers',     url:'supplier.html'},
+    {ic:'🔄',lb:'Recurring',     url:'recurring.html'},
+    {ic:'🗂️',lb:'Bill Templates',url:'bill-templates.html'},
+    {ic:'⚙️',lb:'Settings',      url:'settings.html'},
+  ];
+  var sb=document.createElement('div');
+  sb.id='dsb';
+  sb.innerHTML='<div class="dsb-logo"><svg width="22" height="24" viewBox="0 0 56 62" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M28 2L4 14V32C4 46 28 60 28 60C28 60 52 46 52 32V14L28 2Z" fill="url(#sg1)"/><rect x="18" y="18" width="20" height="26" rx="2" fill="#0A0E1A" fill-opacity=".6"/><rect x="18" y="18" width="20" height="26" rx="2" stroke="#fff" stroke-width="1.5" fill="none"/><line x1="22" y1="24" x2="34" y2="24" stroke="#F5A623" stroke-width="1.5" stroke-linecap="round"/><line x1="22" y1="28" x2="30" y2="28" stroke="rgba(255,255,255,.4)" stroke-width="1" stroke-linecap="round"/><line x1="22" y1="31" x2="32" y2="31" stroke="rgba(255,255,255,.4)" stroke-width="1" stroke-linecap="round"/><line x1="22" y1="34" x2="28" y2="34" stroke="rgba(255,255,255,.4)" stroke-width="1" stroke-linecap="round"/><circle cx="32" cy="37" r="5" fill="#F5A623"/><polyline points="30,37 31.5,38.5 34.5,35.5" fill="none" stroke="#0A0E1A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><defs><linearGradient id="sg1" x1="4" y1="2" x2="52" y2="60" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#F5A623"/><stop offset="100%" stop-color="#FF6B35"/></linearGradient></defs></svg><span class="dsb-brand">ShopBill Pro</span></div>'
+    +'<div class="dsb-nav">'
+    +nav.map(function(n){
+      var cls='dsb-item'+(page===n.url?' active':'')+(n.fab?' fab-sb':'');
+      return '<a class="'+cls+'" href="'+n.url+'"><span class="dsb-ic">'+n.ic+'</span><span>'+n.lb+'</span></a>';
+    }).join('')
+    +'</div>'
+    +'<div class="dsb-footer"><button class="dsb-item" id="dsb-logout-btn"><span class="dsb-ic">🚪</span><span>Logout</span></button><div class="dsb-ver">ShopBill Pro v1.0</div></div>';
+  document.body.prepend(sb);
+})();
+
+/* Fix sidebar logout */
+document.addEventListener('DOMContentLoaded', function(){
+  var lb = document.getElementById('dsb-logout-btn');
+  if(lb) lb.addEventListener('click', function(){
+    if(window._sb){ window._sb.auth.signOut().then(function(){ window.location.href='index.html'; }); }
+    else { window.location.href='index.html'; }
+  });
 });
 </script>
 </body>
