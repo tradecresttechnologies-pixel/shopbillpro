@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png?v=2">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180x180.png?v=2">
+<title>Admin Dashboard — ShopBill Pro</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@3/dist/chart.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: #0A0A12;
+      color: #F0EFF8;
+      overflow-x: hidden;
+    }
+
+    /* ══ LAYOUT ══ */
+    .dashboard {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      width: 280px;
+      background: rgba(19, 19, 28, 0.8);
+      backdrop-filter: blur(10px);
+      border-right: 1px solid rgba(124, 58, 237, 0.2);
+      padding: 24px;
+      position: fixed;
+      height: 100vh;
+      overflow-y: auto;
+      left: 0;
+      top: 0;
+    }
+
+    .main-content {
+      flex: 1;
+      margin-left: 280px;
+      padding: 32px;
+    }
+
+    /* ══ HEADER ══ */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 32px;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .header-title h1 {
+      font-size: 32px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #F5A623, #FF8A00);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 4px;
+    }
+
+    .header-title p {
+      font-size: 14px;
+      color: #8A8AA8;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    .btn-small {
+      padding: 8px 16px;
+      background: rgba(124, 58, 237, 0.1);
+      border: 1px solid rgba(124, 58, 237, 0.3);
+      border-radius: 6px;
+      color: #F5A623;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-small:hover {
+      background: rgba(124, 58, 237, 0.2);
+      border-color: #F5A623;
+    }
+
+    /* ══ SIDEBAR NAV ══ */
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+
+    .logo-icon {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, #F5A623, #FF8A00);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+
+    .logo-text {
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .nav-section {
+      margin-bottom: 32px;
+    }
+
+    .nav-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #5E5A7A;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      letter-spacing: 0.5px;
+    }
+
+    .nav-item {
+      padding: 12px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      margin-bottom: 6px;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .nav-item:hover {
+      background: rgba(124, 58, 237, 0.1);
+      color: #F5A623;
+    }
+
+    .nav-item.active {
+      background: rgba(124, 58, 237, 0.2);
+      color: #F5A623;
+      border-left: 3px solid #F5A623;
+      padding-left: 11px;
+    }
+
+    .nav-icon {
+      font-size: 16px;
+      min-width: 20px;
+    }
+
+    .nav-divider {
+      height: 1px;
+      background: rgba(124, 58, 237, 0.1);
+      margin: 12px 0;
+    }
+
+    /* ══ KPI CARDS ══ */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .kpi-card {
+      background: rgba(20, 18, 32, 0.5);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(124, 58, 237, 0.2);
+      border-radius: 12px;
+      padding: 20px;
+      transition: all 0.3s;
+    }
+
+    .kpi-card:hover {
+      border-color: rgba(124, 58, 237, 0.4);
+      transform: translateY(-2px);
+    }
+
+    .kpi-label {
+      font-size: 13px;
+      color: #8A8AA8;
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+
+    .kpi-value {
+      font-size: 28px;
+      font-weight: 800;
+      color: #F0EFF8;
+      margin-bottom: 8px;
+    }
+
+    .kpi-change {
+      font-size: 12px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .kpi-change.positive {
+      color: #10B981;
+    }
+
+    .kpi-change.negative {
+      color: #EF4444;
+    }
+
+    /* ══ CHARTS ══ */
+    .charts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+      gap: 24px;
+      margin-bottom: 32px;
+    }
+
+    .chart-card {
+      background: rgba(20, 18, 32, 0.5);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(124, 58, 237, 0.2);
+      border-radius: 12px;
+      padding: 24px;
+    }
+
+    .chart-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 16px;
+    }
+
+    .chart-container {
+      position: relative;
+      height: 300px;
+    }
+
+    /* ══ TABLE ══ */
+    .table-card {
+      background: rgba(20, 18, 32, 0.5);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(124, 58, 237, 0.2);
+      border-radius: 12px;
+      padding: 24px;
+    }
+
+    .table-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 16px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    thead {
+      background: rgba(124, 58, 237, 0.1);
+    }
+
+    th {
+      padding: 12px;
+      text-align: left;
+      font-size: 12px;
+      font-weight: 700;
+      color: #8A8AA8;
+      text-transform: uppercase;
+      border-bottom: 1px solid rgba(124, 58, 237, 0.2);
+    }
+
+    td {
+      padding: 12px;
+      border-bottom: 1px solid rgba(124, 58, 237, 0.1);
+      font-size: 13px;
+    }
+
+    tr:hover {
+      background: rgba(124, 58, 237, 0.05);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .badge.pro {
+      background: rgba(16, 185, 129, 0.2);
+      color: #86EFAC;
+    }
+
+    .badge.free {
+      background: rgba(124, 58, 237, 0.2);
+      color: #A78BFA;
+    }
+
+    /* ══ RESPONSIVE ══ */
+    @media (max-width: 1024px) {
+      .sidebar {
+        width: 220px;
+      }
+      .main-content {
+        margin-left: 220px;
+        padding: 24px;
+      }
+      .charts-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .dashboard {
+        flex-direction: column;
+      }
+      .sidebar {
+        width: 100%;
+        height: auto;
+        position: static;
+        border-right: none;
+        border-bottom: 1px solid rgba(124, 58, 237, 0.2);
+      }
+      .main-content {
+        margin-left: 0;
+        padding: 20px;
+      }
+      .kpi-grid {
+        grid-template-columns: 1fr;
+      }
+      .charts-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="dashboard">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="logo">
+        <div class="logo-icon">🛡️</div>
+        <div class="logo-text">Admin</div>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-label">Main</div>
+        <div class="nav-item active" data-page="dashboard">
+          <span class="nav-icon">📊</span>
+          <span>Dashboard</span>
+        </div>
+        <div class="nav-item" data-page="analytics">
+          <span class="nav-icon">📈</span>
+          <span>Analytics</span>
+        </div>
+        <div class="nav-item" data-page="users">
+          <span class="nav-icon">👥</span>
+          <span>Users</span>
+        </div>
+        <div class="nav-item" data-page="revenue">
+          <span class="nav-icon">💰</span>
+          <span>Revenue</span>
+        </div>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-label">Management</div>
+        <div class="nav-item" data-page="features">
+          <span class="nav-icon">🚀</span>
+          <span>Feature Flags</span>
+        </div>
+        <div class="nav-item" data-page="technical">
+          <span class="nav-icon">⚙️</span>
+          <span>Technical Health</span>
+        </div>
+      </div>
+
+      <div class="nav-divider"></div>
+
+      <div class="nav-section">
+        <div class="nav-label">System</div>
+        <div class="nav-item" data-page="notifications">
+          <span class="nav-icon">🔔</span>
+          <span>Notifications</span>
+        </div>
+        <div class="nav-item" data-page="audit">
+          <span class="nav-icon">📋</span>
+          <span>Audit Logs</span>
+        </div>
+      </div>
+
+      <div class="nav-divider" style="margin-top: auto; margin-bottom: 16px;"></div>
+
+      <div class="nav-item" id="logoutBtn">
+        <span class="nav-icon">🚪</span>
+        <span>Logout</span>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+      <!-- Header -->
+      <div class="header">
+        <div class="header-title">
+          <h1>Dashboard</h1>
+          <p id="subtitle">Overview of ShopBill Pro metrics</p>
+        </div>
+        <div class="header-actions">
+          <button class="btn-small" id="refreshBtn">🔄 Refresh</button>
+          <button class="btn-small" id="exportBtn">⬇️ Export</button>
+        </div>
+      </div>
+
+      <!-- KPI Cards -->
+      <div class="kpi-grid" id="kpiContainer"></div>
+
+      <!-- Charts -->
+      <div class="charts-grid" id="chartsContainer" style="display: none;">
+        <div class="chart-card">
+          <div class="chart-title">Bills Created (30 days)</div>
+          <div class="chart-container">
+            <canvas id="billsChart"></canvas>
+          </div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">User Plan Distribution</div>
+          <div class="chart-container">
+            <canvas id="planChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Activity Table -->
+      <div class="table-card" id="activityTableContainer" style="display: none;">
+        <div class="table-title">Recent Activity</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Action</th>
+              <th>User</th>
+              <th>Details</th>
+            </tr>
+          </thead>
+          <tbody id="activityTableBody">
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script src="admin-auth.js"></script>
+  <script src="admin-db.js"></script>
+  <script>
+    // Require authentication
+    if (!requireAdminAuth()) throw new Error('Not authenticated');
+
+    const auth = AdminAuth.getInstance();
+    const db = AdminDB.getInstance();
+
+    let billsChart = null;
+    let planChart = null;
+
+    // ══ NAVIGATION ══
+    document.querySelectorAll('.nav-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const page = item.getAttribute('data-page');
+        if (page === 'dashboard') {
+          loadDashboard();
+        } else if (page) {
+          window.location.href = `admin-${page}.html`;
+        }
+      });
+    });
+
+    // ══ LOGOUT ══
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      if (confirm('Are you sure you want to logout?')) {
+        auth.logout();
+        window.location.href = 'admin-login.html';
+      }
+    });
+
+    // ══ REFRESH & EXPORT ══
+    document.getElementById('refreshBtn').addEventListener('click', loadDashboard);
+
+    document.getElementById('exportBtn').addEventListener('click', () => {
+      const data = {
+        exportDate: new Date().toISOString(),
+        metrics: window._lastMetrics,
+      };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `shopbillpro-metrics-${Date.now()}.json`;
+      a.click();
+    });
+
+    // ══ LOAD DASHBOARD ══
+    async function loadDashboard() {
+      const metrics = await db.getOverallMetrics();
+      window._lastMetrics = metrics;
+
+      renderKPICards(metrics);
+      renderCharts(metrics);
+      renderActivityTable();
+    }
+
+    function renderKPICards(metrics) {
+      const container = document.getElementById('kpiContainer');
+      const kpis = [
+        {
+          label: 'Total Users',
+          value: metrics.totalUsers.toLocaleString(),
+          change: '+12.5%',
+          icon: '👥',
+        },
+        {
+          label: 'Pro Subscribers',
+          value: metrics.proUsers,
+          change: `${metrics.conversionRate}% conversion`,
+          icon: '⭐',
+          positive: true,
+        },
+        {
+          label: 'Total Revenue',
+          value: `₹${(metrics.totalRevenue / 100000).toFixed(2)}L`,
+          change: '+₹18,500 (MoM)',
+          icon: '💰',
+          positive: true,
+        },
+        {
+          label: 'Bills Generated',
+          value: metrics.totalBills.toLocaleString(),
+          change: `+${metrics.billGrowth}% (WoW)`,
+          icon: '📄',
+          positive: metrics.billGrowth >= 0,
+        },
+        {
+          label: 'Avg Bill Value',
+          value: `₹${metrics.avgBillValue}`,
+          change: 'Stable',
+          icon: '💵',
+        },
+        {
+          label: 'Churn Rate',
+          value: `${metrics.churnRate}%`,
+          change: 'Monthly churn',
+          icon: '📉',
+        },
+      ];
+
+      container.innerHTML = kpis.map(kpi => `
+        <div class="kpi-card">
+          <div style="font-size: 28px; margin-bottom: 8px;">${kpi.icon}</div>
+          <div class="kpi-label">${kpi.label}</div>
+          <div class="kpi-value">${kpi.value}</div>
+          <div class="kpi-change ${kpi.positive ? 'positive' : 'negative'}">
+            ${kpi.change}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function renderCharts(metrics) {
+      const container = document.getElementById('chartsContainer');
+      container.style.display = 'grid';
+
+      // Simulate chart data
+      const days = Array.from({ length: 30 }, (_, i) => {
+        const d = new Date();
+        d.setDate(d.getDate() - 29 + i);
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      });
+
+      const billsData = Array.from({ length: 30 }, () => 
+        Math.floor(Math.random() * 400) + 100
+      );
+
+      // Bills chart
+      const billsCtx = document.getElementById('billsChart').getContext('2d');
+      if (billsChart) billsChart.destroy();
+      billsChart = new Chart(billsCtx, {
+        type: 'line',
+        data: {
+          labels: days,
+          datasets: [{
+            label: 'Bills Created',
+            data: billsData,
+            borderColor: '#F5A623',
+            backgroundColor: 'rgba(124, 58, 237, 0.1)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.4,
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              grid: { color: 'rgba(124, 58, 237, 0.1)' },
+              ticks: { color: '#8A8AA8' },
+            },
+            x: {
+              grid: { color: 'rgba(124, 58, 237, 0.1)' },
+              ticks: { color: '#8A8AA8', maxRotation: 45 },
+            },
+          },
+        },
+      });
+
+      // Plan distribution chart
+      const planCtx = document.getElementById('planChart').getContext('2d');
+      if (planChart) planChart.destroy();
+      planChart = new Chart(planCtx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Free', 'Pro', 'Enterprise'],
+          datasets: [{
+            data: [metrics.freeUsers, metrics.proUsers, Math.floor(metrics.proUsers * 0.1)],
+            backgroundColor: ['#F5A623', '#10B981', '#FF8A00'],
+            borderColor: 'rgba(20, 18, 32, 0.5)',
+            borderWidth: 2,
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              labels: { color: '#8A8AA8' },
+            },
+          },
+        },
+      });
+    }
+
+    function renderActivityTable() {
+      const logs = auth.getAuditLogs(10);
+      const tbody = document.getElementById('activityTableBody');
+      
+      tbody.innerHTML = logs.map(log => `
+        <tr>
+          <td>${new Date(log.timestamp).toLocaleString()}</td>
+          <td><strong>${log.action}</strong></td>
+          <td>${log.email || 'System'}</td>
+          <td>${JSON.stringify(log.details).substring(0, 50)}...</td>
+        </tr>
+      `).join('');
+
+      document.getElementById('activityTableContainer').style.display = 'block';
+    }
+
+    // Load on page load
+    loadDashboard();
+
+    // Refresh every 30 seconds
+    setInterval(loadDashboard, 30000);
+  </script>
+</body>
+</html>

@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png?v=2">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180x180.png?v=2">
+<title>Users — Admin Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: #0A0A12;
+      color: #F0EFF8;
+    }
+
+    .dashboard {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      width: 280px;
+      background: rgba(19, 19, 28, 0.8);
+      backdrop-filter: blur(10px);
+      border-right: 1px solid rgba(124, 58, 237, 0.2);
+      padding: 24px;
+      position: fixed;
+      height: 100vh;
+      overflow-y: auto;
+      left: 0;
+      top: 0;
+    }
+
+    .main-content {
+      flex: 1;
+      margin-left: 280px;
+      padding: 32px;
+    }
+
+    .nav-item {
+      padding: 12px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      margin-bottom: 6px;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .nav-item:hover {
+      background: rgba(124, 58, 237, 0.1);
+      color: #F5A623;
+    }
+
+    .nav-item.active {
+      background: rgba(124, 58, 237, 0.2);
+      color: #F5A623;
+      border-left: 3px solid #F5A623;
+      padding-left: 11px;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 32px;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .header h1 {
+      font-size: 32px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #F5A623, #FF8A00);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .search-box {
+      padding: 10px 16px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(124, 58, 237, 0.3);
+      border-radius: 8px;
+      color: #F0EFF8;
+      font-size: 13px;
+      min-width: 250px;
+    }
+
+    .table-card {
+      background: rgba(20, 18, 32, 0.5);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(124, 58, 237, 0.2);
+      border-radius: 12px;
+      padding: 24px;
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    thead {
+      background: rgba(124, 58, 237, 0.1);
+    }
+
+    th {
+      padding: 14px;
+      text-align: left;
+      font-size: 12px;
+      font-weight: 700;
+      color: #8A8AA8;
+      text-transform: uppercase;
+      border-bottom: 1px solid rgba(124, 58, 237, 0.2);
+    }
+
+    td {
+      padding: 14px;
+      border-bottom: 1px solid rgba(124, 58, 237, 0.1);
+      font-size: 13px;
+    }
+
+    tr:hover {
+      background: rgba(124, 58, 237, 0.05);
+      cursor: pointer;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 6px 12px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .badge.pro {
+      background: rgba(16, 185, 129, 0.2);
+      color: #86EFAC;
+    }
+
+    .badge.free {
+      background: rgba(124, 58, 237, 0.2);
+      color: #A78BFA;
+    }
+
+    .action-btn {
+      padding: 6px 12px;
+      background: rgba(124, 58, 237, 0.1);
+      border: 1px solid rgba(124, 58, 237, 0.3);
+      border-radius: 6px;
+      color: #F5A623;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .action-btn:hover {
+      background: rgba(124, 58, 237, 0.2);
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(5px);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal.show {
+      display: flex;
+    }
+
+    .modal-content {
+      background: rgba(20, 18, 32, 0.9);
+      border: 1px solid rgba(124, 58, 237, 0.2);
+      border-radius: 12px;
+      padding: 32px;
+      max-width: 600px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+
+    .modal-title {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 20px;
+    }
+
+    .modal-close {
+      float: right;
+      font-size: 24px;
+      cursor: pointer;
+      color: #8A8AA8;
+    }
+
+    .user-detail {
+      margin: 16px 0;
+      padding: 12px;
+      background: rgba(124, 58, 237, 0.05);
+      border-radius: 8px;
+      border-left: 3px solid #F5A623;
+    }
+
+    .user-detail-label {
+      font-size: 12px;
+      color: #8A8AA8;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .user-detail-value {
+      font-size: 14px;
+      color: #F0EFF8;
+    }
+
+    .pagination {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 20px;
+    }
+
+    .pagination button {
+      padding: 8px 12px;
+      background: rgba(124, 58, 237, 0.1);
+      border: 1px solid rgba(124, 58, 237, 0.3);
+      border-radius: 6px;
+      color: #F5A623;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .pagination button:hover {
+      background: rgba(124, 58, 237, 0.2);
+    }
+
+    .pagination button.active {
+      background: #F5A623;
+      color: #0A0E1A;
+      border-color: #F5A623;
+    }
+
+    @media (max-width: 768px) {
+      .sidebar { position: static; width: 100%; height: auto; }
+      .main-content { margin-left: 0; }
+      .header { flex-direction: column; align-items: flex-start; }
+      .search-box { width: 100%; min-width: unset; }
+      table { font-size: 12px; }
+      th, td { padding: 10px; }
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+
+    .logo-icon {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, #F5A623, #FF8A00);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+
+    .logo-text {
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .nav-section {
+      margin-bottom: 32px;
+    }
+
+    .nav-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #5E5A7A;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      letter-spacing: 0.5px;
+    }
+
+    .nav-divider {
+      height: 1px;
+      background: rgba(124, 58, 237, 0.1);
+      margin: 12px 0;
+    }
+
+    .nav-icon {
+      font-size: 16px;
+      min-width: 20px;
+    }
+
+    .stats-row {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+
+    .stat-item {
+      background: rgba(124, 58, 237, 0.05);
+      border: 1px solid rgba(124, 58, 237, 0.2);
+      border-radius: 8px;
+      padding: 16px;
+      flex: 1;
+      min-width: 150px;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: #8A8AA8;
+      margin-bottom: 4px;
+    }
+
+    .stat-value {
+      font-size: 20px;
+      font-weight: 700;
+      color: #F0EFF8;
+    }
+  </style>
+</head>
+<body>
+  <div class="dashboard">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="logo">
+        <div class="logo-icon">🛡️</div>
+        <div class="logo-text">Admin</div>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-label">Main</div>
+        <div class="nav-item" data-page="dashboard">
+          <span class="nav-icon">📊</span>
+          <span>Dashboard</span>
+        </div>
+        <div class="nav-item" data-page="analytics">
+          <span class="nav-icon">📈</span>
+          <span>Analytics</span>
+        </div>
+        <div class="nav-item active" data-page="users">
+          <span class="nav-icon">👥</span>
+          <span>Users</span>
+        </div>
+        <div class="nav-item" data-page="revenue">
+          <span class="nav-icon">💰</span>
+          <span>Revenue</span>
+        </div>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-label">Management</div>
+        <div class="nav-item" data-page="features">
+          <span class="nav-icon">🚀</span>
+          <span>Feature Flags</span>
+        </div>
+        <div class="nav-item" data-page="technical">
+          <span class="nav-icon">⚙️</span>
+          <span>Technical Health</span>
+        </div>
+      </div>
+
+      <div class="nav-divider"></div>
+
+      <div class="nav-section">
+        <div class="nav-label">System</div>
+        <div class="nav-item" data-page="notifications">
+          <span class="nav-icon">🔔</span>
+          <span>Notifications</span>
+        </div>
+        <div class="nav-item" data-page="audit">
+          <span class="nav-icon">📋</span>
+          <span>Audit Logs</span>
+        </div>
+      </div>
+
+      <div class="nav-divider" style="margin-top: auto; margin-bottom: 16px;"></div>
+
+      <div class="nav-item" id="logoutBtn">
+        <span class="nav-icon">🚪</span>
+        <span>Logout</span>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+      <div class="header">
+        <h1>User Management</h1>
+        <input type="text" id="searchBox" class="search-box" placeholder="Search by email or name...">
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-row">
+        <div class="stat-item">
+          <div class="stat-label">Total Users</div>
+          <div class="stat-value" id="totalUsers">—</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Pro Users</div>
+          <div class="stat-value" id="proUsers">—</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Free Users</div>
+          <div class="stat-value" id="freeUsers">—</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Active (30d)</div>
+          <div class="stat-value" id="activeUsers">—</div>
+        </div>
+      </div>
+
+      <!-- Users Table -->
+      <div class="table-card">
+        <table>
+          <thead>
+            <tr>
+              <th>Email</th>
+              <th>Shop Name</th>
+              <th>Plan</th>
+              <th>Joined</th>
+              <th>Last Activity</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="usersTable">
+            <tr>
+              <td colspan="6" style="text-align: center; padding: 40px; color: #8A8AA8;">Loading users...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <div class="pagination" id="pagination"></div>
+    </div>
+  </div>
+
+  <!-- User Detail Modal -->
+  <div class="modal" id="userModal">
+    <div class="modal-content">
+      <span class="modal-close" onclick="document.getElementById('userModal').classList.remove('show')">&times;</span>
+      <div class="modal-title">User Details</div>
+      <div id="userDetails"></div>
+    </div>
+  </div>
+
+  <script src="admin-auth.js"></script>
+  <script src="admin-db.js"></script>
+  <script>
+    if (!requireAdminAuth()) throw new Error('Not authenticated');
+
+    const auth = AdminAuth.getInstance();
+    const db = AdminDB.getInstance();
+    let allUsers = [];
+    let currentPage = 0;
+    const usersPerPage = 20;
+
+    // Navigation
+    document.querySelectorAll('.nav-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const page = item.getAttribute('data-page');
+        if (page && page !== 'users') {
+          window.location.href = `admin-${page}.html`;
+        }
+      });
+    });
+
+    // Logout
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      if (confirm('Logout?')) {
+        auth.logout();
+        window.location.href = 'admin-login.html';
+      }
+    });
+
+    // Search
+    document.getElementById('searchBox').addEventListener('input', (e) => {
+      const search = e.target.value.toLowerCase();
+      const filtered = allUsers.filter(u => 
+        u.email?.toLowerCase().includes(search) || 
+        u.shops?.[0]?.name?.toLowerCase().includes(search)
+      );
+      renderTable(filtered);
+    });
+
+    async function loadUsers() {
+      const metrics = await db.getOverallMetrics();
+      document.getElementById('totalUsers').textContent = metrics.totalUsers.toLocaleString();
+      document.getElementById('proUsers').textContent = metrics.proUsers;
+      document.getElementById('freeUsers').textContent = metrics.freeUsers;
+      document.getElementById('activeUsers').textContent = metrics.activeUsers;
+
+      allUsers = await db.getUsers(1000);
+      renderTable(allUsers);
+    }
+
+    function renderTable(users) {
+      const tbody = document.getElementById('usersTable');
+      currentPage = 0;
+
+      const pageUsers = users.slice(0, usersPerPage);
+      tbody.innerHTML = pageUsers.map(u => {
+        const shop = u.shops?.[0];
+        const plan = shop?.plan || 'free';
+        const joined = new Date(u.created_at).toLocaleDateString();
+        const lastActivity = shop?.created_at ? new Date(shop.created_at).toLocaleDateString() : '—';
+
+        return `
+          <tr onclick="showUserDetails('${u.id}', '${u.email}')">
+            <td><strong>${u.email}</strong></td>
+            <td>${shop?.name || '—'}</td>
+            <td><span class="badge ${plan}">${plan.toUpperCase()}</span></td>
+            <td>${joined}</td>
+            <td>${lastActivity}</td>
+            <td><button class="action-btn">View</button></td>
+          </tr>
+        `;
+      }).join('');
+
+      // Pagination
+      const totalPages = Math.ceil(users.length / usersPerPage);
+      const pagination = document.getElementById('pagination');
+      pagination.innerHTML = Array.from({ length: totalPages }, (_, i) => `
+        <button class="page-btn ${i === 0 ? 'active' : ''}" data-page="${i}">
+          ${i + 1}
+        </button>
+      `).join('');
+
+      document.querySelectorAll('.page-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          currentPage = parseInt(btn.getAttribute('data-page'));
+          const start = currentPage * usersPerPage;
+          const pageUsers = users.slice(start, start + usersPerPage);
+          tbody.innerHTML = pageUsers.map(u => {
+            const shop = u.shops?.[0];
+            return `<tr onclick="showUserDetails('${u.id}', '${u.email}')"><td>${u.email}</td><td>${shop?.name || '—'}</td><td><span class="badge ${shop?.plan}">${(shop?.plan || 'free').toUpperCase()}</span></td><td>${new Date(u.created_at).toLocaleDateString()}</td><td>—</td><td><button class="action-btn">View</button></td></tr>`;
+          }).join('');
+          document.querySelectorAll('.page-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+        });
+      });
+    }
+
+    window.showUserDetails = async (userId, email) => {
+      const modal = document.getElementById('userModal');
+      const detailsDiv = document.getElementById('userDetails');
+      
+      const user = await db.getUserDetail(userId);
+      if (user) {
+        const shop = user.shop || {};
+        detailsDiv.innerHTML = `
+          <div class="user-detail">
+            <div class="user-detail-label">Email</div>
+            <div class="user-detail-value">${user.email}</div>
+          </div>
+          <div class="user-detail">
+            <div class="user-detail-label">Shop Name</div>
+            <div class="user-detail-value">${shop.name || '—'}</div>
+          </div>
+          <div class="user-detail">
+            <div class="user-detail-label">Owner</div>
+            <div class="user-detail-value">${shop.owner_name || '—'}</div>
+          </div>
+          <div class="user-detail">
+            <div class="user-detail-label">Phone</div>
+            <div class="user-detail-value">${shop.phone || '—'}</div>
+          </div>
+          <div class="user-detail">
+            <div class="user-detail-label">Plan</div>
+            <div class="user-detail-value"><span class="badge ${shop.plan}">${(shop.plan || 'free').toUpperCase()}</span></div>
+          </div>
+          <div class="user-detail">
+            <div class="user-detail-label">Total Bills</div>
+            <div class="user-detail-value">${user.totalBills || 0}</div>
+          </div>
+          <div class="user-detail">
+            <div class="user-detail-label">Total Customers</div>
+            <div class="user-detail-value">${user.totalCustomers || 0}</div>
+          </div>
+          <div class="user-detail">
+            <div class="user-detail-label">Total Products</div>
+            <div class="user-detail-value">${user.totalProducts || 0}</div>
+          </div>
+          <div class="user-detail">
+            <div class="user-detail-label">Joined</div>
+            <div class="user-detail-value">${new Date(user.created_at).toLocaleString()}</div>
+          </div>
+        `;
+      }
+      modal.classList.add('show');
+    };
+
+    loadUsers();
+  </script>
+</body>
+</html>

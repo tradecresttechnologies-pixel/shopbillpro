@@ -1,0 +1,1029 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#F5A623">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png?v=2">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180x180.png?v=2">
+<title>ShopBill Pro — Reports</title>
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Noto+Sans:wght@300;400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="db-local.js"></script>
+
+<script src="lang.js"></script>
+<script src="conversion.js"></script>
+
+
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:'Noto Sans','Noto Sans Devanagari',sans-serif;-webkit-font-smoothing:antialiased;overscroll-behavior:none}
+:root{--acc:#F5A623;--acc2:#EF4444;--acc3:#10B981;--cyan:#06B6D4;--amber:#F59E0B;--bg:#0A0A12;--surf:#13131C;--surf2:#1C1C28;--surf3:#252534;--bord:#2A2A3A;--text:#F0EFF8;--t2:#8A8AA8;--t3:#4A4A60;--font-h:'Outfit',sans-serif;--rs:12px;--rs2:18px;--tr:.18s ease;--safe-top:env(safe-area-inset-top,0px);--safe-bottom:env(safe-area-inset-bottom,0px)}
+[data-theme="light"]{--bg:#F0EEFF;--surf:#FFF;--surf2:#F5F2FF;--surf3:#EDE9FF;--bord:#DDD8F5;--text:#0F0E18;--t2:#5E5A7A;--t3:#A09CC0}
+body{background:var(--bg);color:var(--text)}
+#app{display:flex;flex-direction:column}
+.sb{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.pad{padding:12px 14px}
+
+/* Topbar */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;padding-top:calc(10px + var(--safe-top));background:var(--surf);border-bottom:1px solid var(--bord);flex-shrink:0;min-height:54px}
+.tb-l{display:flex;align-items:center;gap:10px;flex:1}
+.tb-r{display:flex;align-items:center;gap:7px;flex-shrink:0}
+.tb-title{font-family:var(--font-h);font-size:17px;font-weight:800}
+.back-btn{width:34px;height:34px;border-radius:10px;background:var(--surf2);border:1px solid var(--bord);display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer;transition:var(--tr);flex-shrink:0}
+.back-btn:active{transform:scale(.93)}
+.ic-btn{width:34px;height:34px;border-radius:10px;background:var(--surf2);border:1px solid var(--bord);display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;transition:var(--tr)}
+.ic-btn:active{transform:scale(.93)}
+
+/* Tabs */
+.sub-tabs{display:flex;background:var(--surf);border-bottom:1px solid var(--bord);flex-shrink:0;overflow-x:auto;scrollbar-width:none}
+.sub-tabs::-webkit-scrollbar{display:none}
+.sub-tab{flex-shrink:0;padding:11px 16px;cursor:pointer;font-family:var(--font-h);font-size:12px;font-weight:700;color:var(--t2);border-bottom:2.5px solid transparent;transition:var(--tr);white-space:nowrap}
+.sub-tab.on{color:var(--acc);border-bottom-color:var(--acc)}
+.sub-tab:active{background:var(--surf2)}
+
+/* Period chips */
+.period-chips{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;padding:10px 14px;flex-shrink:0}
+.period-chips::-webkit-scrollbar{display:none}
+.chip{flex-shrink:0;padding:6px 13px;border-radius:20px;border:1.5px solid var(--bord);background:var(--surf);color:var(--t2);font-size:12px;font-weight:700;cursor:pointer;transition:var(--tr);white-space:nowrap;user-select:none}
+.chip.on{background:rgba(245,166,35,.12);border-color:var(--acc);color:var(--acc)}
+
+/* Stat cards */
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 14px;margin-bottom:14px}
+.scard{background:var(--surf);border:1px solid var(--bord);border-radius:var(--rs2);padding:14px;position:relative;overflow:hidden}
+.scard::before{content:'';position:absolute;inset:0;opacity:.07;border-radius:inherit}
+.scard.g::before{background:var(--acc3)}.scard.r::before{background:var(--acc2)}.scard.p::before{background:var(--acc)}.scard.c::before{background:var(--cyan)}.scard.a::before{background:var(--amber)}
+.sc-lbl{font-size:10px;color:var(--t2);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+.sc-val{font-family:var(--font-h);font-size:22px;font-weight:900;line-height:1}
+.sc-val.g{color:var(--acc3)}.sc-val.r{color:var(--acc2)}.sc-val.p{color:var(--acc)}.sc-val.c{color:var(--cyan)}.sc-val.a{color:var(--amber)}
+.sc-sub{font-size:10px;color:var(--t2);margin-top:5px}
+.sc-ic{position:absolute;bottom:9px;right:11px;font-size:26px;opacity:.15}
+
+/* Section */
+.sec{padding:0 14px;margin-bottom:16px}
+.sec-t{font-family:var(--font-h);font-size:14px;font-weight:800;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
+.sec-t .hi{font-size:10px;color:var(--t3);font-weight:400;font-family:'Noto Sans',sans-serif}
+
+/* Chart bar */
+.chart-wrap{background:var(--surf);border:1px solid var(--bord);border-radius:var(--rs2);padding:14px;margin-bottom:14px}
+.bar-chart{display:flex;align-items:flex-end;gap:6px;height:100px;margin-bottom:8px}
+.bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}
+.bar{width:100%;background:linear-gradient(180deg,var(--acc),rgba(245,166,35,.3));border-radius:4px 4px 0 0;transition:.4s cubic-bezier(.4,0,.2,1);min-height:4px;cursor:pointer}
+.bar:hover{background:linear-gradient(180deg,#FF8A00,rgba(245,166,35,.5))}
+.bar-lbl{font-size:9px;color:var(--t3);font-weight:600}
+.bar-val{font-size:9px;color:var(--t2);font-weight:700}
+
+/* Payment breakdown */
+.pay-breakdown{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.pb-item{background:var(--surf2);border-radius:var(--rs);padding:11px;text-align:center;border:1px solid var(--bord)}
+.pb-val{font-family:var(--font-h);font-size:16px;font-weight:900}
+.pb-lbl{font-size:10px;color:var(--t2);margin-top:3px}
+
+/* Top items / customers */
+.rank-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--bord)}
+.rank-num{width:24px;height:24px;border-radius:8px;background:rgba(245,166,35,.15);color:var(--acc);font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.rank-nm{font-size:13px;font-weight:700;flex:1}
+.rank-sub{font-size:11px;color:var(--t2);margin-top:1px}
+.rank-val{font-family:var(--font-h);font-size:14px;font-weight:800;color:var(--acc3);flex-shrink:0}
+
+/* GST table */
+.gst-table{background:var(--surf);border:1px solid var(--bord);border-radius:var(--rs2);overflow:hidden;margin-bottom:14px}
+.gst-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:4px;padding:11px 13px;border-bottom:1px solid var(--bord);font-size:12px}
+.gst-row.hd{background:var(--surf2);font-weight:700;color:var(--t2);font-size:10px;text-transform:uppercase;letter-spacing:.4px}
+.gst-row:last-child{border-bottom:none;font-weight:700;background:rgba(245,166,35,.06)}
+
+/* Bottom Nav */
+.bnav{position:sticky;bottom:0;display:flex;align-items:stretch;background:var(--surf);border-top:1px solid var(--bord);flex-shrink:0;padding-bottom:var(--safe-bottom);z-index:100}
+.ni{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 4px;gap:3px;cursor:pointer;transition:var(--tr);position:relative;min-height:56px;user-select:none}
+.ni-ic{font-size:20px;line-height:1}.ni-lb{font-size:10px;color:var(--t2);font-weight:600;white-space:nowrap}
+.ni.on .ni-lb{color:var(--acc)}
+.ni.on::after{content:'';position:absolute;top:0;left:20%;right:20%;height:2.5px;border-radius:0 0 4px 4px;background:var(--acc)}
+.ni:active{background:var(--surf2)}
+.nav-fab{width:48px;height:48px;border-radius:16px;background:linear-gradient(135deg,var(--acc),#FF8A00);color:#0A0E1A;font-size:22px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(245,166,35,.5);margin-bottom:4px}
+
+/* Toast */
+#toast-container{position:fixed;bottom:calc(72px + var(--safe-bottom));left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none}
+.toast{background:var(--surf3);color:var(--text);padding:10px 18px;border-radius:20px;font-size:13px;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.45);border:1px solid var(--bord);white-space:nowrap;max-width:calc(100vw - 40px);overflow:hidden;text-overflow:ellipsis;animation:toastIn .22s ease}
+.toast.s{background:rgba(16,185,129,.15);border-color:rgba(16,185,129,.3);color:var(--acc3)}
+.toast.i{background:rgba(245,166,35,.15);border-color:rgba(245,166,35,.3);color:#FF8A00}
+
+.loader{display:flex;align-items:center;justify-content:center;padding:48px;gap:12px}
+.spinner{width:28px;height:28px;border:3px solid var(--bord);border-top-color:var(--acc);border-radius:50%;animation:spin .8s linear infinite}
+.spacer{height:80px}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes toastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@media(min-width:640px){#app{max-width:480px;margin:0 auto;box-shadow:0 0 80px rgba(0,0,0,.6)}}
+
+/* ══ Desktop Sidebar ══ */
+#dsb{position:fixed;left:0;top:0;bottom:0;width:220px;background:var(--surf);border-right:1px solid var(--bord);display:flex;flex-direction:column;z-index:200;overflow-y:auto}
+.dsb-logo{display:flex;align-items:center;gap:10px;padding:18px 16px 12px;border-bottom:1px solid var(--bord)}
+.dsb-brand{font-family:var(--font-h);font-size:15px;font-weight:800;color:var(--acc)}
+.dsb-nav{flex:1;padding:8px;display:flex;flex-direction:column;gap:2px;overflow-y:auto}
+.dsb-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;cursor:pointer;text-decoration:none;color:var(--t2);font-size:13px;font-weight:600;transition:.15s ease;white-space:nowrap;border:none;background:none;width:100%}
+.dsb-item:hover{background:var(--surf2);color:var(--text)}
+.dsb-item.active{background:rgba(245,166,35,.12);color:var(--acc)}
+.dsb-item.fab-sb{background:linear-gradient(135deg,#F5A623,#FF8A00);color:#fff;margin:4px 0 8px;font-weight:700}
+.dsb-ic{font-size:17px;width:22px;text-align:center;flex-shrink:0}
+.dsb-footer{padding:8px;border-top:1px solid var(--bord)}
+.dsb-ver{font-size:10px;color:var(--t3);text-align:center;padding:6px 0 2px}
+@media(max-width:1023px){#dsb{display:none!important}}
+@media(min-width:640px) and (max-width:1023px){#app{max-width:600px;margin:0 auto}}
+@media(min-width:1024px){body{overflow:hidden}#app{margin-left:220px!important;max-width:calc(100vw - 220px)!important;width:calc(100vw - 220px)!important;box-shadow:none!important}.bnav{display:none!important}}
+
+/* ══ Language ══ */
+.lang-hi{display:none!important}
+.lang-en{display:inline!important}
+html[lang="hi"] .lang-hi{display:inline!important}
+html[lang="hi"] .lang-en{display:none!important}
+
+
+
+@media(max-width:1023px){
+    #app{height:100dvh!important;display:flex!important;flex-direction:column!important;overflow:hidden!important}
+  .bnav{position:fixed!important;bottom:0!important;left:0!important;right:0!important;z-index:100!important}
+  .sb{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+}
+
+
+
+
+/* ══ SCROLL SYSTEM ══ */
+/* Mobile: whole page scrolls */
+@media(max-width:1023px){
+  html,body{height:auto!important;min-height:100dvh!important;overflow-x:hidden;overflow-y:auto!important}
+  #app{height:100dvh!important;display:flex!important;flex-direction:column!important;overflow:hidden!important}
+  .sb{overflow-y:visible!important}
+  .bnav{position:fixed!important;bottom:0!important;left:0!important;right:0!important;z-index:100!important}
+}
+/* Desktop: #app fills viewport, .sb scrolls inside */
+@media(min-width:1024px){
+  html,body{height:100%!important;overflow:hidden!important}
+  #app{height:100vh!important;overflow:hidden!important;display:flex!important;flex-direction:column!important}
+  .sb{flex:1!important;overflow-y:auto!important;min-height:0!important}
+}
+</style>
+<link rel="stylesheet" href="fix.css">
+</head>
+<body>
+<script>(function(){var ds=localStorage.getItem("sbp_digit_style")||"default";var fs=parseInt(localStorage.getItem("sbp_font_size")||"15");var fm={default:"inherit",mono:"Courier New,monospace",rounded:"DM Sans,sans-serif",sharp:"Outfit,sans-serif"};var st=document.getElementById("sbp-font-override");if(!st){st=document.createElement("style");st.id="sbp-font-override";document.head.appendChild(st);}st.textContent="body{font-size:"+fs+"px}.sc-val,.cm-val,.bc-amt,.cust-bal-val,.cms-val,.cart-total-val,.pos-item-price,.tot-row span:last-child,.gst-row span,.stat-val,.stat-num,.report-val,.bill-total,.bdoc-inv-no,.bc-inv,.lv{font-family:"+fm[ds]+"!important}";})();</script>
+<div id="app">
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="tb-l">
+      <div class="back-btn" onclick="goTo('dashboard.html')">←</div>
+      <div class="tb-title">Business Reports</div>
+    </div>
+    <div class="tb-r">
+      <div class="ic-btn" onclick="toggleTheme()" id="theme-btn">☀️</div>
+      <div class="ic-btn" onclick="exportReport()" title="Export">📤</div>
+    </div>
+  </div>
+
+  <!-- Report Tabs -->
+  <div class="sub-tabs">
+    <div class="sub-tab on" id="tab-sales"   onclick="showTab('sales')">📊 Sales</div>
+    <div class="sub-tab"    id="tab-daily"   onclick="showTab('daily')">📅 Daily</div>
+    <div class="sub-tab"    id="tab-gst"     onclick="showTab('gst')">🏛️ GST</div>
+    <div class="sub-tab"    id="tab-customers" onclick="showTab('customers')">👥 Customers</div>
+    <div class="sub-tab"    id="tab-items"   onclick="showTab('items')">📦 Items</div>
+    <div class="sub-tab"    id="tab-voids"   onclick="showTab('voids')">🚫 Voids</div>
+    <div class="sub-tab"    id="tab-insights" onclick="showTab('insights')">🧠 Insights <span style="font-size:9px;background:linear-gradient(135deg,#F5A623,#FF8A00);color:#fff;border-radius:8px;padding:1px 5px;margin-left:3px">PRO</span></div>
+    <div class="sub-tab"    id="tab-forecast" onclick="showTab('forecast')">🔮 Forecast <span style="font-size:9px;background:linear-gradient(135deg,#F59E0B,#EF4444);color:#fff;border-radius:8px;padding:1px 5px;margin-left:3px">BIZ</span></div>
+  </div>
+
+  <!-- Period Chips -->
+  <div class="period-chips">
+    <div class="chip" onclick="setPeriod('today',this)"><span class="lang-en">Today</span><span class="lang-hi">आज</span></div>
+    <div class="chip on" onclick="setPeriod('month',this)"><span class="lang-en">This Month</span><span class="lang-hi">इस महीने</span></div>
+    <div class="chip" onclick="setPeriod('week',this)"><span class="lang-en">This Week</span><span class="lang-hi">इस सप्ताह</span></div>
+    <div class="chip" onclick="setPeriod('quarter',this)">Quarter</div>
+    <div class="chip" onclick="setPeriod('year',this)">This Year</div>
+    <div class="chip" onclick="setPeriod('all',this)">All Time</div>
+    <div class="chip" onclick="setPeriod('custom',this)">📅 Custom</div>
+  </div>
+
+  <!-- Custom Date Range Picker -->
+  <div id="custom-date-range" style="display:none;padding:8px 16px;gap:10px;align-items:center;flex-wrap:wrap">
+    <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:120px">
+      <label style="font-size:11px;font-weight:700;color:var(--t2);white-space:nowrap">From</label>
+      <input type="date" id="report-date-from" style="flex:1;padding:8px 10px;border-radius:10px;background:var(--surf2);border:1px solid var(--bord);color:var(--text);font-size:13px;font-family:inherit" onchange="applyCustomRange()">
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:120px">
+      <label style="font-size:11px;font-weight:700;color:var(--t2);white-space:nowrap">To</label>
+      <input type="date" id="report-date-to" style="flex:1;padding:8px 10px;border-radius:10px;background:var(--surf2);border:1px solid var(--bord);color:var(--text);font-size:13px;font-family:inherit" onchange="applyCustomRange()">
+    </div>
+  </div>
+
+  <!-- Content -->
+  <div class="sb">
+    <div id="report-content">
+      <div class="loader"><div class="spinner"></div></div>
+    </div>
+  </div>
+
+  <!-- Bottom Nav -->
+  <div class="bnav">
+    <div class="ni" onclick="goTo('dashboard.html')"><span class="ni-ic">🏠</span><span class="ni-lb"><span class="lang-en">Home</span><span class="lang-hi">होम</span></span></div>
+    <div class="ni" onclick="goTo('bills.html')"><span class="ni-ic">🧾</span><span class="ni-lb"><span class="lang-en">Bills</span><span class="lang-hi">बिल</span></span></div>
+    <div class="ni" onclick="goTo('billing.html')" style="align-items:center;justify-content:center"><div class="nav-fab">＋</div></div>
+    <div class="ni" onclick="goTo('customers.html')"><span class="ni-ic">👥</span><span class="ni-lb"><span class="lang-en">Customers</span><span class="lang-hi">ग्राहक</span></span></div>
+    <div class="ni" onclick="goTo('settings.html')"><span class="ni-ic">☰</span><span class="ni-lb"><span class="lang-en">More</span><span class="lang-hi">अधिक</span></span></div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script>
+const SB_URL='https://jfqeirfrkjdkqqixivru.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmcWVpcmZya2pka3FxaXhpdnJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzNzQ4MzgsImV4cCI6MjA4OTk1MDgzOH0.akd4E0nil8ypLR4WOykkeYIL8g4uuNU6XdSVh_Y1utk';
+const _sb=supabase.createClient(SB_URL,SB_KEY);
+
+let _shop=null,_shopId=null,_user=null;
+let _theme=localStorage.getItem('sbp_theme')||'dark';
+let _bills=[],_expenses=[],_custs=[];
+let _curTab='sales',_curPeriod='month';
+let _sessionTimeout=parseInt(localStorage.getItem('sbp_session_timeout')||'30');
+let _actTimer;
+
+function _resetTimer(){clearTimeout(_actTimer);localStorage.setItem('sbp_last_activity',Date.now().toString());_actTimer=setTimeout(async()=>{await _sb.auth.signOut();window.location.href='index.html';},_sessionTimeout*60*1000)}
+['click','touchstart','keypress','scroll'].forEach(e=>document.addEventListener(e,_resetTimer,{passive:true}));
+
+function goTo(p){window.location.href=p}
+function toast(msg,type='',dur=3000){const c=document.getElementById('toast-container');const t=document.createElement('div');t.className='toast'+(type?' '+type:'');t.textContent=msg;c.appendChild(t);setTimeout(()=>{t.style.opacity='0';t.style.transition='.2s';setTimeout(()=>t.remove(),220);},dur)}
+function toggleTheme(){_theme=_theme==='dark'?'light':'dark';localStorage.setItem('sbp_theme',_theme);document.documentElement.setAttribute('data-theme',_theme==='light'?'light':'');document.getElementById('theme-btn').textContent=_theme==='light'?'🌙':'☀️'}
+function fINR(n){return '₹'+(parseFloat(n)||0).toLocaleString('en-IN',{maximumFractionDigits:0})}
+function fDate(d){if(!d)return '—';try{return new Date(d).toLocaleDateString('en-IN',{day:'2-digit',month:'short'});}catch{return d}}
+function todayISO(){return new Date().toISOString().split('T')[0]}
+
+// ── Period filter ──
+let _customFrom='',_customTo='';
+
+function setPeriod(period,el){
+  _curPeriod=period;
+  document.querySelectorAll('.period-chips .chip').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on');
+  
+  // Show/hide custom date range picker
+  const customEl=document.getElementById('custom-date-range');
+  if(period==='custom'){
+    customEl.style.display='flex';
+    // Default: last 30 days
+    if(!_customFrom||!_customTo){
+      const now=new Date();
+      _customTo=todayISO();
+      _customFrom=new Date(now-30*86400000).toISOString().split('T')[0];
+      document.getElementById('report-date-from').value=_customFrom;
+      document.getElementById('report-date-to').value=_customTo;
+    }
+  }else{
+    customEl.style.display='none';
+  }
+  renderTab(_curTab);
+}
+
+function applyCustomRange(){
+  _customFrom=document.getElementById('report-date-from').value;
+  _customTo=document.getElementById('report-date-to').value;
+  if(_customFrom&&_customTo){
+    renderTab(_curTab);
+  }
+}
+
+function _filterByPeriod(bills){
+  const today=todayISO();
+  const now=new Date();
+  switch(_curPeriod){
+    case 'today':   return bills.filter(b=>(b.invoice_date||b.created_at||'').startsWith(today));
+    case 'week':{const w=new Date(now-7*86400000).toISOString().split('T')[0];return bills.filter(b=>(b.invoice_date||b.created_at||'')>=w)}
+    case 'month':   return bills.filter(b=>(b.invoice_date||b.created_at||'').startsWith(today.substring(0,7)));
+    case 'quarter':{const q=new Date(now-90*86400000).toISOString().split('T')[0];return bills.filter(b=>(b.invoice_date||b.created_at||'')>=q)}
+    case 'year':    return bills.filter(b=>(b.invoice_date||b.created_at||'').startsWith(today.substring(0,4)));
+    case 'custom':{
+      if(!_customFrom||!_customTo) return bills;
+      return bills.filter(b=>{
+        const d=(b.invoice_date||b.created_at||'').substring(0,10);
+        return d>=_customFrom&&d<=_customTo;
+      });
+    }
+    default:        return bills;
+  }
+}
+
+// ── Tab switching ──
+function showTab(tab){
+  _curTab=tab;
+  document.querySelectorAll('.sub-tab').forEach(t=>t.classList.remove('on'));
+  document.getElementById('tab-'+tab).classList.add('on');
+  renderTab(tab);
+}
+
+function renderTab(tab){
+  switch(tab){
+    case 'sales':    renderSales();break;
+    case 'daily':    renderDailyReport();break;
+    case 'gst':      renderGST();break;
+    case 'customers':renderTopCustomers();break;
+    case 'items':    renderTopItems();break;
+    case 'voids':    renderVoidsReport();break;
+    case 'insights': renderInsights();break;
+    case 'forecast': renderForecast();break;
+  }
+}
+
+// ── Sales Report ──
+function renderSales(){
+  const bills=_filterByPeriod(_bills);
+  const expenses=_filterByPeriod(_expenses.map(e=>({...e,invoice_date:e.expense_date})));
+
+  // ── Core numbers ──
+  const totalSales     = bills.reduce((s,b)=>s+parseFloat(b.grand_total||0),0);  // what was billed
+  const totalCollected = bills.reduce((s,b)=>s+parseFloat(b.paid_amount||0),0);  // cash received
+  const totalGSTBilled = bills.reduce((s,b)=>s+parseFloat(b.gst_amount||0),0);   // total GST on all bills
+  const totalExpense   = expenses.reduce((s,e)=>s+parseFloat(e.amount||0),0);
+  const totalBills     = bills.length;
+  const paidCount      = bills.filter(b=>b.status==='Paid').length;
+  const outstanding    = bills.reduce((s,b)=>s+parseFloat(b.balance_due||0),0);
+  const avgBill        = totalBills ? totalSales/totalBills : 0;
+
+  // ── GST on collected only (proportional) ──
+  // GST rate = totalGSTBilled / totalSales  →  apply to collected only
+  const gstRate        = totalSales>0 ? totalGSTBilled/totalSales : 0;
+  const gstOnCollected = totalCollected * gstRate;   // GST portion of what was actually received
+  const yourCash       = totalCollected - gstOnCollected;  // your money after GST
+  // Net Income: only calculate when there is actual billing activity in the period
+  // If no bills exist, show ₹0 (don't show negative from expenses alone)
+  const netIncome      = totalBills > 0 ? (yourCash - totalExpense) : 0;
+
+  // ── Payment mode breakdown ──
+  const payMap={Cash:0,UPI:0,Card:0,Bank:0,Cheque:0,Credit:0};
+  bills.forEach(b=>{
+    const m=b.payment_mode||'Cash';
+    const paid=parseFloat(b.paid_amount||0);
+    const grand=parseFloat(b.grand_total||0);
+    if(m==='Credit'){ payMap.Credit+=grand; }
+    else {
+      if(payMap[m]!==undefined) payMap[m]+=paid;
+      const bal=parseFloat(b.balance_due||0);
+      if(bal>0) payMap.Credit+=bal;
+    }
+  });
+
+  // Daily chart (last 7 days)
+  const days=[];const now=new Date();
+  for(let i=6;i>=0;i--){
+    const d=new Date(now-i*86400000);
+    const ds=d.toISOString().split('T')[0];
+    const dayBills=_bills.filter(b=>(b.invoice_date||b.created_at||'').startsWith(ds));
+    const dayRevenue=dayBills.reduce((s,b)=>s+parseFloat(b.grand_total||0),0);
+    days.push({label:d.toLocaleDateString('en-IN',{weekday:'short'}),value:dayRevenue,date:ds});
+  }
+  const maxDay=Math.max(...days.map(d=>d.value),1);
+
+  const barsHTML=days.map(d=>`
+    <div class="bar-col">
+      <div class="bar-val">${d.value>0?'₹'+(d.value/1000).toFixed(0)+'k':''}</div>
+      <div class="bar" style="height:${Math.max(4,(d.value/maxDay)*80)}px" title="${fINR(d.value)}"></div>
+      <div class="bar-lbl">${d.label}</div>
+    </div>`).join('');
+
+  const el=document.getElementById('report-content');
+  el.innerHTML=`
+    <div style="padding-bottom:80px">
+      <div style="padding:12px 14px 4px;font-family:var(--font-h);font-size:13px;font-weight:700;color:var(--t2)">PERIOD SUMMARY</div>
+      <div class="stats-grid">
+        <div class="scard g">
+          <div class="sc-lbl">Total Sales</div>
+          <div class="sc-val g">${fINR(totalSales)}</div>
+          <div class="sc-sub">${totalBills} bill${totalBills!==1?'s':''} · ${paidCount} paid · Collected ${fINR(totalCollected)}</div>
+          <div class="sc-ic">🧾</div>
+        </div>
+        <div class="scard ${netIncome>=0?'p':'r'}">
+          <div class="sc-lbl">Net Income</div>
+          <div class="sc-val ${netIncome>=0?'p':'r'}">${fINR(netIncome)}</div>
+          <div class="sc-sub">Collected ${fINR(totalCollected)} − GST ${fINR(gstOnCollected)} − Exp ${fINR(totalExpense)}</div>
+          <div class="sc-ic">${netIncome>=0?'📈':'📉'}</div>
+        </div>
+        <div class="scard c">
+          <div class="sc-lbl">Avg Sale Value</div>
+          <div class="sc-val c">${fINR(avgBill)}</div>
+          <div class="sc-sub">Per invoice · GST payable ${fINR(gstOnCollected)}</div>
+          <div class="sc-ic">📊</div>
+        </div>
+        <div class="scard r">
+          <div class="sc-lbl">Outstanding</div>
+          <div class="sc-val r">${fINR(outstanding)}</div>
+          <div class="sc-sub">Unpaid balance · ${totalBills-paidCount} bill${totalBills-paidCount!==1?'s':''} pending</div>
+          <div class="sc-ic">⏳</div>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-t">Daily Revenue <span class="hi">Last 7 Days</span></div>
+        <div class="chart-wrap">
+          <div class="bar-chart">${barsHTML}</div>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-t">Payment Mode Breakdown</div>
+        <div class="pay-breakdown">
+          <div class="pb-item"><div class="pb-val" style="color:var(--acc3)">${fINR(payMap.Cash)}</div><div class="pb-lbl">💵 Cash</div></div>
+          <div class="pb-item"><div class="pb-val" style="color:var(--acc)">${fINR(payMap.UPI)}</div><div class="pb-lbl">📲 UPI</div></div>
+          <div class="pb-item"><div class="pb-val" style="color:var(--cyan)">${fINR(payMap.Card)}</div><div class="pb-lbl">💳 Card</div></div>
+          <div class="pb-item"><div class="pb-val" style="color:var(--amber)">${fINR(payMap.Bank)}</div><div class="pb-lbl">🏦 Bank</div></div>
+          <div class="pb-item"><div class="pb-val" style="color:var(--t2)">${fINR(payMap.Cheque)}</div><div class="pb-lbl">📑 Cheque</div></div>
+          <div class="pb-item"><div class="pb-val" style="color:var(--acc2)">${fINR(payMap.Credit)}</div><div class="pb-lbl">📒 Credit</div></div>
+        </div>
+      </div>
+      <div class="spacer"></div>
+    </div>`;
+}
+
+// ── GST Report ──
+function renderGST(){
+  const bills=_filterByPeriod(_bills);
+  const gstMap={0:0,5:0,12:0,18:0,28:0};
+  let totalGST=0,totalTaxable=0;
+
+  bills.forEach(b=>{
+    const gst=parseFloat(b.gst_amount||0);
+    const sub=parseFloat(b.subtotal||0);
+    totalGST+=gst;totalTaxable+=sub;
+    if(b.bill_items?.length){
+      b.bill_items.forEach(it=>{
+        const rate=parseFloat(it.gst_rate||it.rate||0);
+        if(gstMap[rate]!==undefined){
+          const itemGST=parseFloat(it.gst_amount||it.lineGST||0);
+          const lineTotal=parseFloat(it.line_total||it.lineAmt||it.tot||0);
+          if(itemGST>0){
+            gstMap[rate]+=itemGST;
+          } else if(rate>0 && lineTotal>0){
+            const baseAmt=lineTotal/(1+rate/100);
+            gstMap[rate]+=(lineTotal-baseAmt);
+          }
+        }
+      });
+    } else if(gst>0 && sub>0){
+      const effectiveRate=Math.round((gst/sub)*100);
+      const closest=[0,5,12,18,28].reduce((prev,curr)=>Math.abs(curr-effectiveRate)<Math.abs(prev-effectiveRate)?curr:prev);
+      if(gstMap[closest]!==undefined) gstMap[closest]+=gst;
+    }
+  });
+
+  const cgst=totalGST/2,sgst=totalGST/2;
+  const thisMonth=todayISO().substring(0,7);
+  const monthBills=_bills.filter(b=>(b.invoice_date||b.created_at||'').startsWith(thisMonth));
+
+  const el=document.getElementById('report-content');
+  el.innerHTML=`
+    <div style="padding-bottom:80px">
+      <div style="padding:12px 14px 4px;font-family:var(--font-h);font-size:13px;font-weight:700;color:var(--t2)">GST SUMMARY</div>
+      <div class="stats-grid">
+        <div class="scard p">
+          <div class="sc-lbl">Total GST Collected</div>
+          <div class="sc-val p">${fINR(totalGST)}</div>
+          <div class="sc-sub">${bills.length} bills</div>
+          <div class="sc-ic">🏛️</div>
+        </div>
+        <div class="scard g">
+          <div class="sc-lbl">Taxable Amount</div>
+          <div class="sc-val g">${fINR(totalTaxable)}</div>
+          <div class="sc-sub">Before GST</div>
+          <div class="sc-ic">📊</div>
+        </div>
+        <div class="scard c">
+          <div class="sc-lbl">CGST</div>
+          <div class="sc-val c">${fINR(cgst)}</div>
+          <div class="sc-sub">Central Tax</div>
+          <div class="sc-ic">🏦</div>
+        </div>
+        <div class="scard a">
+          <div class="sc-lbl">SGST</div>
+          <div class="sc-val a">${fINR(sgst)}</div>
+          <div class="sc-sub">State Tax</div>
+          <div class="sc-ic">🏛️</div>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-t">GST Slab Breakdown</div>
+        <div class="gst-table">
+          <div class="gst-row hd"><span>GST Rate</span><span>Taxable</span><span>CGST</span><span>SGST</span></div>
+          ${[0,5,12,18,28].map(rate=>{
+            const gstAmt=gstMap[rate]||0;
+            const taxable=rate>0&&gstAmt>0?(gstAmt/(rate/100)):((rate===0)?bills.reduce((s,b)=>{
+              if(!b.bill_items?.length) return s;
+              return s+b.bill_items.filter(it=>parseFloat(it.gst_rate||it.rate||0)===0).reduce((ss,it)=>ss+parseFloat(it.line_total||it.lineAmt||it.tot||0),0);
+            },0):0);
+            return `<div class="gst-row">
+              <span style="font-weight:700;color:var(--acc)">${rate}%</span>
+              <span>${fINR(taxable)}</span>
+              <span style="color:var(--acc3)">${fINR(gstAmt/2)}</span>
+              <span style="color:var(--amber)">${fINR(gstAmt/2)}</span>
+            </div>`;
+          }).join('')}
+          <div class="gst-row">
+            <span style="font-weight:800">TOTAL</span>
+            <span style="font-weight:800">${fINR(totalTaxable)}</span>
+            <span style="font-weight:800;color:var(--acc3)">${fINR(cgst)}</span>
+            <span style="font-weight:800;color:var(--amber)">${fINR(sgst)}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div style="background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.2);border-radius:var(--rs);padding:13px">
+          <div style="font-family:var(--font-h);font-size:13px;font-weight:700;color:var(--acc);margin-bottom:6px">📅 Filing Reminder</div>
+          <div style="font-size:12px;color:var(--t2);line-height:1.7">
+            GSTR-1: Due <strong style="color:var(--text)">11th of every month</strong><br>
+            GSTR-3B: Due <strong style="color:var(--text)">20th of every month</strong><br>
+            This month's GST payable: <strong style="color:var(--acc)">${fINR(monthBills.reduce((s,b)=>s+parseFloat(b.gst_amount||0),0))}</strong>
+          </div>
+        </div>
+      </div>
+      <div class="spacer"></div>
+    </div>`;
+}
+
+// ── Top Customers ──
+function renderTopCustomers(){
+  const bills=_filterByPeriod(_bills);
+  const map={};
+  bills.forEach(b=>{
+    const nm=b.customer_name||'Walk-in';
+    if(!map[nm])map[nm]={name:nm,revenue:0,bills:0,outstanding:0};
+    map[nm].revenue+=parseFloat(b.paid_amount||0);
+    map[nm].bills++;
+    map[nm].outstanding+=parseFloat(b.balance_due||0);
+  });
+  const sorted=Object.values(map).sort((a,b)=>b.revenue-a.revenue).slice(0,10);
+
+  const el=document.getElementById('report-content');
+  el.innerHTML=`<div style="padding-bottom:80px">
+    <div style="padding:12px 14px 4px;font-family:var(--font-h);font-size:13px;font-weight:700;color:var(--t2)">TOP CUSTOMERS</div>
+    <div class="sec">
+      ${sorted.length?sorted.map((c,i)=>`
+        <div class="rank-item">
+          <div class="rank-num">${i+1}</div>
+          <div style="flex:1;min-width:0">
+            <div class="rank-nm">${c.name}</div>
+            <div class="rank-sub">${c.bills} bill${c.bills!==1?'s':''}${c.outstanding>0?' · Due: '+fINR(c.outstanding):' · Clear ✅'}</div>
+          </div>
+          <div class="rank-val">${fINR(c.revenue)}</div>
+        </div>`).join('')
+      :'<div style="text-align:center;padding:40px;color:var(--t2);font-size:13px">No customer data for this period</div>'}
+    </div>
+    <div class="spacer"></div>
+  </div>`;
+}
+
+// ── Top Items ──
+function renderTopItems(){
+  const bills=_filterByPeriod(_bills);
+  const map={};
+  bills.forEach(b=>{
+    (b.bill_items||[]).forEach(it=>{
+      const nm=it.item_name||'Unknown';
+      if(!map[nm])map[nm]={name:nm,qty:0,revenue:0,count:0};
+      map[nm].qty+=parseFloat(it.qty||0);
+      map[nm].revenue+=parseFloat(it.line_total||0);
+      map[nm].count++;
+    });
+  });
+  const sorted=Object.values(map).sort((a,b)=>b.revenue-a.revenue).slice(0,10);
+
+  const el=document.getElementById('report-content');
+  el.innerHTML=`<div style="padding-bottom:80px">
+    <div style="padding:12px 14px 4px;font-family:var(--font-h);font-size:13px;font-weight:700;color:var(--t2)">TOP SELLING ITEMS</div>
+    <div class="sec">
+      ${sorted.length?sorted.map((it,i)=>`
+        <div class="rank-item">
+          <div class="rank-num">${i+1}</div>
+          <div style="flex:1;min-width:0">
+            <div class="rank-nm">${it.name}</div>
+            <div class="rank-sub">Qty sold: ${it.qty} · ${it.count} bill${it.count!==1?'s':''}</div>
+          </div>
+          <div class="rank-val">${fINR(it.revenue)}</div>
+        </div>`).join('')
+      :'<div style="text-align:center;padding:40px;color:var(--t2);font-size:13px">No item data for this period.<br>Make sure bill items are saved.</div>'}
+    </div>
+    <div class="spacer"></div>
+  </div>`;
+}
+
+function exportReport(){
+  const bills=_filterByPeriod(_bills);
+  const rows=['Invoice No,Date,Customer,Subtotal,GST,Grand Total,Paid,Balance,Status'];
+  bills.forEach(b=>rows.push([b.invoice_no,b.invoice_date,b.customer_name,b.subtotal||0,b.gst_amount||0,b.grand_total||0,b.paid_amount||0,b.balance_due||0,b.status||''].join(',')));
+  const blob=new Blob([rows.join('\n')],{type:'text/csv'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='report_'+_curPeriod+'.csv';a.click();
+  toast('📤 Report exported!','s');
+}
+
+async function init(){
+  if(_theme==='light'){document.documentElement.setAttribute('data-theme','light');document.getElementById('theme-btn').textContent='🌙'}
+  // STEP 1: Render immediately from local data — no network wait
+  _shopId=localStorage.getItem('sbp_shop_id');
+  _shop=JSON.parse(localStorage.getItem('sbp_shop')||'{}');
+  _bills=JSON.parse(localStorage.getItem('sbp_bills')||'[]');
+  _expenses=JSON.parse(localStorage.getItem('sbp_expenses')||'[]');
+  _custs=JSON.parse(localStorage.getItem('sbp_customers')||'[]');
+  try{
+    const params=new URLSearchParams(window.location.search);
+    if(params.get('tab')==='gst') showTab('gst');
+    else renderSales();
+  }catch(e){
+    document.getElementById('report-content').innerHTML='<div style="padding:40px;text-align:center;color:var(--t2)">📊 No data yet — create some bills first!</div>';
+  }
+  // STEP 2: Auth check (background, non-blocking)
+  try{
+    const{data:{session}}=await _sb.auth.getSession();
+    if(!session){window.location.href='index.html';return}
+    const last=parseInt(localStorage.getItem('sbp_last_activity')||'0');
+    if(last&&(Date.now()-last)/60000>_sessionTimeout){await _sb.auth.signOut();window.location.href='index.html';return}
+    _resetTimer();
+  }catch(e){}
+  // STEP 3: Cloud sync if Pro
+  if(isPro()&&navigator.onLine&&_shopId){
+    try{
+      const{data:bd}=await _sb.from('bills').select('*').eq('shop_id',_shopId).order('created_at',{ascending:false}).limit(500);
+      if(bd&&bd.length){_bills=bd;localStorage.setItem('sbp_bills',JSON.stringify(_bills));renderTab(_curTab);}
+    }catch(e){}
+  }
+}
+init();
+
+(function(){
+  if(window.innerWidth<1024)return;
+  var page=window.location.pathname.split('/').pop()||'dashboard.html';
+  var nav=[
+    {ic:'🏠',lb:'Dashboard',url:'dashboard.html'},
+    {ic:'🧾',lb:'New Bill',url:'billing.html',fab:true},
+    {ic:'📋',lb:'Bills',url:'bills.html'},
+    {ic:'👥',lb:'Customers',url:'customers.html'},
+    {ic:'📦',lb:'Inventory',url:'stock.html'},
+    {ic:'📊',lb:'Reports',url:'reports.html'},
+    {ic:'🛒',lb:'POS Admin',url:'pos-admin.html'},
+    {ic:'💬',lb:'WhatsApp',url:'wa-center.html'},
+    {ic:'💰',lb:'Cash Register',url:'cash-register.html'},
+    {ic:'🚚',lb:'Suppliers',url:'supplier.html'},
+    {ic:'🔄',lb:'Recurring',url:'recurring.html'},
+    {ic:'🗂️',lb:'Templates',url:'bill-templates.html'},
+    {ic:'👥',lb:'Team & Users',url:'team.html'},
+    {ic:'🚀',lb:'Plans & Pricing',url:'subscription.html'},
+    {ic:'⚙️',lb:'Settings',url:'settings.html'},
+  ];
+  var sb=document.createElement('div');sb.id='dsb';
+  sb.innerHTML='<div class="dsb-logo"><svg width="22" height="24" viewBox="0 0 56 62" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M28 2L4 14V32C4 46 28 60 28 60C28 60 52 46 52 32V14L28 2Z" fill="url(#sg1)"/><rect x="18" y="18" width="20" height="26" rx="2" fill="#0A0E1A" fill-opacity=".6"/><rect x="18" y="18" width="20" height="26" rx="2" stroke="#fff" stroke-width="1.5" fill="none"/><line x1="22" y1="24" x2="34" y2="24" stroke="#F5A623" stroke-width="1.5" stroke-linecap="round"/><line x1="22" y1="28" x2="30" y2="28" stroke="rgba(255,255,255,.4)" stroke-width="1" stroke-linecap="round"/><line x1="22" y1="31" x2="32" y2="31" stroke="rgba(255,255,255,.4)" stroke-width="1" stroke-linecap="round"/><line x1="22" y1="34" x2="28" y2="34" stroke="rgba(255,255,255,.4)" stroke-width="1" stroke-linecap="round"/><circle cx="32" cy="37" r="5" fill="#F5A623"/><polyline points="30,37 31.5,38.5 34.5,35.5" fill="none" stroke="#0A0E1A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><defs><linearGradient id="sg1" x1="4" y1="2" x2="52" y2="60" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#F5A623"/><stop offset="100%" stop-color="#FF6B35"/></linearGradient></defs></svg><span class="dsb-brand">ShopBill Pro</span></div><div class="dsb-nav">'+nav.map(function(n){var c='dsb-item'+(page===n.url?' active':'')+(n.fab?' fab-sb':'');return '<a class="'+c+'" href="'+n.url+'"><span class="dsb-ic">'+n.ic+'</span><span>'+n.lb+'</span></a>';}).join('')+'</div><div class="dsb-footer"><button class="dsb-item" id="dsb-logout"><span class="dsb-ic">🚪</span><span>Logout</span></button><div class="dsb-ver">ShopBill Pro v1.0</div></div>';
+  document.body.prepend(sb);
+  document.getElementById('dsb-logout').addEventListener('click',function(){
+    if(window._sb)window._sb.auth.signOut().then(function(){window.location.href='index.html';});
+    else window.location.href='index.html';
+  });
+})();
+(function(){document.documentElement.lang=localStorage.getItem('sbp_lang')||'en';})();
+
+async function refreshShopPlan() {
+  if (!navigator.onLine || !window._sb) return;
+  try {
+    const { data: { user } } = await _sb.auth.getUser();
+    if (!user) return;
+    const { data: shops } = await _sb.from('shops').select('*').eq('owner_id', user.id).limit(1);
+    if (shops?.length) {
+      localStorage.setItem('sbp_shop', JSON.stringify(shops[0]));
+      localStorage.setItem('sbp_shop_id', shops[0].id);
+      window._shop = shops[0];
+    }
+  } catch(e) {}
+}
+
+/* ══ Smart Insights — Level 2 (Pro) ══ */
+function renderInsights(){
+  const plan=(JSON.parse(localStorage.getItem('sbp_shop')||'{}')).plan||'free';
+  const isPro=plan==='pro'||plan==='enterprise';
+  const wrap=document.getElementById('report-content');
+  if(!isPro){
+    wrap.innerHTML='<div style="text-align:center;padding:48px 20px"><div style="font-size:44px;margin-bottom:12px">🧠</div><div style="font-family:var(--font-h);font-size:17px;font-weight:800;margin-bottom:8px">Smart Insights</div><div style="font-size:13px;color:var(--t2);margin-bottom:20px;line-height:1.6">Rush hours, dead stock alerts,<br>payment patterns & more</div><button onclick="window.location.href=\'subscription.html\'" style="padding:13px 28px;border-radius:12px;background:linear-gradient(135deg,#F5A623,#FF8A00);border:none;color:#0A0E1A;font-family:var(--font-h);font-size:14px;font-weight:700;cursor:pointer">🚀 Upgrade to Pro — ₹99/month</button></div>';
+    return;
+  }
+  const bills=JSON.parse(localStorage.getItem('sbp_bills')||'[]');
+  const products=JSON.parse(localStorage.getItem('sbp_products')||'[]');
+  const customers=JSON.parse(localStorage.getItem('sbp_customers')||'[]');
+  // Rush hour
+  const hourCounts={};
+  bills.forEach(b=>{const h=new Date(b.created_at||b.invoice_date||Date.now()).getHours();hourCounts[h]=(hourCounts[h]||0)+1;});
+  const peakHour=Object.entries(hourCounts).sort((a,b)=>b[1]-a[1])[0];
+  const peakLabel=peakHour?peakHour[0]+':00–'+(parseInt(peakHour[0])+1)+':00':'N/A';
+  // Dead stock
+  const cutoff=new Date();cutoff.setDate(cutoff.getDate()-30);
+  const recentItems=new Set();
+  bills.filter(b=>new Date(b.created_at||b.invoice_date)>cutoff).forEach(b=>{(b.items||[]).forEach(it=>recentItems.add((it.nm||it.name||'').toLowerCase()));});
+  const deadItems=products.filter(p=>parseFloat(p.stock_qty||0)>0&&!recentItems.has((p.name||'').toLowerCase())).slice(0,5);
+  // Overdue
+  const overdueCount=customers.filter(c=>parseFloat(c.balance||0)>0).length;
+  const totalDue=customers.reduce((s,c)=>s+parseFloat(c.balance||0),0);
+  // Category revenue
+  const catRev={};
+  bills.forEach(b=>{(b.items||[]).forEach(it=>{const cat=it.category||'General';catRev[cat]=(catRev[cat]||0)+parseFloat(it.amount||it.lineTotal||0);});});
+  const topCats=Object.entries(catRev).sort((a,b)=>b[1]-a[1]).slice(0,4);
+
+  wrap.innerHTML='<div style="padding:16px;display:flex;flex-direction:column;gap:14px">'
+    +'<div style="background:var(--surf2);border:1px solid var(--bord);border-radius:16px;padding:16px"><div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><span style="font-size:22px">⏰</span><div style="font-family:var(--font-h);font-size:14px;font-weight:800">Rush Hour</div><span style="font-size:10px;background:rgba(245,166,35,.12);color:var(--acc);border-radius:8px;padding:2px 8px;font-weight:700">INSIGHT</span></div><div style="font-size:24px;font-weight:900;font-family:var(--font-h);color:var(--acc);margin-bottom:4px">'+peakLabel+'</div><div style="font-size:12px;color:var(--t2)">Your busiest billing hour — be fully stocked &amp; staffed</div></div>'
+    +'<div style="background:var(--surf2);border:1px solid var(--bord);border-radius:16px;padding:16px"><div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><span style="font-size:22px">📦</span><div style="font-family:var(--font-h);font-size:14px;font-weight:800">Dead Stock Alert</div><span style="font-size:10px;background:rgba(239,68,68,.12);color:var(--acc2);border-radius:8px;padding:2px 8px;font-weight:700">'+deadItems.length+' ITEMS</span></div>'+(deadItems.length===0?'<div style="font-size:13px;color:var(--acc3)">✅ All products sold recently!</div>':deadItems.map(p=>'<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bord);font-size:13px"><span>'+(p.emoji||'📦')+' '+p.name+'</span><span style="color:var(--acc2)">Stock: '+p.stock_qty+'</span></div>').join('')+(deadItems.length>0?'<div style="font-size:11px;color:var(--t3);margin-top:8px">No sales in 30+ days — consider discounting</div>':''))+'</div>'
+    +'<div style="background:var(--surf2);border:1px solid var(--bord);border-radius:16px;padding:16px"><div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><span style="font-size:22px">💰</span><div style="font-family:var(--font-h);font-size:14px;font-weight:800">Payment Pattern</div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div style="background:var(--surf3);border-radius:10px;padding:12px;text-align:center"><div style="font-size:22px;font-weight:900;font-family:var(--font-h);color:var(--acc2)">'+overdueCount+'</div><div style="font-size:11px;color:var(--t2)">Customers with dues</div></div><div style="background:var(--surf3);border-radius:10px;padding:12px;text-align:center"><div style="font-size:22px;font-weight:900;font-family:var(--font-h);color:var(--acc2)">'+fINR(totalDue)+'</div><div style="font-size:11px;color:var(--t2)">Total outstanding</div></div></div>'+(overdueCount>0?'<button onclick="window.location.href=\'customers.html\'" style="width:100%;margin-top:12px;padding:10px;border-radius:10px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);color:var(--acc2);font-family:var(--font-h);font-size:13px;font-weight:700;cursor:pointer">📲 Send Payment Reminders</button>':'')+'</div>'
+    +(topCats.length>0?'<div style="background:var(--surf2);border:1px solid var(--bord);border-radius:16px;padding:16px"><div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><span style="font-size:22px">📊</span><div style="font-family:var(--font-h);font-size:14px;font-weight:800">Category Performance</div></div>'+topCats.map(([cat,rev])=>{const pct=Math.round((rev/topCats[0][1])*100);return '<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span style="font-weight:600">'+cat+'</span><span style="color:var(--acc)">'+fINR(rev)+'</span></div><div style="height:6px;background:var(--surf3);border-radius:4px"><div style="height:6px;width:'+pct+'%;background:linear-gradient(90deg,#F5A623,#FF8A00);border-radius:4px"></div></div></div>';}).join('')+'</div>':'')
+    +'</div>';
+}
+
+/* ══ Forecasting — Level 3 (Business) ══ */
+function renderForecast(){
+  const plan=(JSON.parse(localStorage.getItem('sbp_shop')||'{}')).plan||'free';
+  const isBiz=plan==='enterprise';
+  const wrap=document.getElementById('report-content');
+  if(!isBiz){
+    wrap.innerHTML='<div style="text-align:center;padding:48px 20px"><div style="font-size:44px;margin-bottom:12px">🔮</div><div style="font-family:var(--font-h);font-size:17px;font-weight:800;margin-bottom:8px">Advanced Forecasting</div><div style="font-size:13px;color:var(--t2);margin-bottom:20px;line-height:1.6">Stock reorder alerts, revenue predictions,<br>customer churn — Business plan</div><button onclick="window.location.href=\'subscription.html\'" style="padding:13px 28px;border-radius:12px;background:linear-gradient(135deg,#F59E0B,#EF4444);border:none;color:#fff;font-family:var(--font-h);font-size:14px;font-weight:700;cursor:pointer">🏭 Upgrade to Business — ₹199/month</button></div>';
+    return;
+  }
+  const bills=JSON.parse(localStorage.getItem('sbp_bills')||'[]');
+  const products=JSON.parse(localStorage.getItem('sbp_products')||'[]');
+  const customers=JSON.parse(localStorage.getItem('sbp_customers')||'[]');
+  const now=new Date();
+  // Revenue trend
+  const months=[];
+  for(let i=2;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);const ym=d.toISOString().slice(0,7);const rev=bills.filter(b=>(b.invoice_date||b.created_at||'').startsWith(ym)).reduce((s,b)=>s+parseFloat(b.grand_total||b.amount||0),0);months.push({ym,rev,label:d.toLocaleDateString('en-IN',{month:'short'})});}
+  const trend=months.length>=2?months[months.length-1].rev-months[months.length-2].rev:0;
+  const forecast=Math.max(0,months[months.length-1].rev+trend);
+  // Stock reorder
+  const itemSales={};const cutoff30=new Date();cutoff30.setDate(cutoff30.getDate()-30);
+  bills.filter(b=>new Date(b.created_at||b.invoice_date)>cutoff30).forEach(b=>{(b.items||[]).forEach(it=>{const nm=(it.nm||it.name||'').toLowerCase();itemSales[nm]=(itemSales[nm]||0)+parseFloat(it.q||it.qty||1);});});
+  const reorderAlerts=products.filter(p=>{const daily=(itemSales[(p.name||'').toLowerCase()]||0)/30;if(daily<=0||!p.stock_qty)return false;p._daysLeft=Math.round(p.stock_qty/daily);p._daily=daily;return p._daysLeft<=10&&p._daysLeft>=0;}).sort((a,b)=>a._daysLeft-b._daysLeft).slice(0,5);
+  // Churn
+  const activeCustomers=new Set();
+  bills.filter(b=>new Date(b.created_at||b.invoice_date)>cutoff30).forEach(b=>activeCustomers.add(b.cust_name||b.custName||''));
+  const churnList=customers.filter(c=>c.name&&!activeCustomers.has(c.name)&&c.name!=='Walk-in Customer').slice(0,5);
+
+  wrap.innerHTML='<div style="padding:16px;display:flex;flex-direction:column;gap:14px">'
+    // Revenue forecast
+    +'<div style="background:var(--surf2);border:1px solid var(--bord);border-radius:16px;padding:16px"><div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><span style="font-size:22px">📈</span><div style="font-family:var(--font-h);font-size:14px;font-weight:800">Revenue Forecast</div><span style="font-size:10px;background:rgba(245,158,11,.12);color:#F59E0B;border-radius:8px;padding:2px 8px;font-weight:700">THIS MONTH</span></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px">'+months.map(m=>'<div style="background:var(--surf3);border-radius:10px;padding:10px;text-align:center"><div style="font-size:11px;color:var(--t2);margin-bottom:4px">'+m.label+'</div><div style="font-size:14px;font-weight:800;color:var(--text)">'+fINR(m.rev)+'</div></div>').join('')+'</div><div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:10px;padding:12px;text-align:center"><div style="font-size:11px;color:#F59E0B;font-weight:700;margin-bottom:4px">FORECAST — THIS MONTH</div><div style="font-size:28px;font-weight:900;font-family:var(--font-h);color:#F59E0B">'+fINR(forecast)+'</div><div style="font-size:11px;color:var(--t2);margin-top:2px">'+(trend>=0?'📈 Trending up':'📉 Trending down')+' vs last month</div></div></div>'
+    // Reorder alerts
+    +'<div style="background:var(--surf2);border:1px solid var(--bord);border-radius:16px;padding:16px"><div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><span style="font-size:22px">📦</span><div style="font-family:var(--font-h);font-size:14px;font-weight:800">Stock Reorder Alerts</div>'+(reorderAlerts.length>0?'<span style="font-size:10px;background:rgba(239,68,68,.12);color:var(--acc2);border-radius:8px;padding:2px 8px;font-weight:700">'+reorderAlerts.length+' URGENT</span>':'')+'</div>'+(reorderAlerts.length===0?'<div style="font-size:13px;color:var(--acc3)">✅ All products have adequate stock</div>':reorderAlerts.map(p=>'<div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:'+(p._daysLeft<=3?'rgba(239,68,68,.08)':'rgba(245,158,11,.06)')+';border-radius:10px;margin-bottom:8px;border:1px solid '+(p._daysLeft<=3?'rgba(239,68,68,.2)':'rgba(245,158,11,.15)')+'"><div><div style="font-size:13px;font-weight:700">'+(p.emoji||'📦')+' '+p.name+'</div><div style="font-size:11px;color:var(--t2)">Stock: '+p.stock_qty+' · '+p._daily.toFixed(1)+'/day</div></div><div style="text-align:right"><div style="font-size:16px;font-weight:900;color:'+(p._daysLeft<=3?'var(--acc2)':'#F59E0B')+'">'+p._daysLeft+'d</div><div style="font-size:10px;color:var(--t2)">left</div></div></div>').join(''))+'</div>'
+    // Churn risk
+    +'<div style="background:var(--surf2);border:1px solid var(--bord);border-radius:16px;padding:16px"><div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><span style="font-size:22px">👥</span><div style="font-family:var(--font-h);font-size:14px;font-weight:800">Customer Churn Risk</div>'+(churnList.length>0?'<span style="font-size:10px;background:rgba(239,68,68,.12);color:var(--acc2);border-radius:8px;padding:2px 8px;font-weight:700">'+churnList.length+' AT RISK</span>':'')+'</div>'+(churnList.length===0?'<div style="font-size:13px;color:var(--acc3)">✅ All customers visited in 30 days</div>':churnList.map(c=>'<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--bord);font-size:13px"><span style="font-weight:600">'+c.name+'</span><span style="color:var(--acc2);font-size:11px">Not seen 30+ days</span></div>').join(''))+(churnList.length>0?'<button onclick="window.location.href=\'wa-center.html\'" style="width:100%;margin-top:12px;padding:10px;border-radius:10px;background:rgba(37,211,102,.08);border:1px solid rgba(37,211,102,.2);color:var(--acc3);font-family:var(--font-h);font-size:13px;font-weight:700;cursor:pointer">📲 Send Win-Back WhatsApp</button>':'')+'</div>'
+    +'</div>';
+}
+
+// ══════════════════════════════════════════
+// DAILY SALES REPORT
+// ══════════════════════════════════════════
+function renderDailyReport(){
+  const wrap=document.getElementById('report-content');
+  const bills=_bills.filter(b=>b.status!=='Voided');
+  const voidedBills=_bills.filter(b=>b.status==='Voided');
+  
+  // Group bills by date
+  const byDate={};
+  bills.forEach(b=>{
+    const d=(b.invoice_date||b.created_at||'').split('T')[0];
+    if(!d)return;
+    if(!byDate[d])byDate[d]={date:d,bills:[],totalSales:0,totalCollected:0,totalGST:0,totalOutstanding:0,billCount:0,paidCount:0,creditCount:0,cashCount:0,upiCount:0,cardCount:0};
+    const day=byDate[d];
+    day.bills.push(b);
+    day.billCount++;
+    day.totalSales+=parseFloat(b.grand_total||0);
+    day.totalCollected+=parseFloat(b.paid_amount||0);
+    day.totalGST+=parseFloat(b.gst_amount||0);
+    day.totalOutstanding+=parseFloat(b.balance_due||0);
+    const pm=(b.payment_mode||'Cash').toLowerCase();
+    if(b.status==='Paid')day.paidCount++;
+    if(pm==='credit'||b.status==='Credit')day.creditCount++;
+    if(pm==='cash')day.cashCount++;
+    if(pm.includes('upi'))day.upiCount++;
+    if(pm==='card')day.cardCount++;
+  });
+
+  // Sort dates newest first
+  const dates=Object.keys(byDate).sort((a,b)=>b.localeCompare(a));
+  
+  // Period filtered dates
+  const periodDates=dates.filter(d=>{
+    const dt=new Date(d);
+    const now=new Date();
+    if(_curPeriod==='today')return d===now.toISOString().split('T')[0];
+    if(_curPeriod==='week'){const w=new Date();w.setDate(w.getDate()-7);return dt>=w;}
+    if(_curPeriod==='month')return d.slice(0,7)===now.toISOString().slice(0,7);
+    if(_curPeriod==='quarter'){const q=new Date();q.setMonth(q.getMonth()-3);return dt>=q;}
+    if(_curPeriod==='year')return d.slice(0,4)===now.toISOString().slice(0,4);
+    return true;
+  });
+
+  // Summary stats
+  const totalSales=periodDates.reduce((s,d)=>s+byDate[d].totalSales,0);
+  const totalCollected=periodDates.reduce((s,d)=>s+byDate[d].totalCollected,0);
+  const totalBills=periodDates.reduce((s,d)=>s+byDate[d].billCount,0);
+  const totalOutstanding=periodDates.reduce((s,d)=>s+byDate[d].totalOutstanding,0);
+  const avgPerDay=periodDates.length>0?totalSales/periodDates.length:0;
+  const voidedTotal=voidedBills.reduce((s,b)=>s+parseFloat(b.grand_total||0),0);
+
+  let html='<div style="padding:14px;display:flex;flex-direction:column;gap:12px">';
+  
+  // Summary cards
+  html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">';
+  html+='<div class="scard g"><div class="sc-lbl">Total Sales</div><div class="sc-val g">'+fINR(totalSales)+'</div><div class="sc-sub">'+totalBills+' bills</div><div class="sc-ic">💰</div></div>';
+  html+='<div class="scard p"><div class="sc-lbl">Collected</div><div class="sc-val p">'+fINR(totalCollected)+'</div><div class="sc-sub">'+(totalSales>0?Math.round(totalCollected/totalSales*100):0)+'% collection</div><div class="sc-ic">✅</div></div>';
+  html+='<div class="scard a"><div class="sc-lbl">Avg/Day</div><div class="sc-val a">'+fINR(avgPerDay)+'</div><div class="sc-sub">'+periodDates.length+' active days</div><div class="sc-ic">📊</div></div>';
+  html+='<div class="scard r"><div class="sc-lbl">Outstanding</div><div class="sc-val r">'+fINR(totalOutstanding)+'</div><div class="sc-sub">Voided: '+fINR(voidedTotal)+'</div><div class="sc-ic">⏳</div></div>';
+  html+='</div>';
+
+  // Daily breakdown table
+  if(periodDates.length===0){
+    html+='<div style="text-align:center;padding:32px 20px;color:var(--t2)"><div style="font-size:36px;margin-bottom:8px">📅</div><div style="font-size:13px">No sales data for this period</div></div>';
+  }else{
+    html+='<div style="background:var(--surf);border:1px solid var(--bord);border-radius:16px;overflow:hidden">';
+    html+='<div style="display:grid;grid-template-columns:1.2fr .7fr .8fr .8fr;padding:10px 12px;background:var(--surf2);font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--bord)">';
+    html+='<div>Date</div><div style="text-align:center">Bills</div><div style="text-align:right">Sales</div><div style="text-align:right">Collected</div></div>';
+    
+    periodDates.forEach(d=>{
+      const day=byDate[d];
+      const dt=new Date(d);
+      const dateStr=dt.toLocaleDateString('en-IN',{day:'2-digit',month:'short',weekday:'short'});
+      const collPct=day.totalSales>0?Math.round(day.totalCollected/day.totalSales*100):0;
+      
+      html+='<div style="display:grid;grid-template-columns:1.2fr .7fr .8fr .8fr;padding:10px 12px;border-bottom:1px solid var(--bord);font-size:12px;align-items:center">';
+      html+='<div><div style="font-weight:700">'+dateStr+'</div>';
+      html+='<div style="font-size:10px;color:var(--t2);margin-top:2px">';
+      if(day.cashCount)html+='💵'+day.cashCount+' ';
+      if(day.upiCount)html+='📱'+day.upiCount+' ';
+      if(day.cardCount)html+='💳'+day.cardCount+' ';
+      if(day.creditCount)html+='📒'+day.creditCount;
+      html+='</div></div>';
+      html+='<div style="text-align:center"><span style="font-family:var(--font-h);font-weight:800">'+day.billCount+'</span><div style="font-size:9px;color:var(--acc3)">'+day.paidCount+' paid</div></div>';
+      html+='<div style="text-align:right;font-family:var(--font-h);font-weight:800">'+fINR(day.totalSales)+'</div>';
+      html+='<div style="text-align:right"><div style="font-family:var(--font-h);font-weight:700;color:var(--acc3)">'+fINR(day.totalCollected)+'</div><div style="font-size:9px;color:var(--t2)">'+collPct+'%</div></div>';
+      html+='</div>';
+    });
+    html+='</div>';
+  }
+
+  // Export button
+  html+='<button onclick="exportDailyCSV()" style="width:100%;padding:13px;border-radius:12px;background:var(--surf2);border:1.5px solid var(--bord);color:var(--text);font-family:var(--font-h);font-size:13px;font-weight:700;cursor:pointer">📤 Export Daily Report (CSV)</button>';
+  html+='</div>';
+  wrap.innerHTML=html;
+}
+
+function exportDailyCSV(){
+  const bills=_bills.filter(b=>b.status!=='Voided');
+  const byDate={};
+  bills.forEach(b=>{
+    const d=(b.invoice_date||b.created_at||'').split('T')[0];if(!d)return;
+    if(!byDate[d])byDate[d]={sales:0,collected:0,gst:0,outstanding:0,count:0};
+    byDate[d].sales+=parseFloat(b.grand_total||0);
+    byDate[d].collected+=parseFloat(b.paid_amount||0);
+    byDate[d].gst+=parseFloat(b.gst_amount||0);
+    byDate[d].outstanding+=parseFloat(b.balance_due||0);
+    byDate[d].count++;
+  });
+  const rows=['Date,Bills,Sales,Collected,GST,Outstanding'];
+  Object.keys(byDate).sort((a,b)=>b.localeCompare(a)).forEach(d=>{
+    const v=byDate[d];
+    rows.push([d,v.count,v.sales.toFixed(2),v.collected.toFixed(2),v.gst.toFixed(2),v.outstanding.toFixed(2)].join(','));
+  });
+  const blob=new Blob([rows.join('\n')],{type:'text/csv'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='daily-report-'+new Date().toISOString().split('T')[0]+'.csv';a.click();
+  toast('📤 Daily report exported!','s');
+}
+
+// ══════════════════════════════════════════
+// VOIDS & AUDIT REPORT
+// ══════════════════════════════════════════
+function renderVoidsReport(){
+  const wrap=document.getElementById('report-content');
+  const auditLog=JSON.parse(localStorage.getItem('sbp_audit_log')||'[]');
+  const voidedBills=_bills.filter(b=>b.status==='Voided');
+  
+  // Period filter
+  const now=new Date();
+  function inPeriod(ts){
+    if(!ts)return true;
+    const d=new Date(ts);
+    if(_curPeriod==='today')return d.toISOString().split('T')[0]===now.toISOString().split('T')[0];
+    if(_curPeriod==='week'){const w=new Date();w.setDate(w.getDate()-7);return d>=w;}
+    if(_curPeriod==='month')return d.toISOString().slice(0,7)===now.toISOString().slice(0,7);
+    if(_curPeriod==='quarter'){const q=new Date();q.setMonth(q.getMonth()-3);return d>=q;}
+    if(_curPeriod==='year')return d.toISOString().slice(0,4)===now.toISOString().slice(0,4);
+    return true;
+  }
+
+  const filteredAudit=auditLog.filter(e=>inPeriod(e.timestamp));
+  const filteredVoids=voidedBills.filter(b=>inPeriod(b.voided_at||b.created_at));
+  
+  // Stats
+  const voidBillCount=filteredAudit.filter(e=>e.action==='void_bill').length;
+  const voidItemCount=filteredAudit.filter(e=>e.action==='void_item').length;
+  const deleteBillCount=filteredAudit.filter(e=>e.action==='delete_bill').length;
+  const deleteItemCount=filteredAudit.filter(e=>e.action==='delete_item').length;
+  const voidedAmount=filteredVoids.reduce((s,b)=>s+parseFloat(b.grand_total||0),0);
+  const pinFailCount=filteredAudit.filter(e=>e.action==='pin_failed').length;
+
+  let html='<div style="padding:14px;display:flex;flex-direction:column;gap:12px">';
+
+  // Summary cards
+  html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">';
+  html+='<div class="scard r"><div class="sc-lbl">Voided Bills</div><div class="sc-val r">'+voidBillCount+'</div><div class="sc-sub">'+fINR(voidedAmount)+' lost</div><div class="sc-ic">🚫</div></div>';
+  html+='<div class="scard a"><div class="sc-lbl">Voided Items</div><div class="sc-val a">'+voidItemCount+'</div><div class="sc-sub">Individual items</div><div class="sc-ic">❌</div></div>';
+  html+='<div class="scard"><div class="sc-lbl">Deleted Bills</div><div class="sc-val" style="color:var(--t2)">'+deleteBillCount+'</div><div class="sc-sub">Permanently removed</div><div class="sc-ic">🗑️</div></div>';
+  html+='<div class="scard"><div class="sc-lbl">Deleted Items</div><div class="sc-val" style="color:var(--t2)">'+deleteItemCount+'</div><div class="sc-sub">'+(pinFailCount>0?'⚠️ '+pinFailCount+' failed PIN attempts':'No failed PIN attempts')+'</div><div class="sc-ic">🗑️</div></div>';
+  html+='</div>';
+
+  // Voided Bills List
+  html+='<div style="background:var(--surf);border:1px solid var(--bord);border-radius:16px;padding:14px">';
+  html+='<div style="font-family:var(--font-h);font-size:14px;font-weight:800;margin-bottom:12px;display:flex;align-items:center;gap:8px">🚫 Voided Bills<span style="font-size:10px;background:rgba(239,68,68,.12);color:var(--acc2);border-radius:8px;padding:2px 8px;font-weight:700">'+filteredVoids.length+'</span></div>';
+  
+  if(filteredVoids.length===0){
+    html+='<div style="text-align:center;padding:20px;color:var(--t2);font-size:12px">✅ No voided bills in this period</div>';
+  }else{
+    filteredVoids.forEach(b=>{
+      const dt=new Date(b.voided_at||b.created_at||'');
+      html+='<div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:rgba(239,68,68,.04);border:1px solid rgba(239,68,68,.1);border-radius:10px;margin-bottom:8px">';
+      html+='<div><div style="font-size:13px;font-weight:700;text-decoration:line-through;opacity:.6">'+(b.invoice_no||'—')+'</div>';
+      html+='<div style="font-size:11px;color:var(--t2)">'+(b.customer_name||'Walk-in')+' · '+dt.toLocaleDateString('en-IN',{day:'2-digit',month:'short'})+'</div>';
+      if(b.voided_by)html+='<div style="font-size:10px;color:var(--acc2)">By: '+b.voided_by+'</div>';
+      html+='</div>';
+      html+='<div style="text-align:right"><div style="font-family:var(--font-h);font-size:14px;font-weight:800;color:var(--acc2);text-decoration:line-through">'+fINR(b.grand_total||0)+'</div></div>';
+      html+='</div>';
+    });
+  }
+  html+='</div>';
+
+  // Audit Trail
+  html+='<div style="background:var(--surf);border:1px solid var(--bord);border-radius:16px;padding:14px">';
+  html+='<div style="font-family:var(--font-h);font-size:14px;font-weight:800;margin-bottom:12px;display:flex;align-items:center;gap:8px">📋 Audit Trail<span style="font-size:10px;background:rgba(245,166,35,.12);color:var(--acc);border-radius:8px;padding:2px 8px;font-weight:700">'+filteredAudit.length+' actions</span></div>';
+  
+  if(filteredAudit.length===0){
+    html+='<div style="text-align:center;padding:20px;color:var(--t2);font-size:12px">No audit entries in this period</div>';
+  }else{
+    const actionLabels={
+      void_bill:'🚫 Bill Voided',void_item:'❌ Item Voided',
+      delete_bill:'🗑️ Bill Deleted',delete_item:'🗑️ Item Deleted',
+      reopen_bill:'🔓 Bill Reopened',pin_changed:'🔐 PIN Changed',
+      pin_verified:'🔓 PIN Verified',pin_failed:'⚠️ PIN Failed'
+    };
+    const actionColors={
+      void_bill:'var(--acc2)',void_item:'var(--acc2)',
+      delete_bill:'var(--t2)',delete_item:'var(--t2)',
+      reopen_bill:'var(--acc)',pin_changed:'var(--acc3)',
+      pin_verified:'var(--acc3)',pin_failed:'var(--acc2)'
+    };
+
+    filteredAudit.slice(0,50).forEach(e=>{
+      const dt=new Date(e.timestamp);
+      const timeStr=dt.toLocaleDateString('en-IN',{day:'2-digit',month:'short'})+' '+dt.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+      const label=actionLabels[e.action]||('📝 '+e.action);
+      const color=actionColors[e.action]||'var(--t2)';
+      const det=e.details||{};
+      
+      html+='<div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--bord);font-size:12px">';
+      html+='<div style="min-width:70px;font-size:10px;color:var(--t3)">'+timeStr+'</div>';
+      html+='<div style="flex:1"><div style="font-weight:700;color:'+color+'">'+label+'</div>';
+      if(det.invoice_no)html+='<div style="font-size:10px;color:var(--t2)">'+det.invoice_no+(det.customer?' · '+det.customer:'')+(det.amount?' · '+fINR(det.amount):'')+'</div>';
+      if(det.item_name)html+='<div style="font-size:10px;color:var(--t2)">Item: '+det.item_name+(det.item_total?' · '+fINR(det.item_total):'')+'</div>';
+      html+='</div>';
+      html+='<div style="font-size:10px;color:var(--t3);white-space:nowrap">'+(e.user||'Admin')+'</div>';
+      html+='</div>';
+    });
+    
+    if(filteredAudit.length>50){
+      html+='<div style="text-align:center;padding:10px;font-size:11px;color:var(--t2)">Showing 50 of '+filteredAudit.length+' entries</div>';
+    }
+  }
+  html+='</div>';
+
+  // Export button
+  html+='<button onclick="exportAuditCSV()" style="width:100%;padding:13px;border-radius:12px;background:var(--surf2);border:1.5px solid var(--bord);color:var(--text);font-family:var(--font-h);font-size:13px;font-weight:700;cursor:pointer">📤 Export Audit Log (CSV)</button>';
+  html+='</div>';
+  wrap.innerHTML=html;
+}
+
+function exportAuditCSV(){
+  const log=JSON.parse(localStorage.getItem('sbp_audit_log')||'[]');
+  if(!log.length){toast('No audit data to export','i');return}
+  const rows=['Timestamp,Action,User,Invoice,Customer,Amount,Item,Details'];
+  log.forEach(e=>{
+    const d=e.details||{};
+    rows.push([
+      e.timestamp,e.action,e.user||'Admin',
+      d.invoice_no||'',d.customer||'',d.amount||d.item_total||'',
+      d.item_name||'',JSON.stringify(d).replace(/,/g,';')
+    ].join(','));
+  });
+  const blob=new Blob([rows.join('\n')],{type:'text/csv'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='audit-log-'+new Date().toISOString().split('T')[0]+'.csv';a.click();
+  toast('📤 Audit log exported!','s');
+}
+
+</script>
+</body>
+</html>

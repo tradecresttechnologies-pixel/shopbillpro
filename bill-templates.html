@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#F5A623">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png?v=2">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180x180.png?v=2">
+<title>ShopBill Pro — Bill Templates</title>
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Noto+Sans:wght@300;400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="db-local.js"></script>
+
+<script src="lang.js"></script>
+
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:'Noto Sans','Noto Sans Devanagari',sans-serif;-webkit-font-smoothing:antialiased;}
+:root{--acc:#F5A623;--acc2:#EF4444;--acc3:#10B981;--amber:#F59E0B;--bg:#0A0A12;--surf:#13131C;--surf2:#1C1C28;--surf3:#252534;--bord:#2A2A3A;--text:#F0EFF8;--t2:#8A8AA8;--t3:#4A4A60;--font-h:'Outfit',sans-serif;--rs:12px;--rs2:18px;--tr:.18s ease;--safe-top:env(safe-area-inset-top,0px);--safe-bottom:env(safe-area-inset-bottom,0px)}
+[data-theme="light"]{--bg:#F0EEFF;--surf:#FFF;--surf2:#F5F2FF;--surf3:#EDE9FF;--bord:#DDD8F5;--text:#0F0E18;--t2:#5E5A7A;--t3:#A09CC0}
+body{background:var(--bg);color:var(--text)}
+#app{display:flex;flex-direction:column;height:100dvh;overflow:hidden}
+.sb{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;padding-top:calc(10px + var(--safe-top));background:var(--surf);border-bottom:1px solid var(--bord);flex-shrink:0;min-height:54px}
+.tb-l{display:flex;align-items:center;gap:10px;flex:1}.tb-r{display:flex;align-items:center;gap:7px}
+.tb-title{font-family:var(--font-h);font-size:17px;font-weight:800}
+.back-btn{width:34px;height:34px;border-radius:10px;background:var(--surf2);border:1px solid var(--bord);display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer;transition:var(--tr)}
+.back-btn:active{transform:scale(.93)}
+.ic-btn{width:34px;height:34px;border-radius:10px;background:var(--surf2);border:1px solid var(--bord);display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;transition:var(--tr)}
+.ic-btn:active{transform:scale(.93)}
+
+/* Template Card */
+.tpl-card{background:var(--surf);border:1px solid var(--bord);border-radius:var(--rs2);margin:0 14px 10px;overflow:hidden;transition:var(--tr)}
+.tpl-header{display:flex;align-items:center;gap:12px;padding:13px;cursor:pointer}
+.tpl-header:active{background:var(--surf2)}
+.tpl-emoji{font-size:26px;width:42px;text-align:center;flex-shrink:0}
+.tpl-info{flex:1;min-width:0}
+.tpl-nm{font-family:var(--font-h);font-size:14px;font-weight:800}
+.tpl-meta{font-size:11px;color:var(--t2);margin-top:2px}
+.tpl-amt{font-family:var(--font-h);font-size:16px;font-weight:900;color:var(--acc);flex-shrink:0}
+.tpl-items-preview{padding:0 13px 13px;border-top:1px solid var(--bord);padding-top:10px}
+.tpi-row{display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:5px 0;border-bottom:1px solid var(--bord)}
+.tpi-row:last-child{border-bottom:none}
+.tpi-name{font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tpi-qty{color:var(--t2);margin:0 10px;flex-shrink:0}
+.tpi-price{font-weight:700;flex-shrink:0}
+.tpl-footer{display:flex;gap:7px;padding:10px 13px;border-top:1px solid var(--bord);background:var(--surf2)}
+.tf-btn{flex:1;padding:9px 6px;border-radius:var(--rs);font-family:var(--font-h);font-size:11px;font-weight:700;cursor:pointer;text-align:center;border:1.5px solid;transition:var(--tr)}
+.tf-btn:active{transform:scale(.95)}
+.tf-btn.use{background:rgba(245,166,35,.1);border-color:rgba(245,166,35,.3);color:var(--acc)}
+.tf-btn.edit{background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.3);color:var(--amber)}
+.tf-btn.del{background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.3);color:var(--acc2)}
+
+/* Forms */
+.ff{margin-bottom:12px}
+.ff label{display:block;font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.ff input,.ff select{width:100%;background:var(--surf2);border:1.5px solid var(--bord);border-radius:var(--rs);padding:11px 13px;color:var(--text);font-size:14px;outline:none;transition:var(--tr);appearance:none;font-family:'Noto Sans',sans-serif}
+.ff input:focus,.ff select:focus{border-color:var(--acc);background:var(--surf);box-shadow:0 0 0 3px rgba(245,166,35,.12)}
+.ff input::placeholder{color:var(--t3)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+
+/* Item rows in modal */
+.tpl-item-row{background:var(--surf2);border:1px solid var(--bord);border-radius:var(--rs);padding:10px;margin-bottom:8px}
+.tpl-item-grid{display:grid;grid-template-columns:2fr .8fr .8fr .8fr auto;gap:6px;align-items:end}
+.rm-btn{width:28px;height:28px;border-radius:7px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);color:var(--acc2);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;align-self:end;margin-bottom:12px}
+
+/* Buttons */
+.btn-pri{width:100%;padding:14px;border-radius:var(--rs);background:linear-gradient(135deg,var(--acc),#FF8A00);border:none;color:#0A0E1A;font-family:var(--font-h);font-size:15px;font-weight:700;cursor:pointer;transition:.2s;box-shadow:0 4px 16px rgba(245,166,35,.4);display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-pri:active{transform:scale(.97)}
+.btn-pri:disabled{opacity:.65}
+.btn-sec{width:100%;padding:12px;border-radius:var(--rs);background:var(--surf2);border:1.5px solid var(--bord);color:var(--text);font-family:var(--font-h);font-size:14px;font-weight:700;cursor:pointer}
+.add-item-btn{width:100%;padding:10px;border-radius:var(--rs);border:1.5px dashed var(--bord);background:transparent;color:var(--acc);font-family:var(--font-h);font-size:13px;font-weight:700;cursor:pointer;margin-bottom:12px}
+
+/* Overlays */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:500;display:none;align-items:flex-end;backdrop-filter:blur(4px)}
+.overlay.open{display:flex;animation:fadeIn .18s ease}
+.sheet{width:100%;max-height:92dvh;background:var(--surf);border-radius:var(--rs2) var(--rs2) 0 0;padding:16px 16px calc(16px + var(--safe-bottom));overflow-y:auto;animation:slideUp .28s cubic-bezier(.4,0,.2,1)}
+.handle{width:36px;height:4px;border-radius:2px;background:var(--surf3);margin:0 auto 16px}
+.sheet-title{font-family:var(--font-h);font-size:18px;font-weight:800;margin-bottom:14px}
+
+/* Bottom Nav */
+.bnav{display:flex;align-items:stretch;background:var(--surf);border-top:1px solid var(--bord);flex-shrink:0;padding-bottom:var(--safe-bottom);z-index:100}
+.ni{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 4px;gap:3px;cursor:pointer;transition:var(--tr);position:relative;min-height:56px;user-select:none}
+.ni-ic{font-size:20px;line-height:1}.ni-lb{font-size:10px;color:var(--t2);font-weight:600;white-space:nowrap}
+.ni.on .ni-lb{color:var(--acc)}
+.ni.on::after{content:'';position:absolute;top:0;left:20%;right:20%;height:2.5px;border-radius:0 0 4px 4px;background:var(--acc)}
+.ni:active{background:var(--surf2)}
+.nav-fab{width:48px;height:48px;border-radius:16px;background:linear-gradient(135deg,var(--acc),#FF8A00);color:#0A0E1A;font-size:22px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(245,166,35,.5);margin-bottom:4px}
+
+#toast-container{position:fixed;bottom:calc(72px + var(--safe-bottom));left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none}
+.toast{background:var(--surf3);color:var(--text);padding:10px 18px;border-radius:20px;font-size:13px;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.45);border:1px solid var(--bord);white-space:nowrap;max-width:calc(100vw - 40px);animation:toastIn .22s ease}
+.toast.s{background:rgba(16,185,129,.15);border-color:rgba(16,185,129,.3);color:var(--acc3)}
+.toast.e{background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.3);color:var(--acc2)}
+
+.empty-state{text-align:center;padding:48px 20px}.spacer{height:80px}
+.chip{flex-shrink:0;padding:8px 16px;border-radius:20px;border:1.5px solid var(--bord);background:var(--surf);color:var(--t2);font-family:var(--font-h);font-size:13px;font-weight:700;cursor:pointer;transition:var(--tr);white-space:nowrap;user-select:none}
+.chip.on{background:rgba(245,166,35,.12);border-color:var(--acc);color:var(--acc)}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+@keyframes toastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@media(min-width:640px){#app{max-width:480px;margin:0 auto;box-shadow:0 0 80px rgba(0,0,0,.6)}}
+
+/* ══ Desktop Sidebar ══ */
+#dsb{position:fixed;left:0;top:0;bottom:0;width:220px;background:var(--surf);border-right:1px solid var(--bord);display:flex;flex-direction:column;z-index:200;overflow-y:auto}
+.dsb-logo{display:flex;align-items:center;gap:10px;padding:18px 16px 12px;border-bottom:1px solid var(--bord)}
+.dsb-brand{font-family:var(--font-h);font-size:15px;font-weight:800;color:var(--acc)}
+.dsb-nav{flex:1;padding:8px;display:flex;flex-direction:column;gap:2px;overflow-y:auto}
+.dsb-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;cursor:pointer;text-decoration:none;color:var(--t2);font-size:13px;font-weight:600;transition:.15s ease;white-space:nowrap;border:none;background:none;width:100%}
+.dsb-item:hover{background:var(--surf2);color:var(--text)}
+.dsb-item.active{background:rgba(245,166,35,.12);color:var(--acc)}
+.dsb-item.fab-sb{background:linear-gradient(135deg,#F5A623,#FF8A00);color:#fff;margin:4px 0 8px;font-weight:700}
+.dsb-ic{font-size:17px;width:22px;text-align:center;flex-shrink:0}
+.dsb-footer{padding:8px;border-top:1px solid var(--bord)}
+.dsb-ver{font-size:10px;color:var(--t3);text-align:center;padding:6px 0 2px}
+@media(max-width:1023px){#dsb{display:none!important}}
+@media(min-width:640px) and (max-width:1023px){#app{max-width:600px;margin:0 auto}}
+@media(min-width:1024px){body{overflow:hidden}}}
+
+/* ══ Language ══ */
+.lang-hi{display:none!important}
+.lang-en{display:inline!important}
+html[lang="hi"] .lang-hi{display:inline!important}
+html[lang="hi"] .lang-en{display:none!important}
+
+
+
+@media(max-width:1023px){
+    #app{height:100dvh!important;display:flex!important;flex-direction:column!important;overflow:hidden!important}
+  .bnav{position:fixed!important;bottom:0!important;left:0!important;right:0!important;z-index:100!important}
+  .sb{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+}
+
+
+
+
+
+
+/* ══ PWA SCROLL SYSTEM ══ */
+html,body{height:100%;overflow:hidden}
+#app{height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+.sb{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:0;overscroll-behavior:contain}
+.bnav{flex-shrink:0}
+@media(min-width:1024px){
+  #app{margin-left:220px!important;max-width:calc(100vw - 220px)!important;width:calc(100vw - 220px)!important}
+  .bnav{display:none!important}
+}
+</style>
+<link rel="stylesheet" href="fix.css">
+</head>
+<body>
+<script>(function(){var ds=localStorage.getItem("sbp_digit_style")||"default";var fs=parseInt(localStorage.getItem("sbp_font_size")||"15");var fm={default:"inherit",mono:"Courier New,monospace",rounded:"DM Sans,sans-serif",sharp:"Outfit,sans-serif"};var st=document.getElementById("sbp-font-override");if(!st){st=document.createElement("style");st.id="sbp-font-override";document.head.appendChild(st);}st.textContent="body{font-size:"+fs+"px}.sc-val,.cm-val,.bc-amt,.cust-bal-val,.cms-val,.cart-total-val,.pos-item-price,.tot-row span:last-child,.gst-row span,.stat-val,.stat-num,.report-val,.bill-total,.bdoc-inv-no,.bc-inv,.lv{font-family:"+fm[ds]+"!important}";})();</script>
+<div id="app">
+  <div class="topbar">
+    <div class="tb-l">
+      <div class="back-btn" onclick="goTo('settings.html')">←</div>
+      <div class="tb-title">📋 Bill Templates</div>
+    </div>
+    <div class="tb-r">
+      <div class="ic-btn" onclick="toggleTheme()" id="theme-btn">☀️</div>
+      <div class="ic-btn" onclick="openAddTpl()" title="New Template">＋</div>
+    </div>
+  </div>
+
+  <div class="sb" id="tpl-list" style="padding:10px 0 12px">
+
+    <!-- Category Tabs -->
+    <div style="display:flex;gap:6px;padding:0 14px 12px;overflow-x:auto;scrollbar-width:none">
+      <div class="chip on" id="tab-my" onclick="switchTab('my')">📋 My Templates</div>
+      <div class="chip" id="tab-ready" onclick="switchTab('ready')">⚡ Ready-Made</div>
+    </div>
+
+    <!-- MY TEMPLATES -->
+    <div id="section-my"></div>
+
+    <!-- READY-MADE TEMPLATES -->
+    <div id="section-ready" style="display:none">
+      <div style="padding:0 14px 10px;font-size:12px;color:var(--t2);line-height:1.5">
+        Tap <strong style="color:var(--acc)">Use Now</strong> to open a bill with items pre-filled. Tap <strong style="color:var(--amber)">Save</strong> to add to your collection.
+      </div>
+      <div id="ready-list"></div>
+    </div>
+
+    <div class="spacer"></div>
+  </div>
+
+  <div class="bnav">
+    <div class="ni" onclick="goTo('dashboard.html')"><span class="ni-ic">🏠</span><span class="ni-lb"><span class="lang-en">Home</span><span class="lang-hi">होम</span></span></div>
+    <div class="ni" onclick="goTo('bills.html')"><span class="ni-ic">🧾</span><span class="ni-lb"><span class="lang-en">Bills</span><span class="lang-hi">बिल</span></span></div>
+    <div class="ni" onclick="goTo('billing.html')" style="align-items:center;justify-content:center"><div class="nav-fab">＋</div></div>
+    <div class="ni" onclick="goTo('customers.html')"><span class="ni-ic">👥</span><span class="ni-lb"><span class="lang-en">Customers</span><span class="lang-hi">ग्राहक</span></span></div>
+    <div class="ni on" onclick="goTo('settings.html')"><span class="ni-ic">☰</span><span class="ni-lb"><span class="lang-en">More</span><span class="lang-hi">अधिक</span></span></div>
+  </div>
+</div>
+
+<!-- ADD / EDIT TEMPLATE MODAL -->
+<div class="overlay" id="add-tpl-modal">
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="sheet-title" id="tpl-modal-title">📋 New Bill Template</div>
+    <div class="row2">
+      <div class="ff"><label>Template Name *</label><input type="text" id="tpl-nm" placeholder="e.g. Monthly Groceries"></div>
+      <div class="ff"><label>Emoji / Icon</label><input type="text" id="tpl-emoji" placeholder="🛒" style="text-align:center;font-size:20px" maxlength="2"></div>
+    </div>
+    <div class="ff"><label>Default Customer (optional)</label>
+      <select id="tpl-cust"><option value="">— None / Ask every time —</option></select>
+    </div>
+    <div class="ff"><label>Default Payment Mode</label>
+      <select id="tpl-paymode">
+        <option>Cash</option><option>UPI / QR</option><option>Bank Transfer</option><option>Credit</option><option>Card</option>
+      </select>
+    </div>
+
+    <div style="font-family:var(--font-h);font-size:13px;font-weight:800;margin-bottom:10px">Items in Template</div>
+    <div id="tpl-items-wrap"></div>
+    <button class="add-item-btn" onclick="addTplItem()">＋ Add Item / Service</button>
+
+    <div class="ff"><label>Note (optional)</label><input type="text" id="tpl-note" placeholder="Fixed note for this template"></div>
+    <input type="hidden" id="tpl-edit-idx" value="-1">
+    <button class="btn-pri" onclick="saveTpl()">✅ Save Template</button>
+    <button class="btn-sec" onclick="closeModal('add-tpl-modal')" style="margin-top:8px">Cancel</button>
+    <div style="height:8px"></div>
+  </div>
+</div>
+
+<!-- USE TEMPLATE MODAL (pick customer, then use) -->
+<div class="overlay" id="use-tpl-modal">
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="sheet-title" id="use-tpl-title">📋 Use Template</div>
+    <div id="use-tpl-summary" style="background:var(--surf2);border-radius:var(--rs);padding:12px;margin-bottom:14px;border:1px solid var(--bord)"></div>
+    <div class="ff"><label>Bill For (Customer)</label>
+      <select id="use-tpl-cust"><option value="">Walk-in Customer</option></select>
+    </div>
+    <div class="ff"><label>Invoice Date</label><input type="date" id="use-tpl-date"></div>
+    <button class="btn-pri" onclick="useTplNow()">🧾 Create Bill from Template →</button>
+    <button class="btn-sec" onclick="closeModal('use-tpl-modal')" style="margin-top:8px">Cancel</button>
+    <div style="height:8px"></div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script>
+const SB_URL='https://jfqeirfrkjdkqqixivru.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmcWVpcmZya2pka3FxaXhpdnJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzNzQ4MzgsImV4cCI6MjA4OTk1MDgzOH0.akd4E0nil8ypLR4WOykkeYIL8g4uuNU6XdSVh_Y1utk';
+const _sb=supabase.createClient(SB_URL,SB_KEY);
+let _theme=localStorage.getItem('sbp_theme')||'dark';
+let _custs=JSON.parse(localStorage.getItem('sbp_customers')||'[]');
+let _templates=JSON.parse(localStorage.getItem('sbp_bill_templates')||'[]');
+let _editIdx=-1,_useIdx=-1;
+let _activeTab='my';
+
+// ══ READY-MADE TEMPLATE LIBRARY ══
+const READY_TEMPLATES=[
+  {cat:'🛒 Grocery / Kirana', templates:[
+    {name:'Daily Essentials',emoji:'🛒',paymode:'Cash',note:'',items:[
+      {nm:'Rice (1kg)',q:1,r:60,g:5},{nm:'Atta / Flour (1kg)',q:1,r:45,g:5},{nm:'Sugar (1kg)',q:1,r:48,g:5},
+      {nm:'Cooking Oil (1L)',q:1,r:180,g:5},{nm:'Dal / Lentils (1kg)',q:1,r:120,g:5},{nm:'Salt (1kg)',q:1,r:22,g:0}
+    ]},
+    {name:'Monthly Groceries',emoji:'📦',paymode:'Cash',note:'Monthly grocery order',items:[
+      {nm:'Basmati Rice (5kg)',q:1,r:350,g:5},{nm:'Atta (10kg)',q:1,r:420,g:5},{nm:'Toor Dal (2kg)',q:1,r:240,g:5},
+      {nm:'Mustard Oil (5L)',q:1,r:750,g:5},{nm:'Sugar (5kg)',q:1,r:235,g:5},{nm:'Tea (500g)',q:1,r:280,g:5},
+      {nm:'Milk Powder (500g)',q:1,r:320,g:5},{nm:'Spices Pack',q:1,r:150,g:5}
+    ]},
+    {name:'Snacks & Beverages',emoji:'🍪',paymode:'Cash',note:'',items:[
+      {nm:'Biscuit Pack',q:2,r:30,g:18},{nm:'Chips (Large)',q:1,r:40,g:12},{nm:'Cold Drink (2L)',q:1,r:80,g:18},
+      {nm:'Namkeen (200g)',q:1,r:60,g:12},{nm:'Juice Pack',q:2,r:25,g:12}
+    ]}
+  ]},
+  {cat:'🍽️ Restaurant / Dhaba', templates:[
+    {name:'Veg Thali',emoji:'🍛',paymode:'Cash',note:'',items:[
+      {nm:'Veg Thali',q:1,r:150,g:5},{nm:'Roti',q:4,r:12,g:5},{nm:'Dal Fry',q:1,r:80,g:5},
+      {nm:'Rice',q:1,r:60,g:5},{nm:'Lassi',q:1,r:40,g:5}
+    ]},
+    {name:'Non-Veg Order',emoji:'🍗',paymode:'UPI / QR',note:'',items:[
+      {nm:'Chicken Biryani',q:1,r:250,g:5},{nm:'Tandoori Roti',q:4,r:15,g:5},
+      {nm:'Raita',q:1,r:40,g:5},{nm:'Butter Chicken (Half)',q:1,r:220,g:5}
+    ]},
+    {name:'Tea/Coffee Order',emoji:'☕',paymode:'Cash',note:'',items:[
+      {nm:'Chai',q:1,r:15,g:5},{nm:'Coffee',q:1,r:25,g:5},{nm:'Samosa',q:2,r:15,g:5}
+    ]}
+  ]},
+  {cat:'💇 Salon / Beauty', templates:[
+    {name:'Men\'s Grooming',emoji:'💈',paymode:'Cash',note:'',items:[
+      {nm:'Hair Cut',q:1,r:150,g:18},{nm:'Beard Trim',q:1,r:80,g:18},{nm:'Head Massage',q:1,r:100,g:18},
+      {nm:'Face Wash',q:1,r:50,g:18}
+    ]},
+    {name:'Women\'s Package',emoji:'💅',paymode:'UPI / QR',note:'',items:[
+      {nm:'Hair Cut & Style',q:1,r:500,g:18},{nm:'Facial',q:1,r:600,g:18},{nm:'Threading',q:1,r:50,g:18},
+      {nm:'Manicure',q:1,r:300,g:18},{nm:'Pedicure',q:1,r:400,g:18}
+    ]}
+  ]},
+  {cat:'💊 Medical / Pharmacy', templates:[
+    {name:'Common Cold Kit',emoji:'🤧',paymode:'Cash',note:'',items:[
+      {nm:'Paracetamol (Strip)',q:1,r:30,g:12},{nm:'Cough Syrup',q:1,r:85,g:12},
+      {nm:'Vitamin C Tablets',q:1,r:65,g:12},{nm:'Steam Inhaler Caps',q:1,r:25,g:12}
+    ]},
+    {name:'First Aid Kit',emoji:'🩹',paymode:'Cash',note:'',items:[
+      {nm:'Bandage Roll',q:1,r:35,g:12},{nm:'Antiseptic Liquid',q:1,r:60,g:12},
+      {nm:'Cotton Pack',q:1,r:40,g:12},{nm:'Pain Relief Spray',q:1,r:120,g:12}
+    ]}
+  ]},
+  {cat:'🔧 Hardware / Repair', templates:[
+    {name:'Plumbing Service',emoji:'🔧',paymode:'Cash',note:'',items:[
+      {nm:'Labour Charges',q:1,r:500,g:18},{nm:'PVC Pipe (ft)',q:5,r:25,g:18},
+      {nm:'Tap / Faucet',q:1,r:350,g:18},{nm:'Fittings',q:1,r:100,g:18}
+    ]},
+    {name:'Electrical Work',emoji:'⚡',paymode:'Cash',note:'',items:[
+      {nm:'Electrician Charges',q:1,r:400,g:18},{nm:'Wire (meter)',q:10,r:15,g:18},
+      {nm:'Switch Board',q:1,r:250,g:18},{nm:'MCB Breaker',q:1,r:180,g:18}
+    ]}
+  ]},
+  {cat:'👔 Clothing / Tailoring', templates:[
+    {name:'Shirt Stitching',emoji:'👔',paymode:'Cash',note:'',items:[
+      {nm:'Shirt Stitching',q:1,r:350,g:5},{nm:'Fabric (meter)',q:2.5,r:200,g:5},
+      {nm:'Buttons Set',q:1,r:30,g:12}
+    ]},
+    {name:'Alteration Bill',emoji:'✂️',paymode:'Cash',note:'',items:[
+      {nm:'Trouser Hemming',q:1,r:100,g:18},{nm:'Shirt Fitting',q:1,r:150,g:18},
+      {nm:'Zip Replacement',q:1,r:80,g:18}
+    ]}
+  ]},
+  {cat:'🏠 Service / Maintenance', templates:[
+    {name:'House Cleaning',emoji:'🧹',paymode:'UPI / QR',note:'',items:[
+      {nm:'Deep Cleaning (per room)',q:3,r:800,g:18},{nm:'Bathroom Cleaning',q:2,r:500,g:18},
+      {nm:'Kitchen Cleaning',q:1,r:600,g:18}
+    ]},
+    {name:'AC Service',emoji:'❄️',paymode:'Cash',note:'',items:[
+      {nm:'AC Service (Split)',q:1,r:600,g:18},{nm:'Gas Refill',q:1,r:1500,g:18},
+      {nm:'Filter Cleaning',q:1,r:200,g:18}
+    ]}
+  ]},
+  {cat:'📚 Stationery / Printing', templates:[
+    {name:'Print Order',emoji:'🖨️',paymode:'Cash',note:'',items:[
+      {nm:'B/W Printout (pages)',q:20,r:2,g:18},{nm:'Color Printout (pages)',q:5,r:10,g:18},
+      {nm:'Binding',q:1,r:40,g:18},{nm:'Lamination',q:2,r:20,g:18}
+    ]}
+  ]}
+];
+
+const SESSION_TIMEOUT=parseInt(localStorage.getItem('sbp_session_timeout')||'30');
+let _actTimer;
+function _resetTimer(){clearTimeout(_actTimer);localStorage.setItem('sbp_last_activity',Date.now().toString());_actTimer=setTimeout(async()=>{await _sb.auth.signOut();window.location.href='index.html';},SESSION_TIMEOUT*60*1000)}
+['click','touchstart','keypress','scroll'].forEach(e=>document.addEventListener(e,_resetTimer,{passive:true}));
+
+function goTo(p){window.location.href=p}
+function toast(msg,type='',dur=3000){const c=document.getElementById('toast-container');const t=document.createElement('div');t.className='toast'+(type?' '+type:'');t.textContent=msg;c.appendChild(t);setTimeout(()=>{t.style.opacity='0';t.style.transition='.2s';setTimeout(()=>t.remove(),220);},dur)}
+function toggleTheme(){_theme=_theme==='dark'?'light':'dark';localStorage.setItem('sbp_theme',_theme);document.documentElement.setAttribute('data-theme',_theme==='light'?'light':'');document.getElementById('theme-btn').textContent=_theme==='light'?'🌙':'☀️'}
+function openModal(id){const el=document.getElementById(id);el.classList.add('open');el.style.display='flex';el.addEventListener('click',e=>{if(e.target===el)closeModal(id);},{once:true})}
+function closeModal(id){const el=document.getElementById(id);el.classList.remove('open');el.style.display='none'}
+function fINR(n){return '₹'+(parseFloat(n)||0).toLocaleString('en-IN',{maximumFractionDigits:0})}
+function todayISO(){return new Date().toISOString().split('T')[0]}
+function save(){localStorage.setItem('sbp_bill_templates',JSON.stringify(_templates))}
+
+function calcTplTotal(items){
+  return items.reduce((s,it)=>{
+    const q=parseFloat(it.q||1),r=parseFloat(it.r||0),g=parseFloat(it.g||0);
+    return s+(q*r)*(1+g/100);
+  },0);
+}
+
+function switchTab(tab){
+  _activeTab=tab;
+  document.getElementById('tab-my').classList.toggle('on',tab==='my');
+  document.getElementById('tab-ready').classList.toggle('on',tab==='ready');
+  document.getElementById('section-my').style.display=tab==='my'?'block':'none';
+  document.getElementById('section-ready').style.display=tab==='ready'?'block':'none';
+  if(tab==='ready')renderReadyTemplates();
+}
+
+function renderReadyTemplates(){
+  const el=document.getElementById('ready-list');
+  let html='';
+  READY_TEMPLATES.forEach(cat=>{
+    html+=`<div style="font-family:var(--font-h);font-size:13px;font-weight:800;padding:14px 14px 8px;color:var(--t2)">${cat.cat}</div>`;
+    cat.templates.forEach(t=>{
+      const total=calcTplTotal(t.items||[]);
+      const itemsPreview=(t.items||[]).slice(0,3).map(i=>i.nm).join(', ')+(t.items.length>3?' +${t.items.length-3} more':'');
+      html+=`<div class="tpl-card" style="margin:0 14px 8px">
+        <div class="tpl-header" style="cursor:default">
+          <div class="tpl-emoji">${t.emoji||'📋'}</div>
+          <div class="tpl-info">
+            <div class="tpl-nm">${t.name}</div>
+            <div class="tpl-meta">${t.items?.length||0} items · ${t.paymode}</div>
+          </div>
+          <div class="tpl-amt">${fINR(total)}</div>
+        </div>
+        <div style="padding:0 13px 4px;font-size:11px;color:var(--t2);line-height:1.5">${(t.items||[]).map(i=>'<span style="display:inline-block;background:var(--surf2);padding:2px 8px;border-radius:6px;margin:2px 2px;border:1px solid var(--bord)">'+i.nm+'</span>').join('')}</div>
+        <div class="tpl-footer">
+          <div class="tf-btn use" onclick="useReadyTpl(${JSON.stringify(t).replace(/"/g,'&quot;')})">🧾 Use Now</div>
+          <div class="tf-btn edit" onclick="saveReadyTpl(${JSON.stringify(t).replace(/"/g,'&quot;')})">💾 Save to My</div>
+        </div>
+      </div>`;
+    });
+  });
+  el.innerHTML=html;
+}
+
+function useReadyTpl(t){
+  const params=new URLSearchParams({
+    tpl:'1',nm:'',wa:'',paymode:t.paymode||'Cash',date:todayISO(),note:t.note||'',items:JSON.stringify(t.items||[])
+  });
+  goTo('billing.html?'+params.toString());
+}
+
+function saveReadyTpl(t){
+  const exists=_templates.find(x=>x.name===t.name);
+  if(exists){toast('Already saved: '+t.name,'i');return}
+  _templates.unshift({...t,custId:'',custName:'',custWA:'',createdAt:new Date().toISOString()});
+  save();
+  toast('✅ Saved "'+t.name+'" to My Templates!','s');
+}
+
+function renderTemplates(){
+  const el=document.getElementById('section-my');
+  if(!_templates.length){
+    el.innerHTML=`<div class="empty-state">
+      <div style="font-size:48px;margin-bottom:12px">📋</div>
+      <div style="font-family:var(--font-h);font-size:15px;font-weight:700;margin-bottom:6px">No templates yet</div>
+      <div style="font-size:12px;color:var(--t2);margin-bottom:16px">Create your own or pick from <span onclick="switchTab('ready')" style="color:var(--acc);cursor:pointer;font-weight:700">Ready-Made Templates ⚡</span></div>
+      <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+        <button onclick="openAddTpl()" style="padding:11px 24px;border-radius:var(--rs);background:linear-gradient(135deg,var(--acc),#FF8A00);border:none;color:#0A0E1A;font-family:var(--font-h);font-size:14px;font-weight:700;cursor:pointer">＋ Create Template</button>
+        <button onclick="switchTab('ready')" style="padding:11px 24px;border-radius:var(--rs);background:var(--surf2);border:1.5px solid var(--bord);color:var(--acc);font-family:var(--font-h);font-size:14px;font-weight:700;cursor:pointer">⚡ Browse Ready-Made</button>
+      </div>
+    </div>`;
+    return;
+  }
+  el.innerHTML=_templates.map((t,i)=>{
+    const total=calcTplTotal(t.items||[]);
+    return `<div class="tpl-card">
+      <div class="tpl-header" onclick="toggleTplExpand('tpl-expand-${i}')">
+        <div class="tpl-emoji">${t.emoji||'📋'}</div>
+        <div class="tpl-info">
+          <div class="tpl-nm">${t.name}</div>
+          <div class="tpl-meta">${t.items?.length||0} items · ${t.paymode||'Cash'}${t.custName?' · '+t.custName:''}</div>
+        </div>
+        <div class="tpl-amt">${fINR(total)}</div>
+      </div>
+      <div class="tpl-footer">
+        <div class="tf-btn use" onclick="event.stopPropagation();quickUseTpl(${i})" style="flex:2">🧾 Use Now</div>
+        <div class="tf-btn edit" onclick="event.stopPropagation();openEditTpl(${i})">✏️</div>
+        <div class="tf-btn del" onclick="event.stopPropagation();deleteTpl(${i})">🗑️</div>
+      </div>
+      <div id="tpl-expand-${i}" style="display:none">
+        <div class="tpl-items-preview">
+          ${(t.items||[]).map(it=>`<div class="tpi-row">
+            <span class="tpi-name">${it.nm||'Item'}</span>
+            <span class="tpi-qty">${it.q||1} × ${fINR(it.r)}</span>
+            <span class="tpi-price">${fINR(parseFloat(it.q||1)*parseFloat(it.r||0))}</span>
+          </div>`).join('')}
+        </div>
+      </div>
+    </div>`;
+  }).join('')+'<div class="spacer"></div>';
+}
+
+// ── Quick Use (one tap — directly to billing) ──
+function quickUseTpl(idx){
+  const t=_templates[idx];if(!t)return;
+  const params=new URLSearchParams({
+    tpl:'1',
+    nm:t.custName||'',
+    wa:t.custWA||'',
+    paymode:t.paymode||'Cash',
+    date:todayISO(),
+    note:t.note||'',
+    items:JSON.stringify(t.items||[])
+  });
+  goTo('billing.html?'+params.toString());
+}
+
+function toggleTplExpand(id){const el=document.getElementById(id);if(el)el.style.display=el.style.display==='none'?'block':'none'}
+
+// ── Add / Edit Template ──
+function openAddTpl(){
+  _editIdx=-1;
+  document.getElementById('tpl-modal-title').textContent='📋 New Bill Template';
+  ['tpl-nm','tpl-note'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
+  document.getElementById('tpl-emoji').value='📋';
+  document.getElementById('tpl-paymode').value='Cash';
+  document.getElementById('tpl-edit-idx').value=-1;
+  document.getElementById('tpl-items-wrap').innerHTML='';
+  fillCustSel();addTplItem();
+  openModal('add-tpl-modal');
+}
+
+function openEditTpl(idx){
+  const t=_templates[idx];if(!t)return;
+  _editIdx=idx;
+  document.getElementById('tpl-modal-title').textContent='✏️ Edit Template';
+  document.getElementById('tpl-nm').value=t.name||'';
+  document.getElementById('tpl-emoji').value=t.emoji||'📋';
+  document.getElementById('tpl-note').value=t.note||'';
+  document.getElementById('tpl-paymode').value=t.paymode||'Cash';
+  document.getElementById('tpl-edit-idx').value=idx;
+  document.getElementById('tpl-items-wrap').innerHTML='';
+  fillCustSel(t.custId);
+  (t.items||[]).forEach(it=>{addTplItem(it)});
+  if(!(t.items?.length))addTplItem();
+  openModal('add-tpl-modal');
+}
+
+function fillCustSel(selected=''){
+  const sel=document.getElementById('tpl-cust');
+  sel.innerHTML='<option value="">— None / Ask every time —</option>'+_custs.map(c=>`<option value="${c.id}"${c.id===selected?' selected':''}>${c.name}</option>`).join('');
+  const sel2=document.getElementById('use-tpl-cust');
+  if(sel2)sel2.innerHTML='<option value="">Walk-in Customer</option>'+_custs.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+}
+
+function addTplItem(it={}){
+  const wrap=document.getElementById('tpl-items-wrap');
+  const d=document.createElement('div');d.className='tpl-item-row';
+  d.innerHTML=`<div class="tpl-item-grid">
+    <div class="ff" style="margin:0"><label>Item Name</label><input type="text" class="ti-nm" placeholder="Item / Service" value="${it.nm||''}"></div>
+    <div class="ff" style="margin:0"><label>Qty</label><input type="number" class="ti-q" placeholder="1" min="0.1" step="any" value="${it.q||1}"></div>
+    <div class="ff" style="margin:0"><label>Rate ₹</label><input type="number" class="ti-r" placeholder="0" min="0" step="any" value="${it.r||''}"></div>
+    <div class="ff" style="margin:0"><label>GST%</label>
+      <select class="ti-g" style="width:100%;background:var(--surf2);border:1.5px solid var(--bord);border-radius:var(--rs);padding:10px 4px;color:var(--text);font-size:12px;outline:none;appearance:none">
+        <option value="0"${it.g==0?' selected':''}>0%</option><option value="5"${it.g==5||(!it.g)?' selected':''}>5%</option>
+        <option value="12"${it.g==12?' selected':''}>12%</option><option value="18"${it.g==18?' selected':''}>18%</option>
+        <option value="28"${it.g==28?' selected':''}>28%</option>
+      </select>
+    </div>
+    <button class="rm-btn" onclick="this.closest('.tpl-item-row').remove()" title="Remove">×</button>
+  </div>`;
+  wrap.appendChild(d);
+}
+
+function saveTpl(){
+  const name=document.getElementById('tpl-nm').value.trim();
+  if(!name){toast('Template name is required','e');return}
+  const items=[];
+  document.querySelectorAll('#tpl-items-wrap .tpl-item-row').forEach(row=>{
+    const nm=row.querySelector('.ti-nm').value.trim();
+    const q=parseFloat(row.querySelector('.ti-q').value)||1;
+    const r=parseFloat(row.querySelector('.ti-r').value)||0;
+    const g=parseFloat(row.querySelector('.ti-g').value)||0;
+    if(nm||r)items.push({nm,q,r,g});
+  });
+  if(!items.length){toast('Add at least one item','e');return}
+  const custId=document.getElementById('tpl-cust').value;
+  const cust=_custs.find(c=>c.id===custId||String(c.id)===custId);
+  const tpl={name,emoji:document.getElementById('tpl-emoji').value||'📋',paymode:document.getElementById('tpl-paymode').value,custId,custName:cust?.name||'',custWA:cust?.whatsapp||'',note:document.getElementById('tpl-note').value,items,createdAt:new Date().toISOString()};
+  const idx=parseInt(document.getElementById('tpl-edit-idx').value);
+  if(idx>=0&&idx<_templates.length){_templates[idx]=tpl;toast('✅ Template updated','s');}
+  else{_templates.unshift(tpl);toast('✅ Template saved','s');}
+  save();renderTemplates();closeModal('add-tpl-modal');
+}
+
+function deleteTpl(idx){
+  if(!confirm('Delete "'+_templates[idx].name+'"?'))return;
+  _templates.splice(idx,1);save();renderTemplates();toast('🗑️ Deleted','i');
+}
+
+// ── Use Template ──
+function openUseTpl(idx){
+  _useIdx=idx;
+  const t=_templates[idx];
+  const total=calcTplTotal(t.items||[]);
+  document.getElementById('use-tpl-title').textContent=t.emoji+' '+t.name;
+  document.getElementById('use-tpl-summary').innerHTML=`
+    <div style="font-family:var(--font-h);font-size:14px;font-weight:800;margin-bottom:6px">${t.name}</div>
+    <div style="font-size:11px;color:var(--t2);margin-bottom:4px">${t.items?.length||0} items · ${t.paymode}</div>
+    <div style="font-family:var(--font-h);font-size:20px;font-weight:900;color:var(--acc)">${fINR(total)}</div>`;
+  document.getElementById('use-tpl-date').value=todayISO();
+  fillCustSel(t.custId);
+  if(t.custId)document.getElementById('use-tpl-cust').value=t.custId;
+  openModal('use-tpl-modal');
+}
+
+function useTplNow(){
+  const t=_templates[_useIdx];if(!t)return;
+  const custId=document.getElementById('use-tpl-cust').value;
+  const cust=_custs.find(c=>c.id===custId||String(c.id)===custId);
+  const date=document.getElementById('use-tpl-date').value||todayISO();
+  // Encode all template data as URL params → billing.html reads them
+  const params=new URLSearchParams({
+    tpl:'1',
+    nm:cust?.name||t.custName||'',
+    wa:cust?.whatsapp||t.custWA||'',
+    paymode:t.paymode||'Cash',
+    date,
+    note:t.note||'',
+    items:JSON.stringify(t.items||[])
+  });
+  closeModal('use-tpl-modal');
+  goTo('billing.html?'+params.toString());
+}
+
+async function init(){
+  if(_theme==='light'){document.documentElement.setAttribute('data-theme','light');document.getElementById('theme-btn').textContent='🌙'}
+  const{data:{session}}=await _sb.auth.getSession();
+  if(!session){window.location.href='index.html';return}
+  _resetTimer();
+  _templates=JSON.parse(localStorage.getItem('sbp_bill_templates')||'[]');
+  renderTemplates();
+  fillCustSel();
+}
+init();
+
+(function(){
+  if(window.innerWidth<1024)return;
+  var page=window.location.pathname.split('/').pop()||'dashboard.html';
+  var nav=[
+    {ic:'🏠',lb:'Dashboard',url:'dashboard.html'},
+    {ic:'🧾',lb:'New Bill',url:'billing.html',fab:true},
+    {ic:'📋',lb:'Bills',url:'bills.html'},
+    {ic:'👥',lb:'Customers',url:'customers.html'},
+    {ic:'📦',lb:'Inventory',url:'stock.html'},
+    {ic:'📊',lb:'Reports',url:'reports.html'},
+    {ic:'🛒',lb:'POS Admin',url:'pos-admin.html'},
+    {ic:'💬',lb:'WhatsApp',url:'wa-center.html'},
+    {ic:'💰',lb:'Cash Register',url:'cash-register.html'},
+    {ic:'🚚',lb:'Suppliers',url:'supplier.html'},
+    {ic:'🔄',lb:'Recurring',url:'recurring.html'},
+    {ic:'🗂️',lb:'Templates',url:'bill-templates.html'},
+    {ic:'👥',lb:'Team & Users',url:'team.html'},
+    {ic:'🚀',lb:'Plans & Pricing',url:'subscription.html'},
+    {ic:'⚙️',lb:'Settings',url:'settings.html'},
+  ];
+  var sb=document.createElement('div');sb.id='dsb';
+  sb.innerHTML='<div class="dsb-logo"><svg width="22" height="24" viewBox="0 0 56 62" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M28 2L4 14V32C4 46 28 60 28 60C28 60 52 46 52 32V14L28 2Z" fill="url(#sg1)"/><rect x="18" y="18" width="20" height="26" rx="2" fill="#0A0E1A" fill-opacity=".6"/><rect x="18" y="18" width="20" height="26" rx="2" stroke="#fff" stroke-width="1.5" fill="none"/><line x1="22" y1="24" x2="34" y2="24" stroke="#F5A623" stroke-width="1.5" stroke-linecap="round"/><line x1="22" y1="28" x2="30" y2="28" stroke="rgba(255,255,255,.4)" stroke-width="1" stroke-linecap="round"/><line x1="22" y1="31" x2="32" y2="31" stroke="rgba(255,255,255,.4)" stroke-width="1" stroke-linecap="round"/><line x1="22" y1="34" x2="28" y2="34" stroke="rgba(255,255,255,.4)" stroke-width="1" stroke-linecap="round"/><circle cx="32" cy="37" r="5" fill="#F5A623"/><polyline points="30,37 31.5,38.5 34.5,35.5" fill="none" stroke="#0A0E1A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><defs><linearGradient id="sg1" x1="4" y1="2" x2="52" y2="60" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#F5A623"/><stop offset="100%" stop-color="#FF6B35"/></linearGradient></defs></svg><span class="dsb-brand">ShopBill Pro</span></div><div class="dsb-nav">'+nav.map(function(n){var c='dsb-item'+(page===n.url?' active':'')+(n.fab?' fab-sb':'');return '<a class="'+c+'" href="'+n.url+'"><span class="dsb-ic">'+n.ic+'</span><span>'+n.lb+'</span></a>';}).join('')+'</div><div class="dsb-footer"><button class="dsb-item" id="dsb-logout"><span class="dsb-ic">🚪</span><span>Logout</span></button><div class="dsb-ver">ShopBill Pro v1.0</div></div>';
+  document.body.prepend(sb);
+  document.getElementById('dsb-logout').addEventListener('click',function(){
+    if(window._sb)window._sb.auth.signOut().then(function(){window.location.href='index.html';});
+    else window.location.href='index.html';
+  });
+})();
+(function(){document.documentElement.lang=localStorage.getItem('sbp_lang')||'en';})();
+</script>
+</body>
+</html>

@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png?v=2">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180x180.png?v=2">
+<title>ShopBill Pro — Admin Control Panel</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: linear-gradient(135deg, #0A0E14 0%, #0F1520 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 420px;
+    }
+
+    .card {
+      background: rgba(20, 18, 32, 0.8);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(124, 58, 237, 0.2);
+      border-radius: 16px;
+      padding: 40px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 30px;
+    }
+
+    .logo-icon {
+      width: 48px;
+      height: 48px;
+      background: linear-gradient(135deg, #F5A623, #FF8A00);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      margin-right: 12px;
+    }
+
+    .logo-text {
+      font-size: 20px;
+      font-weight: 700;
+      color: #F0EFF8;
+    }
+
+    .title {
+      font-size: 24px;
+      font-weight: 700;
+      color: #F0EFF8;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+
+    .subtitle {
+      font-size: 14px;
+      color: #8A8AA8;
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #B8B4D8;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px 14px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(124, 58, 237, 0.3);
+      border-radius: 8px;
+      font-family: 'Outfit', sans-serif;
+      font-size: 14px;
+      color: #F0EFF8;
+      transition: all 0.2s;
+    }
+
+    input:focus {
+      outline: none;
+      background: rgba(255, 255, 255, 0.08);
+      border-color: #F5A623;
+      box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+    }
+
+    input::placeholder {
+      color: #4A4A60;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 12px 16px;
+      background: linear-gradient(135deg, #F5A623, #FF8A00);
+      color: #0A0E1A;
+      border: none;
+      border-radius: 8px;
+      font-family: 'Outfit', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      margin-top: 24px;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 32px rgba(124, 58, 237, 0.4);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .alert {
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      margin-bottom: 20px;
+      display: none;
+    }
+
+    .alert.show {
+      display: block;
+    }
+
+    .alert.error {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #FCA5A5;
+    }
+
+    .alert.success {
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #86EFAC;
+    }
+
+    .alert.warning {
+      background: rgba(250, 204, 21, 0.1);
+      border: 1px solid rgba(250, 204, 21, 0.3);
+      color: #FCD34D;
+    }
+
+    .footer {
+      text-align: center;
+      font-size: 12px;
+      color: #5E5A7A;
+      margin-top: 24px;
+      border-top: 1px solid rgba(124, 58, 237, 0.1);
+      padding-top: 20px;
+    }
+
+    .feature-list {
+      margin: 24px 0;
+      padding: 16px;
+      background: rgba(16, 185, 129, 0.05);
+      border: 1px solid rgba(16, 185, 129, 0.2);
+      border-radius: 8px;
+      font-size: 12px;
+      color: #8A8AA8;
+    }
+
+    .feature-item {
+      padding: 4px 0;
+    }
+
+    .feature-item::before {
+      content: "✓ ";
+      color: #10B981;
+      font-weight: bold;
+      margin-right: 6px;
+    }
+
+    .loading {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <!-- Logo -->
+      <div class="logo">
+        <div class="logo-icon">🛡️</div>
+        <div class="logo-text">Admin</div>
+      </div>
+
+      <h1 class="title">Control Panel</h1>
+      <p class="subtitle">ShopBill Pro Management</p>
+
+      <!-- Alert messages -->
+      <div id="alert" class="alert"></div>
+
+      <!-- Login form -->
+      <form id="loginForm">
+        <div class="form-group">
+          <label for="password">Master Password</label>
+          <input 
+            type="password" 
+            id="password" 
+            placeholder="Enter admin password" 
+            required
+            autocomplete="off"
+          >
+        </div>
+
+        <button type="submit" class="btn" id="loginBtn">
+          <span id="btnText">Unlock Admin Panel</span>
+          <span id="btnSpinner" style="display: none;"><span class="loading"></span></span>
+        </button>
+      </form>
+
+      <!-- Feature list -->
+      <div class="feature-list">
+        <div class="feature-item">Real-time analytics & metrics</div>
+        <div class="feature-item">User management dashboard</div>
+        <div class="feature-item">Revenue tracking & forecasting</div>
+        <div class="feature-item">Feature flags & A/B testing</div>
+        <div class="feature-item">System health monitoring</div>
+        <div class="feature-item">Audit logs & activity tracking</div>
+      </div>
+
+      <div class="footer">
+        🔒 Secure authentication | Session expires after 1 hour
+      </div>
+    </div>
+  </div>
+
+  <script src="admin-auth.js"></script>
+  <script>
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const password = document.getElementById('password').value;
+      const btn = document.getElementById('loginBtn');
+      const btnText = document.getElementById('btnText');
+      const btnSpinner = document.getElementById('btnSpinner');
+      const alert = document.getElementById('alert');
+
+      btn.disabled = true;
+      btnText.style.display = 'none';
+      btnSpinner.style.display = 'inline-block';
+
+      try {
+        const auth = AdminAuth.getInstance();
+        await auth.login(password);
+
+        alert.className = 'alert success show';
+        alert.textContent = '✓ Authentication successful. Redirecting...';
+
+        const redirect = new URLSearchParams(window.location.search).get('redirect') || 'admin-dashboard.html';
+        setTimeout(() => {
+          window.location.href = redirect;
+        }, 500);
+
+      } catch (error) {
+        alert.className = 'alert error show';
+        alert.textContent = '✗ ' + error.message;
+        
+        btn.disabled = false;
+        btnText.style.display = 'inline-block';
+        btnSpinner.style.display = 'none';
+      }
+    });
+
+    // Check if already logged in
+    window.addEventListener('load', () => {
+      const auth = AdminAuth.getInstance();
+      if (auth.isAuthenticated) {
+        window.location.href = 'admin-dashboard.html';
+      }
+
+      // Show if expired
+      if (new URLSearchParams(window.location.search).get('expired')) {
+        const alert = document.getElementById('alert');
+        alert.className = 'alert warning show';
+        alert.textContent = '⏱ Your session expired. Please log in again.';
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#F5A623">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png?v=2">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180x180.png?v=2">
+<title>ShopBill Pro — Team & Users</title>
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Noto+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="db-local.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:'Noto Sans',sans-serif;-webkit-font-smoothing:antialiased;}
+:root{--acc:#F5A623;--acc2:#EF4444;--acc3:#10B981;--amber:#F59E0B;--bg:#0A0A12;--surf:#13131C;--surf2:#1C1C28;--surf3:#252534;--bord:#2A2A3A;--text:#F0EFF8;--t2:#8A8AA8;--t3:#4A4A60;--font-h:'Outfit',sans-serif;--rs:12px;--rs2:18px;--tr:.18s ease}
+[data-theme="light"]{--bg:#F0EEFF;--surf:#FFF;--surf2:#F5F2FF;--surf3:#EDE9FF;--bord:#DDD8F5;--text:#0F0E18;--t2:#5E5A7A;--t3:#A09CC0}
+body{background:var(--bg);color:var(--text);overflow-y:auto}
+#app{max-width:100%;min-height:100dvh;display:flex;flex-direction:column}
+@media(min-width:1024px){#app{margin-left:220px;max-width:calc(100vw - 220px)}}
+.topbar{display:flex;align-items:center;gap:12px;padding:13px 16px;background:var(--surf);border-bottom:1px solid var(--bord);position:sticky;top:0;z-index:50}
+.back-btn{width:34px;height:34px;border-radius:10px;background:var(--surf2);border:1px solid var(--bord);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:var(--t2);text-decoration:none}
+.tb-title{font-family:var(--font-h);font-size:16px;font-weight:800;flex:1}
+.sb{flex:1;overflow-y:auto;padding:16px}
+.section-title{font-family:var(--font-h);font-size:12px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;margin-top:16px}
+.card{background:var(--surf);border:1px solid var(--bord);border-radius:16px;padding:16px;margin-bottom:12px}
+.user-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--bord)}
+.user-row:last-child{border-bottom:none}
+.user-avatar{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,var(--acc),#FF8A00);display:flex;align-items:center;justify-content:center;font-family:var(--font-h);font-size:15px;font-weight:800;color:#fff;flex-shrink:0}
+.user-info{flex:1}
+.user-name{font-size:14px;font-weight:700;color:var(--text)}
+.user-role{font-size:11px;color:var(--t2);margin-top:2px}
+.role-badge{font-size:10px;font-weight:700;border-radius:8px;padding:3px 9px}
+.role-owner{background:rgba(245,158,11,.15);color:#F59E0B}
+.role-manager{background:rgba(245,166,35,.12);color:var(--acc)}
+.role-cashier{background:rgba(16,185,129,.1);color:var(--acc3)}
+.role-viewer{background:rgba(138,138,168,.1);color:var(--t2)}
+.ff{margin-bottom:12px}
+.ff label{display:block;font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.ff input,.ff select{width:100%;background:var(--surf2);border:1.5px solid var(--bord);border-radius:var(--rs);padding:11px 14px;color:var(--text);font-size:14px;outline:none;transition:var(--tr);appearance:none;font-family:'Noto Sans',sans-serif}
+.ff input:focus,.ff select:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(245,166,35,.15)}
+.ff input::placeholder{color:var(--t3)}
+.btn-pri{width:100%;padding:13px;border-radius:var(--rs);background:linear-gradient(135deg,#F5A623,#FF8A00);border:none;color:#0A0E1A;font-family:var(--font-h);font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(245,166,35,.35)}
+.btn-pri:active{transform:scale(.97)}
+.btn-sec{width:100%;padding:11px;border-radius:var(--rs);background:var(--surf2);border:1px solid var(--bord);color:var(--t2);font-family:var(--font-h);font-size:13px;font-weight:600;cursor:pointer;margin-top:8px}
+.role-info{background:var(--surf2);border-radius:12px;padding:14px;margin-bottom:14px}
+.role-info h4{font-family:var(--font-h);font-size:12px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px}
+.role-item{display:flex;justify-content:space-between;padding:6px 0;font-size:12px;border-bottom:1px solid var(--bord)}
+.role-item:last-child{border-bottom:none}
+.perm-yes{color:var(--acc3)}
+.perm-no{color:var(--t3)}
+.spacer{height:80px}
+#toast-container{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:8px;z-index:9999;pointer-events:none}
+.toast{background:var(--surf3);color:var(--text);padding:10px 18px;border-radius:20px;font-size:13px;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.45);border:1px solid var(--bord);animation:toastIn .22s ease}
+.toast.s{background:rgba(16,185,129,.15);border-color:rgba(16,185,129,.3);color:#6EE7B7}
+.toast.e{background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.3);color:#FCA5A5}
+@keyframes toastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.bnav{display:flex;align-items:stretch;background:var(--surf);border-top:1px solid var(--bord);flex-shrink:0;padding-bottom:env(safe-area-inset-bottom,0px);z-index:100}
+@media(min-width:1024px){.bnav{display:none}}
+.ni{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 4px;cursor:pointer;text-decoration:none;color:var(--t2);gap:3px;min-height:56px}
+.ni-ic{font-size:20px}.ni-lb{font-size:10px;font-weight:600}
+.nav-fab{width:44px;height:44px;background:linear-gradient(135deg,var(--acc),#FF8A00);border-radius:14px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:24px}
+#dsb{position:fixed;left:0;top:0;bottom:0;width:220px;background:var(--surf);border-right:1px solid var(--bord);display:flex;flex-direction:column;z-index:200;overflow-y:auto}
+.dsb-logo{display:flex;align-items:center;gap:10px;padding:18px 16px 12px;border-bottom:1px solid var(--bord)}
+.dsb-brand{font-family:var(--font-h);font-size:15px;font-weight:800;color:var(--acc)}
+.dsb-nav{flex:1;padding:8px;display:flex;flex-direction:column;gap:2px}
+.dsb-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;cursor:pointer;text-decoration:none;color:var(--t2);font-size:13px;font-weight:600;transition:.15s ease;white-space:nowrap;border:none;background:none;width:100%}
+.dsb-item:hover{background:var(--surf2);color:var(--text)}
+.dsb-item.active{background:rgba(245,166,35,.12);color:var(--acc)}
+.dsb-item.fab-sb{background:linear-gradient(135deg,#F5A623,#FF8A00);color:#fff;margin:4px 0 8px;font-weight:700}
+.dsb-ic{font-size:17px;width:22px;text-align:center;flex-shrink:0}
+.dsb-footer{padding:8px;border-top:1px solid var(--bord)}
+.dsb-ver{font-size:10px;color:var(--t3);text-align:center;padding:6px 0 2px}
+@media(max-width:1023px){#dsb{display:none!important}}
+@media(max-width:1023px){body{overflow:auto!important}#app{height:auto!important;min-height:100dvh!important}}
+
+
+
+
+
+
+
+/* ══ PWA SCROLL SYSTEM ══ */
+html,body{height:100%;overflow:hidden}
+#app{height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+.sb{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:0;overscroll-behavior:contain}
+.bnav{flex-shrink:0}
+@media(min-width:1024px){
+  #app{margin-left:220px!important;max-width:calc(100vw - 220px)!important;width:calc(100vw - 220px)!important}
+  .bnav{display:none!important}
+}
+</style>
+<link rel="stylesheet" href="fix.css">
+</head>
+<body>
+<script>(function(){var ds=localStorage.getItem("sbp_digit_style")||"default";var fs=parseInt(localStorage.getItem("sbp_font_size")||"15");var fm={default:"inherit",mono:"Courier New,monospace",rounded:"DM Sans,sans-serif",sharp:"Outfit,sans-serif"};var st=document.getElementById("sbp-font-override");if(!st){st=document.createElement("style");st.id="sbp-font-override";document.head.appendChild(st);}st.textContent="body{font-size:"+fs+"px}.sc-val,.cm-val,.bc-amt,.cust-bal-val,.cms-val,.cart-total-val,.pos-item-price,.tot-row span:last-child,.gst-row span,.stat-val,.stat-num,.report-val,.bill-total,.bdoc-inv-no,.bc-inv,.lv{font-family:"+fm[ds]+"!important}";})();</script>
+<div id="app">
+  <div class="topbar">
+    <a class="back-btn" onclick="history.back()">←</a>
+    <div class="tb-title">👥 Team & Users</div>
+    <div id="theme-btn" onclick="toggleTheme()" style="width:34px;height:34px;border-radius:10px;background:var(--surf2);border:1px solid var(--bord);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px">☀️</div>
+  </div>
+
+  <div class="sb" id="sb-wrap">
+
+    <!-- Business plan gate -->
+    <div id="biz-gate" style="display:none;text-align:center;padding:48px 20px">
+      <div style="font-size:44px;margin-bottom:12px">👥</div>
+      <div style="font-family:var(--font-h);font-size:17px;font-weight:800;margin-bottom:8px">Multi-User Access</div>
+      <div style="font-size:13px;color:var(--t2);margin-bottom:20px;line-height:1.6">Add cashiers, managers and viewers<br>to your shop. Business plan feature.</div>
+      <button onclick="window.location.href='subscription.html'" style="padding:13px 28px;border-radius:12px;background:linear-gradient(135deg,#F59E0B,#EF4444);border:none;color:#fff;font-family:var(--font-h);font-size:14px;font-weight:700;cursor:pointer">🏭 Upgrade to Business — ₹199/month</button>
+    </div>
+
+    <!-- Main content (Business users only) -->
+    <div id="biz-content" style="display:none">
+
+      <!-- Current Team -->
+      <div class="section-title">Current Team</div>
+      <div class="card" id="team-list">
+        <div style="text-align:center;padding:20px;color:var(--t2);font-size:13px">Loading team...</div>
+      </div>
+
+
+      <!-- Staff Activity -->
+      <div class="section-title">Staff Activity Log</div>
+      <div class="card" id="activity-log">
+        <div style="text-align:center;padding:12px;color:var(--t2);font-size:13px">No activity recorded yet</div>
+      </div>
+      <!-- Invite Member -->
+      <div class="section-title">Invite Team Member</div>
+      <div class="card">
+        <div class="ff"><label>Full Name</label><input type="text" id="inv-name" placeholder="Staff member name" autocomplete="off"></div>
+        <div class="ff"><label>Email / Login ID</label><input type="text" id="inv-email" placeholder="email or phone number" autocomplete="off"></div>
+        <div class="ff"><label>Password (min 6 chars)</label><input type="password" id="inv-pass" placeholder="Create login password" minlength="6" autocomplete="new-password"></div>
+        <div class="ff"><label>Role</label>
+          <select id="inv-role">
+            <option value="manager">Manager — Full access except settings</option>
+            <option value="cashier" selected>Cashier — Billing only</option>
+            <option value="viewer">Viewer — Read only</option>
+          </select>
+        </div>
+        <button class="btn-pri" onclick="inviteUser()">➕ Create Staff Account</button>
+      </div>
+
+      <!-- Role Permissions -->
+      <div class="section-title">Role Permissions</div>
+      <div class="card">
+        <div class="role-info">
+          <h4>What Each Role Can Do</h4>
+          <div class="role-item"><span>Feature</span><span style="display:flex;gap:12px"><span style="color:#F59E0B;font-size:10px;font-weight:700">OWNER</span><span style="color:var(--acc);font-size:10px;font-weight:700">MGR</span><span style="color:var(--acc3);font-size:10px;font-weight:700">CASH</span><span style="color:var(--t2);font-size:10px;font-weight:700">VIEW</span></span></div>
+          ${[
+            ['Create Bills','✓','✓','✓','✗'],
+            ['View All Bills','✓','✓','✓','✓'],
+            ['Manage Products','✓','✓','✗','✗'],
+            ['Manage Customers','✓','✓','✓','✗'],
+            ['View Reports','✓','✓','✗','✓'],
+            ['Settings & Shop','✓','✗','✗','✗'],
+            ['Invite Users','✓','✗','✗','✗'],
+          ].map(r=>`<div class="role-item"><span>${r[0]}</span><span style="display:flex;gap:20px">${r.slice(1).map(p=>`<span class="${p==='✓'?'perm-yes':'perm-no'}">${p}</span>`).join('')}</span></div>`).join('')}
+        </div>
+      </div>
+
+
+      <!-- Activity Log -->
+      <div class="section-title">Staff Activity Log</div>
+      <div class="card" id="activity-log-card">
+        <div style="text-align:center;padding:10px;color:var(--t2);font-size:13px">Loading activity...</div>
+      </div>
+      <div class="spacer"></div>
+    </div>
+  </div>
+
+  <div class="bnav">
+    <a class="ni" href="dashboard.html"><span class="ni-ic">🏠</span><span class="ni-lb">Home</span></a>
+    <a class="ni" href="bills.html"><span class="ni-ic">🧾</span><span class="ni-lb">Bills</span></a>
+    <a class="ni" href="billing.html"><div class="nav-fab">＋</div></a>
+    <a class="ni" href="customers.html"><span class="ni-ic">👥</span><span class="ni-lb">Customers</span></a>
+    <a class="ni" href="settings.html"><span class="ni-ic">⚙️</span><span class="ni-lb">Settings</span></a>
+  </div>
+</div>
+<div id="toast-container"></div>
+
+<script>
+const SB_URL='https://jfqeirfrkjdkqqixivru.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmcWVpcmZya2pka3FxaXhpdnJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzNzQ4MzgsImV4cCI6MjA4OTk1MDgzOH0.akd4E0nil8ypLR4WOykkeYIL8g4uuNU6XdSVh_Y1utk';
+const _sb=supabase.createClient(SB_URL,SB_KEY,{auth:{autoRefreshToken:true,persistSession:true,detectSessionInUrl:false}});
+window._sb=_sb;
+let _theme=localStorage.getItem('sbp_theme')||'dark';
+if(_theme==='light'){document.documentElement.setAttribute('data-theme','light');document.getElementById('theme-btn').textContent='🌙'}
+function toggleTheme(){_theme=_theme==='dark'?'light':'dark';localStorage.setItem('sbp_theme',_theme);document.documentElement.setAttribute('data-theme',_theme==='light'?'light':'');document.getElementById('theme-btn').textContent=_theme==='light'?'🌙':'☀️'}
+function toast(msg,type='',dur=3000){const c=document.getElementById('toast-container');const t=document.createElement('div');t.className='toast'+(type?' '+type:'');t.textContent=msg;c.appendChild(t);setTimeout(()=>{t.style.opacity='0';t.style.transition='.2s';setTimeout(()=>t.remove(),220)},dur)}
+
+let _shopId=localStorage.getItem('sbp_shop_id');
+let _shopUsers=JSON.parse(localStorage.getItem('sbp_shop_users')||'[]');
+
+function isBiz(){const shop=JSON.parse(localStorage.getItem('sbp_shop')||'{}');return shop.plan==='enterprise';}
+
+function renderTeam(){
+  const el=document.getElementById('team-list');
+  const shop=JSON.parse(localStorage.getItem('sbp_shop')||'{}');
+  // Owner is always first
+  const ownerRow=`<div class="user-row">
+    <div class="user-avatar">${(shop.owner_name||'O')[0].toUpperCase()}</div>
+    <div class="user-info">
+      <div class="user-name">${shop.owner_name||'Owner'}</div>
+      <div class="user-role">${shop.email||''}</div>
+    </div>
+    <span class="role-badge role-owner">OWNER</span>
+  </div>`;
+
+  const userRows=_shopUsers.map(u=>`
+    <div class="user-row">
+      <div class="user-avatar" style="background:${u.role==='manager'?'rgba(245,166,35,.3)':u.role==='cashier'?'rgba(16,185,129,.3)':'rgba(138,138,168,.2)'}">
+        ${(u.name||'U')[0].toUpperCase()}
+      </div>
+      <div class="user-info">
+        <div class="user-name">${u.name||'Team Member'}</div>
+        <div class="user-role">${u.email}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+        <span class="role-badge role-${u.role}">${u.role.toUpperCase()}</span>
+        <button onclick="removeUser('${u.id}')" style="font-size:10px;color:var(--acc2);background:none;border:none;cursor:pointer">Remove</button>
+      </div>
+    </div>`).join('');
+
+  el.innerHTML=ownerRow+userRows+(userRows?'':'<div style="font-size:13px;color:var(--t2);padding:10px 0">No team members yet. Invite someone below.</div>');
+}
+
+async function inviteUser(){
+  const name=document.getElementById('inv-name').value.trim();
+  const email=document.getElementById('inv-email').value.trim();
+  const pass=document.getElementById('inv-pass').value;
+  const role=document.getElementById('inv-role').value;
+  if(!name||!email){toast('Enter name and email/login ID','e');return;}
+  if(!pass||pass.length<6){toast('Password must be at least 6 characters','e');return;}
+  
+  const emailFmt=email.includes('@')?email:email+'@shopbillpro.app';
+  
+  if(navigator.onLine){
+    try{
+      // Save owner's current session tokens BEFORE any signup
+      const{data:{session:ownerSession}}=await _sb.auth.getSession();
+      const ownerAccess=ownerSession?.access_token;
+      const ownerRefresh=ownerSession?.refresh_token;
+      
+      // Create a SEPARATE Supabase client for staff signup so owner session is untouched
+      const _sbStaff=supabase.createClient(SB_URL,SB_KEY,{
+        auth:{autoRefreshToken:false,persistSession:false,storageKey:'sbp_staff_temp'}
+      });
+      
+      // Create staff account using the separate client
+      const{data:signUpData,error:signUpErr}=await _sbStaff.auth.signUp({
+        email:emailFmt,
+        password:pass,
+        options:{
+          data:{name,role,shop_id:_shopId,is_staff:true}
+        }
+      });
+      
+      if(signUpErr){
+        toast('❌ '+signUpErr.message,'e');
+        return;
+      }
+      
+      // Check if user was actually created
+      const newUser=signUpData?.user;
+      if(!newUser||!newUser.id){
+        toast('❌ Account creation failed — no user returned','e');
+        return;
+      }
+      
+      // Check confirmation status
+      const isConfirmed=!!newUser.email_confirmed_at;
+      if(!isConfirmed){
+        // Try to auto-confirm via SQL if possible, otherwise warn
+        toast('⚠️ Account created but may need email confirmation. Check Supabase Auth settings.','i',5000);
+      }
+      
+      // Sign out from staff client immediately
+      await _sbStaff.auth.signOut();
+      
+      // RESTORE owner session (critical — prevents owner from being logged out)
+      if(ownerAccess&&ownerRefresh){
+        await _sb.auth.setSession({access_token:ownerAccess,refresh_token:ownerRefresh});
+      }
+      
+      const userId=newUser.id;
+      
+      // Insert into shop_users table for shop<->staff mapping
+      try{
+        await _sb.from('shop_users').insert({
+          shop_id:_shopId,
+          user_id:userId,
+          name,
+          email:emailFmt,
+          role,
+          is_active:true
+        });
+      }catch(e){
+        console.warn('shop_users insert:',e);
+        // Still continue — local storage will have the data
+      }
+      
+      // Save locally
+      const user={id:userId,name,email:emailFmt,role,shop_id:_shopId,invited_at:new Date().toISOString(),status:'active'};
+      _shopUsers.push(user);
+      localStorage.setItem('sbp_shop_users',JSON.stringify(_shopUsers));
+      
+      document.getElementById('inv-name').value='';
+      document.getElementById('inv-email').value='';
+      document.getElementById('inv-pass').value='';
+      renderTeam();
+      toast(`✅ ${name} account created as ${role}! Login: ${email}`,'s',5000);
+      
+      // Offer to send credentials via WhatsApp
+      const shop=JSON.parse(localStorage.getItem('sbp_shop')||'{}');
+      const msg=encodeURIComponent(`Hi ${name}! Your ShopBill Pro staff account is ready.\n\n🔗 Login: https://app.shopbillpro.in\n📧 ID: ${email}\n🔑 Password: ${pass}\n👤 Role: ${role}\n\nShop: ${shop.name||'ShopBill Pro'}`);
+      setTimeout(()=>{
+        if(confirm(`Send login details to ${name} via WhatsApp?`))window.open(`https://wa.me/?text=${msg}`,'_blank');
+      },500);
+    }catch(e){
+      console.error('Staff creation error:',e);
+      toast('❌ Failed to create account: '+e.message,'e');
+    }
+  }else{
+    const user={id:'usr_'+Date.now(),name,email:emailFmt,role,shop_id:_shopId,invited_at:new Date().toISOString(),status:'pending_sync'};
+    _shopUsers.push(user);
+    localStorage.setItem('sbp_shop_users',JSON.stringify(_shopUsers));
+    document.getElementById('inv-name').value='';
+    document.getElementById('inv-email').value='';
+    document.getElementById('inv-pass').value='';
+    renderTeam();
+    toast('⚠️ Saved offline — account will be created when online','i');
+  }
+}
+
+function removeUser(id){
+  if(!confirm('Remove this team member?'))return;
+  _shopUsers=_shopUsers.filter(u=>u.id!==id);
+  localStorage.setItem('sbp_shop_users',JSON.stringify(_shopUsers));
+  if(navigator.onLine)_sb.from('shop_users').delete().eq('id',id).then(()=>{}).catch(()=>{});
+  renderTeam();
+  toast('Team member removed','i');
+}
+
+async function init(){
+  const plan=JSON.parse(localStorage.getItem('sbp_shop')||'{}').plan||'free';
+  if(plan!=='enterprise'){
+    document.getElementById('biz-gate').style.display='block';
+    document.getElementById('biz-content').style.display='none';
+    return;
+  }
+  // Show content for enterprise users
+  document.getElementById('biz-gate').style.display='none';
+  document.getElementById('biz-content').style.display='block';
+  // Always clear form fields on load to prevent browser autofill leaking credentials
+  ['inv-name','inv-email','inv-pass'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  // Load team from Supabase
+  if(navigator.onLine&&_shopId){
+    try{
+      const{data}=await _sb.from('shop_users').select('*').eq('shop_id',_shopId);
+      if(data){_shopUsers=data;localStorage.setItem('sbp_shop_users',JSON.stringify(data));}
+    }catch(e){}
+  }
+  renderTeam();
+  renderActivityLog();
+}
+
+// Sidebar
+(function(){
+  if(window.innerWidth<1024)return;
+  var page=window.location.pathname.split('/').pop()||'dashboard.html';
+  var nav=[{ic:'🏠',lb:'Dashboard',url:'dashboard.html'},{ic:'🧾',lb:'New Bill',url:'billing.html',fab:true},{ic:'📋',lb:'Bills',url:'bills.html'},{ic:'👥',lb:'Customers',url:'customers.html'},{ic:'📦',lb:'Inventory',url:'stock.html'},{ic:'📊',lb:'Reports',url:'reports.html'},{ic:'🛒',lb:'POS Admin',url:'pos-admin.html'},{ic:'💬',lb:'WhatsApp',url:'wa-center.html'},{ic:'💰',lb:'Cash Register',url:'cash-register.html'},{ic:'🚚',lb:'Suppliers',url:'supplier.html'},{ic:'🔄',lb:'Recurring',url:'recurring.html'},{ic:'🗂️',lb:'Templates',url:'bill-templates.html'},{ic:'👥',lb:'Team & Users',url:'team.html'},{ic:'🚀',lb:'Plans',url:'subscription.html'},{ic:'⚙️',lb:'Settings',url:'settings.html'}];
+  var sb=document.createElement('div');sb.id='dsb';
+  sb.innerHTML='<div class="dsb-logo"><svg width="22" height="24" viewBox="0 0 56 62" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M28 2L4 14V32C4 46 28 60 28 60C28 60 52 46 52 32V14L28 2Z" fill="url(#sg1)"/><rect x="18" y="18" width="20" height="26" rx="2" fill="#0A0E1A" fill-opacity=".6"/><rect x="18" y="18" width="20" height="26" rx="2" stroke="#fff" stroke-width="1.5" fill="none"/><line x1="22" y1="24" x2="34" y2="24" stroke="#F5A623" stroke-width="1.5" stroke-linecap="round"/><line x1="22" y1="28" x2="30" y2="28" stroke="rgba(255,255,255,.4)" stroke-width="1" stroke-linecap="round"/><line x1="22" y1="31" x2="32" y2="31" stroke="rgba(255,255,255,.4)" stroke-width="1" stroke-linecap="round"/><line x1="22" y1="34" x2="28" y2="34" stroke="rgba(255,255,255,.4)" stroke-width="1" stroke-linecap="round"/><circle cx="32" cy="37" r="5" fill="#F5A623"/><polyline points="30,37 31.5,38.5 34.5,35.5" fill="none" stroke="#0A0E1A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><defs><linearGradient id="sg1" x1="4" y1="2" x2="52" y2="60" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#F5A623"/><stop offset="100%" stop-color="#FF6B35"/></linearGradient></defs></svg><span class="dsb-brand">ShopBill Pro</span></div><div class="dsb-nav">'+nav.map(function(n){var c='dsb-item'+(page===n.url?' active':'')+(n.fab?' fab-sb':'');return '<a class="'+c+'" href="'+n.url+'"><span class="dsb-ic">'+n.ic+'</span><span>'+n.lb+'</span></a>';}).join('')+'</div><div class="dsb-footer"><button class="dsb-item" id="dsb-logout"><span class="dsb-ic">🚪</span><span>Logout</span></button><div class="dsb-ver">ShopBill Pro v1.0</div></div>';
+  document.body.prepend(sb);
+  document.getElementById('dsb-logout').addEventListener('click',function(){_sb.auth.signOut().then(function(){window.location.href='index.html';});});
+})();
+
+init();
+
+// Track activity
+function logActivity(action, detail) {
+  const log = JSON.parse(localStorage.getItem('sbp_activity')||'[]');
+  const shop = JSON.parse(localStorage.getItem('sbp_shop')||'{}');
+  const entry = {
+    id: 'act_'+Date.now(),
+    user: shop.owner_name||'Owner',
+    role: localStorage.getItem('sbp_role')||'Owner',
+    action, detail,
+    time: new Date().toISOString(),
+    shop_id: localStorage.getItem('sbp_shop_id')
+  };
+  log.unshift(entry);
+  // Keep last 50 entries
+  localStorage.setItem('sbp_activity', JSON.stringify(log.slice(0,50)));
+  renderActivity();
+}
+
+function renderActivity() {
+  const el = document.getElementById('activity-log');
+  if(!el) return;
+  const log = JSON.parse(localStorage.getItem('sbp_activity')||'[]');
+  if(!log.length) {
+    el.innerHTML='<div style="text-align:center;padding:12px;color:var(--t2);font-size:13px">No activity recorded yet</div>';
+    return;
+  }
+  el.innerHTML = log.slice(0,10).map(e => {
+    const d = new Date(e.time);
+    const timeStr = d.toLocaleDateString('en-IN',{day:'2-digit',month:'short'}) + ' ' + d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+    return `<div class="user-row">
+      <div class="user-avatar" style="width:34px;height:34px;font-size:12px;background:rgba(245,166,35,.2)">${(e.user||'U')[0]}</div>
+      <div class="user-info">
+        <div class="user-name" style="font-size:13px">${e.action}</div>
+        <div class="user-role">${e.detail} · ${e.user}</div>
+      </div>
+      <div style="font-size:10px;color:var(--t3);white-space:nowrap">${timeStr}</div>
+    </div>`;
+  }).join('');
+}
+
+window.logActivity = logActivity;
+renderActivity();
+
+function renderActivityLog() {
+  const log = JSON.parse(localStorage.getItem('sbp_activity_log')||'[]');
+  const el = document.getElementById('activity-log-card');
+  if(!el) return;
+  if(!log.length) {
+    el.innerHTML = '<div style="font-size:13px;color:var(--t2);padding:8px 0">No activity recorded yet.</div>';
+    return;
+  }
+  el.innerHTML = log.slice(0,20).map(e => {
+    const time = new Date(e.ts).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+    return `<div class="user-row">
+      <div class="user-avatar" style="font-size:18px;background:rgba(245,166,35,.15)">${e.action==='bill_created'?'🧾':e.action==='product_added'?'📦':e.action==='customer_added'?'👥':'⚡'}</div>
+      <div class="user-info">
+        <div class="user-name">${e.detail}</div>
+        <div class="user-role">${e.user} · ${e.role} · ${time}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+renderActivityLog();
+</script>
+</body>
+</html>

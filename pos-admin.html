@@ -1,0 +1,1243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#F5A623">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png?v=2">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180x180.png?v=2">
+<title>ShopBill Pro — POS Admin</title>
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Noto+Sans:wght@300;400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="db-local.js"></script>
+
+<script src="lang.js"></script>
+<script src="conversion.js"></script>
+<script src="scanner.js"></script>
+
+
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:'Noto Sans','Noto Sans Devanagari',sans-serif;-webkit-font-smoothing:antialiased;}
+:root{--acc:#F5A623;--acc2:#EF4444;--acc3:#10B981;--cyan:#06B6D4;--amber:#F59E0B;--bg:#0A0A12;--surf:#13131C;--surf2:#1C1C28;--surf3:#252534;--bord:#2A2A3A;--text:#F0EFF8;--t2:#8A8AA8;--t3:#4A4A60;--font-h:'Outfit',sans-serif;--rs:12px;--rs2:18px;--tr:.18s ease;--safe-top:env(safe-area-inset-top,0px);--safe-bottom:env(safe-area-inset-bottom,0px)}
+[data-theme="light"]{--bg:#F0EEFF;--surf:#FFF;--surf2:#F5F2FF;--surf3:#EDE9FF;--bord:#DDD8F5;--text:#0F0E18;--t2:#5E5A7A;--t3:#A09CC0}
+body{background:var(--bg);color:var(--text)}
+#app{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+.sb{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;padding-top:calc(10px + var(--safe-top));background:var(--surf);border-bottom:1px solid var(--bord);flex-shrink:0;min-height:54px}
+.tb-l{display:flex;align-items:center;gap:10px;flex:1;min-width:0}
+.tb-r{display:flex;align-items:center;gap:7px;flex-shrink:0}
+.tb-title{font-family:var(--font-h);font-size:17px;font-weight:800}
+.back-btn{width:34px;height:34px;border-radius:10px;background:var(--surf2);border:1px solid var(--bord);display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer;transition:var(--tr);flex-shrink:0}
+.back-btn:active{transform:scale(.93)}
+.ic-btn{width:34px;height:34px;border-radius:10px;background:var(--surf2);border:1px solid var(--bord);display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;transition:var(--tr)}
+.ic-btn:active{transform:scale(.93)}
+
+/* Admin Tabs */
+.adm-tabs{display:flex;background:var(--surf);border-bottom:1px solid var(--bord);flex-shrink:0;overflow-x:auto;scrollbar-width:none}
+.adm-tabs::-webkit-scrollbar{display:none}
+.adm-tab{flex-shrink:0;padding:11px 16px;cursor:pointer;font-family:var(--font-h);font-size:12px;font-weight:700;color:var(--t2);border-bottom:2.5px solid transparent;transition:var(--tr);white-space:nowrap}
+.adm-tab.on{color:var(--acc);border-bottom-color:var(--acc)}
+.adm-tab:active{background:var(--surf2)}
+
+/* Business Grid */
+.biz-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}@media(min-width:600px){.biz-grid{grid-template-columns:repeat(5,1fr)}}@media(min-width:1024px){.biz-grid{grid-template-columns:repeat(6,1fr)}}
+.biz-card{background:var(--surf2);border:1.5px solid var(--bord);border-radius:var(--rs2);padding:12px 6px;text-align:center;cursor:pointer;transition:var(--tr);user-select:none}
+.biz-card:active{transform:scale(.93)}
+.biz-card.on{border-color:var(--acc);background:rgba(245,166,35,.1)}
+.biz-ic{font-size:26px;margin-bottom:5px}
+.biz-nm{font-size:10px;font-weight:700;color:var(--t2)}
+.biz-card.on .biz-nm{color:var(--acc)}
+
+/* Search toolbar */
+.toolbar{display:flex;gap:8px;padding:10px 14px;flex-shrink:0;background:var(--bg)}
+.srch-inp{flex:1;background:var(--surf);border:1.5px solid var(--bord);border-radius:var(--rs);padding:10px 14px 10px 38px;color:var(--text);font-size:14px;outline:none;transition:var(--tr);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='15' height='15' fill='%238A8AA8' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85zm-5.242 1.656a5.5 5.5 0 1 1 0-11 5.5 5.5 0 0 1 0 11z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:12px center}
+.srch-inp:focus{border-color:var(--acc)}
+.add-btn-sm{height:40px;padding:0 14px;border-radius:var(--rs);background:linear-gradient(135deg,var(--acc),#FF8A00);border:none;color:#0A0E1A;font-family:var(--font-h);font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;box-shadow:0 3px 10px rgba(245,166,35,.4);flex-shrink:0}
+.add-btn-sm:active{transform:scale(.95)}
+.import-btn{height:40px;padding:0 12px;border-radius:var(--rs);background:rgba(16,185,129,.1);border:1.5px solid rgba(16,185,129,.3);color:var(--acc3);font-family:var(--font-h);font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0}
+
+/* Stats row */
+.stats-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:0 14px;margin-bottom:12px}
+.stat-card{background:var(--surf);border:1px solid var(--bord);border-radius:var(--rs);padding:11px;text-align:center}
+.sv{font-family:var(--font-h);font-size:18px;font-weight:900}
+.sl{font-size:10px;color:var(--t2);margin-top:3px;font-weight:600;text-transform:uppercase;letter-spacing:.3px}
+
+/* Category chips */
+.cat-row{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;padding:0 14px 8px;flex-shrink:0}
+.cat-row::-webkit-scrollbar{display:none}
+.cat-chip{flex-shrink:0;padding:6px 13px;border-radius:20px;border:1.5px solid var(--bord);background:var(--surf);color:var(--t2);font-size:12px;font-weight:700;cursor:pointer;transition:var(--tr);white-space:nowrap}
+.cat-chip.on{background:rgba(245,166,35,.12);border-color:var(--acc);color:var(--acc)}
+
+/* Product card */
+.prod-card{background:var(--surf);border:1px solid var(--bord);border-radius:var(--rs2);padding:13px;margin:0 14px 9px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:var(--tr)}
+.prod-card:active{background:var(--surf2);transform:scale(.99)}
+.prod-emoji{width:46px;height:46px;border-radius:13px;background:var(--surf2);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;border:1px solid var(--bord)}
+.prod-info{flex:1;min-width:0}
+.prod-nm{font-family:var(--font-h);font-size:14px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prod-meta{font-size:11px;color:var(--t2);margin-top:2px}
+.prod-code{font-size:10px;color:var(--t3);margin-top:2px}
+.prod-right{text-align:right;flex-shrink:0}
+.prod-price{font-family:var(--font-h);font-size:16px;font-weight:900;color:var(--acc)}
+.prod-stock{font-size:11px;font-weight:700;margin-top:3px}
+.prod-stock.ok{color:var(--acc3)}.prod-stock.low{color:var(--amber)}.prod-stock.out{color:var(--acc2)}
+.prod-actions{display:flex;gap:5px;margin-top:6px;justify-content:flex-end}
+.pa-btn{padding:4px 9px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid;transition:var(--tr)}
+.pa-btn.edit{color:var(--acc);border-color:rgba(245,166,35,.3);background:rgba(245,166,35,.08)}
+.pa-btn.del{color:var(--acc2);border-color:rgba(239,68,68,.3);background:rgba(239,68,68,.08)}
+.pa-btn:active{transform:scale(.9)}
+
+/* Category Manager */
+.cat-manage-item{display:flex;align-items:center;gap:10px;padding:11px;background:var(--surf2);border-radius:var(--rs);margin-bottom:7px;border:1px solid var(--bord)}
+.cat-manage-ic{font-size:20px;width:32px;text-align:center}
+.cat-manage-nm{flex:1;font-size:13px;font-weight:700}
+.cat-manage-cnt{font-size:11px;color:var(--t2)}
+.cat-del-btn{font-size:14px;cursor:pointer;color:var(--acc2);padding:4px 8px;border-radius:8px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2)}
+
+/* Inline add */
+.inline-add{display:flex;gap:8px;margin-bottom:12px}
+.inline-add input{background:var(--surf2);border:1.5px solid var(--bord);border-radius:var(--rs);padding:10px 12px;color:var(--text);font-size:13px;outline:none;transition:var(--tr);font-family:'Noto Sans',sans-serif}
+.inline-add input:focus{border-color:var(--acc)}
+.inline-add button{padding:10px 16px;border-radius:var(--rs);background:linear-gradient(135deg,var(--acc),#FF8A00);border:none;color:#0A0E1A;font-family:var(--font-h);font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
+
+/* Forms */
+.ff{margin-bottom:12px}
+.ff label{display:block;font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.ff input,.ff select,.ff textarea{width:100%;background:var(--surf2);border:1.5px solid var(--bord);border-radius:var(--rs);padding:11px 13px;color:var(--text);font-size:14px;outline:none;transition:var(--tr);appearance:none;font-family:'Noto Sans',sans-serif}
+.ff input:focus,.ff select:focus{border-color:var(--acc);background:var(--surf);box-shadow:0 0 0 3px rgba(245,166,35,.12)}
+.ff input::placeholder{color:var(--t3)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+
+/* Emoji picker */
+.emoji-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:6px;margin-bottom:12px}
+.em-btn{aspect-ratio:1;border-radius:8px;border:1.5px solid var(--bord);background:var(--surf2);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:var(--tr)}
+.em-btn.on{border-color:var(--acc);background:rgba(245,166,35,.1)}
+.em-btn:active{transform:scale(.88)}
+
+/* Buttons */
+.btn-pri{width:100%;padding:14px;border-radius:var(--rs);background:linear-gradient(135deg,var(--acc),#FF8A00);border:none;color:#0A0E1A;font-family:var(--font-h);font-size:15px;font-weight:700;cursor:pointer;transition:.2s cubic-bezier(.4,0,.2,1);box-shadow:0 4px 16px rgba(245,166,35,.4);display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-pri:active{transform:scale(.97)}
+.btn-pri:disabled{opacity:.65;cursor:not-allowed;transform:none}
+.btn-sec{width:100%;padding:12px;border-radius:var(--rs);background:var(--surf2);border:1.5px solid var(--bord);color:var(--text);font-family:var(--font-h);font-size:14px;font-weight:700;cursor:pointer;transition:var(--tr)}
+.btn-danger{width:100%;padding:11px;border-radius:var(--rs);background:rgba(239,68,68,.08);border:1.5px solid rgba(239,68,68,.2);color:var(--acc2);font-family:var(--font-h);font-size:13px;font-weight:700;cursor:pointer}
+
+/* Overlays */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:500;display:none;align-items:flex-end;backdrop-filter:blur(4px)}
+.overlay.open{display:flex;animation:fadeIn .18s ease}
+.sheet{width:100%;max-height:92dvh;max-height:92vh;background:var(--surf);border-radius:var(--rs2) var(--rs2) 0 0;padding:16px 16px calc(16px + var(--safe-bottom));overflow-y:auto;-webkit-overflow-scrolling:touch;animation:slideUp .28s cubic-bezier(.4,0,.2,1)}
+.handle{width:36px;height:4px;border-radius:2px;background:var(--surf3);margin:0 auto 16px}
+.sheet-title{font-family:var(--font-h);font-size:18px;font-weight:800;margin-bottom:14px}
+
+/* Bottom Nav */
+.bnav{display:flex;align-items:stretch;background:var(--surf);border-top:1px solid var(--bord);flex-shrink:0;padding-bottom:var(--safe-bottom);z-index:100}
+.ni{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 4px;gap:3px;cursor:pointer;transition:var(--tr);position:relative;min-height:56px;user-select:none}
+.ni-ic{font-size:20px;line-height:1}.ni-lb{font-size:10px;color:var(--t2);font-weight:600;white-space:nowrap}
+.ni.on .ni-lb{color:var(--acc)}
+.ni.on::after{content:'';position:absolute;top:0;left:20%;right:20%;height:2.5px;border-radius:0 0 4px 4px;background:var(--acc)}
+.ni:active{background:var(--surf2)}
+.nav-fab{width:48px;height:48px;border-radius:16px;background:linear-gradient(135deg,var(--acc),#FF8A00);color:#0A0E1A;font-size:22px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(245,166,35,.5);margin-bottom:4px}
+
+/* Toast */
+#toast-container{position:fixed;bottom:calc(72px + var(--safe-bottom));left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none}
+.toast{background:var(--surf3);color:var(--text);padding:10px 18px;border-radius:20px;font-size:13px;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.45);border:1px solid var(--bord);white-space:nowrap;max-width:calc(100vw - 40px);animation:toastIn .22s ease}
+.toast.s{background:rgba(16,185,129,.15);border-color:rgba(16,185,129,.3);color:var(--acc3)}
+.toast.e{background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.3);color:var(--acc2)}
+.toast.i{background:rgba(245,166,35,.15);border-color:rgba(245,166,35,.3);color:#FF8A00}
+
+.loader{display:flex;align-items:center;justify-content:center;padding:40px}
+.spinner{width:28px;height:28px;border:3px solid var(--bord);border-top-color:var(--acc);border-radius:50%;animation:spin .8s linear infinite}
+.empty-state{text-align:center;padding:40px 20px}
+.spacer{height:80px}
+
+/* Import helper box */
+.import-box{background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.2);border-radius:var(--rs);padding:12px;margin-bottom:12px;font-size:11px;color:var(--t2);line-height:1.7}
+
+/* Toggle */
+.tog-row{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--bord)}
+.tog-row:last-child{border-bottom:none}
+.tog-info h4{font-size:13px;font-weight:700}
+.tog-info p{font-size:11px;color:var(--t2);margin-top:2px}
+.toggle-sw{position:relative;width:44px;height:24px;flex-shrink:0}
+.toggle-sw input{opacity:0;width:0;height:0;position:absolute}
+.toggle-track{position:absolute;cursor:pointer;inset:0;background:var(--surf3);border:1.5px solid var(--bord);border-radius:12px;transition:.28s}
+.toggle-track::after{content:'';position:absolute;width:16px;height:16px;border-radius:50%;background:#fff;top:2px;left:2px;transition:.28s}
+.toggle-sw input:checked+.toggle-track{background:var(--acc);border-color:var(--acc)}
+.toggle-sw input:checked+.toggle-track::after{transform:translateX(20px)}
+
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+@keyframes toastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@media(min-width:640px){#app{max-width:480px;margin:0 auto;box-shadow:0 0 80px rgba(0,0,0,.6)}}
+
+/* ══ Desktop Sidebar ══ */
+#dsb{position:fixed;left:0;top:0;bottom:0;width:220px;background:var(--surf);border-right:1px solid var(--bord);display:flex;flex-direction:column;z-index:200;overflow-y:auto}
+.dsb-logo{display:flex;align-items:center;gap:10px;padding:18px 16px 12px;border-bottom:1px solid var(--bord)}
+.dsb-brand{font-family:var(--font-h);font-size:15px;font-weight:800;color:var(--acc)}
+.dsb-nav{flex:1;padding:8px;display:flex;flex-direction:column;gap:2px;overflow-y:auto}
+.dsb-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;cursor:pointer;text-decoration:none;color:var(--t2);font-size:13px;font-weight:600;transition:.15s ease;white-space:nowrap;border:none;background:none;width:100%}
+.dsb-item:hover{background:var(--surf2);color:var(--text)}
+.dsb-item.active{background:rgba(245,166,35,.12);color:var(--acc)}
+.dsb-item.fab-sb{background:linear-gradient(135deg,#F5A623,#FF8A00);color:#fff;margin:4px 0 8px;font-weight:700}
+.dsb-ic{font-size:17px;width:22px;text-align:center;flex-shrink:0}
+.dsb-footer{padding:8px;border-top:1px solid var(--bord)}
+.dsb-ver{font-size:10px;color:var(--t3);text-align:center;padding:6px 0 2px}
+@media(max-width:1023px){#dsb{display:none!important}}
+@media(min-width:640px) and (max-width:1023px){#app{max-width:600px;margin:0 auto}}
+@media(min-width:1024px){body{overflow:hidden}}
+
+/* ══ Language ══ */
+.lang-hi{display:none!important}
+.lang-en{display:inline!important}
+html[lang="hi"] .lang-hi{display:inline!important}
+html[lang="hi"] .lang-en{display:none!important}
+
+
+
+@media(max-width:1023px){
+    #app{height:100dvh!important;display:flex!important;flex-direction:column!important;overflow:hidden!important}
+  .bnav{position:fixed!important;bottom:0!important;left:0!important;right:0!important;z-index:100!important}
+  .sb{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+}
+
+
+
+
+
+
+/* ══ PWA SCROLL SYSTEM ══ */
+html,body{height:100%;overflow:hidden}
+#app{height:100vh;display:flex;flex-direction:column;overflow:hidden}
+.sb{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:0;overscroll-behavior:contain}
+.bnav{flex-shrink:0}
+@media(min-width:1024px){
+  #app{margin-left:220px!important;max-width:calc(100vw - 220px)!important;width:calc(100vw - 220px)!important}
+  .bnav{display:none!important}
+}
+</style>
+<link rel="stylesheet" href="fix.css">
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+</head>
+<body>
+<script>(function(){var ds=localStorage.getItem("sbp_digit_style")||"default";var fs=parseInt(localStorage.getItem("sbp_font_size")||"15");var fm={default:"inherit",mono:"Courier New,monospace",rounded:"DM Sans,sans-serif",sharp:"Outfit,sans-serif"};var st=document.getElementById("sbp-font-override");if(!st){st=document.createElement("style");st.id="sbp-font-override";document.head.appendChild(st);}st.textContent="body{font-size:"+fs+"px}.sc-val,.cm-val,.bc-amt,.cust-bal-val,.cms-val,.cart-total-val,.pos-item-price,.tot-row span:last-child,.gst-row span,.stat-val,.stat-num,.report-val,.bill-total,.bdoc-inv-no,.bc-inv,.lv{font-family:"+fm[ds]+"!important}";})();</script>
+<div id="app">
+
+  <div class="topbar">
+    <div class="tb-l">
+      <div class="back-btn" onclick="goTo('settings.html')">←</div>
+      <div>
+        <div class="tb-title">⚙️ POS Admin Panel</div>
+      </div>
+    </div>
+    <div class="tb-r">
+      <div class="ic-btn" onclick="toggleTheme()" id="theme-btn">☀️</div>
+      <div class="ic-btn" onclick="goTo('billing.html?mode=pos')" title="Open POS">🏪</div>
+    </div>
+  </div>
+
+  <!-- Admin Tabs -->
+  <div class="adm-tabs">
+    <div class="adm-tab on" id="tab-biz"      onclick="showAdmTab('biz')">🏪 Business</div>
+    <div class="adm-tab"    id="tab-cats"     onclick="showAdmTab('cats')">📂 Categories</div>
+    <div class="adm-tab"    id="tab-products" onclick="showAdmTab('products')">🏷️ Products</div>
+    <div class="adm-tab"    id="tab-pos-settings" onclick="showAdmTab('pos-settings')">⚙️ POS Settings</div>
+  </div>
+
+  <!-- ══ BUSINESS TAB ══ -->
+  <div id="view-biz" class="sb" style="padding:14px">
+    <div style="font-family:var(--font-h);font-size:15px;font-weight:800;margin-bottom:4px">Choose Business Type</div>
+    <p style="font-size:11px;color:var(--t2);margin-bottom:14px">Categories auto-load based on your business type</p>
+    <div class="biz-grid" id="biz-grid"></div>
+    <!-- Manual Setup Option -->
+    <div id="manual-setup-wrap" style="display:none;background:var(--surf2);border:1.5px solid var(--acc);border-radius:var(--rs2);padding:14px;margin-bottom:12px">
+      <div style="font-size:12px;font-weight:700;color:var(--acc);margin-bottom:10px">⚙️ Manual Business Setup</div>
+      <div class="ff" style="margin:0 0 10px">
+        <label>Business Type Name</label>
+        <input type="text" id="manual-biz-name" placeholder="e.g. Jewellery, Footwear, Boutique...">
+      </div>
+      <div class="ff" style="margin:0 0 10px">
+        <label>Categories (comma separated)</label>
+        <input type="text" id="manual-cats" placeholder="e.g. Gold, Silver, Diamonds, Chains...">
+      </div>
+      <button onclick="applyManualSetup()" style="width:100%;padding:11px;border-radius:var(--rs);background:var(--acc);border:none;color:#fff;font-weight:700;font-size:13px;cursor:pointer">✅ Apply Manual Setup</button>
+    </div>
+    <button onclick="document.getElementById('manual-setup-wrap').style.display=document.getElementById('manual-setup-wrap').style.display==='none'?'block':'none'" style="width:100%;padding:10px;border-radius:var(--rs);background:var(--surf2);border:1px dashed var(--bord);color:var(--t2);font-size:12px;font-weight:600;cursor:pointer;margin-bottom:12px">⚙️ Manual Setup — Enter Your Own Business Type</button>
+
+    <div style="background:var(--surf);border:1px solid var(--bord);border-radius:var(--rs2);padding:14px;margin-bottom:12px">
+      <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:11px">Quick Shop Info</div>
+      <div class="row2">
+        <div class="ff" style="margin:0"><label>Shop Name</label><input type="text" id="biz-name" placeholder="Your shop name"></div>
+        <div class="ff" style="margin:0"><label>Owner</label><input type="text" id="biz-owner" placeholder="Owner name"></div>
+      </div>
+    </div>
+    <button class="btn-pri" onclick="applyBizType()">✅ Apply Business Setup</button>
+    <div class="spacer"></div>
+  </div>
+
+  <!-- ══ CATEGORIES TAB ══ -->
+  <div id="view-cats" class="sb" style="display:none;padding:14px">
+    <div class="stats-row" style="padding:0;margin-bottom:14px">
+      <div class="stat-card"><div class="sv" style="color:var(--acc)" id="cat-count">0</div><div class="sl"><span class="lang-en">Categories</span><span class="lang-hi">श्रेणियां</span></div></div>
+      <div class="stat-card"><div class="sv" style="color:var(--acc3)" id="prod-in-cats">0</div><div class="sl"><span class="lang-en">Products</span><span class="lang-hi">उत्पाद</span></div></div>
+      <div class="stat-card"><div class="sv" style="color:var(--amber)" id="empty-cats">0</div><div class="sl">Empty</div></div>
+    </div>
+    <div style="font-family:var(--font-h);font-size:13px;font-weight:700;margin-bottom:10px">Add New Category</div>
+    <div class="inline-add">
+      <input type="text" id="nc-emoji" placeholder="📦" style="width:52px;text-align:center">
+      <input type="text" id="nc-name" placeholder="Category name..." style="flex:1">
+      <button onclick="addCategory()">+ Add</button>
+    </div>
+    <div style="font-family:var(--font-h);font-size:13px;font-weight:700;margin-bottom:10px">Your Categories</div>
+    <div id="cat-manager-list"></div>
+    <div class="spacer"></div>
+  </div>
+
+  <!-- ══ PRODUCTS TAB ══ -->
+  <div id="view-products" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+    <div class="toolbar">
+      <input class="srch-inp" id="prod-search" placeholder="Search products..." oninput="filterProds(this.value)">
+      <button class="add-btn-sm" onclick="openAddProd()">＋ Add</button>
+      <button class="import-btn" onclick="document.getElementById('import-csv-inp').click()">📥 Import</button>
+    </div>
+    <input type="file" id="import-csv-inp" accept=".csv" style="display:none" onchange="bulkImport(this)">
+
+    <!-- Import Helper -->
+    <div id="import-help-box" style="padding:0 14px 6px;flex-shrink:0">
+      <div style="background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.2);border-radius:12px;padding:10px 12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <div style="flex:1;min-width:160px;font-size:11px;color:var(--t2);line-height:1.6">
+          📄 <strong style="color:var(--text)">Import via CSV</strong> — Download template, fill your product data, and upload.<br>
+          Columns: Name, Price, Category, Unit, Stock, GST%, CostPrice, Code, HSN
+        </div>
+        <button onclick="downloadTemplate()" style="padding:6px 14px;border-radius:20px;background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.3);color:var(--acc3);font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">⬇️ Download Template</button>
+      </div>
+    </div>
+
+    <div style="padding:0 14px 2px;flex-shrink:0">
+      <div class="stats-row" style="padding:0;margin-bottom:8px">
+        <div class="stat-card"><div class="sv" style="color:var(--acc)" id="prod-total">0</div><div class="sl"><span class="lang-en">Products</span><span class="lang-hi">उत्पाद</span></div></div>
+        <div class="stat-card"><div class="sv" style="color:var(--amber)" id="prod-low">0</div><div class="sl">Low Stock</div></div>
+        <div class="stat-card"><div class="sv" style="color:var(--acc3)" id="prod-value">₹0</div><div class="sl">Stock Value</div></div>
+      </div>
+    </div>
+
+    <div class="cat-row" id="prod-cat-filter">
+      <div class="cat-chip on" onclick="filterByCat('all',this)">All</div>
+    </div>
+
+    <div class="sb" id="prod-list" style="padding-bottom:12px">
+      <div class="loader"><div class="spinner"></div></div>
+    </div>
+  </div>
+
+  <!-- ══ POS SETTINGS TAB ══ -->
+  <div id="view-pos-settings" class="sb" style="display:none;padding:14px">
+    <div style="font-family:var(--font-h);font-size:14px;font-weight:800;margin-bottom:14px">POS Display Options</div>
+    <div class="tog-row"><div class="tog-info"><h4>Show Stock Count on POS</h4><p>Display available stock below each product</p></div><label class="toggle-sw"><input type="checkbox" id="pos-show-stock" checked><span class="toggle-track"></span></label></div>
+    <div class="tog-row"><div class="tog-info"><h4>Show Item Code</h4><p>Display barcode / item code on product card</p></div><label class="toggle-sw"><input type="checkbox" id="pos-show-code"><span class="toggle-track"></span></label></div>
+    <div class="tog-row"><div class="tog-info"><h4>Auto GST Calculation</h4><p>Apply item GST rate automatically in cart</p></div><label class="toggle-sw"><input type="checkbox" id="pos-auto-gst" checked><span class="toggle-track"></span></label></div>
+    <div class="tog-row"><div class="tog-info"><h4>Low Stock Alert</h4><p>Warn when stock falls below threshold</p></div><label class="toggle-sw"><input type="checkbox" id="pos-low-alert" checked><span class="toggle-track"></span></label></div>
+    <div class="tog-row"><div class="tog-info"><h4>Block Out of Stock Sales</h4><p>Prevent adding out-of-stock items to cart</p></div><label class="toggle-sw"><input type="checkbox" id="pos-block-oos"><span class="toggle-track"></span></label></div>
+    <div class="tog-row" style="padding-top:14px;border-top:1px solid var(--bord);margin-top:6px;border-bottom:none">
+      <div class="tog-info"><h4>Low Stock Threshold</h4><p>Alert when qty falls at or below this number</p></div>
+      <input type="number" id="pos-low-thresh" value="10" min="1" style="width:70px;background:var(--surf2);border:1.5px solid var(--bord);border-radius:var(--rs);padding:8px 10px;color:var(--text);font-size:14px;font-weight:700;font-family:var(--font-h);outline:none;text-align:center">
+    </div>
+    <div style="margin-top:16px">
+      <button class="btn-pri" onclick="savePOSSettings()">✅ Save POS Settings</button>
+    </div>
+    <div style="margin-top:12px">
+      <button class="btn-sec" onclick="goTo('billing.html?mode=pos')">🏪 Open POS Mode →</button>
+    </div>
+    <div class="spacer"></div>
+  </div>
+
+  <!-- Bottom Nav -->
+  <div class="bnav">
+    <div class="ni" onclick="goTo('dashboard.html')"><span class="ni-ic">🏠</span><span class="ni-lb"><span class="lang-en">Home</span><span class="lang-hi">होम</span></span></div>
+    <div class="ni" onclick="goTo('bills.html')"><span class="ni-ic">🧾</span><span class="ni-lb"><span class="lang-en">Bills</span><span class="lang-hi">बिल</span></span></div>
+    <div class="ni" onclick="goTo('billing.html')" style="align-items:center;justify-content:center"><div class="nav-fab">＋</div></div>
+    <div class="ni" onclick="goTo('customers.html')"><span class="ni-ic">👥</span><span class="ni-lb"><span class="lang-en">Customers</span><span class="lang-hi">ग्राहक</span></span></div>
+    <div class="ni on" onclick="goTo('settings.html')"><span class="ni-ic">☰</span><span class="ni-lb"><span class="lang-en">More</span><span class="lang-hi">अधिक</span></span></div>
+  </div>
+</div>
+
+<!-- ADD / EDIT PRODUCT MODAL -->
+<div class="overlay" id="add-prod-modal">
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="sheet-title" id="add-prod-title">🏷️ Add New Product</div>
+
+    <!-- Photo + Emoji row -->
+    <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:12px">
+      <div style="flex-shrink:0">
+        <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Photo</div>
+        <div id="prod-photo-zone" onclick="document.getElementById('prod-photo-file').click()"
+          ondragover="event.preventDefault();this.style.borderColor='var(--acc)'"
+          ondragleave="this.style.borderColor='var(--bord)'"
+          ondrop="handlePhotoDrop(event)"
+          style="width:80px;height:80px;border:2px dashed var(--bord);border-radius:14px;background:var(--surf2);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;position:relative;transition:.2s;overflow:hidden">
+          <img id="prod-photo-preview" src="" style="display:none;width:100%;height:100%;object-fit:cover;border-radius:12px">
+          <div id="prod-photo-placeholder" style="display:flex;flex-direction:column;align-items:center;gap:3px">
+            <span style="font-size:22px">🖼️</span>
+            <span style="font-size:9px;color:var(--t2);text-align:center;line-height:1.2">Tap to<br>upload</span>
+          </div>
+          <button id="prod-photo-remove" onclick="event.stopPropagation();removeProductPhoto()"
+            style="display:none;position:absolute;top:3px;right:3px;background:rgba(239,68,68,.85);border:none;color:#fff;width:20px;height:20px;border-radius:50%;font-size:11px;cursor:pointer;line-height:1;padding:0">✕</button>
+        </div>
+        <input type="file" id="prod-photo-file" accept="image/*" style="display:none" onchange="handlePhotoFile(this)">
+        <div style="font-size:9px;color:var(--t3);text-align:center;margin-top:4px">300×300</div>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Icon / Emoji</div>
+        <div class="emoji-grid" id="emoji-grid" style="margin-bottom:6px"></div>
+        <input type="text" id="prod-emoji-inp" placeholder="Or type emoji..." oninput="customEmoji(this.value)"
+          style="width:100%;text-align:center;font-size:18px;padding:8px;border-radius:8px;border:1.5px solid var(--bord);background:var(--surf2);color:var(--text);outline:none">
+      </div>
+    </div>
+
+    <!-- Item Code with barcode scanner + generator -->
+    <div class="row2">
+      <div class="ff">
+        <label>Item Code <span style="font-size:10px;color:var(--t3);font-weight:400">scan / generate →</span></label>
+        <div style="display:flex;gap:6px;align-items:center">
+          <input type="text" id="prod-code" placeholder="Auto / GRO-001" style="flex:1">
+          <button onclick="openAdminScanner()" title="Scan barcode"
+            style="padding:10px 13px;border-radius:8px;background:linear-gradient(135deg,var(--acc),#FF8A00);border:none;color:#0A0E1A;font-size:18px;cursor:pointer;flex-shrink:0;line-height:1">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="8" y1="7" x2="8" y2="17"/><line x1="12" y1="7" x2="12" y2="17"/><line x1="16" y1="7" x2="16" y2="17"/></svg>
+          </button>
+          <button onclick="generateBarcode()" title="Generate new barcode"
+            style="padding:10px 13px;border-radius:8px;background:linear-gradient(135deg,#10B981,#059669);border:none;color:#fff;font-size:13px;cursor:pointer;flex-shrink:0;font-weight:700;line-height:1">
+            ⚡ Gen
+          </button>
+        </div>
+        <div id="barcode-preview" style="display:none;margin-top:8px;background:#fff;border-radius:8px;padding:8px;text-align:center">
+          <svg id="barcode-svg"></svg>
+          <div style="margin-top:6px;display:flex;gap:6px;justify-content:center">
+            <button onclick="printBarcode()" style="font-size:11px;padding:4px 12px;border-radius:6px;background:var(--acc);color:#0A0E1A;border:none;cursor:pointer;font-weight:700">🖨️ Print</button>
+            <button onclick="downloadBarcode()" style="font-size:11px;padding:4px 12px;border-radius:6px;background:var(--surf2);color:var(--text);border:1px solid var(--bord);cursor:pointer;font-weight:700">💾 Save</button>
+          </div>
+        </div>
+      </div>
+      <div class="ff"><label>Product Name *</label><input type="text" id="prod-name" placeholder="Full product name"></div>
+    </div>
+    <div class="row2">
+      <div class="ff"><label>Category</label>
+        <select id="prod-cat">
+          <option value="General">General</option>
+        </select>
+      </div>
+      <div class="ff"><label>Unit</label>
+        <select id="prod-unit">
+          <option>Piece</option><option>Kg</option><option>Gram</option><option>Litre</option>
+          <option>ML</option><option>Pack</option><option>Box</option><option>Dozen</option>
+          <option>Metre</option><option>Pair</option><option>Set</option>
+          <option>Bag</option><option>Bottle</option><option>Bundle</option><option>Can</option>
+          <option>Carton</option><option>CM</option><option>Feet</option><option>Inch</option>
+          <option>Nos</option><option>Packet</option><option>Plate</option><option>Pouch</option>
+          <option>Quintal</option><option>Roll</option><option>Sheet</option><option>Sq.Ft</option>
+          <option>Sq.Mtr</option><option>Tablet</option><option>Ton</option><option>Tube</option>
+          <option>Yard</option>
+        </select>
+      </div>
+    </div>
+    <div class="row3">
+      <div class="ff"><label>Selling Price ₹ *</label><input type="number" id="prod-price" placeholder="0" min="0" step="any"></div>
+      <div class="ff"><label>Cost Price ₹</label><input type="number" id="prod-cost" placeholder="0" min="0" step="any"></div>
+      <div class="ff"><label>GST Rate %</label>
+        <select id="prod-gst">
+          <option value="0">0%</option><option value="5" selected>5%</option>
+          <option value="12">12%</option><option value="18">18%</option><option value="28">28%</option>
+        </select>
+      </div>
+    </div>
+    <div class="row2">
+      <div class="ff"><label>Opening Stock</label><input type="number" id="prod-stock" placeholder="0" min="0"></div>
+      <div class="ff"><label>Low Stock Alert</label><input type="number" id="prod-low-stock" placeholder="10" min="0"></div>
+    </div>
+    <div class="ff"><label>HSN Code</label><input type="text" id="prod-hsn" placeholder="e.g. 1006 for Rice (optional)"></div>
+    <div class="ff"><label>Description</label><input type="text" id="prod-desc" placeholder="Short description (optional)"></div>
+    <input type="hidden" id="prod-edit-id">
+    <button class="btn-pri" id="save-prod-btn" onclick="saveProduct()">✅ Save Product</button>
+    <button class="btn-sec" onclick="closeModal('add-prod-modal')" style="margin-top:8px">Cancel</button>
+    <div style="height:8px"></div>
+  </div>
+</div>
+
+<!-- IMPORT INFO MODAL -->
+<div class="overlay" id="import-info-modal">
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="sheet-title">📥 Bulk Import Products</div>
+    <div class="import-box">
+      <strong>CSV Format Required:</strong><br>
+      Name, Price, Category, Unit, Stock, GST%, CostPrice, Code, HSN<br><br>
+      <strong>Example row:</strong><br>
+      Basmati Rice, 120, Grocery, Kg, 100, 5, 95, GRO-001, 1006
+    </div>
+    <button class="btn-pri" onclick="downloadTemplate()">📄 Download CSV Template</button>
+    <button class="btn-sec" onclick="document.getElementById('import-csv-inp').click();closeModal('import-info-modal')" style="margin-top:8px">📥 Upload CSV File</button>
+    <button class="btn-sec" onclick="closeModal('import-info-modal')" style="margin-top:8px;color:var(--t2)">Cancel</button>
+    <div style="height:8px"></div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script>
+const SB_URL='https://jfqeirfrkjdkqqixivru.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmcWVpcmZya2pka3FxaXhpdnJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzNzQ4MzgsImV4cCI6MjA4OTk1MDgzOH0.akd4E0nil8ypLR4WOykkeYIL8g4uuNU6XdSVh_Y1utk';
+const _sb=supabase.createClient(SB_URL,SB_KEY);
+
+// ── Plan Helper ──
+function isPro(){
+  const s=JSON.parse(localStorage.getItem('sbp_shop')||'{}');
+  return s.plan==='pro'||s.plan==='enterprise';
+}
+
+let _shop=null,_shopId=null,_user=null;
+let _theme=localStorage.getItem('sbp_theme')||'dark';
+let _products=[],_categories=[];
+let _filteredProds=[];
+let _curCatFilter='all',_searchVal='';
+let _editProdId=null;
+let _selEmoji='📦';
+let _online=navigator.onLine;
+
+const BUSINESS_TYPES=[
+  {id:'grocery',    name:'Grocery / Kirana', ic:'🛒', cats:['Grains & Rice','Pulses & Dal','Oils & Ghee','Dairy','Spices & Masala','Snacks','Beverages','Household','Sugar & Salt','Flour']},
+  {id:'kirana',     name:'General Store',    ic:'🏪', cats:['Daily Essentials','Packaged Foods','Beverages','Personal Care','Household','Tobacco','Stationery','Dairy']},
+  {id:'medical',    name:'Medical / Pharmacy',ic:'💊', cats:['OTC Medicines','Prescription','Vitamins & Supplements','Medical Devices','First Aid','Baby Care','Personal Care','Ayurvedic']},
+  {id:'electronics',name:'Electronics',      ic:'📱', cats:['Mobile & Tablets','Accessories','Cables & Chargers','Lighting','Appliances','Batteries','Computer','TV & Audio']},
+  {id:'clothing',   name:'Clothing & Fashion',ic:'👕', cats:["Men's Wear","Women's Wear","Kids Wear","Footwear","Accessories","Undergarments","Ethnic Wear","Sportswear"]},
+  {id:'restaurant', name:'Restaurant / Dhaba',ic:'🍽️', cats:['Starters','Main Course','Rice & Bread','Drinks','Desserts','Combos','Breakfast','Thali']},
+  {id:'hardware',   name:'Hardware & Tools', ic:'🔧', cats:['Hand Tools','Power Tools','Plumbing','Electrical','Paints','Safety Equipment','Fasteners','Sanitary']},
+  {id:'salon',      name:'Salon & Beauty',   ic:'✂️', cats:['Haircut & Trim','Hair Styling','Hair Colour','Facial & Cleanup','Waxing','Massage','Beauty Products','Bridal']},
+  {id:'stationery', name:'Stationery & Books',ic:'📚', cats:['Pens & Pencils','Notebooks & Diaries','Art Supplies','Files & Folders','Printing','Office Supplies','School Items']},
+  {id:'footwear',   name:'Footwear',         ic:'👟', cats:["Men's Footwear","Women's Footwear","Kids Footwear","Sports Shoes","Sandals & Slippers","Formal Shoes","Repair"]},
+  {id:'bakery',     name:'Bakery & Sweets',  ic:'🎂', cats:['Bread & Buns','Cakes','Cookies & Biscuits','Indian Sweets','Namkeen','Pastries','Chocolates','Dry Fruits']},
+  {id:'mobile',     name:'Mobile Shop',      ic:'📲', cats:['Smartphones','Feature Phones','Accessories','Repair Services','SIM Cards','Recharge','Earphones','Cases & Covers']},
+  {id:'fruits',     name:'Fruits & Vegetables',ic:'🥦', cats:['Fresh Vegetables','Fresh Fruits','Leafy Greens','Exotic Vegetables','Dry Fruits','Herbs','Seasonal']},
+  {id:'dairy',      name:'Dairy & Milk',     ic:'🥛', cats:['Milk','Curd & Yogurt','Paneer','Butter & Ghee','Cheese','Ice Cream','Flavoured Milk','Lassi']},
+  {id:'cosmetics',  name:'Cosmetics & Beauty',ic:'💄', cats:['Skincare','Makeup','Hair Care','Fragrances','Nail Care','Men Grooming','Baby Care','Sunscreen']},
+  {id:'automobile', name:'Automobile Parts', ic:'🚗', cats:['Engine Parts','Filters','Lubricants','Tyres & Tubes','Batteries','Accessories','Body Parts','Lights']},
+  {id:'wholesale',  name:'Wholesale / Trader',ic:'🏭', cats:['Category 1','Category 2','Category 3','Category 4','Category 5','Category 6']},
+  {id:'paan',       name:'Pan Shop / Tobacco',ic:'🌿', cats:['Pan & Betel','Tobacco Products','Cigarettes','Gutka & Zarda','Cold Drinks','Chips & Snacks','Mouth Freshener']},
+  {id:'custom',     name:'Custom / Other',   ic:'⚙️', cats:['Category 1','Category 2','Category 3','Category 4','Category 5']},
+];
+
+const EMOJIS=['📦','🛍️','🥛','🌾','🍚','🧴','💊','📱','👕','🔧','🍕','✂️','📚','🥤','🌽','🫙','🛒','🎁','⚡','🏪','🧃','🥩','🍎','🧹','💡','🔌','📋','🖊️','🍫','🧁'];
+
+const SESSION_TIMEOUT=parseInt(localStorage.getItem('sbp_session_timeout')||'30');
+let _actTimer;
+function _resetTimer(){clearTimeout(_actTimer);localStorage.setItem('sbp_last_activity',Date.now().toString());_actTimer=setTimeout(async()=>{await _sb.auth.signOut();window.location.href='index.html';},SESSION_TIMEOUT*60*1000)}
+['click','touchstart','keypress','scroll'].forEach(e=>document.addEventListener(e,_resetTimer,{passive:true}));
+
+function goTo(p){window.location.href=p}
+function toast(msg,type='',dur=3000){const c=document.getElementById('toast-container');const t=document.createElement('div');t.className='toast'+(type?' '+type:'');t.textContent=msg;c.appendChild(t);setTimeout(()=>{t.style.opacity='0';t.style.transition='.2s';setTimeout(()=>t.remove(),220);},dur)}
+function toggleTheme(){_theme=_theme==='dark'?'light':'dark';localStorage.setItem('sbp_theme',_theme);document.documentElement.setAttribute('data-theme',_theme==='light'?'light':'');document.getElementById('theme-btn').textContent=_theme==='light'?'🌙':'☀️'}
+function openModal(id){const el=document.getElementById(id);el.classList.add('open');el.style.display='flex';el.addEventListener('click',e=>{if(e.target===el)closeModal(id);},{once:true})}
+function closeModal(id){const el=document.getElementById(id);el.classList.remove('open');el.style.display='none'}
+function fINR(n){return '₹'+(parseFloat(n)||0).toLocaleString('en-IN',{maximumFractionDigits:0})}
+
+// ── Tab Switching ──
+function showAdmTab(tab){
+  ['biz','cats','products','pos-settings'].forEach(t=>{
+    document.getElementById('tab-'+t).classList.toggle('on',t===tab);
+    document.getElementById('view-'+(t==='products'?'products':t)).style.display=t===tab?(t==='products'?'flex':'block'):'none';
+  });
+  if(tab==='products')renderProducts();
+        syncLocalProducts();
+  if(tab==='cats')renderCatManager();
+}
+
+// ── Business Type ──
+function renderBizGrid(){
+  const el=document.getElementById('biz-grid');
+  const saved=localStorage.getItem('sbp_biz_type')||'grocery';
+  el.innerHTML=BUSINESS_TYPES.map(b=>`
+    <div class="biz-card${b.id===saved?' on':''}" id="biz-${b.id}" onclick="selBiz('${b.id}',this)">
+      <div class="biz-ic">${b.ic}</div>
+      <div class="biz-nm">${b.name}</div>
+    </div>`).join('');
+}
+
+function selBiz(id,el){
+  document.querySelectorAll('.biz-card').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on');
+  localStorage.setItem('sbp_biz_type',id);
+}
+
+function applyBizType(){
+  const bizId=localStorage.getItem('sbp_biz_type')||'grocery';
+  const biz=BUSINESS_TYPES.find(b=>b.id===bizId);
+  if(!biz){toast('Select a business type first','e');return}
+  // Add categories that don't exist yet
+  let added=0;
+  biz.cats.forEach(cat=>{
+    if(!_categories.find(c=>c.name===cat)){
+      const ic=biz.ic;
+      _categories.push({id:'cat_'+Date.now()+'_'+Math.random().toString(36).slice(2),name:cat,emoji:ic,count:0});
+      added++;
+    }
+  });
+  localStorage.setItem('sbp_categories',JSON.stringify(_categories));
+  // Update shop name if filled
+  const nm=document.getElementById('biz-name').value.trim();
+  const ow=document.getElementById('biz-owner').value.trim();
+  if(nm||ow){const s=JSON.parse(localStorage.getItem('sbp_shop')||'{}');if(nm)s.name=nm;if(ow)s.owner_name=ow;localStorage.setItem('sbp_shop',JSON.stringify(s))}
+  toast(`✅ ${biz.name} setup applied — ${added} categories added!`,'s');
+  renderCatManager();
+  showAdmTab('products');
+}
+
+// ── Category Manager ──
+function renderCatManager(){
+  const el=document.getElementById('cat-manager-list');
+  _categories=JSON.parse(localStorage.getItem('sbp_categories')||'[]');
+  document.getElementById('cat-count').textContent=_categories.length;
+  document.getElementById('prod-in-cats').textContent=_products.length;
+  document.getElementById('empty-cats').textContent=_categories.filter(c=>!_products.some(p=>p.category===c.name)).length;
+
+  if(!_categories.length){el.innerHTML='<div style="text-align:center;padding:20px;color:var(--t2);font-size:12px">No categories yet.<br>Apply a business type above or add manually.</div>';return}
+  el.innerHTML=_categories.map((c,i)=>{
+    const cnt=_products.filter(p=>p.category===c.name).length;
+    return `<div class="cat-manage-item">
+      <div class="cat-manage-ic">${c.emoji||'📂'}</div>
+      <div style="flex:1"><div class="cat-manage-nm">${c.name}</div><div class="cat-manage-cnt">${cnt} product${cnt!==1?'s':''}</div></div>
+      <button class="cat-del-btn" onclick="deleteCategory(${i})">🗑️</button>
+    </div>`;
+  }).join('');
+}
+
+function addCategory(){
+  const nm=document.getElementById('nc-name').value.trim();
+  const em=document.getElementById('nc-emoji').value.trim()||'📂';
+  if(!nm){toast('Enter category name','e');return}
+  if(_categories.find(c=>c.name===nm)){toast('Category already exists','i');return}
+  _categories.push({id:'cat_'+Date.now(),name:nm,emoji:em});
+  localStorage.setItem('sbp_categories',JSON.stringify(_categories));
+  document.getElementById('nc-name').value='';
+  document.getElementById('nc-emoji').value='';
+  renderCatManager();
+  toast('✅ '+nm+' added','s');
+}
+
+function deleteCategory(idx){
+  const nm=_categories[idx].name;
+  if(!confirm('Delete "'+nm+'"?\nProducts in this category will be moved to General.'))return;
+  _products.forEach(p=>{if(p.category===nm)p.category='General'});
+  _categories.splice(idx,1);
+  localStorage.setItem('sbp_categories',JSON.stringify(_categories));
+  localStorage.setItem('sbp_products',JSON.stringify(_products));
+  renderCatManager();
+  toast('🗑️ Category deleted','i');
+}
+
+// ── Products ──
+function renderProducts(list){
+  const el=document.getElementById('prod-list');
+  const prods=list||_filteredProds;
+  document.getElementById('prod-total').textContent=_products.length;
+  document.getElementById('prod-low').textContent=_products.filter(p=>parseFloat(p.stock_qty||0)<=parseFloat(p.low_stock_alert||10)&&parseFloat(p.stock_qty||0)>0).length;
+  const stockVal=_products.reduce((s,p)=>s+(parseFloat(p.price||0)*parseFloat(p.stock_qty||0)),0);
+  document.getElementById('prod-value').textContent=fINR(stockVal);
+
+  // Build cat chips
+  buildProdCatChips();
+
+  if(!prods.length){
+    el.innerHTML=`<div class="empty-state"><div style="font-size:44px;margin-bottom:12px">📦</div><div style="font-family:var(--font-h);font-size:15px;font-weight:700;margin-bottom:6px">No products yet</div><div style="font-size:12px;color:var(--t2)">Tap <strong>+ Add</strong> to add your first product<br>or use <strong>📥 Import</strong> to bulk upload via CSV</div></div>`;
+    return;
+  }
+
+  el.innerHTML='<div style="padding-top:6px">'+prods.map(p=>{
+    const stock=parseFloat(p.stock_qty||0);
+    const low=parseFloat(p.low_stock_alert||10);
+    const stockClass=stock<=0?'out':stock<=low?'low':'ok';
+    const stockLabel=stock<=0?'Out of Stock':stock<=low?'Low: '+stock:stock+' '+p.unit;
+    const margin=parseFloat(p.cost_price||0)>0?Math.round(((parseFloat(p.price)-parseFloat(p.cost_price))/parseFloat(p.price))*100):null;
+    return `<div class="prod-card" onclick="openEditProd('${p.id}')">
+      <div class="prod-emoji">${(()=>{const ph=_getPhotoSrc(p);return ph?`<img src="${ph}" style="width:46px;height:46px;object-fit:cover;border-radius:12px;border:1.5px solid var(--bord)">`:p.emoji||'📦';})()}</div>
+      <div class="prod-info">
+        <div class="prod-nm">${p.name}</div>
+        <div class="prod-meta">${p.category||'General'} · GST ${p.gst_rate||0}% · ${p.unit||'Piece'}</div>
+        <div class="prod-code">${p.code?'Code: '+p.code:''} ${p.hsn_code?'· HSN: '+p.hsn_code:''}</div>
+      </div>
+      <div class="prod-right">
+        <div class="prod-price">${fINR(p.price)}</div>
+        ${p.cost_price>0?`<div style="font-size:10px;color:var(--t2);margin-top:1px">Cost: ${fINR(p.cost_price)}${margin!==null?' · '+margin+'% margin':''}</div>`:''}
+        <div class="prod-stock ${stockClass}">${stock<=0?'⛔':stock<=low?'⚠️':'✅'} ${stockLabel}</div>
+        <div class="prod-actions" onclick="event.stopPropagation()">
+          <button class="pa-btn edit" onclick="openEditProd('${p.id}')">✏️ Edit</button>
+          <button class="pa-btn del" onclick="deleteProd('${p.id}','${p.name}')">🗑️</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('')+'<div class="spacer"></div></div>';
+}
+
+function buildProdCatChips(){
+  const bar=document.getElementById('prod-cat-filter');
+  const cats=[...new Set(_products.map(p=>p.category).filter(Boolean))];
+  const existing=Array.from(bar.querySelectorAll('.cat-chip')).map(c=>c.dataset.cat||'all');
+  cats.forEach(cat=>{
+    if(!existing.includes(cat)){
+      const chip=document.createElement('div');
+      chip.className='cat-chip';chip.dataset.cat=cat;chip.textContent=cat;
+      chip.onclick=()=>filterByCat(cat,chip);bar.appendChild(chip);
+    }
+  });
+}
+
+function filterByCat(cat,el){
+  _curCatFilter=cat;
+  document.querySelectorAll('#prod-cat-filter .cat-chip').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on');
+  applyProdFilter();
+}
+
+function filterProds(val){_searchVal=val;applyProdFilter()}
+
+function applyProdFilter(){
+  let list=[..._products];
+  if(_curCatFilter!=='all')list=list.filter(p=>p.category===_curCatFilter);
+  if(_searchVal){const s=_searchVal.toLowerCase();list=list.filter(p=>p.name?.toLowerCase().includes(s)||(p.code||'').toLowerCase().includes(s)||(p.category||'').toLowerCase().includes(s));}
+  _filteredProds=list;
+  renderProducts(list);
+}
+
+// ── Add / Edit Product ──
+function openAddProd(){
+  _editProdId=null;
+  document.getElementById('add-prod-title').textContent='🏷️ Add New Product';
+  document.getElementById('save-prod-btn').textContent='✅ Save Product';
+  ['prod-code','prod-name','prod-price','prod-cost','prod-stock','prod-low-stock','prod-hsn','prod-desc'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
+  document.getElementById('prod-gst').value='5';
+  document.getElementById('prod-unit').value='Piece';
+  document.getElementById('prod-emoji-inp').value='';
+  document.getElementById('prod-edit-id').value='';
+  _selEmoji='📦';
+  _prodPhotoB64=null;
+  _showPhotoPreview(null);
+  document.getElementById('barcode-preview').style.display='none';
+  renderEmojiGrid();
+  fillCatSelect();
+  openModal('add-prod-modal');
+  setTimeout(()=>document.getElementById('prod-name').focus(),300);
+}
+
+function openEditProd(id){
+  const p=_products.find(x=>String(x.id)===String(id));if(!p)return;
+  _editProdId=id;
+  _selEmoji=p.emoji||'📦';
+  document.getElementById('add-prod-title').textContent='✏️ Edit Product';
+  document.getElementById('save-prod-btn').textContent='✅ Update Product';
+  document.getElementById('prod-code').value=p.code||'';
+  document.getElementById('prod-name').value=p.name||'';
+  document.getElementById('prod-price').value=p.price||'';
+  document.getElementById('prod-cost').value=p.cost_price||'';
+  document.getElementById('prod-stock').value=p.stock_qty||'';
+  document.getElementById('prod-low-stock').value=p.low_stock_alert||10;
+  document.getElementById('prod-hsn').value=p.hsn_code||'';
+  document.getElementById('prod-desc').value=p.description||'';
+  document.getElementById('prod-gst').value=p.gst_rate||5;
+  document.getElementById('prod-unit').value=p.unit||'Piece';
+  document.getElementById('prod-emoji-inp').value='';
+  document.getElementById('prod-edit-id').value=id;
+  fillCatSelect(p.category);
+  _prodPhotoB64=null;
+  const _ep=_getPhotoSrc(p);
+  if(_ep){_prodPhotoB64=_ep;_showPhotoPreview(_ep);}else{_showPhotoPreview(null);}
+  renderEmojiGrid();
+  openModal('add-prod-modal');
+  setTimeout(showExistingBarcode,200);
+}
+
+function fillCatSelect(selected=''){
+  const sel=document.getElementById('prod-cat');
+  const cats=_categories.length?_categories.map(c=>c.name):['General','Grocery','Electronics','Clothing','Other'];
+  sel.innerHTML=cats.map(c=>`<option value="${c}"${c===selected?'selected':''}>${c}</option>`).join('');
+  if(!cats.includes('General'))sel.innerHTML+='<option value="General">General</option>';
+}
+
+function renderEmojiGrid(){
+  const el=document.getElementById('emoji-grid');
+  el.innerHTML=EMOJIS.map(e=>`<div class="em-btn${_selEmoji===e?' on':''}" onclick="selectEmoji('${e}',this)">${e}</div>`).join('');
+}
+
+function selectEmoji(em,el){
+  _selEmoji=em;
+  document.querySelectorAll('.em-btn').forEach(b=>b.classList.remove('on'));
+  el.classList.add('on');
+  document.getElementById('prod-emoji-inp').value='';
+}
+
+function customEmoji(val){
+  if(val)_selEmoji=val;
+  document.querySelectorAll('.em-btn').forEach(b=>b.classList.remove('on'));
+}
+
+async function saveProduct(){
+  const name=document.getElementById('prod-name').value.trim();
+  const price=parseFloat(document.getElementById('prod-price').value)||0;
+  if(!name){toast('Product name is required','e');return}
+  if(!price){toast('Enter selling price','e');return}
+
+  const btn=document.getElementById('save-prod-btn');
+  btn.disabled=true;btn.textContent='⏳ Saving...';
+
+  const code=document.getElementById('prod-code').value.trim()||'PRD-'+String(Date.now()).slice(-4);
+  const prodData={
+    name,code,
+    emoji:_selEmoji,
+    category:document.getElementById('prod-cat').value||'General',
+    unit:document.getElementById('prod-unit').value||'Piece',
+    price,
+    cost_price:parseFloat(document.getElementById('prod-cost').value)||0,
+    gst_rate:parseFloat(document.getElementById('prod-gst').value)||0,
+    stock_qty:parseFloat(document.getElementById('prod-stock').value)||0,
+    low_stock_alert:parseFloat(document.getElementById('prod-low-stock').value)||10,
+    hsn_code:document.getElementById('prod-hsn').value.trim()||'',
+    description:document.getElementById('prod-desc').value.trim()||'',
+    shop_id:_shopId
+  };
+
+  try{
+    if(_editProdId){
+      const idx=_products.findIndex(p=>String(p.id)===String(_editProdId));
+      if(idx>=0)_products[idx]={..._products[idx],...prodData};
+      if(_online&&_shopId&&!String(_editProdId).startsWith('local_')){
+        await _sb.from('products').update(prodData).eq('id',_editProdId);
+      }
+      toast('✅ '+name+' updated!','s');
+    }else{
+      let saved=null;
+      if(isPro()&&_online&&_shopId){
+        const{data,error}=await _sb.from('products').insert(prodData).select().single();
+        if(!error&&data)saved=data;
+      }
+      if(!saved)saved={...prodData,id:'local_'+Date.now(),created_at:new Date().toISOString()};
+      _products.unshift(saved);
+      toast('✅ '+name+' added!','s');
+    }
+    localStorage.setItem('sbp_products',JSON.stringify(_products));
+    // Save photo on product object directly
+    if(_prodPhotoB64){
+      const _pid=_editProdId||(_products[0]?.id);
+      const idx=_products.findIndex(x=>String(x.id)===String(_pid));
+      if(idx>=0){_products[idx].photo=_prodPhotoB64;localStorage.setItem('sbp_products',JSON.stringify(_products));}
+    }
+    // Save photo to localStorage backup
+    const _sid=_shopId;
+    const _pid=_editProdId||(_products[0]?.id);
+    if(_sid&&_pid) _savePhotoAndGetUrl(String(_sid),String(_pid)).then(url=>{
+      if(url){
+        const i=_products.findIndex(x=>String(x.id)===String(_pid));
+        if(i>=0){_products[i].photo_url=url;localStorage.setItem('sbp_products',JSON.stringify(_products));}
+        if(window._sb)window._sb.from('products').update({photo_url:url}).eq('id',_pid).then(()=>{}).catch(()=>{});
+      }
+    }).catch(()=>{});
+    closeModal('add-prod-modal');
+    applyProdFilter();
+  }catch(err){toast('❌ '+err.message,'e')}
+  finally{btn.disabled=false;btn.textContent=_editProdId?'✅ Update Product':'✅ Save Product'}
+}
+
+async function deleteProd(id,name){
+  if(!confirm('Delete "'+name+'"?'))return;
+  _products=_products.filter(p=>String(p.id)!==String(id));
+  localStorage.setItem('sbp_products',JSON.stringify(_products));
+  if(_online&&!String(id).startsWith('local_'))await _sb.from('products').delete().eq('id',id);
+  applyProdFilter();
+  toast('🗑️ '+name+' deleted','i');
+}
+
+// ── Bulk Import ──
+function bulkImport(inp){
+  const file=inp.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const lines=e.target.result.split('\n').filter(l=>l.trim());
+      if(lines.length<2){toast('CSV needs header + at least 1 row','e');return}
+      const headers=lines[0].toLowerCase().split(',').map(h=>h.trim().replace(/"/g,''));
+      const get=(row,name,fallback='')=>{const idx=headers.indexOf(name);return idx>=0?(row[idx]||'').trim().replace(/"/g,'')||fallback:fallback};
+      let imported=0;
+      for(let i=1;i<lines.length;i++){
+        const row=lines[i].split(',');
+        const name=get(row,'name');if(!name)continue;
+        const p={
+          id:'local_'+Date.now()+'_'+i,
+          name,
+          emoji:'📦',
+          code:get(row,'code','PRD-'+String(i).padStart(3,'0')),
+          category:get(row,'category','General'),
+          unit:get(row,'unit','Piece'),
+          price:parseFloat(get(row,'price','0'))||0,
+          cost_price:parseFloat(get(row,'costprice',get(row,'cost_price','0')))||0,
+          gst_rate:parseFloat(get(row,'gst%',get(row,'gst_rate','0')))||0,
+          stock_qty:parseFloat(get(row,'stock','0'))||0,
+          low_stock_alert:10,
+          hsn_code:get(row,'hsn',''),
+          shop_id:_shopId,
+          created_at:new Date().toISOString()
+        };
+        if(!_products.find(x=>x.name===p.name)){_products.push(p);imported++;}
+      }
+      localStorage.setItem('sbp_products',JSON.stringify(_products));
+      // Push to Supabase in background
+      if(_online&&_shopId&&imported>0){
+        const newItems=_products.filter(p=>String(p.id).startsWith('local_')).slice(0,imported);
+        newItems.forEach(async p=>{
+          const{data}=await _sb.from('products').insert({...p,id:undefined}).select().single();
+          if(data){const idx=_products.findIndex(x=>x.id===p.id);if(idx>=0)_products[idx]=data;localStorage.setItem('sbp_products',JSON.stringify(_products));}
+        });
+      }
+      applyProdFilter();
+      toast(`✅ ${imported} products imported!`,'s',4000);
+    }catch(err){toast('❌ Import error: '+err.message,'e')}
+  };
+  reader.readAsText(file);inp.value='';
+}
+
+function downloadTemplate(){
+  const csv='Name,Price,Category,Unit,Stock,GST%,CostPrice,Code,HSN\nBasmati Rice,120,Grocery,Kg,100,5,95,GRO-001,1006\nRefined Oil,165,Grocery,Litre,80,5,130,GRO-002,\nFresh Milk,60,Dairy,Litre,100,0,48,DAI-001,';
+  const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);a.download='ShopBillPro_Product_Import_Template.csv';a.click();
+  toast('📄 Template downloaded!','s');
+}
+
+// ── POS Settings ──
+function savePOSSettings(){
+  const settings={showStock:document.getElementById('pos-show-stock').checked,showCode:document.getElementById('pos-show-code').checked,autoGST:document.getElementById('pos-auto-gst').checked,lowAlert:document.getElementById('pos-low-alert').checked,blockOOS:document.getElementById('pos-block-oos').checked,lowThresh:parseInt(document.getElementById('pos-low-thresh').value)||10};
+  localStorage.setItem('sbp_pos_settings',JSON.stringify(settings));
+  toast('✅ POS Settings saved!','s');
+}
+
+// ── Init ──
+async function init(){
+  if(_theme==='light'){document.documentElement.setAttribute('data-theme','light');document.getElementById('theme-btn').textContent='🌙'}
+  const{data:{session}}=await _sb.auth.getSession();
+  if(!session){window.location.href='index.html';return}
+  const last=parseInt(localStorage.getItem('sbp_last_activity')||'0');
+  if(last&&(Date.now()-last)/60000>SESSION_TIMEOUT){await _sb.auth.signOut();window.location.href='index.html';return}
+  _shopId=localStorage.getItem('sbp_shop_id');
+  _shop=JSON.parse(localStorage.getItem('sbp_shop')||'{}');
+  _resetTimer();
+
+  _products=JSON.parse(localStorage.getItem('sbp_products')||'[]');
+  _categories=JSON.parse(localStorage.getItem('sbp_categories')||'[]');
+  _filteredProds=[..._products];
+
+  renderBizGrid();
+
+  // Pre-fill shop name if available
+  if(_shop.name)document.getElementById('biz-name').value=_shop.name;
+  if(_shop.owner_name)document.getElementById('biz-owner').value=_shop.owner_name;
+
+  // Check URL params
+  const params=new URLSearchParams(window.location.search);
+  if(params.get('tab')==='products')showAdmTab('products');
+
+  // Fetch from Supabase
+  if(isPro()&&_online&&_shopId){
+    try{
+      const{data:prods}=await _sb.from('products').select('*').eq('shop_id',_shopId).order('name');
+      if(prods){
+        // Keep local_ products that haven't synced yet + merge with Supabase data
+        const localOnly=_products.filter(p=>String(p.id).startsWith('local_'));
+        const merged=[...prods,...localOnly.filter(l=>!prods.find(s=>s.name===l.name))];
+        _products=merged;
+        _filteredProds=[..._products];
+        localStorage.setItem('sbp_products',JSON.stringify(_products));
+        renderProducts();
+      }
+    }catch(e){console.warn(e)}
+  }
+}
+init();
+
+(function(){
+  if(window.innerWidth<1024)return;
+  var page=window.location.pathname.split('/').pop()||'dashboard.html';
+  var nav=[
+    {ic:'🏠',lb:'Dashboard',url:'dashboard.html'},
+    {ic:'🧾',lb:'New Bill',url:'billing.html',fab:true},
+    {ic:'📋',lb:'Bills',url:'bills.html'},
+    {ic:'👥',lb:'Customers',url:'customers.html'},
+    {ic:'📦',lb:'Inventory',url:'stock.html'},
+    {ic:'📊',lb:'Reports',url:'reports.html'},
+    {ic:'🛒',lb:'POS Admin',url:'pos-admin.html'},
+    {ic:'💬',lb:'WhatsApp',url:'wa-center.html'},
+    {ic:'💰',lb:'Cash Register',url:'cash-register.html'},
+    {ic:'🚚',lb:'Suppliers',url:'supplier.html'},
+    {ic:'🔄',lb:'Recurring',url:'recurring.html'},
+    {ic:'🗂️',lb:'Templates',url:'bill-templates.html'},
+    {ic:'👥',lb:'Team & Users',url:'team.html'},
+    {ic:'🚀',lb:'Plans & Pricing',url:'subscription.html'},
+    {ic:'⚙️',lb:'Settings',url:'settings.html'},
+  ];
+  var sb=document.createElement('div');sb.id='dsb';
+  sb.innerHTML='<div class="dsb-logo"><svg width="22" height="24" viewBox="0 0 56 62" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M28 2L4 14V32C4 46 28 60 28 60C28 60 52 46 52 32V14L28 2Z" fill="url(#sg1)"/><rect x="18" y="18" width="20" height="26" rx="2" fill="#0A0E1A" fill-opacity=".6"/><rect x="18" y="18" width="20" height="26" rx="2" stroke="#fff" stroke-width="1.5" fill="none"/><line x1="22" y1="24" x2="34" y2="24" stroke="#F5A623" stroke-width="1.5" stroke-linecap="round"/><line x1="22" y1="28" x2="30" y2="28" stroke="rgba(255,255,255,.4)" stroke-width="1" stroke-linecap="round"/><line x1="22" y1="31" x2="32" y2="31" stroke="rgba(255,255,255,.4)" stroke-width="1" stroke-linecap="round"/><line x1="22" y1="34" x2="28" y2="34" stroke="rgba(255,255,255,.4)" stroke-width="1" stroke-linecap="round"/><circle cx="32" cy="37" r="5" fill="#F5A623"/><polyline points="30,37 31.5,38.5 34.5,35.5" fill="none" stroke="#0A0E1A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><defs><linearGradient id="sg1" x1="4" y1="2" x2="52" y2="60" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#F5A623"/><stop offset="100%" stop-color="#FF6B35"/></linearGradient></defs></svg><span class="dsb-brand">ShopBill Pro</span></div><div class="dsb-nav">'+nav.map(function(n){var c='dsb-item'+(page===n.url?' active':'')+(n.fab?' fab-sb':'');return '<a class="'+c+'" href="'+n.url+'"><span class="dsb-ic">'+n.ic+'</span><span>'+n.lb+'</span></a>';}).join('')+'</div><div class="dsb-footer"><button class="dsb-item" id="dsb-logout"><span class="dsb-ic">🚪</span><span>Logout</span></button><div class="dsb-ver">ShopBill Pro v1.0</div></div>';
+  document.body.prepend(sb);
+  document.getElementById('dsb-logout').addEventListener('click',function(){
+    if(window._sb)window._sb.auth.signOut().then(function(){window.location.href='index.html';});
+    else window.location.href='index.html';
+  });
+})();
+(function(){document.documentElement.lang=localStorage.getItem('sbp_lang')||'en';})();
+
+// Push pending local_ products to Supabase
+async function syncLocalProducts() {
+  if (!_online || !_shopId) return;
+  const localProds = _products.filter(p => String(p.id).startsWith('local_'));
+  if (!localProds.length) return;
+  for (const p of localProds) {
+    try {
+      const prodData = {...p, id: undefined, shop_id: _shopId};
+      const {data, error} = await _sb.from('products').insert(prodData).select().single();
+      if (!error && data) {
+        const idx = _products.findIndex(x => x.id === p.id);
+        if (idx >= 0) _products[idx] = data;
+      }
+    } catch(e) {}
+  }
+  localStorage.setItem('sbp_products', JSON.stringify(_products));
+  _filteredProds = [..._products];
+}
+
+async function refreshShopPlan() {
+  if (!navigator.onLine || !window._sb) return;
+  try {
+    const { data: { user } } = await _sb.auth.getUser();
+    if (!user) return;
+    const { data: shops } = await _sb.from('shops').select('*').eq('owner_id', user.id).limit(1);
+    if (shops?.length) {
+      localStorage.setItem('sbp_shop', JSON.stringify(shops[0]));
+      localStorage.setItem('sbp_shop_id', shops[0].id);
+      window._shop = shops[0];
+    }
+  } catch(e) {}
+}
+
+/* ══ Staff Activity Tracking (Business Plan) ══ */
+function logActivity(action, detail) {
+  const plan = (JSON.parse(localStorage.getItem('sbp_shop')||'{}')).plan||'free';
+  if(plan !== 'enterprise') return;
+  const log = JSON.parse(localStorage.getItem('sbp_activity_log')||'[]');
+  const entry = {
+    id: Date.now(),
+    action,
+    detail,
+    user: (JSON.parse(localStorage.getItem('sbp_shop')||'{}')).owner_name || 'Owner',
+    role: localStorage.getItem('sbp_role')||'Owner',
+    ts: new Date().toISOString()
+  };
+  log.unshift(entry);
+  // Keep last 200 entries
+  localStorage.setItem('sbp_activity_log', JSON.stringify(log.slice(0,200)));
+}
+window.logActivity = logActivity;
+</script>
+
+<!-- Admin Scanner Modal -->
+<div id="admin-scan-modal" style="display:none;position:fixed;inset:0;z-index:9000;background:#000;flex-direction:column">
+  <div style="flex:1;position:relative;overflow:hidden">
+    <video id="admin-scan-video" autoplay playsinline muted style="width:100%;height:100%;object-fit:cover"></video>
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none">
+      <div style="width:260px;height:150px;border-radius:16px;border:3px solid #F5A623;box-shadow:0 0 0 9999px rgba(0,0,0,.6);position:relative;overflow:hidden">
+        <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#FF8A00,transparent);animation:scanLine 1.6s ease-in-out infinite"></div>
+      </div>
+    </div>
+    <button onclick="closeAdminScanner()" style="position:absolute;top:16px;right:16px;background:rgba(0,0,0,.7);border:none;color:#fff;width:44px;height:44px;border-radius:50%;font-size:20px;cursor:pointer;z-index:1">✕</button>
+    <button id="admin-torch-btn" onclick="SBPScanner&&SBPScanner.toggleTorch()" style="display:none;position:absolute;top:16px;right:68px;background:rgba(0,0,0,.7);border:none;color:#fff;width:44px;height:44px;border-radius:50%;font-size:20px;cursor:pointer;z-index:1;align-items:center;justify-content:center">🔦</button>
+  </div>
+  <div style="padding:14px;background:#13131C;display:flex;flex-direction:column;gap:10px">
+    <div id="admin-scan-status" style="font-family:'Outfit',sans-serif;font-size:14px;font-weight:700;color:#F5A623;text-align:center">📷 Starting camera...</div>
+    <input id="admin-scan-inp" type="text" placeholder="Or type barcode + Enter"
+      style="width:100%;padding:12px;border-radius:12px;border:1.5px solid #2A2A3A;background:#1C1C28;color:#F0EFF8;font-size:16px;text-align:center;outline:none"
+      onkeydown="if(event.key='Enter')adminScanManual(this.value)">
+    <div style="display:flex;gap:8px">
+      <button onclick="adminScanManual(document.getElementById('admin-scan-inp').value)"
+        style="flex:1;padding:13px;border-radius:12px;background:#F5A623;color:#fff;border:none;font-weight:700;font-size:14px;cursor:pointer">🔍 Use Code</button>
+      <button onclick="closeAdminScanner()"
+        style="flex:1;padding:13px;border-radius:12px;background:#252534;color:#8A8AA8;border:1px solid #2A2A3A;font-weight:700;font-size:14px;cursor:pointer">✕ Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Product Photo ──
+let _prodPhotoB64 = null;
+
+function handlePhotoDrop(e){
+  e.preventDefault();
+  document.getElementById('prod-photo-zone').style.borderColor='var(--bord)';
+  const file=e.dataTransfer.files[0];
+  if(file&&file.type.startsWith('image/'))_processPhotoFile(file);
+}
+function handlePhotoFile(inp){
+  const file=inp.files[0];
+  if(file)_processPhotoFile(file);
+  inp.value='';
+}
+function _processPhotoFile(file){
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    const img=new Image();
+    img.onload=()=>{
+      const canvas=document.createElement('canvas');
+      canvas.width=300;canvas.height=300;
+      const ctx=canvas.getContext('2d');
+      const sz=Math.min(img.width,img.height);
+      ctx.drawImage(img,(img.width-sz)/2,(img.height-sz)/2,sz,sz,0,0,300,300);
+      _prodPhotoB64=canvas.toDataURL('image/jpeg',0.82);
+      _showPhotoPreview(_prodPhotoB64);
+    };
+    img.src=ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+function _showPhotoPreview(b64){
+  const prev=document.getElementById('prod-photo-preview');
+  const ph=document.getElementById('prod-photo-placeholder');
+  const rm=document.getElementById('prod-photo-remove');
+  if(b64){
+    prev.src=b64;prev.style.display='block';
+    ph.style.display='none';rm.style.display='flex';
+    document.getElementById('prod-photo-zone').style.borderColor='var(--acc)';
+  }else{
+    prev.src='';prev.style.display='none';
+    ph.style.display='flex';rm.style.display='none';
+    document.getElementById('prod-photo-zone').style.borderColor='var(--bord)';
+  }
+}
+function removeProductPhoto(){ _prodPhotoB64=null; _showPhotoPreview(null); }
+function _photoLocalKey(sid,pid){ return 'sbp_photo_'+sid+'_'+pid; }
+async function _savePhotoAndGetUrl(shopId,prodId){
+  if(!_prodPhotoB64) return null;
+  try{ localStorage.setItem(_photoLocalKey(shopId,prodId),_prodPhotoB64); }catch(e){}
+  if(typeof isPro==='function'&&isPro()&&navigator.onLine&&window._sb){
+    try{
+      const res=await fetch(_prodPhotoB64);
+      const blob=await res.blob();
+      const{error}=await window._sb.storage.from('product-photos')
+        .upload(shopId+'/'+prodId+'.jpg',blob,{contentType:'image/jpeg',upsert:true});
+      if(!error){
+        const{data}=window._sb.storage.from('product-photos').getPublicUrl(shopId+'/'+prodId+'.jpg');
+        if(data?.publicUrl) return data.publicUrl;
+      }
+    }catch(e){}
+  }
+  return null;
+}
+// ══ Barcode Generator ══
+function generateBarcode(){
+  const codeInp=document.getElementById('prod-code');
+  let code=codeInp.value.trim();
+  if(!code){
+    const prefix='200';
+    const ts=Date.now().toString().slice(-9);
+    code=prefix+ts;
+    let sum=0;
+    for(let i=0;i<12;i++) sum+=parseInt(code[i])*(i%2===0?1:3);
+    code+=(10-(sum%10))%10;
+    codeInp.value=code;
+  }
+  const preview=document.getElementById('barcode-preview');
+  const svg=document.getElementById('barcode-svg');
+  try{
+    const format=code.length===13&&/^\d+$/.test(code)?'EAN13':
+                 code.length===8&&/^\d+$/.test(code)?'EAN8':'CODE128';
+    JsBarcode(svg,code,{format:format,width:2,height:60,displayValue:true,fontSize:14,margin:5,background:'#ffffff',lineColor:'#000000'});
+    preview.style.display='block';
+    toast('✅ Barcode generated: '+code,'s');
+  }catch(e){
+    try{
+      JsBarcode(svg,code,{format:'CODE128',width:2,height:60,displayValue:true,fontSize:14,margin:5,background:'#ffffff',lineColor:'#000000'});
+      preview.style.display='block';
+      toast('✅ Barcode generated: '+code,'s');
+    }catch(e2){toast('❌ Invalid code for barcode','e');preview.style.display='none';}
+  }
+}
+function printBarcode(){
+  const svg=document.getElementById('barcode-svg');if(!svg)return;
+  const prodName=document.getElementById('prod-name').value.trim()||'Product';
+  const prodPrice=document.getElementById('prod-price').value.trim();
+  const svgData=new XMLSerializer().serializeToString(svg);
+  const w=window.open('','_blank','width=400,height=300');
+  w.document.write('<html><head><title>Print Barcode</title><style>body{margin:0;display:flex;flex-wrap:wrap;justify-content:center;padding:10px;font-family:Arial,sans-serif}.barcode-label{border:1px dashed #ccc;padding:8px;margin:4px;text-align:center;width:200px;page-break-inside:avoid}.barcode-label .name{font-size:11px;font-weight:bold;margin-bottom:4px}.barcode-label .price{font-size:13px;font-weight:bold;margin-top:4px}@media print{.no-print{display:none}}</style></head><body><div class="no-print" style="width:100%;text-align:center;margin-bottom:10px"><label>Copies: <input type="number" id="copies" value="1" min="1" max="100" style="width:60px"></label> <button onclick="genCopies()">Generate</button> <button onclick="window.print()">Print</button></div><div id="labels"><div class="barcode-label"><div class="name">'+prodName+'</div>'+svgData+(prodPrice?'<div class="price">₹'+prodPrice+'</div>':'')+'</div></div><script>function genCopies(){var n=parseInt(document.getElementById("copies").value)||1;var l=document.querySelector(".barcode-label").outerHTML;document.getElementById("labels").innerHTML=l.repeat(n);}<\/script></body></html>');
+  w.document.close();
+}
+function downloadBarcode(){
+  const svg=document.getElementById('barcode-svg');if(!svg)return;
+  const svgData=new XMLSerializer().serializeToString(svg);
+  const canvas=document.createElement('canvas');const ctx=canvas.getContext('2d');
+  const img=new Image();
+  img.onload=function(){
+    canvas.width=img.width;canvas.height=img.height;
+    ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.drawImage(img,0,0);
+    const a=document.createElement('a');
+    a.download='barcode-'+(document.getElementById('prod-code').value||'product')+'.png';
+    a.href=canvas.toDataURL('image/png');a.click();
+    toast('✅ Barcode image saved','s');
+  };
+  img.src='data:image/svg+xml;base64,'+btoa(unescape(encodeURIComponent(svgData)));
+}
+function showExistingBarcode(){
+  const code=document.getElementById('prod-code').value.trim();
+  if(code&&typeof JsBarcode!=='undefined'){
+    try{
+      const format=code.length===13&&/^\d+$/.test(code)?'EAN13':code.length===8&&/^\d+$/.test(code)?'EAN8':'CODE128';
+      JsBarcode('#barcode-svg',code,{format:format,width:2,height:60,displayValue:true,fontSize:14,margin:5,background:'#ffffff',lineColor:'#000000'});
+      document.getElementById('barcode-preview').style.display='block';
+    }catch(e){
+      try{JsBarcode('#barcode-svg',code,{format:'CODE128',width:2,height:60,displayValue:true,fontSize:14,margin:5,background:'#ffffff',lineColor:'#000000'});document.getElementById('barcode-preview').style.display='block';}
+      catch(e2){document.getElementById('barcode-preview').style.display='none';}
+    }
+  }
+}
+
+function _getPhotoSrc(p){
+  if(p?.photo_url) return p.photo_url;
+  const sid=localStorage.getItem('sbp_shop_id')||'';
+  if(!sid||!p?.id) return null;
+  try{ return localStorage.getItem(_photoLocalKey(sid,String(p.id)))||null; }catch{ return null; }
+}
+
+// ── Admin Scanner (uses scanner.js) ──
+const _ADMIN_OPTS={
+  modalId:'admin-scan-modal',videoId:'admin-scan-video',
+  statusId:'admin-scan-status',manualInputId:'admin-scan-inp',torchBtnId:'admin-torch-btn'
+};
+function openAdminScanner(){
+  if(typeof SBPScanner==='undefined'){
+    // scanner.js not loaded — fallback: just focus the code field
+    document.getElementById('prod-code').focus();
+    toast('Type barcode manually','i');
+    return;
+  }
+  SBPScanner.open({..._ADMIN_OPTS, onResult:onAdminScanResult});
+}
+function closeAdminScanner(){ if(typeof SBPScanner!=='undefined') SBPScanner.close(_ADMIN_OPTS); }
+function adminScanManual(val){
+  val=(val||'').trim();if(!val)return;
+  closeAdminScanner();onAdminScanResult(val);
+}
+function onAdminScanResult(code){
+  closeAdminScanner();
+  code=(code||'').trim();
+  const codeInp=document.getElementById('prod-code');
+  if(codeInp){ codeInp.value=code; }
+  const existing=_products.find(p=>(p.code||'').toLowerCase()===code.toLowerCase()||(p.hsn_code||'').toLowerCase()===code.toLowerCase());
+  if(existing){ toast('⚠️ Product exists: '+existing.name,'i',3000); openEditProd(String(existing.id)); }
+  else { toast('✅ Code scanned: '+code,'s'); }
+}
+</script>
+
+</body>
+</html>

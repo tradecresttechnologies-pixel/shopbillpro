@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png?v=2">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180x180.png?v=2">
+<title>Feature Flags — Admin Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: #0A0A12;
+      color: #F0EFF8;
+    }
+
+    .dashboard {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      width: 280px;
+      background: rgba(19, 19, 28, 0.8);
+      backdrop-filter: blur(10px);
+      border-right: 1px solid rgba(124, 58, 237, 0.2);
+      padding: 24px;
+      position: fixed;
+      height: 100vh;
+      overflow-y: auto;
+      left: 0;
+      top: 0;
+    }
+
+    .main-content {
+      flex: 1;
+      margin-left: 280px;
+      padding: 32px;
+    }
+
+    .nav-item {
+      padding: 12px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      margin-bottom: 6px;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .nav-item:hover {
+      background: rgba(124, 58, 237, 0.1);
+      color: #F5A623;
+    }
+
+    .nav-item.active {
+      background: rgba(124, 58, 237, 0.2);
+      color: #F5A623;
+      border-left: 3px solid #F5A623;
+      padding-left: 11px;
+    }
+
+    .header {
+      margin-bottom: 32px;
+    }
+
+    .header h1 {
+      font-size: 32px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #F5A623, #FF8A00);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 8px;
+    }
+
+    .header p {
+      color: #8A8AA8;
+      font-size: 14px;
+    }
+
+    .flag-card {
+      background: rgba(20, 18, 32, 0.5);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(124, 58, 237, 0.2);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 20px;
+      transition: all 0.2s;
+    }
+
+    .flag-card:hover {
+      border-color: rgba(124, 58, 237, 0.4);
+    }
+
+    .flag-info {
+      flex: 1;
+    }
+
+    .flag-name {
+      font-size: 16px;
+      font-weight: 700;
+      color: #F0EFF8;
+      margin-bottom: 4px;
+    }
+
+    .flag-desc {
+      font-size: 13px;
+      color: #8A8AA8;
+      margin-bottom: 8px;
+    }
+
+    .flag-meta {
+      font-size: 11px;
+      color: #5E5A7A;
+    }
+
+    .toggle {
+      position: relative;
+      width: 50px;
+      height: 28px;
+      background: rgba(124, 58, 237, 0.2);
+      border: 1px solid rgba(124, 58, 237, 0.3);
+      border-radius: 14px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .toggle.on {
+      background: #10B981;
+      border-color: #059669;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 24px;
+      height: 24px;
+      background: white;
+      border-radius: 12px;
+      transition: all 0.3s;
+    }
+
+    .toggle.on .toggle-slider {
+      left: 24px;
+    }
+
+    .add-flag-btn {
+      padding: 12px 20px;
+      background: linear-gradient(135deg, #F5A623, #FF8A00);
+      color: #0A0E1A;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 24px;
+    }
+
+    .add-flag-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(124, 58, 237, 0.4);
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(5px);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal.show {
+      display: flex;
+    }
+
+    .modal-content {
+      background: rgba(20, 18, 32, 0.9);
+      border: 1px solid rgba(124, 58, 237, 0.2);
+      border-radius: 12px;
+      padding: 32px;
+      max-width: 500px;
+      width: 90%;
+    }
+
+    .modal-title {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 20px;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #B8B4D8;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    input, textarea {
+      width: 100%;
+      padding: 10px 12px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(124, 58, 237, 0.3);
+      border-radius: 8px;
+      font-family: 'Outfit', sans-serif;
+      font-size: 13px;
+      color: #F0EFF8;
+      transition: all 0.2s;
+    }
+
+    input:focus, textarea:focus {
+      outline: none;
+      background: rgba(255, 255, 255, 0.08);
+      border-color: #F5A623;
+      box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 60px;
+    }
+
+    .modal-buttons {
+      display: flex;
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 13px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #F5A623, #FF8A00);
+      color: #0A0E1A;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(124, 58, 237, 0.4);
+    }
+
+    .btn-secondary {
+      background: rgba(124, 58, 237, 0.1);
+      color: #F5A623;
+      border: 1px solid rgba(124, 58, 237, 0.3);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(124, 58, 237, 0.2);
+    }
+
+    @media (max-width: 768px) {
+      .sidebar { position: static; width: 100%; height: auto; }
+      .main-content { margin-left: 0; }
+      .flag-card { flex-direction: column; }
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+
+    .logo-icon {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, #F5A623, #FF8A00);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+
+    .logo-text {
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .nav-section {
+      margin-bottom: 32px;
+    }
+
+    .nav-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #5E5A7A;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      letter-spacing: 0.5px;
+    }
+
+    .nav-divider {
+      height: 1px;
+      background: rgba(124, 58, 237, 0.1);
+      margin: 12px 0;
+    }
+
+    .nav-icon {
+      font-size: 16px;
+      min-width: 20px;
+    }
+
+    .flag-list {
+      background: rgba(20, 18, 32, 0.3);
+      border: 1px solid rgba(124, 58, 237, 0.1);
+      border-radius: 12px;
+      padding: 20px;
+      margin-top: 24px;
+    }
+
+    .no-flags {
+      text-align: center;
+      padding: 40px;
+      color: #8A8AA8;
+    }
+  </style>
+</head>
+<body>
+  <div class="dashboard">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="logo">
+        <div class="logo-icon">🛡️</div>
+        <div class="logo-text">Admin</div>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-label">Main</div>
+        <div class="nav-item" data-page="dashboard">
+          <span class="nav-icon">📊</span>
+          <span>Dashboard</span>
+        </div>
+        <div class="nav-item" data-page="analytics">
+          <span class="nav-icon">📈</span>
+          <span>Analytics</span>
+        </div>
+        <div class="nav-item" data-page="users">
+          <span class="nav-icon">👥</span>
+          <span>Users</span>
+        </div>
+        <div class="nav-item" data-page="revenue">
+          <span class="nav-icon">💰</span>
+          <span>Revenue</span>
+        </div>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-label">Management</div>
+        <div class="nav-item active" data-page="features">
+          <span class="nav-icon">🚀</span>
+          <span>Feature Flags</span>
+        </div>
+        <div class="nav-item" data-page="technical">
+          <span class="nav-icon">⚙️</span>
+          <span>Technical Health</span>
+        </div>
+      </div>
+
+      <div class="nav-divider"></div>
+
+      <div class="nav-section">
+        <div class="nav-label">System</div>
+        <div class="nav-item" data-page="notifications">
+          <span class="nav-icon">🔔</span>
+          <span>Notifications</span>
+        </div>
+        <div class="nav-item" data-page="audit">
+          <span class="nav-icon">📋</span>
+          <span>Audit Logs</span>
+        </div>
+      </div>
+
+      <div class="nav-divider" style="margin-top: auto; margin-bottom: 16px;"></div>
+
+      <div class="nav-item" id="logoutBtn">
+        <span class="nav-icon">🚪</span>
+        <span>Logout</span>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+      <div class="header">
+        <h1>Feature Flags</h1>
+        <p>Control features without redeploying. Instant rollout control.</p>
+      </div>
+
+      <button class="add-flag-btn" onclick="showAddFlagModal()">+ Add Feature Flag</button>
+
+      <!-- Flags List -->
+      <div id="flagsList"></div>
+      <div class="flag-list" id="emptyState" style="display: none;">
+        <div class="no-flags">No feature flags yet. Create one to get started!</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Flag Modal -->
+  <div class="modal" id="addFlagModal">
+    <div class="modal-content">
+      <div class="modal-title">Create Feature Flag</div>
+      <form id="flagForm">
+        <div class="form-group">
+          <label for="flagName">Flag Name</label>
+          <input 
+            type="text" 
+            id="flagName" 
+            placeholder="e.g., barcode_scanner_beta" 
+            required
+          >
+        </div>
+        <div class="form-group">
+          <label for="flagDesc">Description</label>
+          <textarea 
+            id="flagDesc" 
+            placeholder="What does this flag control?" 
+            required
+          ></textarea>
+        </div>
+        <div class="form-group">
+          <label for="flagValue">Enabled by Default</label>
+          <div style="display: flex; gap: 12px; margin-top: 8px;">
+            <input 
+              type="radio" 
+              id="flagValueTrue" 
+              name="flagValue" 
+              value="true"
+              checked
+            >
+            <label for="flagValueTrue" style="text-transform: none; margin: 0;">Yes (Enabled)</label>
+            <input 
+              type="radio" 
+              id="flagValueFalse" 
+              name="flagValue" 
+              value="false"
+            >
+            <label for="flagValueFalse" style="text-transform: none; margin: 0;">No (Disabled)</label>
+          </div>
+        </div>
+        <div class="modal-buttons">
+          <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Create Flag</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="admin-auth.js"></script>
+  <script src="admin-db.js"></script>
+  <script>
+    if (!requireAdminAuth()) throw new Error('Not authenticated');
+
+    const auth = AdminAuth.getInstance();
+    const db = AdminDB.getInstance();
+
+    // Navigation
+    document.querySelectorAll('.nav-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const page = item.getAttribute('data-page');
+        if (page && page !== 'features') {
+          window.location.href = `admin-${page}.html`;
+        }
+      });
+    });
+
+    // Logout
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      if (confirm('Logout?')) {
+        auth.logout();
+        window.location.href = 'admin-login.html';
+      }
+    });
+
+    // Form submission
+    document.getElementById('flagForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+
+      const name = document.getElementById('flagName').value;
+      const desc = document.getElementById('flagDesc').value;
+      const value = document.getElementById('flagValueTrue').checked;
+
+      db.setFeatureFlag(name, {
+        description: desc,
+        enabled: value,
+      });
+
+      alert('✓ Feature flag created successfully!');
+      closeModal();
+      loadFlags();
+    });
+
+    // Load flags
+    function loadFlags() {
+      const flags = db.getFeatureFlags();
+      const flagsList = document.getElementById('flagsList');
+      const emptyState = document.getElementById('emptyState');
+
+      if (Object.keys(flags).length === 0) {
+        flagsList.innerHTML = '';
+        emptyState.style.display = 'block';
+        return;
+      }
+
+      emptyState.style.display = 'none';
+      flagsList.innerHTML = Object.entries(flags).map(([name, config]) => `
+        <div class="flag-card">
+          <div class="flag-info">
+            <div class="flag-name">${name}</div>
+            <div class="flag-desc">${config.value?.description || 'No description'}</div>
+            <div class="flag-meta">
+              Updated ${new Date(config.value?.updatedAt).toLocaleDateString()} by ${config.value?.updatedBy || 'Admin'}
+            </div>
+          </div>
+          <div class="toggle ${config.value?.enabled ? 'on' : ''}" onclick="toggleFlag('${name}')">
+            <div class="toggle-slider"></div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    window.toggleFlag = (flagName) => {
+      const flags = db.getFeatureFlags();
+      const current = flags[flagName];
+      const newState = !current.value.enabled;
+      
+      db.setFeatureFlag(flagName, {
+        ...current.value,
+        enabled: newState,
+      });
+
+      alert(`✓ ${flagName} is now ${newState ? 'enabled' : 'disabled'}`);
+      loadFlags();
+    };
+
+    window.showAddFlagModal = () => {
+      document.getElementById('addFlagModal').classList.add('show');
+    };
+
+    window.closeModal = () => {
+      document.getElementById('addFlagModal').classList.remove('show');
+      document.getElementById('flagForm').reset();
+    };
+
+    // Close modal on outside click
+    document.getElementById('addFlagModal').addEventListener('click', (e) => {
+      if (e.target.id === 'addFlagModal') closeModal();
+    });
+
+    loadFlags();
+  </script>
+</body>
+</html>

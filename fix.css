@@ -1,0 +1,75 @@
+/* ══════════════════════════════════════════
+   ShopBill Pro — MASTER FIX CSS v2.0
+   Covers: scroll, bottom nav, font/display
+══════════════════════════════════════════ */
+
+/* Reset all previous scroll hacks */
+html, body {
+  height: 100% !important;
+  overflow: hidden !important;
+  overscroll-behavior: none;
+}
+
+#app {
+  height: 100vh !important;
+  height: 100dvh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+/* THE SCROLL CONTAINER — only .sb scrolls */
+.sb {
+  flex: 1 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  -webkit-overflow-scrolling: touch !important;
+  min-height: 0 !important;
+  overscroll-behavior-y: contain;
+  padding-bottom: 72px !important;
+}
+
+/* ══ Bottom nav — FIXED on mobile ══ */
+.bnav {
+  flex-shrink: 0 !important;
+  position: fixed !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 100 !important;
+  background: var(--surf, #FFFFFF) !important;
+  border-top: 1px solid var(--bord, #DDD8F5) !important;
+  padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+}
+
+/* Desktop sidebar */
+@media (min-width: 1024px) {
+  #app {
+    margin-left: 220px !important;
+    max-width: calc(100vw - 220px) !important;
+    width: calc(100vw - 220px) !important;
+  }
+  .bnav { display: none !important; }
+  .sb { padding-bottom: 20px !important; }
+}
+
+/* Tablet center */
+@media (min-width: 640px) and (max-width: 1023px) {
+  #app { max-width: 600px !important; margin: 0 auto !important; }
+}
+
+/* ══ Global Font & Display Consistency ══ */
+.sc-val, .cm-val, .bc-amt, .cust-bal-val, .cms-val,
+.cart-total-val, .pos-item-price, .tot-row span:last-child,
+.gst-row span, .scard .sc-val,
+[id^="s-"], [id^="sum-"], [id^="gst-"],
+.stat-val, .stat-num, .report-val, .bill-total {
+  font-variant-numeric: tabular-nums !important;
+}
+
+/* ══ Suppress browser bottom bar in PWA standalone mode ══ */
+@media (display-mode: standalone) {
+  html, body {
+    overscroll-behavior: none;
+  }
+}

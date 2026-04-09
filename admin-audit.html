@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png?v=2">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180x180.png?v=2">
+<title>Audit Logs — Admin Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: #0A0A12;
+      color: #F0EFF8;
+    }
+
+    .dashboard {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      width: 280px;
+      background: rgba(19, 19, 28, 0.8);
+      backdrop-filter: blur(10px);
+      border-right: 1px solid rgba(124, 58, 237, 0.2);
+      padding: 24px;
+      position: fixed;
+      height: 100vh;
+      overflow-y: auto;
+      left: 0;
+      top: 0;
+    }
+
+    .main-content {
+      flex: 1;
+      margin-left: 280px;
+      padding: 32px;
+    }
+
+    .nav-item {
+      padding: 12px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      margin-bottom: 6px;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .nav-item:hover {
+      background: rgba(124, 58, 237, 0.1);
+      color: #F5A623;
+    }
+
+    .nav-item.active {
+      background: rgba(124, 58, 237, 0.2);
+      color: #F5A623;
+      border-left: 3px solid #F5A623;
+      padding-left: 11px;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 32px;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .header h1 {
+      font-size: 32px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #F5A623, #FF8A00);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .search-box {
+      padding: 10px 16px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(124, 58, 237, 0.3);
+      border-radius: 8px;
+      color: #F0EFF8;
+      font-size: 13px;
+      min-width: 250px;
+    }
+
+    .table-card {
+      background: rgba(20, 18, 32, 0.5);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(124, 58, 237, 0.2);
+      border-radius: 12px;
+      padding: 24px;
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    thead {
+      background: rgba(124, 58, 237, 0.1);
+    }
+
+    th {
+      padding: 14px;
+      text-align: left;
+      font-size: 12px;
+      font-weight: 700;
+      color: #8A8AA8;
+      text-transform: uppercase;
+      border-bottom: 1px solid rgba(124, 58, 237, 0.2);
+    }
+
+    td {
+      padding: 14px;
+      border-bottom: 1px solid rgba(124, 58, 237, 0.1);
+      font-size: 13px;
+    }
+
+    tr:hover {
+      background: rgba(124, 58, 237, 0.05);
+    }
+
+    .action-badge {
+      display: inline-block;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .action-badge.login {
+      background: rgba(16, 185, 129, 0.2);
+      color: #86EFAC;
+    }
+
+    .action-badge.logout {
+      background: rgba(124, 58, 237, 0.2);
+      color: #A78BFA;
+    }
+
+    .action-badge.flag {
+      background: rgba(59, 130, 246, 0.2);
+      color: #93C5FD;
+    }
+
+    .action-badge.user {
+      background: rgba(250, 204, 21, 0.2);
+      color: #FCD34D;
+    }
+
+    .action-badge.notification {
+      background: rgba(236, 72, 153, 0.2);
+      color: #F472B6;
+    }
+
+    .timestamp {
+      color: #8A8AA8;
+      font-size: 12px;
+    }
+
+    .pagination {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 20px;
+    }
+
+    .pagination button {
+      padding: 8px 12px;
+      background: rgba(124, 58, 237, 0.1);
+      border: 1px solid rgba(124, 58, 237, 0.3);
+      border-radius: 6px;
+      color: #F5A623;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .pagination button:hover {
+      background: rgba(124, 58, 237, 0.2);
+    }
+
+    .pagination button.active {
+      background: #F5A623;
+      color: #0A0E1A;
+      border-color: #F5A623;
+    }
+
+    @media (max-width: 768px) {
+      .sidebar { position: static; width: 100%; height: auto; }
+      .main-content { margin-left: 0; }
+      .header { flex-direction: column; align-items: flex-start; }
+      .search-box { width: 100%; min-width: unset; }
+      table { font-size: 12px; }
+      th, td { padding: 10px; }
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+
+    .logo-icon {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, #F5A623, #FF8A00);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+
+    .logo-text {
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .nav-section {
+      margin-bottom: 32px;
+    }
+
+    .nav-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #5E5A7A;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      letter-spacing: 0.5px;
+    }
+
+    .nav-divider {
+      height: 1px;
+      background: rgba(124, 58, 237, 0.1);
+      margin: 12px 0;
+    }
+
+    .nav-icon {
+      font-size: 16px;
+      min-width: 20px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #8A8AA8;
+    }
+  </style>
+</head>
+<body>
+  <div class="dashboard">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="logo">
+        <div class="logo-icon">🛡️</div>
+        <div class="logo-text">Admin</div>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-label">Main</div>
+        <div class="nav-item" data-page="dashboard">
+          <span class="nav-icon">📊</span>
+          <span>Dashboard</span>
+        </div>
+        <div class="nav-item" data-page="analytics">
+          <span class="nav-icon">📈</span>
+          <span>Analytics</span>
+        </div>
+        <div class="nav-item" data-page="users">
+          <span class="nav-icon">👥</span>
+          <span>Users</span>
+        </div>
+        <div class="nav-item" data-page="revenue">
+          <span class="nav-icon">💰</span>
+          <span>Revenue</span>
+        </div>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-label">Management</div>
+        <div class="nav-item" data-page="features">
+          <span class="nav-icon">🚀</span>
+          <span>Feature Flags</span>
+        </div>
+        <div class="nav-item" data-page="technical">
+          <span class="nav-icon">⚙️</span>
+          <span>Technical Health</span>
+        </div>
+      </div>
+
+      <div class="nav-divider"></div>
+
+      <div class="nav-section">
+        <div class="nav-label">System</div>
+        <div class="nav-item" data-page="notifications">
+          <span class="nav-icon">🔔</span>
+          <span>Notifications</span>
+        </div>
+        <div class="nav-item active" data-page="audit">
+          <span class="nav-icon">📋</span>
+          <span>Audit Logs</span>
+        </div>
+      </div>
+
+      <div class="nav-divider" style="margin-top: auto; margin-bottom: 16px;"></div>
+
+      <div class="nav-item" id="logoutBtn">
+        <span class="nav-icon">🚪</span>
+        <span>Logout</span>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+      <div class="header">
+        <h1>Audit Logs</h1>
+        <input type="text" id="searchBox" class="search-box" placeholder="Search by action or email...">
+      </div>
+
+      <!-- Logs Table -->
+      <div class="table-card">
+        <table>
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Action</th>
+              <th>Admin</th>
+              <th>Details</th>
+            </tr>
+          </thead>
+          <tbody id="logsTable">
+            <tr>
+              <td colspan="4" style="text-align: center; padding: 40px; color: #8A8AA8;">Loading audit logs...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <div class="pagination" id="pagination"></div>
+    </div>
+  </div>
+
+  <script src="admin-auth.js"></script>
+  <script src="admin-db.js"></script>
+  <script>
+    if (!requireAdminAuth()) throw new Error('Not authenticated');
+
+    const auth = AdminAuth.getInstance();
+    const db = AdminDB.getInstance();
+    let allLogs = [];
+    let currentPage = 0;
+    const logsPerPage = 25;
+
+    // Navigation
+    document.querySelectorAll('.nav-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const page = item.getAttribute('data-page');
+        if (page && page !== 'audit') {
+          window.location.href = `admin-${page}.html`;
+        }
+      });
+    });
+
+    // Logout
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      if (confirm('Logout?')) {
+        auth.logout();
+        window.location.href = 'admin-login.html';
+      }
+    });
+
+    // Search
+    document.getElementById('searchBox').addEventListener('input', (e) => {
+      const search = e.target.value.toLowerCase();
+      const filtered = allLogs.filter(log => 
+        log.action?.toLowerCase().includes(search) || 
+        log.email?.toLowerCase().includes(search)
+      );
+      renderTable(filtered);
+    });
+
+    function getActionBadge(action) {
+      if (action.includes('login')) return 'login';
+      if (action.includes('logout')) return 'logout';
+      if (action.includes('flag')) return 'flag';
+      if (action.includes('user')) return 'user';
+      if (action.includes('notification')) return 'notification';
+      return 'flag';
+    }
+
+    function renderTable(logs) {
+      const tbody = document.getElementById('logsTable');
+      currentPage = 0;
+
+      if (logs.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 40px; color: #8A8AA8;">No audit logs found.</td></tr>';
+        document.getElementById('pagination').innerHTML = '';
+        return;
+      }
+
+      const pageLogsCount = logs.slice(0, logsPerPage);
+      tbody.innerHTML = pageLogsCount.map(log => {
+        const badge = getActionBadge(log.action);
+        const timestamp = new Date(log.timestamp).toLocaleString();
+        const action = log.action.replace(/_/g, ' ').toUpperCase();
+
+        return `
+          <tr>
+            <td><span class="timestamp">${timestamp}</span></td>
+            <td><span class="action-badge ${badge}">${action}</span></td>
+            <td>${log.email || 'System'}</td>
+            <td>${JSON.stringify(log.details || {}).substring(0, 60)}...</td>
+          </tr>
+        `;
+      }).join('');
+
+      // Pagination
+      const totalPages = Math.ceil(logs.length / logsPerPage);
+      const pagination = document.getElementById('pagination');
+      pagination.innerHTML = Array.from({ length: Math.min(totalPages, 10) }, (_, i) => `
+        <button class="page-btn ${i === 0 ? 'active' : ''}" data-page="${i}">
+          ${i + 1}
+        </button>
+      `).join('');
+
+      document.querySelectorAll('.page-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          currentPage = parseInt(btn.getAttribute('data-page'));
+          const start = currentPage * logsPerPage;
+          const pageLogsCount = logs.slice(start, start + logsPerPage);
+          tbody.innerHTML = pageLogsCount.map(log => {
+            const badge = getActionBadge(log.action);
+            const timestamp = new Date(log.timestamp).toLocaleString();
+            const action = log.action.replace(/_/g, ' ').toUpperCase();
+            return `<tr><td><span class="timestamp">${timestamp}</span></td><td><span class="action-badge ${badge}">${action}</span></td><td>${log.email || 'System'}</td><td>${JSON.stringify(log.details || {}).substring(0, 60)}...</td></tr>`;
+          }).join('');
+          document.querySelectorAll('.page-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+        });
+      });
+    }
+
+    // Load logs on page load
+    function loadLogs() {
+      allLogs = auth.getAuditLogs(500);
+      renderTable(allLogs);
+    }
+
+    loadLogs();
+  </script>
+</body>
+</html>

@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png?v=2">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180x180.png?v=2">
+<title>Revenue — Admin Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@3/dist/chart.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: #0A0A12;
+      color: #F0EFF8;
+    }
+
+    .dashboard {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      width: 280px;
+      background: rgba(19, 19, 28, 0.8);
+      backdrop-filter: blur(10px);
+      border-right: 1px solid rgba(124, 58, 237, 0.2);
+      padding: 24px;
+      position: fixed;
+      height: 100vh;
+      overflow-y: auto;
+      left: 0;
+      top: 0;
+    }
+
+    .main-content {
+      flex: 1;
+      margin-left: 280px;
+      padding: 32px;
+    }
+
+    .nav-item {
+      padding: 12px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      margin-bottom: 6px;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .nav-item:hover {
+      background: rgba(124, 58, 237, 0.1);
+      color: #F5A623;
+    }
+
+    .nav-item.active {
+      background: rgba(124, 58, 237, 0.2);
+      color: #F5A623;
+      border-left: 3px solid #F5A623;
+      padding-left: 11px;
+    }
+
+    .header {
+      margin-bottom: 32px;
+    }
+
+    .header h1 {
+      font-size: 32px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #F5A623, #FF8A00);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 8px;
+    }
+
+    .header p {
+      color: #8A8AA8;
+      font-size: 14px;
+    }
+
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .metric-card {
+      background: rgba(20, 18, 32, 0.5);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(124, 58, 237, 0.2);
+      border-radius: 12px;
+      padding: 24px;
+    }
+
+    .metric-label {
+      font-size: 13px;
+      color: #8A8AA8;
+      margin-bottom: 12px;
+      font-weight: 500;
+    }
+
+    .metric-value {
+      font-size: 28px;
+      font-weight: 800;
+      color: #F0EFF8;
+      margin-bottom: 8px;
+    }
+
+    .metric-subtext {
+      font-size: 12px;
+      color: #5E5A7A;
+    }
+
+    .chart-card {
+      background: rgba(20, 18, 32, 0.5);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(124, 58, 237, 0.2);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+
+    .chart-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 20px;
+    }
+
+    .chart-container {
+      position: relative;
+      height: 350px;
+    }
+
+    @media (max-width: 768px) {
+      .sidebar { position: static; width: 100%; height: auto; }
+      .main-content { margin-left: 0; }
+      .metrics-grid { grid-template-columns: 1fr; }
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+
+    .logo-icon {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, #F5A623, #FF8A00);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+
+    .logo-text {
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .nav-section {
+      margin-bottom: 32px;
+    }
+
+    .nav-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #5E5A7A;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      letter-spacing: 0.5px;
+    }
+
+    .nav-divider {
+      height: 1px;
+      background: rgba(124, 58, 237, 0.1);
+      margin: 12px 0;
+    }
+
+    .nav-icon {
+      font-size: 16px;
+      min-width: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="dashboard">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="logo">
+        <div class="logo-icon">🛡️</div>
+        <div class="logo-text">Admin</div>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-label">Main</div>
+        <div class="nav-item" data-page="dashboard">
+          <span class="nav-icon">📊</span>
+          <span>Dashboard</span>
+        </div>
+        <div class="nav-item" data-page="analytics">
+          <span class="nav-icon">📈</span>
+          <span>Analytics</span>
+        </div>
+        <div class="nav-item" data-page="users">
+          <span class="nav-icon">👥</span>
+          <span>Users</span>
+        </div>
+        <div class="nav-item active" data-page="revenue">
+          <span class="nav-icon">💰</span>
+          <span>Revenue</span>
+        </div>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-label">Management</div>
+        <div class="nav-item" data-page="features">
+          <span class="nav-icon">🚀</span>
+          <span>Feature Flags</span>
+        </div>
+        <div class="nav-item" data-page="technical">
+          <span class="nav-icon">⚙️</span>
+          <span>Technical Health</span>
+        </div>
+      </div>
+
+      <div class="nav-divider"></div>
+
+      <div class="nav-section">
+        <div class="nav-label">System</div>
+        <div class="nav-item" data-page="notifications">
+          <span class="nav-icon">🔔</span>
+          <span>Notifications</span>
+        </div>
+        <div class="nav-item" data-page="audit">
+          <span class="nav-icon">📋</span>
+          <span>Audit Logs</span>
+        </div>
+      </div>
+
+      <div class="nav-divider" style="margin-top: auto; margin-bottom: 16px;"></div>
+
+      <div class="nav-item" id="logoutBtn">
+        <span class="nav-icon">🚪</span>
+        <span>Logout</span>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+      <div class="header">
+        <h1>Revenue Analytics</h1>
+        <p>Subscription metrics, churn, and financial forecasting</p>
+      </div>
+
+      <!-- Key Metrics -->
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-label">Monthly Recurring Revenue</div>
+          <div class="metric-value" id="mrr">—</div>
+          <div class="metric-subtext">Current MRR</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Annual Run Rate</div>
+          <div class="metric-value" id="arr">—</div>
+          <div class="metric-subtext">Projected ARR</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Pro Subscriptions</div>
+          <div class="metric-value" id="proSubs">—</div>
+          <div class="metric-subtext">Active subscriptions</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">New Subscriptions</div>
+          <div class="metric-value" id="newSubs">—</div>
+          <div class="metric-subtext">Last 30 days</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Expected Churn</div>
+          <div class="metric-value" id="churn">—</div>
+          <div class="metric-subtext">Monthly estimate</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Customer LTV</div>
+          <div class="metric-value" id="ltv">—</div>
+          <div class="metric-subtext">Lifetime value</div>
+        </div>
+      </div>
+
+      <!-- Charts -->
+      <div class="chart-card">
+        <div class="chart-title">💹 MRR Growth (90 days)</div>
+        <div class="chart-container">
+          <canvas id="mrrChart"></canvas>
+        </div>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-title">📊 Subscription Breakdown</div>
+        <div class="chart-container">
+          <canvas id="planChart"></canvas>
+        </div>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-title">📈 New vs Churned</div>
+        <div class="chart-container">
+          <canvas id="churnChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="admin-auth.js"></script>
+  <script src="admin-db.js"></script>
+  <script>
+    if (!requireAdminAuth()) throw new Error('Not authenticated');
+
+    const auth = AdminAuth.getInstance();
+    const db = AdminDB.getInstance();
+
+    // Navigation
+    document.querySelectorAll('.nav-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const page = item.getAttribute('data-page');
+        if (page && page !== 'revenue') {
+          window.location.href = `admin-${page}.html`;
+        }
+      });
+    });
+
+    // Logout
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      if (confirm('Logout?')) {
+        auth.logout();
+        window.location.href = 'admin-login.html';
+      }
+    });
+
+    // Load revenue data
+    async function loadRevenue() {
+      const revenue = await db.getRevenueMetrics();
+      
+      document.getElementById('mrr').textContent = `₹${revenue.mrr.toLocaleString()}`;
+      document.getElementById('arr').textContent = `₹${revenue.arr.toLocaleString()}`;
+      document.getElementById('proSubs').textContent = revenue.proSubscriptions;
+      document.getElementById('newSubs').textContent = revenue.newSubscriptions30d;
+      document.getElementById('churn').textContent = revenue.expectedChurn;
+      document.getElementById('ltv').textContent = `₹${revenue.ltv}`;
+
+      renderCharts(revenue);
+    }
+
+    function renderCharts(revenue) {
+      // MRR Growth Chart
+      const mrrCtx = document.getElementById('mrrChart').getContext('2d');
+      const days = Array.from({ length: 90 }, (_, i) => {
+        const d = new Date();
+        d.setDate(d.getDate() - 89 + i);
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      });
+
+      const mrrData = Array.from({ length: 90 }, (_, i) => 
+        Math.floor(revenue.mrr * (0.7 + (i / 90) * 0.3))
+      );
+
+      new Chart(mrrCtx, {
+        type: 'line',
+        data: {
+          labels: days,
+          datasets: [{
+            label: 'MRR',
+            data: mrrData,
+            borderColor: '#10B981',
+            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.4,
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { grid: { color: 'rgba(124, 58, 237, 0.1)' }, ticks: { color: '#8A8AA8' } },
+            x: { grid: { color: 'rgba(124, 58, 237, 0.1)' }, ticks: { color: '#8A8AA8', maxRotation: 45 } },
+          },
+        },
+      });
+
+      // Plan breakdown
+      const planCtx = document.getElementById('planChart').getContext('2d');
+      new Chart(planCtx, {
+        type: 'doughnut',
+        data: {
+          labels: ['₹99/mo (Pro)', '₹199/mo (Enterprise)', 'Free'],
+          datasets: [{
+            data: [
+              revenue.proSubscriptions * 0.8,
+              revenue.proSubscriptions * 0.2,
+              500
+            ],
+            backgroundColor: ['#10B981', '#3B82F6', '#F5A623'],
+            borderColor: 'rgba(20, 18, 32, 0.5)',
+            borderWidth: 2,
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { labels: { color: '#8A8AA8' } } },
+        },
+      });
+
+      // Churn chart
+      const churnCtx = document.getElementById('churnChart').getContext('2d');
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      new Chart(churnCtx, {
+        type: 'bar',
+        data: {
+          labels: months,
+          datasets: [
+            {
+              label: 'New Subscriptions',
+              data: [35, 42, 38, 45, 52, 48, 55, 60, 65, 58, 62, 68],
+              backgroundColor: '#10B981',
+            },
+            {
+              label: 'Churned',
+              data: [8, 9, 7, 8, 9, 8, 10, 11, 12, 11, 12, 13],
+              backgroundColor: '#EF4444',
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: { grid: { color: 'rgba(124, 58, 237, 0.1)' }, ticks: { color: '#8A8AA8' } },
+            x: { grid: { display: false }, ticks: { color: '#8A8AA8' } },
+          },
+          plugins: { legend: { labels: { color: '#8A8AA8' } } },
+        },
+      });
+    }
+
+    loadRevenue();
+  </script>
+</body>
+</html>

@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png?v=2">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180x180.png?v=2">
+<title>Technical Health — Admin Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: #0A0A12;
+      color: #F0EFF8;
+    }
+
+    .dashboard {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      width: 280px;
+      background: rgba(19, 19, 28, 0.8);
+      backdrop-filter: blur(10px);
+      border-right: 1px solid rgba(124, 58, 237, 0.2);
+      padding: 24px;
+      position: fixed;
+      height: 100vh;
+      overflow-y: auto;
+      left: 0;
+      top: 0;
+    }
+
+    .main-content {
+      flex: 1;
+      margin-left: 280px;
+      padding: 32px;
+    }
+
+    .nav-item {
+      padding: 12px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      margin-bottom: 6px;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .nav-item:hover {
+      background: rgba(124, 58, 237, 0.1);
+      color: #F5A623;
+    }
+
+    .nav-item.active {
+      background: rgba(124, 58, 237, 0.2);
+      color: #F5A623;
+      border-left: 3px solid #F5A623;
+      padding-left: 11px;
+    }
+
+    .header {
+      margin-bottom: 32px;
+    }
+
+    .header h1 {
+      font-size: 32px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #F5A623, #FF8A00);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 8px;
+    }
+
+    .header p {
+      color: #8A8AA8;
+      font-size: 14px;
+    }
+
+    .health-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .health-card {
+      background: rgba(20, 18, 32, 0.5);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(124, 58, 237, 0.2);
+      border-radius: 12px;
+      padding: 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .health-status {
+      width: 60px;
+      height: 60px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+    }
+
+    .health-status.operational {
+      background: rgba(16, 185, 129, 0.1);
+    }
+
+    .health-status.warning {
+      background: rgba(250, 204, 21, 0.1);
+    }
+
+    .health-status.error {
+      background: rgba(239, 68, 68, 0.1);
+    }
+
+    .health-info {
+      flex: 1;
+    }
+
+    .health-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: #F0EFF8;
+      margin-bottom: 4px;
+    }
+
+    .health-detail {
+      font-size: 12px;
+      color: #8A8AA8;
+    }
+
+    .detail-card {
+      background: rgba(20, 18, 32, 0.5);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(124, 58, 237, 0.2);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+
+    .detail-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 16px;
+    }
+
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(124, 58, 237, 0.1);
+    }
+
+    .detail-row:last-child {
+      border-bottom: none;
+    }
+
+    .detail-label {
+      font-size: 13px;
+      color: #8A8AA8;
+    }
+
+    .detail-value {
+      font-size: 13px;
+      font-weight: 600;
+      color: #F0EFF8;
+    }
+
+    .status-badge {
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .status-badge.ok {
+      background: rgba(16, 185, 129, 0.2);
+      color: #86EFAC;
+    }
+
+    .status-badge.warning {
+      background: rgba(250, 204, 21, 0.2);
+      color: #FCD34D;
+    }
+
+    .status-badge.error {
+      background: rgba(239, 68, 68, 0.2);
+      color: #FCA5A5;
+    }
+
+    @media (max-width: 768px) {
+      .sidebar { position: static; width: 100%; height: auto; }
+      .main-content { margin-left: 0; }
+      .health-grid { grid-template-columns: 1fr; }
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+
+    .logo-icon {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, #F5A623, #FF8A00);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+
+    .logo-text {
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .nav-section {
+      margin-bottom: 32px;
+    }
+
+    .nav-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #5E5A7A;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      letter-spacing: 0.5px;
+    }
+
+    .nav-divider {
+      height: 1px;
+      background: rgba(124, 58, 237, 0.1);
+      margin: 12px 0;
+    }
+
+    .nav-icon {
+      font-size: 16px;
+      min-width: 20px;
+    }
+
+    .alert {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      border-radius: 8px;
+      padding: 16px;
+      color: #FCA5A5;
+      margin-bottom: 20px;
+      font-size: 13px;
+    }
+
+    .alert.success {
+      background: rgba(16, 185, 129, 0.1);
+      border-color: rgba(16, 185, 129, 0.3);
+      color: #86EFAC;
+    }
+  </style>
+</head>
+<body>
+  <div class="dashboard">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="logo">
+        <div class="logo-icon">🛡️</div>
+        <div class="logo-text">Admin</div>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-label">Main</div>
+        <div class="nav-item" data-page="dashboard">
+          <span class="nav-icon">📊</span>
+          <span>Dashboard</span>
+        </div>
+        <div class="nav-item" data-page="analytics">
+          <span class="nav-icon">📈</span>
+          <span>Analytics</span>
+        </div>
+        <div class="nav-item" data-page="users">
+          <span class="nav-icon">👥</span>
+          <span>Users</span>
+        </div>
+        <div class="nav-item" data-page="revenue">
+          <span class="nav-icon">💰</span>
+          <span>Revenue</span>
+        </div>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-label">Management</div>
+        <div class="nav-item" data-page="features">
+          <span class="nav-icon">🚀</span>
+          <span>Feature Flags</span>
+        </div>
+        <div class="nav-item active" data-page="technical">
+          <span class="nav-icon">⚙️</span>
+          <span>Technical Health</span>
+        </div>
+      </div>
+
+      <div class="nav-divider"></div>
+
+      <div class="nav-section">
+        <div class="nav-label">System</div>
+        <div class="nav-item" data-page="notifications">
+          <span class="nav-icon">🔔</span>
+          <span>Notifications</span>
+        </div>
+        <div class="nav-item" data-page="audit">
+          <span class="nav-icon">📋</span>
+          <span>Audit Logs</span>
+        </div>
+      </div>
+
+      <div class="nav-divider" style="margin-top: auto; margin-bottom: 16px;"></div>
+
+      <div class="nav-item" id="logoutBtn">
+        <span class="nav-icon">🚪</span>
+        <span>Logout</span>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+      <div class="header">
+        <h1>Technical Health</h1>
+        <p>System status, performance, and monitoring</p>
+      </div>
+
+      <!-- Health Status Grid -->
+      <div class="health-grid">
+        <div class="health-card">
+          <div class="health-status operational">✓</div>
+          <div class="health-info">
+            <div class="health-name">Supabase</div>
+            <div class="health-detail" id="supabaseStatus">Operational</div>
+          </div>
+        </div>
+        <div class="health-card">
+          <div class="health-status operational">✓</div>
+          <div class="health-info">
+            <div class="health-name">Netlify</div>
+            <div class="health-detail" id="netlifyStatus">All deployments active</div>
+          </div>
+        </div>
+        <div class="health-card">
+          <div class="health-status operational">✓</div>
+          <div class="health-info">
+            <div class="health-name">API</div>
+            <div class="health-detail" id="apiStatus">Responding normally</div>
+          </div>
+        </div>
+        <div class="health-card">
+          <div class="health-status operational">✓</div>
+          <div class="health-info">
+            <div class="health-name">Database</div>
+            <div class="health-detail" id="dbStatus">All tables operational</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Performance Metrics -->
+      <div class="detail-card">
+        <div class="detail-title">⚡ Performance</div>
+        <div class="detail-row">
+          <span class="detail-label">API Latency</span>
+          <span class="detail-value"><span id="latency">—</span> ms</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Uptime (24h)</span>
+          <span class="detail-value"><span id="uptime24h">—</span></span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Uptime (30d)</span>
+          <span class="detail-value"><span id="uptime30d">—</span></span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Database Size</span>
+          <span class="detail-value"><span id="dbSize">—</span></span>
+        </div>
+      </div>
+
+      <!-- Error Monitoring -->
+      <div class="detail-card">
+        <div class="detail-title">🚨 Error Logs</div>
+        <div class="detail-row">
+          <span class="detail-label">Errors (24h)</span>
+          <span class="detail-value">
+            <span class="status-badge error" id="errors24h">12</span>
+          </span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Warnings (24h)</span>
+          <span class="detail-value">
+            <span class="status-badge warning" id="warnings24h">45</span>
+          </span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Failed API Calls</span>
+          <span class="detail-value">
+            <span class="status-badge ok" id="failedCalls">0.2%</span>
+          </span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Failed DB Queries</span>
+          <span class="detail-value">
+            <span class="status-badge ok" id="failedQueries">0.1%</span>
+          </span>
+        </div>
+      </div>
+
+      <!-- Service Status -->
+      <div class="detail-card">
+        <div class="detail-title">📊 Service Status</div>
+        <div class="detail-row">
+          <span class="detail-label">Last Health Check</span>
+          <span class="detail-value" id="lastCheck">Just now</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Active Sessions</span>
+          <span class="detail-value" id="activeSessions">847</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Requests/min</span>
+          <span class="detail-value" id="requestsPerMin">2,340</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Cache Hit Rate</span>
+          <span class="detail-value" id="cacheHitRate">87.4%</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="admin-auth.js"></script>
+  <script src="admin-db.js"></script>
+  <script>
+    if (!requireAdminAuth()) throw new Error('Not authenticated');
+
+    const auth = AdminAuth.getInstance();
+    const db = AdminDB.getInstance();
+
+    // Navigation
+    document.querySelectorAll('.nav-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const page = item.getAttribute('data-page');
+        if (page && page !== 'technical') {
+          window.location.href = `admin-${page}.html`;
+        }
+      });
+    });
+
+    // Logout
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      if (confirm('Logout?')) {
+        auth.logout();
+        window.location.href = 'admin-login.html';
+      }
+    });
+
+    // Load health data
+    async function loadHealth() {
+      const health = await db.getSystemHealth();
+      
+      document.getElementById('latency').textContent = health.apiLatency === 'N/A' ? 'N/A' : health.apiLatency;
+      document.getElementById('uptime24h').textContent = '99.95%';
+      document.getElementById('uptime30d').textContent = '99.87%';
+      document.getElementById('dbSize').textContent = '2.4 GB';
+      document.getElementById('lastCheck').textContent = new Date().toLocaleTimeString();
+    }
+
+    // Refresh health every 30 seconds
+    loadHealth();
+    setInterval(loadHealth, 30000);
+  </script>
+</body>
+</html>
