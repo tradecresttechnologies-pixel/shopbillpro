@@ -740,8 +740,17 @@ function renderBillActions(b){
   const st=(b.status||'').toLowerCase();
   const isVoided=st==='voided';
   const isPaid=st==='paid';
+  const isPending=st==='pending';
+  const isCredit=st==='credit';
+  const isPartial=st==='partial';
   const btnStyle='font-size:11px;padding:7px 14px;border-radius:10px;cursor:pointer;font-weight:700;border:1px solid';
   let html='';
+
+  // Edit Bill — only for Pending (reopened) bills
+  if(isPending){
+    html+=`<button onclick="editBill('${b.id}')" style="${btnStyle};background:rgba(6,182,212,.1);border-color:rgba(6,182,212,.3);color:#06B6D4">✏️ Edit Bill</button>`;
+  }
+
   if(isPaid){
     html+=`<button onclick="reopenBill('${b.id}')" style="${btnStyle};background:rgba(245,166,35,.08);border-color:rgba(245,166,35,.25);color:var(--acc)">🔓 Reopen</button>`;
     html+=`<button onclick="voidBill('${b.id}')" style="${btnStyle};background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.25);color:var(--acc2)">🚫 Void Bill</button>`;
@@ -749,10 +758,102 @@ function renderBillActions(b){
     html+=`<button onclick="reopenBill('${b.id}')" style="${btnStyle};background:rgba(245,166,35,.08);border-color:rgba(245,166,35,.25);color:var(--acc)">🔓 Reopen</button>`;
   }else{
     // Pending, Credit, Partial
+    if(isCredit){
+      html+=`<button onclick="reopenBill('${b.id}')" style="${btnStyle};background:rgba(245,166,35,.08);border-color:rgba(245,166,35,.25);color:var(--acc)">🔓 Reopen & Reverse</button>`;
+    }
     html+=`<button onclick="voidBill('${b.id}')" style="${btnStyle};background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.25);color:var(--acc2)">🚫 Void Bill</button>`;
   }
+
   html+=`<button onclick="deleteBill('${b.id}')" style="${btnStyle};background:rgba(138,138,168,.06);border-color:rgba(138,138,168,.2);color:var(--t2)">🗑️ Delete</button>`;
+
+  // Audit Trail button — always visible if there are audit entries
+  const hasAudit=(b.audit_log&&b.audit_log.length>0);
+  html+=`<button onclick="showBillAuditTrail('${b.id}')" style="${btnStyle};background:${hasAudit?'rgba(139,92,246,.1)':'rgba(138,138,168,.06)'};border-color:${hasAudit?'rgba(139,92,246,.3)':'rgba(138,138,168,.2)'};color:${hasAudit?'#8B5CF6':'var(--t2)'}">📋 Audit${hasAudit?` (${b.audit_log.length})`:''}`;
+  html+=`</button>`;
+
   el.innerHTML=html;
+}
+
+// ── Edit Bill — load into billing.html ──
+function editBill(billId){
+  requirePIN('edit_bill',function(){_doEditBill(billId)});
+}
+function _doEditBill(billId){
+  const b=_bills.find(x=>x.id===billId||String(x.id)===String(billId));
+  if(!b){toast('Bill not found','e');return;}
+  // Store bill for editing in localStorage
+  localStorage.setItem('sbp_edit_bill',JSON.stringify(b));
+  logAudit('edit_bill_start',{bill_id:billId,invoice_no:b.invoice_no,customer:b.customer_name});
+  // Per-bill audit
+  const idx=_bills.findIndex(x=>x.id===billId||String(x.id)===String(billId));
+  if(idx>=0){
+    if(!_bills[idx].audit_log) _bills[idx].audit_log=[];
+    _bills[idx].audit_log.unshift({
+      action:'edit_started',ts:new Date().toISOString(),
+      user:localStorage.getItem('sbp_role')||'Admin',
+      note:'Bill opened for editing'
+    });
+    localStorage.setItem('sbp_bills',JSON.stringify(_bills));
+  }
+  window.location.href='billing.html?edit_bill='+encodeURIComponent(billId);
+}
+
+// ── Audit Trail Viewer ──
+function showBillAuditTrail(billId){
+  const b=_bills.find(x=>x.id===billId||String(x.id)===String(billId));
+  if(!b){toast('Bill not found','e');return;}
+  const log=b.audit_log||[];
+
+  // Also pull global audit entries for this bill
+  const globalLog=JSON.parse(localStorage.getItem('sbp_audit_log')||'[]')
+    .filter(e=>e.details&&(e.details.bill_id===billId||String(e.details.bill_id)===String(billId)));
+
+  // Merge and deduplicate by timestamp
+  const allEntries=[...log,...globalLog.map(g=>({
+    action:g.action, ts:g.timestamp, user:g.user,
+    note:typeof g.details==='object'?JSON.stringify(g.details).replace(/[{}'"]/g,' ').trim():g.details
+  }))].sort((a,b)=>new Date(b.ts)-new Date(a.ts));
+
+  let modal=document.getElementById('audit-trail-modal');
+  if(!modal){
+    modal=document.createElement('div');
+    modal.id='audit-trail-modal';
+    modal.style.cssText='position:fixed;inset:0;z-index:1200;background:rgba(0,0,0,.8);display:flex;align-items:flex-end;justify-content:center';
+    document.body.appendChild(modal);
+  }
+
+  const rows=allEntries.length?allEntries.map(e=>{
+    const dt=new Date(e.ts);
+    const dtStr=dt.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'2-digit'})+' '+dt.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+    const actionColors={
+      reopen_bill:'#F5A623',void_bill:'#EF4444',void_item:'#EF4444',
+      delete_item:'#EF4444',delete_bill:'#EF4444',edit_bill_start:'#06B6D4',
+      edit_started:'#06B6D4',credit_ledger_reversal:'#10B981',settle_bill:'#10B981'
+    };
+    const col=actionColors[e.action]||'#8A8AA8';
+    const actionLabel=e.action.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+    return `<div style="padding:10px 0;border-bottom:1px solid var(--bord,#2A2A3A);display:flex;gap:10px;align-items:flex-start">
+      <div style="width:8px;height:8px;border-radius:50%;background:${col};margin-top:5px;flex-shrink:0"></div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:700;color:${col}">${actionLabel}</div>
+        ${e.note?`<div style="font-size:11px;color:var(--t2,#8A8AA8);margin-top:2px">${e.note}</div>`:''}
+        ${e.before||e.after?`<div style="font-size:10px;color:var(--t3,#4A4A60);margin-top:2px">${e.before?'Before: '+JSON.stringify(e.before):''} ${e.after?'→ After: '+JSON.stringify(e.after):''}</div>`:''}
+      </div>
+      <div style="font-size:10px;color:var(--t3,#4A4A60);flex-shrink:0;text-align:right">${dtStr}<br><span style="font-size:9px">${e.user||'Admin'}</span></div>
+    </div>`;
+  }).join(''):`<div style="text-align:center;padding:30px 20px;color:var(--t2,#8A8AA8);font-size:13px">📋 No audit entries yet for this bill</div>`;
+
+  modal.innerHTML=`
+    <div style="background:var(--surf,#13131C);border-radius:20px 20px 0 0;padding:20px;width:100%;max-width:560px;max-height:80vh;display:flex;flex-direction:column">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;flex-shrink:0">
+        <div style="font-family:var(--font-h,'Outfit'),sans-serif;font-size:16px;font-weight:800;color:var(--text,#F0EFF8)">📋 Audit Trail</div>
+        <div onclick="document.getElementById('audit-trail-modal').style.display='none'" style="width:32px;height:32px;border-radius:10px;background:var(--surf2,#1C1C28);border:1px solid var(--bord,#2A2A3A);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;color:var(--text,#F0EFF8)">✕</div>
+      </div>
+      <div style="font-size:11px;color:var(--t2,#8A8AA8);margin-bottom:14px;flex-shrink:0">${b.invoice_no} · ${b.customer_name}</div>
+      <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch">${rows}</div>
+    </div>`;
+  modal.style.display='flex';
+  modal.onclick=function(e){if(e.target===modal)modal.style.display='none';};
 }
 
 // ── Reopen Bill (PIN Protected) ──
@@ -760,23 +861,80 @@ function reopenBill(billId){
   requirePIN('reopen_bill',function(){_doReopenBill(billId)});
 }
 async function _doReopenBill(billId){
-  if(!confirm('Reopen this bill? Status will change to Pending.'))return;
   const idx=_bills.findIndex(x=>x.id===billId||String(x.id)===String(billId));
   if(idx<0)return;
-  const oldStatus=_bills[idx].status;
+  const b=_bills[idx];
+  const oldStatus=b.status;
+
+  // Build confirmation message
+  const isCreditBill = oldStatus==='Credit';
+  const confirmMsg = isCreditBill
+    ? `Reopen this Credit bill?\n\n• ₹${parseFloat(b.grand_total||0).toLocaleString('en-IN')} will be REVERSED from ${b.customer_name}'s ledger\n• Bill will re-open as Pending for editing\n• Action will be logged in Audit Trail`
+    : `Reopen this bill?\n\n• Status: ${oldStatus} → Pending\n• Bill will be available for editing\n• Action will be logged in Audit Trail`;
+
+  if(!confirm(confirmMsg)) return;
+
+  // ── Credit bill: reverse customer ledger ──
+  if(isCreditBill){
+    const billAmt=parseFloat(b.grand_total||0);
+    const custName=b.customer_name||'';
+    const custs=JSON.parse(localStorage.getItem('sbp_customers')||'[]');
+    const ci=custs.findIndex(c=>c.name===custName||(c.phone&&c.phone===(b.customer_phone||'')));
+    if(ci>=0){
+      const oldBal=parseFloat(custs[ci].balance||0);
+      const newBal=Math.max(0,oldBal-billAmt);
+      custs[ci].balance=newBal;
+      localStorage.setItem('sbp_customers',JSON.stringify(custs));
+      logAudit('credit_ledger_reversal',{
+        bill_id:billId,invoice_no:b.invoice_no,
+        customer:custName,
+        reversal_amount:billAmt,
+        old_balance:oldBal,
+        new_balance:newBal,
+        note:'Credit bill reopened — ledger reversed'
+      });
+      // Sync to Supabase
+      if(_online&&_sb&&ci>=0){
+        try{await _sb.from('customers').update({balance:custs[ci].balance}).eq('id',custs[ci].id);}catch(e){console.warn(e);}
+      }
+      toast(`📒 Ledger reversed: -₹${billAmt.toLocaleString('en-IN')} from ${custName}`,'i',4000);
+    }
+  }
+
+  // ── Update bill status ──
   _bills[idx].status='Pending';
   _bills[idx].paid_amount=0;
-  _bills[idx].balance_due=parseFloat(_bills[idx].grand_total||0);
+  _bills[idx].balance_due=parseFloat(b.grand_total||0);
+  _bills[idx].reopened_at=new Date().toISOString();
+  _bills[idx].reopened_by=localStorage.getItem('sbp_role')||'Admin';
+
+  // ── Store per-bill audit entry ──
+  if(!_bills[idx].audit_log) _bills[idx].audit_log=[];
+  _bills[idx].audit_log.unshift({
+    action:'reopen_bill',ts:new Date().toISOString(),
+    user:localStorage.getItem('sbp_role')||'Admin',
+    before:{status:oldStatus},after:{status:'Pending'},
+    note:isCreditBill?'Credit bill reopened + ledger reversed':'Bill reopened for editing'
+  });
+
   localStorage.setItem('sbp_bills',JSON.stringify(_bills));
-  
+
   if(_online&&!String(billId).startsWith('local_')){
-    try{await _sb.from('bills').update({status:'Pending',paid_amount:0,balance_due:_bills[idx].balance_due}).eq('id',billId);}catch(e){console.warn(e);}
+    try{await _sb.from('bills').update({
+      status:'Pending',paid_amount:0,balance_due:_bills[idx].balance_due,
+      reopened_at:_bills[idx].reopened_at
+    }).eq('id',billId);}catch(e){console.warn(e);}
   }
-  
-  logAudit('reopen_bill',{bill_id:billId,invoice_no:_bills[idx].invoice_no,old_status:oldStatus,customer:_bills[idx].customer_name});
+
+  logAudit('reopen_bill',{
+    bill_id:billId,invoice_no:b.invoice_no,
+    old_status:oldStatus,customer:b.customer_name,
+    credit_reversed:isCreditBill
+  });
+
   closeModal('bill-preview-modal');
   applyFilters();
-  toast('🔓 Bill reopened — status: Pending','s');
+  toast('🔓 Bill reopened — use "Edit Bill" to make changes','s',4000);
 }
 
 // ── Void Bill (PIN Protected) ──
@@ -788,15 +946,25 @@ async function _doVoidBill(billId){
   const idx=_bills.findIndex(x=>x.id===billId||String(x.id)===String(billId));
   if(idx<0)return;
   const oldStatus=_bills[idx].status;
+  const oldGrand=_bills[idx].grand_total;
   _bills[idx].status='Voided';
   _bills[idx].voided_at=new Date().toISOString();
   _bills[idx].voided_by=localStorage.getItem('sbp_role')||'Manager';
+
+  // Per-bill audit
+  if(!_bills[idx].audit_log) _bills[idx].audit_log=[];
+  _bills[idx].audit_log.unshift({
+    action:'void_bill',ts:new Date().toISOString(),
+    user:localStorage.getItem('sbp_role')||'Admin',
+    before:{status:oldStatus,grand_total:oldGrand},
+    after:{status:'Voided'},
+    note:'Entire bill voided'
+  });
+
   localStorage.setItem('sbp_bills',JSON.stringify(_bills));
-  
   if(_online&&!String(billId).startsWith('local_')){
     try{await _sb.from('bills').update({status:'Voided'}).eq('id',billId);}catch(e){console.warn(e);}
   }
-  
   logAudit('void_bill',{bill_id:billId,invoice_no:_bills[idx].invoice_no,old_status:oldStatus,customer:_bills[idx].customer_name,amount:_bills[idx].grand_total});
   closeModal('bill-preview-modal');
   applyFilters();
@@ -844,9 +1012,21 @@ async function _doVoidItem(billId,itemIdx){
   const itemGST=parseFloat(items[itemIdx].gst_amount||0);
   
   items[itemIdx].voided=true;
-  
+  items[itemIdx].voided_at=new Date().toISOString();
+  items[itemIdx].voided_by=localStorage.getItem('sbp_role')||'Admin';
+
   // Recalculate bill totals excluding voided items
   recalcBillTotals(b);
+
+  // Per-bill audit
+  if(!b.audit_log) b.audit_log=[];
+  b.audit_log.unshift({
+    action:'void_item',ts:new Date().toISOString(),
+    user:localStorage.getItem('sbp_role')||'Admin',
+    before:{item_name:itemName,line_total:itemTotal,voided:false},
+    after:{voided:true},
+    note:`Item voided: ${itemName}`
+  });
   localStorage.setItem('sbp_bills',JSON.stringify(_bills));
   
   if(_online&&!String(billId).startsWith('local_')){
@@ -1036,6 +1216,7 @@ init();
     {ic:'📊',lb:'Reports',url:'reports.html'},
     {ic:'🛒',lb:'POS Admin',url:'pos-admin.html'},
     {ic:'💬',lb:'WhatsApp',url:'wa-center.html'},
+    {ic:'📢',lb:'Marketing',url:'marketing.html'},
     {ic:'💰',lb:'Cash Register',url:'cash-register.html'},
     {ic:'🚚',lb:'Suppliers',url:'supplier.html'},
     {ic:'🔄',lb:'Recurring',url:'recurring.html'},

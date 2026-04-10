@@ -408,15 +408,7 @@ html,body{height:100%;overflow:hidden}
           <div class="ff"><label>Invoice No.</label><input type="text" id="inv-no" value="INV-0001"></div>
           <div class="ff"><label>Date</label><input type="date" id="inv-date"></div>
         </div>
-        <div class="row2">
-          <div class="ff"><label>Notes</label><input type="text" id="bill-note" placeholder="Optional note"></div>
-          <div class="ff"><label>Payment Mode</label>
-            <select id="pay-mode" onchange="checkCreditLimit()">
-              <option>Cash</option><option>UPI / QR</option><option>Bank Transfer</option>
-              <option>Card</option><option>Cheque</option><option>Credit</option>
-            </select>
-          </div>
-        </div>
+        <div class="ff"><label>Notes</label><input type="text" id="bill-note" placeholder="Optional note"></div>
       </div>
 
       <!-- Items -->
@@ -453,14 +445,18 @@ html,body{height:100%;overflow:hidden}
       </div>
 
       <!-- Action Buttons -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <div style="font-size:11px;font-weight:700;color:var(--t2)">📤 Send & Share</div>
+        <div id="default-share-badge" style="font-size:10px;font-weight:700;color:var(--acc);background:rgba(245,166,35,.1);border:1px solid rgba(245,166,35,.2);border-radius:20px;padding:2px 8px;cursor:pointer" onclick="openShareDefaultPicker()" title="Tap to change default">⭐ WA</div>
+      </div>
       <div class="btn-row col3" style="margin-bottom:6px">
-        <button class="btn-wa" onclick="quickWA()">📲 WhatsApp</button>
-        <button class="btn-sec" onclick="downloadPDF()">📄 PDF</button>
-        <button class="btn-sec" onclick="printBill()">🖨️ A4</button>
+        <button id="sbtn-wa" data-share="wa" class="btn-wa" onclick="autoDefault('wa');quickWA()">📲 WhatsApp</button>
+        <button id="sbtn-pdf" data-share="pdf" class="btn-sec" onclick="autoDefault('pdf');downloadPDF()">📄 PDF</button>
+        <button id="sbtn-a4" data-share="a4" class="btn-sec" onclick="autoDefault('a4');printBill()">🖨️ A4</button>
       </div>
       <div class="btn-row col2" style="margin-bottom:10px">
-        <button class="btn-sec" onclick="printThermal(58)">🧾 58mm</button>
-        <button class="btn-sec" onclick="printThermal(80)">🧾 80mm</button>
+        <button id="sbtn-58" data-share="58mm" class="btn-sec" onclick="autoDefault('58mm');printThermal(58)">🧾 58mm</button>
+        <button id="sbtn-80" data-share="80mm" class="btn-sec" onclick="autoDefault('80mm');printThermal(80)">🧾 80mm</button>
       </div>
       <button class="btn-pri" onclick="previewAndSave()">👁 Preview & Save Bill</button>
 
@@ -546,13 +542,13 @@ html,body{height:100%;overflow:hidden}
 
     <!-- Send Options -->
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:6px">
-      <button class="btn-wa" onclick="sendWA()">📲 WA</button>
-      <button class="btn-sec" onclick="downloadPDF()">📄 PDF</button>
-      <button class="btn-sec" onclick="printBill()">🖨️ A4</button>
+      <button id="sse-wa" data-share="wa" class="btn-wa" onclick="autoDefault('wa');sendWA()">📲 WA</button>
+      <button id="sse-pdf" data-share="pdf" class="btn-sec" onclick="autoDefault('pdf');downloadPDF()">📄 PDF</button>
+      <button id="sse-a4" data-share="a4" class="btn-sec" onclick="autoDefault('a4');printBill()">🖨️ A4</button>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
-      <button class="btn-sec" onclick="printThermal(58)">🧾 58mm</button>
-      <button class="btn-sec" onclick="printThermal(80)">🧾 80mm</button>
+      <button id="sse-58" data-share="58mm" class="btn-sec" onclick="autoDefault('58mm');printThermal(58)">🧾 58mm</button>
+      <button id="sse-80" data-share="80mm" class="btn-sec" onclick="autoDefault('80mm');printThermal(80)">🧾 80mm</button>
       <button class="btn-sec" onclick="closeModal('bill-preview-modal')" style="color:var(--t2)">← Back</button>
     </div>
     <button class="btn-pri" id="confirm-settle-btn" onclick="confirmSettle()">✅ Confirm & Save — Cash</button>
@@ -976,7 +972,7 @@ function gatherBill(){
     invno:  document.getElementById('inv-no')?.value||'INV-0001',
     invdate:document.getElementById('inv-date')?.value||todayISO(),
     duedate:'',
-    paymode:document.getElementById('pay-mode')?.value||'Cash',
+    paymode:_payMethod||'Cash',
     note:   document.getElementById('inv-note')?.value||'',
     sub:    calc.sub,gstAmt:calc.totalGST,discAmt:calc.billDisc,itemDiscAmt:calc.totalItemDisc,grand:calc.grand,
     items,gstMap:calc.gstMap,isGSTInvoice:_gstMode,
@@ -1285,6 +1281,7 @@ function selPayMethod(method,el){
   document.querySelectorAll('#bm-pay-grid .pm-card').forEach(c=>c.classList.remove('on'));
   el.classList.add('on');
   document.getElementById('confirm-settle-btn').textContent='✅ Confirm & Save — '+method;
+  checkCreditLimit();
 }
 
 function setPartial(type){
@@ -1392,38 +1389,161 @@ function buildWAMsg(b){
   const s=_shop||JSON.parse(localStorage.getItem('sbp_shop')||'{}');
   const isPaid=(s.plan||'free')!=='free';
   const isHindi=(localStorage.getItem('sbp_lang')||'en')==='hi';
-  const lines=b.items.map(it=>`• ${it.nm} x${it.q} @ ₹${it.r} = ₹${it.tot}`).join('\n');
+
+  // Item lines WITH item-wise GST transparency
+  const lines=b.items.map(it=>{
+    const gstRate=parseFloat(it.rate||it.gst||0);
+    const gstAmt=parseFloat(it.lineGST||0);
+    const tot=parseFloat(it.tot||0);
+    const gstStr=gstRate>0?` [GST ${gstRate}%: ₹${gstAmt.toFixed(2)}]`:'';
+    return `• ${it.nm} x${it.q} @ ₹${it.r}${gstStr} = *₹${tot.toFixed(2)}*`;
+  }).join('\n');
 
   let msg;
   if(isHindi){
-    msg=`🧾 *बिल — ${s.name||'ShopBill Pro'}*\n━━━━━━━━━━━━━\n📋 *${b.invno}*\n📅 ${b.invdate}\n👤 *${b.nm}*\n\n📦 *सामान:*\n${lines}\n━━━━━━━━━━━━━\n💰 उप-कुल: ₹${b.sub.toFixed(2)}`;
-    if(b.gstAmt>0) msg+=`\n🏛️ GST: ₹${b.gstAmt.toFixed(2)}`;
-    if(b.discAmt>0) msg+=`\n🎁 छूट: -₹${b.discAmt.toFixed(2)}`;
-    msg+=`\n\n✅ *कुल: ₹${b.grand.toFixed(2)}*\n💳 ${b.paymode}`;
+    msg=`🧾 *बिल — ${s.name||'ShopBill Pro'}*\n━━━━━━━━━━━━━\n📋 *${b.invno}*\n📅 ${b.invdate}\n👤 *${b.nm}*\n\n📦 *सामान:*\n${lines}\n━━━━━━━━━━━━━\n💰 उप-कुल: ₹${parseFloat(b.sub).toFixed(2)}`;
+    if(b.gstAmt>0) msg+=`\n🏛️ कुल GST: ₹${parseFloat(b.gstAmt).toFixed(2)}`;
+    if(b.itemDiscAmt>0) msg+=`\n🎁 आइटम छूट: -₹${parseFloat(b.itemDiscAmt).toFixed(2)}`;
+    if(b.discAmt>0) msg+=`\n🎁 बिल छूट: -₹${parseFloat(b.discAmt).toFixed(2)}`;
+    msg+=`\n\n✅ *कुल: ₹${parseFloat(b.grand).toFixed(2)}*\n💳 ${b.paymode||_payMethod||'Cash'}`;
     if(s.upi) msg+=`\n\n📲 *UPI से भुगतान करें:* ${s.upi}\n_(बिल प्रिंट में QR कोड देखें)_`;
-    msg+=`\n\n🙏 धन्यवाद!`;
+    msg+=`\n\n🙏 धन्यवाद! फिर आइए।`;
   }else{
-    msg=`🧾 *INVOICE — ${s.name||'ShopBill Pro'}*\n━━━━━━━━━━━━━\n📋 *${b.invno}*\n📅 ${b.invdate}\n👤 *${b.nm}*\n\n📦 *Items:*\n${lines}\n━━━━━━━━━━━━━\n💰 Subtotal: ₹${b.sub.toFixed(2)}`;
-    if(b.gstAmt>0) msg+=`\n🏛️ GST: ₹${b.gstAmt.toFixed(2)}`;
-    if(b.discAmt>0) msg+=`\n🎁 Discount: -₹${b.discAmt.toFixed(2)}`;
-    msg+=`\n\n✅ *Total: ₹${b.grand.toFixed(2)}*\n💳 ${b.paymode}`;
+    msg=`🧾 *INVOICE — ${s.name||'ShopBill Pro'}*\n━━━━━━━━━━━━━\n📋 *${b.invno}*\n📅 ${b.invdate}\n👤 *${b.nm}*\n\n📦 *Items:*\n${lines}\n━━━━━━━━━━━━━\n💰 Subtotal: ₹${parseFloat(b.sub).toFixed(2)}`;
+    if(b.gstAmt>0) msg+=`\n🏛️ Total GST: ₹${parseFloat(b.gstAmt).toFixed(2)}`;
+    if(b.itemDiscAmt>0) msg+=`\n🎁 Item Disc: -₹${parseFloat(b.itemDiscAmt).toFixed(2)}`;
+    if(b.discAmt>0) msg+=`\n🎁 Bill Disc: -₹${parseFloat(b.discAmt).toFixed(2)}`;
+    msg+=`\n\n✅ *Total: ₹${parseFloat(b.grand).toFixed(2)}*\n💳 ${b.paymode||_payMethod||'Cash'}`;
     if(s.upi) msg+=`\n\n📲 *Pay via UPI:* ${s.upi}\n_(See QR code on printed bill)_`;
-    msg+=`\n\n🙏 Thank you!`;
+    msg+=`\n\n🙏 Thank you! Visit Again.`;
   }
   if(!isPaid) msg+=`\n_ShopBill Pro_`;
   return msg;
 }
 
 function sendWA(){
-  const b=_billSnap;if(!b)return;
+  const b=_billSnap; if(!b) return;
   const wa=(b.wa||'').replace(/\D/g,'');
-  if(!wa||wa.length<10){toast('Invalid WhatsApp number','e');return}
+  if(!wa||wa.length<10){ toast('WhatsApp number required','e'); return; }
+  // Show WA send options modal
+  showWASendOptions(b, wa);
+}
+
+function quickWA(){
+  const b=gatherBill(); _billSnap=b; sendWA();
+}
+
+function showWASendOptions(b, wa){
+  let modal=document.getElementById('wa-send-modal');
+  if(!modal){
+    modal=document.createElement('div');
+    modal.id='wa-send-modal';
+    modal.style.cssText='position:fixed;inset:0;z-index:1100;background:rgba(0,0,0,.75);display:flex;align-items:flex-end;justify-content:center';
+    document.body.appendChild(modal);
+  }
+  const isHindi=(localStorage.getItem('sbp_lang')||'en')==='hi';
+  modal.innerHTML=`
+    <div style="background:var(--surf,#1C1C28);border-radius:20px 20px 0 0;padding:20px;width:100%;max-width:520px">
+      <div style="font-family:'Outfit',sans-serif;font-size:16px;font-weight:800;margin-bottom:4px;color:var(--text,#F0EFF8)">📲 ${isHindi?'WhatsApp से भेजें':'Send via WhatsApp'}</div>
+      <div style="font-size:12px;color:var(--t2,#8A8AA8);margin-bottom:16px">${isHindi?'कैसे भेजना है?':'How do you want to send?'}</div>
+
+      <div onclick="sendWAText()" style="background:rgba(37,211,102,.1);border:1.5px solid rgba(37,211,102,.3);border-radius:14px;padding:14px 16px;margin-bottom:10px;cursor:pointer;display:flex;align-items:center;gap:12px">
+        <span style="font-size:28px">💬</span>
+        <div>
+          <div style="font-family:'Outfit',sans-serif;font-weight:800;color:#25D366;font-size:14px">${isHindi?'Text Message':'Text Message'}</div>
+          <div style="font-size:11px;color:var(--t2,#8A8AA8);margin-top:2px">${isHindi?'Item-wise GST के साथ text bill':'Bill with item-wise GST breakdown'}</div>
+        </div>
+      </div>
+
+      <div onclick="sendWAPDF()" style="background:rgba(245,166,35,.1);border:1.5px solid rgba(245,166,35,.3);border-radius:14px;padding:14px 16px;margin-bottom:16px;cursor:pointer;display:flex;align-items:center;gap:12px">
+        <span style="font-size:28px">📎</span>
+        <div>
+          <div style="font-family:'Outfit',sans-serif;font-weight:800;color:var(--acc,#F5A623);font-size:14px">${isHindi?'PDF / Image bill':'PDF / Image Bill'}</div>
+          <div style="font-size:11px;color:var(--t2,#8A8AA8);margin-top:2px">${isHindi?'Professional bill photo share karein':'Share professional bill as image/PDF'}</div>
+        </div>
+      </div>
+
+      <button onclick="document.getElementById('wa-send-modal').style.display='none'" style="width:100%;padding:12px;border-radius:12px;border:1.5px solid var(--bord,#2A2A3A);background:transparent;color:var(--t2,#8A8AA8);font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;cursor:pointer">
+        ${isHindi?'रद्द करें':'Cancel'}
+      </button>
+    </div>`;
+  modal.style.display='flex';
+  modal.onclick=function(e){ if(e.target===modal) modal.style.display='none'; };
+}
+
+function sendWAText(){
+  const b=_billSnap; if(!b) return;
+  document.getElementById('wa-send-modal').style.display='none';
+  const wa=(b.wa||'').replace(/\D/g,'');
   window.open('https://wa.me/91'+wa+'?text='+encodeURIComponent(buildWAMsg(b)),'_blank');
   toast('📲 Opening WhatsApp...','s');
 }
 
-function quickWA(){
-  const b=gatherBill();_billSnap=b;sendWA();
+async function sendWAPDF(){
+  const b=_billSnap; if(!b) return;
+  document.getElementById('wa-send-modal').style.display='none';
+
+  toast('⏳ Generating bill image...','',3000);
+
+  try{
+    // Render bill HTML into offscreen div, capture with html2canvas
+    const html=buildBillHTML(b, b.paymode||_payMethod||'Paid');
+    let offDiv=document.getElementById('_wa_pdf_render');
+    if(!offDiv){
+      offDiv=document.createElement('div');
+      offDiv.id='_wa_pdf_render';
+      offDiv.style.cssText='position:fixed;left:-9999px;top:0;width:580px;background:#fff;z-index:-1;padding:0';
+      document.body.appendChild(offDiv);
+    }
+    offDiv.innerHTML=html;
+
+    // Load html2canvas if not loaded
+    if(!window.html2canvas){
+      await new Promise((res,rej)=>{
+        const s=document.createElement('script');
+        s.src='https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
+        s.onload=res; s.onerror=rej;
+        document.head.appendChild(s);
+      });
+    }
+
+    await new Promise(r=>setTimeout(r,300)); // let DOM render
+    const canvas=await html2canvas(offDiv,{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false});
+    offDiv.innerHTML='';
+
+    canvas.toBlob(async(blob)=>{
+      if(!blob){ toast('Could not generate image','e'); return; }
+      const file=new File([blob],`Bill-${b.invno||'INV'}.png`,{type:'image/png'});
+      const wa=(b.wa||'').replace(/\D/g,'');
+      const msg=buildWAMsg(b);
+
+      if(navigator.share && navigator.canShare && navigator.canShare({files:[file]})){
+        try{
+          await navigator.share({files:[file], text:msg, title:`Bill ${b.invno}`});
+          toast('✅ Bill shared!','s');
+        }catch(e){
+          if(e.name!=='AbortError') fallbackDownload(canvas, b);
+        }
+      } else {
+        // Fallback: download image + open WA text
+        fallbackDownload(canvas, b);
+        setTimeout(()=>{
+          window.open('https://wa.me/91'+wa+'?text='+encodeURIComponent(msg),'_blank');
+        }, 800);
+      }
+    },'image/png');
+  }catch(err){
+    console.error(err);
+    toast('Error generating PDF — try Text instead','e');
+  }
+}
+
+function fallbackDownload(canvas, b){
+  const a=document.createElement('a');
+  a.href=canvas.toDataURL('image/png');
+  a.download=`Bill-${b.invno||'INV'}.png`;
+  a.click();
+  toast('📥 Bill image downloaded — attach in WhatsApp manually','s',4000);
 }
 
 // ── PDF ──
@@ -2064,6 +2184,55 @@ async function init(){
 // ── Load from Bill Template params ──
 function loadFromTemplateParams(){
   const params=new URLSearchParams(window.location.search);
+
+  // ── Edit Bill Mode (from bills.html reopen) ──
+  if(params.get('edit_bill')){
+    const editData=localStorage.getItem('sbp_edit_bill');
+    if(editData){
+      try{
+        const b=JSON.parse(editData);
+        localStorage.removeItem('sbp_edit_bill');
+
+        // Show banner
+        const banner=document.createElement('div');
+        banner.style.cssText='background:rgba(6,182,212,.12);border:1.5px solid rgba(6,182,212,.3);border-radius:var(--rs);padding:10px 14px;margin-bottom:10px;font-size:12px;font-weight:700;color:#06B6D4;display:flex;align-items:center;gap:8px';
+        banner.innerHTML=`<span>✏️</span><span>Editing: ${b.invoice_no} — ${b.customer_name}. Changes will update this bill.</span>`;
+        document.getElementById('cust-nm')?.parentElement?.parentElement?.insertBefore(banner,document.getElementById('cust-nm')?.parentElement?.parentElement?.firstChild);
+
+        // Populate fields
+        if(b.customer_name||b.nm) document.getElementById('cust-nm').value=b.customer_name||b.nm||'';
+        const phone=b.customer_phone||b.wa||b.customer_mobile||'';
+        if(phone) document.getElementById('cust-wa').value=phone;
+        if(b.invoice_no) document.getElementById('inv-no').value=b.invoice_no;
+        if(b.invoice_date||b.invdate) document.getElementById('inv-date').value=b.invoice_date||b.invdate||todayISO();
+        if(b.note||b.notes) document.getElementById('inv-note').value=b.note||b.notes||'';
+
+        // Load items (supports both bill_items and items array formats)
+        const rawItems=b.bill_items||b.items||[];
+        if(rawItems.length){
+          document.getElementById('items-wrap').innerHTML='';
+          rawItems.filter(it=>!it.voided).forEach(it=>{
+            addItem();
+            const rows=document.querySelectorAll('#items-wrap .item-row');
+            const row=rows[rows.length-1];
+            if(row){
+              row.querySelector('.it-nm').value=it.item_name||it.nm||'';
+              row.querySelector('.it-qty').value=it.qty||it.q||1;
+              row.querySelector('.it-rt').value=it.rate||it.r||0;
+              row.querySelector('.it-gst').value=it.gst_rate||it.rate_gst||it.g||5;
+            }
+          });
+          calcTotals();
+        }
+
+        // Store original bill ID for audit logging when saved
+        window._editBillId=params.get('edit_bill');
+        toast('✏️ Bill loaded for editing — make changes and save','s',4000);
+      }catch(e){console.warn('Edit bill load error:',e);}
+    }
+    return;
+  }
+
   if(params.get('tpl')!=='1')return;
   const nm=params.get('nm')||'';
   const wa=params.get('wa')||'';
@@ -2075,8 +2244,13 @@ function loadFromTemplateParams(){
   if(wa)document.getElementById('cust-wa').value=wa;
   if(date)document.getElementById('inv-date').value=date;
   if(note)document.getElementById('inv-note').value=note;
-  const pmSel=document.getElementById('pay-mode');
-  if(pmSel&&paymode)pmSel.value=paymode;
+  if(paymode){
+    _payMethod=paymode;
+    document.querySelectorAll('#bm-pay-grid .pm-card').forEach(c=>{
+      const nm=c.querySelector('.pm-nm')?.textContent||'';
+      c.classList.toggle('on', nm.toLowerCase().includes(paymode.toLowerCase()));
+    });
+  }
   if(itemsRaw){
     try{
       const items=JSON.parse(decodeURIComponent(itemsRaw));
@@ -2101,7 +2275,7 @@ function loadFromTemplateParams(){
 // ── Credit Limit Check ──
 function checkCreditLimit(){
   const name=document.getElementById('cust-nm')?.value||'';
-  const paymode=document.getElementById('pay-mode')?.value||'Cash';
+  const paymode=_payMethod||'Cash';
   if(paymode!=='Credit')return;
   const cust=_custs.find(c=>c.name===name);
   if(!cust||!cust.credit_limit||parseFloat(cust.credit_limit)<=0)return;
@@ -2115,71 +2289,232 @@ function checkCreditLimit(){
 
 // ── Thermal Print (58mm) ──
 function printThermal(size){
-  size=size||58;
-  const b=_billSnap||gatherBill();
-  const s=_shop||JSON.parse(localStorage.getItem('sbp_shop')||'{}');
-  const w=size===80?'80mm':'58mm';
-  const charW=size===80?42:32;
-  const sep='─'.repeat(charW);
-  
-  function pad(l,r,width){
-    width=width||charW;
-    const space=width-l.length-r.length;
-    return l+(space>0?' '.repeat(space):' ')+r;
+  size = size || 58;
+  const b = _billSnap || gatherBill();
+  const s = _shop || JSON.parse(localStorage.getItem('sbp_shop')||'{}');
+
+  const mmW    = size === 80 ? '80mm' : '58mm';
+  const pxW    = size === 80 ? '302px' : '220px';
+  const fsBase = size === 80 ? '12px' : '10px';
+  const fsLg   = size === 80 ? '15px' : '13px';
+  const fsXl   = size === 80 ? '18px' : '15px';
+  const fsSm   = size === 80 ? '10px' : '9px';
+
+  const shopName  = (s.name || s.shop_name || 'MY SHOP').toUpperCase();
+  const shopTag   = s.tag || s.tagline || '';
+  const shopAddr  = s.address || '';
+  const shopPhone = s.phone || s.mobile || '';
+  const shopGSTIN = s.gstin || '';
+  const shopUPI   = s.upi || '';
+
+  // ── Item rows ──
+  const itemRows = (b.items || []).map(it => {
+    const name  = (it.nm || it.name || '').substring(0, size === 80 ? 28 : 20);
+    const qty   = parseFloat(it.q || it.qty || 1);
+    const rate  = parseFloat(it.r || it.rate_val || it.rate || 0);
+    const gstR  = parseFloat(it.rate || it.gst || 0);
+    const tot   = parseFloat(it.tot || (qty * rate * (1 + gstR/100)));
+    const gstAmt= parseFloat(it.lineGST || (qty * rate * gstR / 100) || 0);
+
+    return `
+    <div style="margin-bottom:5px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <span style="flex:1;word-break:break-word;padding-right:4px">${name}</span>
+        <span style="white-space:nowrap;font-weight:700">₹${tot.toFixed(2)}</span>
+      </div>
+      <div style="color:#555;font-size:${fsSm}">
+        ${qty} × ₹${rate.toFixed(2)}${gstR > 0 ? ` + GST ${gstR}% (₹${gstAmt.toFixed(2)})` : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  // ── GST Summary ──
+  let gstSummary = '';
+  if(b.gstMap && Object.keys(b.gstMap).length){
+    gstSummary = Object.entries(b.gstMap).map(([rate, amt]) =>
+      `<div style="display:flex;justify-content:space-between">
+        <span>GST ${rate}%</span><span>₹${parseFloat(amt).toFixed(2)}</span>
+      </div>`
+    ).join('');
   }
 
-  const items=b.items.map(it=>{
-    const nm=(it.nm||'').substring(0,charW-2);
-    const detail='  '+it.q+' x Rs.'+parseFloat(it.r||0).toFixed(2);
-    const tot='Rs.'+parseFloat(it.tot||0).toFixed(2);
-    return nm+'\n'+pad(detail,tot);
-  }).join('\n');
+  const validDate = b.invdate || new Date().toLocaleDateString('en-IN');
+  const invoiceNo = b.invno || b.invoiceNo || 'INV-001';
+  const custName  = b.nm || b.custName || 'Walk-in Customer';
+  const custPhone = b.wa || b.custPhone || '';
+  const payMode   = b.paymode || b.payMode || _payMethod || 'Cash';
+  const sub       = parseFloat(b.sub || 0);
+  const gstAmt    = parseFloat(b.gstAmt || 0);
+  const discAmt   = parseFloat(b.discAmt || 0);
+  const itemDisc  = parseFloat(b.itemDiscAmt || 0);
+  const grand     = parseFloat(b.grand || 0);
 
-  const lines=[
-    (s.name||'SHOP').toUpperCase(),
-    s.tag||'',
-    s.address||'',
-    s.phone?'Ph: '+s.phone:'',
-    s.gstin?'GSTIN: '+s.gstin:'',
-    sep,
-    pad('Invoice:',b.invno||''),
-    pad('Date:',b.invdate||''),
-    pad('Customer:',b.nm||'Walk-in'),
-    sep,
-    items,
-    sep,
-    pad('Subtotal:','Rs.'+b.sub.toFixed(2)),
-    b.gstAmt>0?pad('GST:','Rs.'+b.gstAmt.toFixed(2)):'',
-    b.discAmt>0?pad('Discount:','-Rs.'+b.discAmt.toFixed(2)):'',
-    sep,
-    pad('TOTAL:','Rs.'+b.grand.toFixed(2)),
-    sep,
-    pad('Payment:',b.paymode||'Cash'),
-    '',
-    s.upi?'UPI: '+s.upi:'',
-    '',
-    'Thank you! Visit Again',
-    (s.plan||'free')==='free'?'--- ShopBill Pro ---':'',
-  ].filter(l=>l!=='').join('\n');
+  const divider = `<div style="border-top:1px dashed #000;margin:5px 0"></div>`;
 
-  const win=window.open('','_blank','width=400,height=700');
-  if(!win){toast('Allow popups for print','e');return}
-  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${b.invno||'Receipt'}</title>
-    <style>
-      @page{size:${w} auto;margin:2mm}
-      *{box-sizing:border-box;margin:0;padding:0}
-      body{font-family:'Courier New',Courier,monospace;font-size:${size===80?'12px':'11px'};width:${w};margin:0 auto;padding:4px;white-space:pre-wrap;word-wrap:break-word;line-height:1.4;color:#000;background:#fff}
-      @media print{body{padding:2px}}
-    </style></head><body>${lines.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
-    <script>window.addEventListener('load',function(){setTimeout(function(){window.print();},500)});<\/script>
-  </body></html>`);
+  const html = `<!DOCTYPE html>
+<html><head>
+<meta charset="UTF-8">
+<title>${invoiceNo}</title>
+<style>
+  @page { size: ${mmW} auto; margin: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: ${fsBase};
+    width: ${mmW};
+    max-width: ${mmW};
+    margin: 0 auto;
+    padding: 4mm 3mm 8mm 3mm;
+    color: #000;
+    background: #fff;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .center { text-align: center; }
+  .bold   { font-weight: 700; }
+  .lg     { font-size: ${fsLg}; }
+  .xl     { font-size: ${fsXl}; }
+  .sm     { font-size: ${fsSm}; color: #444; }
+  .row    { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; }
+  .total-row { display: flex; justify-content: space-between; font-weight: 700; font-size: ${fsLg}; padding: 4px 0; }
+  .badge  { display: inline-block; border: 1px solid #000; border-radius: 3px; padding: 1px 5px; font-size: ${fsSm}; }
+  @media print {
+    body { padding: 2mm 2mm 6mm 2mm; }
+  }
+</style>
+</head><body>
+
+  <!-- Shop Header -->
+  <div class="center bold xl" style="margin-bottom:3px">${shopName}</div>
+  ${shopTag ? `<div class="center sm" style="margin-bottom:2px">${shopTag}</div>` : ''}
+  ${shopAddr ? `<div class="center sm" style="margin-bottom:2px">${shopAddr}</div>` : ''}
+  ${shopPhone ? `<div class="center sm">Ph: ${shopPhone}</div>` : ''}
+  ${shopGSTIN ? `<div class="center sm">GSTIN: ${shopGSTIN}</div>` : ''}
+
+  ${divider}
+
+  <!-- Invoice Info -->
+  <div class="row"><span>Invoice:</span><span class="bold">${invoiceNo}</span></div>
+  <div class="row"><span>Date:</span><span>${validDate}</span></div>
+  <div class="row"><span>Customer:</span><span class="bold">${custName}</span></div>
+  ${custPhone ? `<div class="row"><span>Phone:</span><span>${custPhone}</span></div>` : ''}
+  <div class="row"><span>Payment:</span><span class="badge">${payMode}</span></div>
+
+  ${divider}
+
+  <!-- Items -->
+  <div class="bold sm" style="margin-bottom:4px">ITEMS</div>
+  ${itemRows}
+
+  ${divider}
+
+  <!-- Totals -->
+  <div class="row"><span>Subtotal</span><span>₹${sub.toFixed(2)}</span></div>
+  ${gstAmt > 0 ? `${gstSummary ? gstSummary : ''}<div class="row"><span>Total GST</span><span>₹${gstAmt.toFixed(2)}</span></div>` : ''}
+  ${itemDisc > 0 ? `<div class="row"><span>Item Disc.</span><span>-₹${itemDisc.toFixed(2)}</span></div>` : ''}
+  ${discAmt > 0 ? `<div class="row"><span>Bill Disc.</span><span>-₹${discAmt.toFixed(2)}</span></div>` : ''}
+
+  <div style="border-top:2px solid #000;margin:4px 0"></div>
+  <div class="total-row"><span>TOTAL</span><span>₹${grand.toFixed(2)}</span></div>
+  <div style="border-bottom:2px solid #000;margin-bottom:6px"></div>
+
+  ${shopUPI ? `
+  <div class="center sm" style="margin-bottom:2px">Pay via UPI</div>
+  <div class="center bold" style="margin-bottom:4px">${shopUPI}</div>
+  ` : ''}
+
+  ${divider}
+
+  <div class="center bold" style="margin:4px 0">Thank you! Visit Again 🙏</div>
+  ${(s.plan||'free')==='free' ? `<div class="center sm" style="margin-top:4px">--- Powered by ShopBill Pro ---</div>` : ''}
+
+<script>
+  window.addEventListener('load', function(){
+    setTimeout(function(){ window.print(); }, 400);
+  });
+<\/script>
+</body></html>`;
+
+  const win = window.open('', '_blank', `width=${size===80?380:300},height=700,menubar=no,toolbar=no`);
+  if(!win){ toast('Allow popups for print','e'); return; }
+  win.document.write(html);
   win.document.close();
-  toast('🧾 Thermal print opening...','s');
+  toast('🧾 '+(size)+'mm print opening...','s');
+}
+
+// ══════════════════════════════════════════
+// F2: DEFAULT SHARE PREFERENCE
+// ══════════════════════════════════════════
+const _SHARE_NAMES={wa:'📲 WA',pdf:'📄 PDF',a4:'🖨️ A4','58mm':'🧾 58mm','80mm':'🧾 80mm'};
+const _SHARE_FORM_IDS={wa:'sbtn-wa',pdf:'sbtn-pdf',a4:'sbtn-a4','58mm':'sbtn-58','80mm':'sbtn-80'};
+const _SHARE_SETTLE_IDS={wa:'sse-wa',pdf:'sse-pdf',a4:'sse-a4','58mm':'sse-58','80mm':'sse-80'};
+
+function autoDefault(key){
+  localStorage.setItem('sbp_default_share',key);
+  applyDefaultShare();
+}
+
+function applyDefaultShare(){
+  const def=localStorage.getItem('sbp_default_share')||'wa';
+  const accent='2px solid var(--acc)';
+  const none='2px solid transparent';
+  // Highlight form buttons
+  Object.entries(_SHARE_FORM_IDS).forEach(([k,id])=>{
+    const el=document.getElementById(id);
+    if(el){
+      el.style.outline=k===def?accent:none;
+      el.style.outlineOffset='2px';
+    }
+  });
+  // Highlight settlement buttons
+  Object.entries(_SHARE_SETTLE_IDS).forEach(([k,id])=>{
+    const el=document.getElementById(id);
+    if(el){
+      el.style.outline=k===def?accent:none;
+      el.style.outlineOffset='2px';
+    }
+  });
+  // Update badge
+  const badge=document.getElementById('default-share-badge');
+  if(badge) badge.textContent='⭐ '+(_SHARE_NAMES[def]||def);
+}
+
+function openShareDefaultPicker(){
+  let modal=document.getElementById('share-default-modal');
+  if(!modal){
+    modal=document.createElement('div');
+    modal.id='share-default-modal';
+    modal.style.cssText='position:fixed;inset:0;z-index:1100;background:rgba(0,0,0,.75);display:flex;align-items:flex-end;justify-content:center';
+    document.body.appendChild(modal);
+  }
+  const def=localStorage.getItem('sbp_default_share')||'wa';
+  modal.innerHTML=`
+    <div style="background:var(--surf);border-radius:20px 20px 0 0;padding:20px;width:100%;max-width:520px">
+      <div style="font-family:'Outfit',sans-serif;font-size:15px;font-weight:800;margin-bottom:4px;color:var(--text)">⭐ Set Default Share Option</div>
+      <div style="font-size:12px;color:var(--t2);margin-bottom:14px">Your choice will auto-highlight every bill</div>
+      ${Object.entries(_SHARE_NAMES).map(([k,label])=>`
+        <div onclick="autoDefault('${k}');document.getElementById('share-default-modal').style.display='none'"
+          style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:12px;margin-bottom:8px;cursor:pointer;
+          background:${k===def?'rgba(245,166,35,.1)':'var(--surf2)'};
+          border:1.5px solid ${k===def?'rgba(245,166,35,.4)':'var(--bord)'}">
+          <span style="font-size:20px">${label.split(' ')[0]}</span>
+          <span style="font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;color:${k===def?'var(--acc)':'var(--text)'}">
+            ${label.substring(label.indexOf(' ')+1)} ${k===def?'✓ (current default)':''}
+          </span>
+        </div>`).join('')}
+      <button onclick="document.getElementById('share-default-modal').style.display='none'"
+        style="width:100%;margin-top:4px;padding:11px;border-radius:12px;border:1.5px solid var(--bord);background:transparent;color:var(--t2);font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;cursor:pointer">
+        Cancel
+      </button>
+    </div>`;
+  modal.style.display='flex';
+  modal.onclick=function(e){if(e.target===modal)modal.style.display='none';};
 }
 
 init();
-// Load template on startup
 loadFromTemplateParams();
+// Apply default share highlight after DOM ready
+setTimeout(applyDefaultShare, 100);
 
 /* ══ Desktop Sidebar ══ */
 (function(){
@@ -2194,6 +2529,7 @@ loadFromTemplateParams();
     {ic:'📊',lb:'Reports',url:'reports.html'},
     {ic:'🛒',lb:'POS Admin',url:'pos-admin.html'},
     {ic:'💬',lb:'WhatsApp',url:'wa-center.html'},
+    {ic:'📢',lb:'Marketing',url:'marketing.html'},
     {ic:'💰',lb:'Cash Register',url:'cash-register.html'},
     {ic:'🚚',lb:'Suppliers',url:'supplier.html'},
     {ic:'🔄',lb:'Recurring',url:'recurring.html'},
