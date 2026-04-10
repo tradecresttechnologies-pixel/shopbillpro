@@ -301,7 +301,7 @@ html,body{height:100%;overflow:hidden}
     <div class="ni" onclick="goTo('dashboard.html')"><span class="ni-ic">🏠</span><span class="ni-lb" data-en="Home" data-hi="होम">Home</span></div>
     <div class="ni on" onclick="goTo('bills.html')"><span class="ni-ic">🧾</span><span class="ni-lb" data-en="Bills" data-hi="बिल">Bills</span></div>
     <div class="ni" onclick="goTo('billing.html')" style="align-items:center;justify-content:center"><div class="nav-fab">＋</div></div>
-    <div class="ni" onclick="goTo('customers.html')"><span class="ni-ic">👥</span><span class="ni-lb" data-en="Customers" data-hi="ग्राहक">Customers</span></div>
+    <div class="ni" onclick="goTo('marketing.html')"><span class="ni-ic">📢</span><span class="ni-lb">Marketing</span></div>
     <div class="ni" onclick="goTo('settings.html')"><span class="ni-ic">☰</span><span class="ni-lb" data-en="More" data-hi="अधिक">More</span></div>
   </div>
 </div>
@@ -764,13 +764,7 @@ function renderBillActions(b){
     html+=`<button onclick="voidBill('${b.id}')" style="${btnStyle};background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.25);color:var(--acc2)">🚫 Void Bill</button>`;
   }
 
-  html+=`<button onclick="deleteBill('${b.id}')" style="${btnStyle};background:rgba(138,138,168,.06);border-color:rgba(138,138,168,.2);color:var(--t2)">🗑️ Delete</button>`;
-
-  // Audit Trail button — always visible if there are audit entries
-  const hasAudit=(b.audit_log&&b.audit_log.length>0);
-  html+=`<button onclick="showBillAuditTrail('${b.id}')" style="${btnStyle};background:${hasAudit?'rgba(139,92,246,.1)':'rgba(138,138,168,.06)'};border-color:${hasAudit?'rgba(139,92,246,.3)':'rgba(138,138,168,.2)'};color:${hasAudit?'#8B5CF6':'var(--t2)'}">📋 Audit${hasAudit?` (${b.audit_log.length})`:''}`;
-  html+=`</button>`;
-
+  html+=`<button onclick="showBillAuditTrail('${b.id}')" style="${btnStyle};background:${hasAudit?'rgba(139,92,246,.1)':'rgba(138,138,168,.06)'};border-color:${hasAudit?'rgba(139,92,246,.3)':'rgba(138,138,168,.2)'};color:${hasAudit?'#8B5CF6':'var(--t2)'}">📋 Audit${hasAudit?` (${b.audit_log.length})`:''}</button>`;
   el.innerHTML=html;
 }
 

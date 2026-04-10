@@ -452,11 +452,7 @@ html,body{height:100%;overflow:hidden}
       <div class="btn-row col3" style="margin-bottom:6px">
         <button id="sbtn-wa" data-share="wa" class="btn-wa" onclick="autoDefault('wa');quickWA()">📲 WhatsApp</button>
         <button id="sbtn-pdf" data-share="pdf" class="btn-sec" onclick="autoDefault('pdf');downloadPDF()">📄 PDF</button>
-        <button id="sbtn-a4" data-share="a4" class="btn-sec" onclick="autoDefault('a4');printBill()">🖨️ A4</button>
-      </div>
-      <div class="btn-row col2" style="margin-bottom:10px">
-        <button id="sbtn-58" data-share="58mm" class="btn-sec" onclick="autoDefault('58mm');printThermal(58)">🧾 58mm</button>
-        <button id="sbtn-80" data-share="80mm" class="btn-sec" onclick="autoDefault('80mm');printThermal(80)">🧾 80mm</button>
+        <div id="print-btn-area" style="display:contents"></div>
       </div>
       <button class="btn-pri" onclick="previewAndSave()">👁 Preview & Save Bill</button>
 
@@ -506,7 +502,7 @@ html,body{height:100%;overflow:hidden}
     <div class="ni" onclick="goTo('dashboard.html')"><span class="ni-ic">🏠</span><span class="ni-lb">Home</span></div>
     <div class="ni" onclick="goTo('bills.html')"><span class="ni-ic">🧾</span><span class="ni-lb">Bills</span></div>
     <div class="ni on" onclick="" style="align-items:center;justify-content:center"><div class="nav-fab">＋</div></div>
-    <div class="ni" onclick="goTo('customers.html')"><span class="ni-ic">👥</span><span class="ni-lb">Customers</span></div>
+    <div class="ni" onclick="goTo('marketing.html')"><span class="ni-ic">📢</span><span class="ni-lb">Marketing</span></div>
     <div class="ni" onclick="goTo('settings.html')"><span class="ni-ic">☰</span><span class="ni-lb">More</span></div>
   </div>
 </div>
@@ -541,14 +537,10 @@ html,body{height:100%;overflow:hidden}
     </div>
 
     <!-- Send Options -->
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:6px">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
       <button id="sse-wa" data-share="wa" class="btn-wa" onclick="autoDefault('wa');sendWA()">📲 WA</button>
       <button id="sse-pdf" data-share="pdf" class="btn-sec" onclick="autoDefault('pdf');downloadPDF()">📄 PDF</button>
-      <button id="sse-a4" data-share="a4" class="btn-sec" onclick="autoDefault('a4');printBill()">🖨️ A4</button>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
-      <button id="sse-58" data-share="58mm" class="btn-sec" onclick="autoDefault('58mm');printThermal(58)">🧾 58mm</button>
-      <button id="sse-80" data-share="80mm" class="btn-sec" onclick="autoDefault('80mm');printThermal(80)">🧾 80mm</button>
+      <div id="settle-print-btn-area" style="display:contents"></div>
       <button class="btn-sec" onclick="closeModal('bill-preview-modal')" style="color:var(--t2)">← Back</button>
     </div>
     <button class="btn-pri" id="confirm-settle-btn" onclick="confirmSettle()">✅ Confirm & Save — Cash</button>
@@ -2443,11 +2435,48 @@ function printThermal(size){
 }
 
 // ══════════════════════════════════════════
+// PRINTER SETTINGS INTEGRATION
+// ══════════════════════════════════════════
+function renderPrinterButtons(){
+  const enabled=localStorage.getItem('sbp_printer_enabled')==='true';
+  const type=localStorage.getItem('sbp_printer_type')||'a4';
+
+  // Build the correct print button HTML
+  let btnHTML='';
+  if(!enabled){
+    // No printer — show all 3 compact options
+    btnHTML=`<button id="sbtn-a4" data-share="a4" class="btn-sec" onclick="autoDefault('a4');printBill()" style="font-size:10px">🖨️ A4</button>`;
+    const settleHTML=`<button id="sse-a4" data-share="a4" class="btn-sec" onclick="autoDefault('a4');printBill()" style="font-size:10px">🖨️ A4</button>
+      <button id="sse-58" data-share="58mm" class="btn-sec" onclick="autoDefault('58mm');printThermal(58)" style="font-size:10px">🧾 58</button>
+      <button id="sse-80" data-share="80mm" class="btn-sec" onclick="autoDefault('80mm');printThermal(80)" style="font-size:10px">🧾 80</button>`;
+    const sp=document.getElementById('settle-print-btn-area');
+    if(sp) sp.outerHTML=settleHTML;
+  } else if(type==='58mm'){
+    btnHTML=`<button id="sbtn-58" data-share="58mm" class="btn-sec" onclick="autoDefault('58mm');printThermal(58)">🧾 58mm Print</button>`;
+    const settleHTML=`<button id="sse-58" data-share="58mm" class="btn-sec" onclick="autoDefault('58mm');printThermal(58)">🧾 58mm Print</button>`;
+    const sp=document.getElementById('settle-print-btn-area');
+    if(sp) sp.outerHTML=settleHTML;
+  } else if(type==='80mm'){
+    btnHTML=`<button id="sbtn-80" data-share="80mm" class="btn-sec" onclick="autoDefault('80mm');printThermal(80)">🧾 80mm Print</button>`;
+    const settleHTML=`<button id="sse-80" data-share="80mm" class="btn-sec" onclick="autoDefault('80mm');printThermal(80)">🧾 80mm Print</button>`;
+    const sp=document.getElementById('settle-print-btn-area');
+    if(sp) sp.outerHTML=settleHTML;
+  } else {
+    // a4
+    btnHTML=`<button id="sbtn-a4" data-share="a4" class="btn-sec" onclick="autoDefault('a4');printBill()">🖨️ A4 Print</button>`;
+    const settleHTML=`<button id="sse-a4" data-share="a4" class="btn-sec" onclick="autoDefault('a4');printBill()">🖨️ A4 Print</button>`;
+    const sp=document.getElementById('settle-print-btn-area');
+    if(sp) sp.outerHTML=settleHTML;
+  }
+
+  const area=document.getElementById('print-btn-area');
+  if(area) area.outerHTML=btnHTML;
+}
+
+// ══════════════════════════════════════════
 // F2: DEFAULT SHARE PREFERENCE
 // ══════════════════════════════════════════
 const _SHARE_NAMES={wa:'📲 WA',pdf:'📄 PDF',a4:'🖨️ A4','58mm':'🧾 58mm','80mm':'🧾 80mm'};
-const _SHARE_FORM_IDS={wa:'sbtn-wa',pdf:'sbtn-pdf',a4:'sbtn-a4','58mm':'sbtn-58','80mm':'sbtn-80'};
-const _SHARE_SETTLE_IDS={wa:'sse-wa',pdf:'sse-pdf',a4:'sse-a4','58mm':'sse-58','80mm':'sse-80'};
 
 function autoDefault(key){
   localStorage.setItem('sbp_default_share',key);
@@ -2458,23 +2487,14 @@ function applyDefaultShare(){
   const def=localStorage.getItem('sbp_default_share')||'wa';
   const accent='2px solid var(--acc)';
   const none='2px solid transparent';
-  // Highlight form buttons
-  Object.entries(_SHARE_FORM_IDS).forEach(([k,id])=>{
+  ['sbtn-wa','sbtn-pdf','sbtn-a4','sbtn-58','sbtn-80',
+   'sse-wa','sse-pdf','sse-a4','sse-58','sse-80'].forEach(id=>{
     const el=document.getElementById(id);
-    if(el){
-      el.style.outline=k===def?accent:none;
-      el.style.outlineOffset='2px';
-    }
+    if(!el) return;
+    const share=el.dataset.share;
+    el.style.outline=share===def?accent:none;
+    el.style.outlineOffset='2px';
   });
-  // Highlight settlement buttons
-  Object.entries(_SHARE_SETTLE_IDS).forEach(([k,id])=>{
-    const el=document.getElementById(id);
-    if(el){
-      el.style.outline=k===def?accent:none;
-      el.style.outlineOffset='2px';
-    }
-  });
-  // Update badge
   const badge=document.getElementById('default-share-badge');
   if(badge) badge.textContent='⭐ '+(_SHARE_NAMES[def]||def);
 }
@@ -2488,23 +2508,36 @@ function openShareDefaultPicker(){
     document.body.appendChild(modal);
   }
   const def=localStorage.getItem('sbp_default_share')||'wa';
+  const enabled=localStorage.getItem('sbp_printer_enabled')==='true';
+  const type=localStorage.getItem('sbp_printer_type')||'a4';
+  const isHindi=(localStorage.getItem('sbp_lang')||'en')==='hi';
+
+  const opts=[
+    {k:'wa', label:'📲 WhatsApp'},
+    {k:'pdf', label:'📄 PDF'},
+    ...(enabled
+      ? (type==='58mm'?[{k:'58mm',label:'🧾 58mm Thermal'}]:type==='80mm'?[{k:'80mm',label:'🧾 80mm Thermal'}]:[{k:'a4',label:'🖨️ A4 Print'}])
+      : [{k:'a4',label:'🖨️ A4'},{k:'58mm',label:'🧾 58mm'},{k:'80mm',label:'🧾 80mm'}]
+    )
+  ];
+
   modal.innerHTML=`
-    <div style="background:var(--surf);border-radius:20px 20px 0 0;padding:20px;width:100%;max-width:520px">
-      <div style="font-family:'Outfit',sans-serif;font-size:15px;font-weight:800;margin-bottom:4px;color:var(--text)">⭐ Set Default Share Option</div>
-      <div style="font-size:12px;color:var(--t2);margin-bottom:14px">Your choice will auto-highlight every bill</div>
-      ${Object.entries(_SHARE_NAMES).map(([k,label])=>`
-        <div onclick="autoDefault('${k}');document.getElementById('share-default-modal').style.display='none'"
+    <div style="background:var(--surf,#13131C);border-radius:20px 20px 0 0;padding:20px;width:100%;max-width:520px">
+      <div style="font-family:'Outfit',sans-serif;font-size:15px;font-weight:800;margin-bottom:4px;color:var(--text,#F0EFF8)">⭐ ${isHindi?'Default Share सेट करें':'Set Default Share'}</div>
+      <div style="font-size:12px;color:var(--t2,#8A8AA8);margin-bottom:14px">${isHindi?'हर bill पर auto-highlight होगा':'Auto-highlights on every bill'}</div>
+      ${opts.map(o=>`
+        <div onclick="autoDefault('${o.k}');document.getElementById('share-default-modal').style.display='none'"
           style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:12px;margin-bottom:8px;cursor:pointer;
-          background:${k===def?'rgba(245,166,35,.1)':'var(--surf2)'};
-          border:1.5px solid ${k===def?'rgba(245,166,35,.4)':'var(--bord)'}">
-          <span style="font-size:20px">${label.split(' ')[0]}</span>
-          <span style="font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;color:${k===def?'var(--acc)':'var(--text)'}">
-            ${label.substring(label.indexOf(' ')+1)} ${k===def?'✓ (current default)':''}
+          background:${o.k===def?'rgba(245,166,35,.1)':'var(--surf2,#1C1C28)'};
+          border:1.5px solid ${o.k===def?'rgba(245,166,35,.4)':'var(--bord,#2A2A3A)'}">
+          <span style="font-size:20px">${o.label.split(' ')[0]}</span>
+          <span style="font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;color:${o.k===def?'var(--acc,#F5A623)':'var(--text,#F0EFF8)'}">
+            ${o.label.substring(o.label.indexOf(' ')+1)} ${o.k===def?'✓':''}
           </span>
         </div>`).join('')}
       <button onclick="document.getElementById('share-default-modal').style.display='none'"
-        style="width:100%;margin-top:4px;padding:11px;border-radius:12px;border:1.5px solid var(--bord);background:transparent;color:var(--t2);font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;cursor:pointer">
-        Cancel
+        style="width:100%;margin-top:4px;padding:11px;border-radius:12px;border:1.5px solid var(--bord,#2A2A3A);background:transparent;color:var(--t2,#8A8AA8);font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;cursor:pointer">
+        ${isHindi?'रद्द करें':'Cancel'}
       </button>
     </div>`;
   modal.style.display='flex';
@@ -2513,8 +2546,7 @@ function openShareDefaultPicker(){
 
 init();
 loadFromTemplateParams();
-// Apply default share highlight after DOM ready
-setTimeout(applyDefaultShare, 100);
+setTimeout(()=>{ renderPrinterButtons(); applyDefaultShare(); }, 150);
 
 /* ══ Desktop Sidebar ══ */
 (function(){

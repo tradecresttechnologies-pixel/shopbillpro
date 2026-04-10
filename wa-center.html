@@ -257,7 +257,7 @@ html,body{height:100%;overflow:hidden}
     <div class="ni" onclick="goTo('dashboard.html')"><span class="ni-ic">🏠</span><span class="ni-lb"><span class="lang-en">Home</span><span class="lang-hi">होम</span></span></div>
     <div class="ni" onclick="goTo('bills.html')"><span class="ni-ic">🧾</span><span class="ni-lb"><span class="lang-en">Bills</span><span class="lang-hi">बिल</span></span></div>
     <div class="ni" onclick="goTo('billing.html')" style="align-items:center;justify-content:center"><div class="nav-fab">＋</div></div>
-    <div class="ni" onclick="goTo('customers.html')"><span class="ni-ic">👥</span><span class="ni-lb"><span class="lang-en">Customers</span><span class="lang-hi">ग्राहक</span></span></div>
+    <div class="ni" onclick="goTo('marketing.html')"><span class="ni-ic">📢</span><span class="ni-lb"><span class="lang-en">Marketing</span><span class="lang-hi">मार्केटिंग</span></span></div>
     <div class="ni on" onclick="goTo('settings.html')"><span class="ni-ic">☰</span><span class="ni-lb"><span class="lang-en">More</span><span class="lang-hi">अधिक</span></span></div>
   </div>
 </div>
@@ -578,7 +578,7 @@ function fillTplSendFromCust(val){
   if(!val)return;
   const c=_custs.find(x=>x.id===val||String(x.id)===val);
   if(c){
-    document.getElementById('send-tpl-num').value=c.whatsapp||c.phone||'';
+    document.getElementById('send-tpl-num').value=(c.whatsapp||c.phone||c.mobile||'').replace(/\D/g,'').slice(-10);
     const filled=fillVars(_selTplMsg,c);
     document.getElementById('send-tpl-preview').innerHTML=filled.replace(/\*([^*]+)\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');
   }
@@ -635,14 +635,14 @@ document.addEventListener('DOMContentLoaded',()=>{
 
 // ── Quick Send ──
 function fillCustSelects(){
-  const opts='<option value="">— Choose customer —</option>'+_custs.map(c=>`<option value="${c.id}">${c.name} — ${c.whatsapp||c.phone||'No number'}</option>`).join('');
+  const opts='<option value="">— Choose customer —</option>'+_custs.map(c=>`<option value="${c.id}">${c.name} — ${c.whatsapp||c.phone||c.mobile||'No number'}</option>`).join('');
   ['qs-cust-pick','send-tpl-cust','bulk'].forEach(id=>{const el=document.getElementById(id);if(el&&el.tagName==='SELECT')el.innerHTML=opts;});
 }
 
 function fillQSFromCustomer(val){
   if(!val)return;
   const c=_custs.find(x=>String(x.id)===val);
-  if(c)document.getElementById('qs-num').value=c.whatsapp||c.phone||'';
+  if(c)document.getElementById('qs-num').value=(c.whatsapp||c.phone||c.mobile||'').replace(/\D/g,'').slice(-10);
   updateQSPreview();
 }
 
@@ -682,17 +682,28 @@ function loadBulkCustomers(filter){
 
   _bulkSelected=new Set();
   const el=document.getElementById('bulk-cust-list');
-  if(!list.filter(c=>c.whatsapp||c.phone).length){el.innerHTML='<div style="text-align:center;padding:24px;color:var(--t2);font-size:12px">No customers with WhatsApp numbers in this filter</div>';updateBulkCount();return}
 
-  el.innerHTML=list.filter(c=>c.whatsapp||c.phone).map(c=>`
+  // Normalize: accept whatsapp, phone, or mobile field
+  const withContact = list.filter(c => c.whatsapp||c.phone||c.mobile);
+
+  if(!withContact.length){
+    el.innerHTML='<div style="text-align:center;padding:24px;color:var(--t2);font-size:12px">📵 No customers with phone numbers found.<br><span style="font-size:11px;margin-top:4px;display:block">Add phone numbers in the Customers section.</span></div>';
+    updateBulkCount();
+    return;
+  }
+
+  el.innerHTML=withContact.map(c=>{
+    const contact = c.whatsapp||c.phone||c.mobile||'';
+    return `
     <div class="cust-pick-item" id="bcp-${c.id}" onclick="toggleBulkSel('${c.id}')">
       <div class="cp-av" style="background:${avatarColor(c.name)}">${initials(c.name)}</div>
       <div style="flex:1;min-width:0">
         <div class="cp-nm">${c.name}</div>
-        <div class="cp-info">📱 ${c.whatsapp||c.phone}${parseFloat(c.balance||0)>0?' · Due: '+fINR(c.balance):''}</div>
+        <div class="cp-info">📱 ${contact}${parseFloat(c.balance||0)>0?' · Due: '+fINR(c.balance):''}</div>
       </div>
       <div class="cp-check" id="chk-${c.id}"></div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
   updateBulkCount();
 }
 
@@ -719,7 +730,7 @@ async function startBulkSend(){
   ids.forEach((id,i)=>{
     setTimeout(()=>{
       const c=_custs.find(x=>String(x.id)===id);if(!c)return;
-      const num=(c.whatsapp||c.phone||'').replace(/\D/g,'');if(!num||num.length<10)return;
+      const num=(c.whatsapp||c.phone||c.mobile||'').replace(/\D/g,'');if(!num||num.length<10)return;
       const msg=fillVars(tpl.body,c);
       window.open('https://wa.me/91'+num+'?text='+encodeURIComponent(msg),'_blank');
     },i*1200);
@@ -736,8 +747,29 @@ async function init(){
   // Load fresh customers
   const shopId=localStorage.getItem('sbp_shop_id');
   if(navigator.onLine&&shopId){
-    try{const{data}=await _sb.from('customers').select('*').eq('shop_id',shopId).order('name');if(data){_custs=data;localStorage.setItem('sbp_customers',JSON.stringify(_custs));}}catch(e){}
+    try{const{data}=await _sb.from('customers').select('*').eq('shop_id',shopId).order('name');if(data&&data.length){_custs=data;localStorage.setItem('sbp_customers',JSON.stringify(_custs));}}catch(e){}
     try{const{data}=await _sb.from('bills').select('id,invoice_no,invoice_date,customer_name,customer_id,customer_wa,grand_total,balance_due,gst_amount,status,paid_amount').eq('shop_id',shopId).order('created_at',{ascending:false}).limit(200);if(data){_bills=data;localStorage.setItem('sbp_bills',JSON.stringify(_bills));}}catch(e){}
+  }
+
+  // Fallback: if customers list is empty, extract unique customers from bills
+  if(!_custs.length){
+    const seen=new Set();
+    _bills.forEach(b=>{
+      const name=b.customer_name||'';
+      const phone=(b.customer_wa||b.customer_phone||'').replace(/\D/g,'');
+      if(name&&name!=='Walk-in Customer'&&name!=='Cash Customer'&&!seen.has(name)){
+        seen.add(name);
+        _custs.push({
+          id:'bill_'+seen.size,
+          name,
+          phone,
+          whatsapp:phone,
+          mobile:phone,
+          balance:0
+        });
+      }
+    });
+    if(_custs.length) toast(`👥 ${_custs.length} customers loaded from bills`,'s',2500);
   }
 
   renderTemplates();

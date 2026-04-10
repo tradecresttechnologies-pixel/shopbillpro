@@ -162,6 +162,9 @@ body{background:var(--bg);color:var(--text)}
 .toggle-track{position:absolute;cursor:pointer;inset:0;background:var(--surf3);border:1.5px solid var(--bord);border-radius:12px;transition:.28s}
 .toggle-track::after{content:'';position:absolute;width:16px;height:16px;border-radius:50%;background:#fff;top:2px;left:2px;transition:.28s}
 .toggle-sw input:checked+.toggle-track{background:var(--acc);border-color:var(--acc)}
+.printer-type-btn{border:2px solid var(--bord);border-radius:14px;padding:12px 8px;text-align:center;cursor:pointer;background:var(--surf2);transition:.18s ease}
+.printer-type-btn.on{border-color:var(--acc);background:rgba(245,166,35,.1)}
+.printer-type-btn:active{transform:scale(.95)}
 .toggle-sw input:checked+.toggle-track::after{transform:translateX(20px)}
 
 /* Forms */
@@ -362,6 +365,25 @@ html,body{height:100%;overflow:hidden}
       </div>
     </div>
 
+    <!-- Quick Access — Mobile shortcuts for Marketing, Plans, Team -->
+    <div style="padding:14px 14px 0">
+      <div style="font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">Quick Access</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:4px">
+        <div onclick="goTo('marketing.html')" style="background:linear-gradient(135deg,rgba(139,92,246,.15),rgba(168,85,247,.1));border:1.5px solid rgba(139,92,246,.3);border-radius:14px;padding:14px 8px;text-align:center;cursor:pointer">
+          <div style="font-size:24px;margin-bottom:5px">📢</div>
+          <div style="font-size:10px;font-weight:800;color:#8B5CF6">Marketing</div>
+        </div>
+        <div onclick="goTo('subscription.html')" style="background:linear-gradient(135deg,rgba(245,166,35,.15),rgba(255,138,0,.1));border:1.5px solid rgba(245,166,35,.3);border-radius:14px;padding:14px 8px;text-align:center;cursor:pointer">
+          <div style="font-size:24px;margin-bottom:5px">🚀</div>
+          <div style="font-size:10px;font-weight:800;color:var(--acc)">Plans</div>
+        </div>
+        <div onclick="goTo('team.html')" style="background:linear-gradient(135deg,rgba(6,182,212,.15),rgba(8,145,178,.1));border:1.5px solid rgba(6,182,212,.3);border-radius:14px;padding:14px 8px;text-align:center;cursor:pointer">
+          <div style="font-size:24px;margin-bottom:5px">👥</div>
+          <div style="font-size:10px;font-weight:800;color:#06B6D4">Team</div>
+        </div>
+      </div>
+    </div>
+
     <!-- Shop Management -->
     <div style="padding-top:14px">
       <div class="menu-sec">
@@ -441,6 +463,46 @@ html,body{height:100%;overflow:hidden}
           <div class="mi-ic" style="background:rgba(251,146,60,.15)">🎨</div>
           <div class="mi-txt"><h4>Font & Display Style</h4><p>Number style, font size & family</p></div>
           <span class="mi-arr">›</span>
+        </div>
+      </div>
+
+      <!-- Printer Settings -->
+      <div class="menu-sec">
+        <div class="menu-sec-t">🖨️ Printer Settings</div>
+
+        <!-- Enable Printing toggle -->
+        <div class="menu-it" onclick="togglePrinterEnabled()">
+          <div class="mi-ic" style="background:rgba(6,182,212,.15)">🖨️</div>
+          <div class="mi-txt"><h4>Enable Printing</h4><p id="printer-enabled-lbl">Auto-print when saving bill</p></div>
+          <label class="toggle-sw" onclick="event.stopPropagation()">
+            <input type="checkbox" id="printer-enabled-chk" onchange="togglePrinterEnabled()">
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+
+        <!-- Printer Type Selection -->
+        <div id="printer-type-section" style="padding:12px 14px;display:none">
+          <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Select Printer Type</div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px" id="printer-type-grid">
+            <div class="printer-type-btn" data-type="58mm" onclick="setPrinterType('58mm',this)">
+              <div style="font-size:22px;margin-bottom:4px">🧾</div>
+              <div style="font-size:11px;font-weight:800;color:var(--text)">58mm</div>
+              <div style="font-size:9px;color:var(--t2);margin-top:2px">Thermal</div>
+            </div>
+            <div class="printer-type-btn" data-type="80mm" onclick="setPrinterType('80mm',this)">
+              <div style="font-size:22px;margin-bottom:4px">🧾</div>
+              <div style="font-size:11px;font-weight:800;color:var(--text)">80mm</div>
+              <div style="font-size:9px;color:var(--t2);margin-top:2px">Thermal</div>
+            </div>
+            <div class="printer-type-btn" data-type="a4" onclick="setPrinterType('a4',this)">
+              <div style="font-size:22px;margin-bottom:4px">📄</div>
+              <div style="font-size:11px;font-weight:800;color:var(--text)">A4</div>
+              <div style="font-size:9px;color:var(--t2);margin-top:2px">Standard</div>
+            </div>
+          </div>
+          <div style="margin-top:10px;font-size:11px;color:var(--t2);background:var(--surf2);border-radius:10px;padding:9px 12px;border:1px solid var(--bord)">
+            💡 <span id="printer-tip-text">Billing page will show only one Print button matching your printer type.</span>
+          </div>
         </div>
       </div>
 
@@ -537,7 +599,7 @@ html,body{height:100%;overflow:hidden}
     <div class="ni" onclick="goTo('dashboard.html')"><span class="ni-ic">🏠</span><span class="ni-lb">Home</span></div>
     <div class="ni" onclick="goTo('bills.html')"><span class="ni-ic">🧾</span><span class="ni-lb">Bills</span></div>
     <div class="ni" onclick="goTo('billing.html')" style="align-items:center;justify-content:center"><div class="nav-fab">＋</div></div>
-    <div class="ni" onclick="goTo('customers.html')"><span class="ni-ic">👥</span><span class="ni-lb">Customers</span></div>
+    <div class="ni" onclick="goTo('marketing.html')"><span class="ni-ic">📢</span><span class="ni-lb">Marketing</span></div>
     <div class="ni on" onclick="goTo('settings.html')"><span class="ni-ic">☰</span><span class="ni-lb">More</span></div>
   </div>
 </div>
@@ -769,6 +831,59 @@ function _resetTimer(){clearTimeout(_actTimer);localStorage.setItem('sbp_last_ac
 ['click','touchstart','keypress','scroll'].forEach(e=>document.addEventListener(e,_resetTimer,{passive:true}));
 
 function goTo(p){window.location.href=p}
+
+// ══════════════════════════════════════════
+// PRINTER SETTINGS
+// ══════════════════════════════════════════
+function loadPrinterSettings(){
+  const enabled=localStorage.getItem('sbp_printer_enabled')==='true';
+  const type=localStorage.getItem('sbp_printer_type')||'a4';
+  const chk=document.getElementById('printer-enabled-chk');
+  const sec=document.getElementById('printer-type-section');
+  if(chk) chk.checked=enabled;
+  if(sec) sec.style.display=enabled?'block':'none';
+  updatePrinterLbl(enabled,type);
+  // Highlight selected type button
+  document.querySelectorAll('.printer-type-btn').forEach(btn=>{
+    btn.classList.toggle('on', btn.dataset.type===type);
+  });
+}
+
+function togglePrinterEnabled(){
+  const chk=document.getElementById('printer-enabled-chk');
+  const enabled=chk?chk.checked:(localStorage.getItem('sbp_printer_enabled')!=='true');
+  // If called from menu-it click (not directly from checkbox), flip
+  if(!chk) return;
+  localStorage.setItem('sbp_printer_enabled', enabled?'true':'false');
+  const sec=document.getElementById('printer-type-section');
+  if(sec) sec.style.display=enabled?'block':'none';
+  const type=localStorage.getItem('sbp_printer_type')||'a4';
+  updatePrinterLbl(enabled,type);
+  toast(enabled?'🖨️ Printing enabled':'🖨️ Printing disabled','s');
+}
+
+function setPrinterType(type, el){
+  localStorage.setItem('sbp_printer_type', type);
+  document.querySelectorAll('.printer-type-btn').forEach(b=>b.classList.remove('on'));
+  if(el) el.classList.add('on');
+  const enabled=localStorage.getItem('sbp_printer_enabled')==='true';
+  updatePrinterLbl(enabled, type);
+  const tips={
+    '58mm':'Billing page will show 🧾 58mm thermal print button only.',
+    '80mm':'Billing page will show 🧾 80mm thermal print button only.',
+    'a4':'Billing page will show 🖨️ A4 standard print button only.'
+  };
+  const tipEl=document.getElementById('printer-tip-text');
+  if(tipEl) tipEl.textContent=tips[type]||'';
+  toast('🖨️ Printer set to '+type.toUpperCase(),'s');
+}
+
+function updatePrinterLbl(enabled, type){
+  const lbl=document.getElementById('printer-enabled-lbl');
+  if(!lbl) return;
+  const typeNames={'58mm':'58mm Thermal','80mm':'80mm Thermal','a4':'A4 Standard'};
+  lbl.textContent=enabled?('Printer: '+(typeNames[type]||type)):'Tap to enable printing';
+}
 function toast(msg,type='',dur=3000){const c=document.getElementById('toast-container');const t=document.createElement('div');t.className='toast'+(type?' '+type:'');t.textContent=msg;c.appendChild(t);setTimeout(()=>{t.style.opacity='0';t.style.transition='.2s';setTimeout(()=>t.remove(),220);},dur)}
 function toggleTheme(){_theme=_theme==='dark'?'light':'dark';localStorage.setItem('sbp_theme',_theme);document.documentElement.setAttribute('data-theme',_theme==='light'?'light':'');document.getElementById('theme-btn').textContent=_theme==='light'?'🌙':'☀️';document.getElementById('theme-chk').checked=_theme==='light'}
 function openModal(id){const el=document.getElementById(id);if(id==='sync-modal')updateSyncStats();if(id==='staff-modal')renderStaff();el.classList.add('open');el.style.display='flex';el.addEventListener('click',e=>{if(e.target===el)closeModal(id);},{once:true})}
@@ -1437,6 +1552,7 @@ function updateStorageBadge() {
   }
 }
 document.addEventListener('DOMContentLoaded', updateStorageBadge);
+document.addEventListener('DOMContentLoaded', loadPrinterSettings);
 
 async function refreshShopPlan() {
   if (!navigator.onLine || !window._sb) return;
