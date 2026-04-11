@@ -867,17 +867,10 @@ function reopenBill(billId){
 }
 async function _doReopenBill(billId){
   const idx=_bills.findIndex(x=>x.id===billId||String(x.id)===String(billId));
-  if(idx<0)return;
+  if(idx<0){toast('❌ Bill not found','e');return;}
   const b=_bills[idx];
   const oldStatus=b.status;
-
-  // Build confirmation message
   const isCreditBill = oldStatus==='Credit';
-  const confirmMsg = isCreditBill
-    ? `Reopen this Credit bill?\n\n• ₹${parseFloat(b.grand_total||0).toLocaleString('en-IN')} will be REVERSED from ${b.customer_name}'s ledger\n• Bill will re-open as Pending for editing\n• Action will be logged in Audit Trail`
-    : `Reopen this bill?\n\n• Status: ${oldStatus} → Pending\n• Bill will be available for editing\n• Action will be logged in Audit Trail`;
-
-  if(!confirm(confirmMsg)) return;
 
   // ── Credit bill: reverse customer ledger ──
   if(isCreditBill){
@@ -890,19 +883,11 @@ async function _doReopenBill(billId){
       const newBal=Math.max(0,oldBal-billAmt);
       custs[ci].balance=newBal;
       localStorage.setItem('sbp_customers',JSON.stringify(custs));
-      logAudit('credit_ledger_reversal',{
-        bill_id:billId,invoice_no:b.invoice_no,
-        customer:custName,
-        reversal_amount:billAmt,
-        old_balance:oldBal,
-        new_balance:newBal,
-        note:'Credit bill reopened — ledger reversed'
-      });
-      // Sync to Supabase
-      if(_online&&_sb&&ci>=0){
-        try{await _sb.from('customers').update({balance:custs[ci].balance}).eq('id',custs[ci].id);}catch(e){console.warn(e);}
+      try{logAudit('credit_ledger_reversal',{bill_id:billId,invoice_no:b.invoice_no,customer:custName,reversal_amount:billAmt,old_balance:oldBal,new_balance:newBal});}catch(e){}
+      if(_online&&_sb&&custs[ci].id){
+        try{await _sb.from('customers').update({balance:newBal}).eq('id',custs[ci].id);}catch(e){console.warn(e);}
       }
-      toast(`📒 Ledger reversed: -₹${billAmt.toLocaleString('en-IN')} from ${custName}`,'i',4000);
+      toast(`📒 Ledger reversed: -₹${billAmt.toLocaleString('en-IN')} from ${custName}`,'i',3500);
     }
   }
 
@@ -912,34 +897,25 @@ async function _doReopenBill(billId){
   _bills[idx].balance_due=parseFloat(b.grand_total||0);
   _bills[idx].reopened_at=new Date().toISOString();
   _bills[idx].reopened_by=localStorage.getItem('sbp_role')||'Admin';
-
-  // ── Store per-bill audit entry ──
   if(!_bills[idx].audit_log) _bills[idx].audit_log=[];
-  _bills[idx].audit_log.unshift({
-    action:'reopen_bill',ts:new Date().toISOString(),
-    user:localStorage.getItem('sbp_role')||'Admin',
-    before:{status:oldStatus},after:{status:'Pending'},
-    note:isCreditBill?'Credit bill reopened + ledger reversed':'Bill reopened for editing'
-  });
-
+  _bills[idx].audit_log.unshift({action:'reopen_bill',ts:new Date().toISOString(),user:localStorage.getItem('sbp_role')||'Admin',before:{status:oldStatus},after:{status:'Pending'},note:isCreditBill?'Credit bill reopened + ledger reversed':'Bill reopened for editing'});
   localStorage.setItem('sbp_bills',JSON.stringify(_bills));
 
-  if(_online&&!String(billId).startsWith('local_')){
-    try{await _sb.from('bills').update({
-      status:'Pending',paid_amount:0,balance_due:_bills[idx].balance_due,
-      reopened_at:_bills[idx].reopened_at
-    }).eq('id',billId);}catch(e){console.warn(e);}
+  if(_online&&_sb&&!String(billId).startsWith('local_')){
+    try{await _sb.from('bills').update({status:'Pending',paid_amount:0,balance_due:_bills[idx].balance_due,reopened_at:_bills[idx].reopened_at}).eq('id',billId);}catch(e){console.warn(e);}
   }
 
-  logAudit('reopen_bill',{
-    bill_id:billId,invoice_no:b.invoice_no,
-    old_status:oldStatus,customer:b.customer_name,
-    credit_reversed:isCreditBill
-  });
+  try{logAudit('reopen_bill',{bill_id:billId,invoice_no:b.invoice_no,old_status:oldStatus,customer:b.customer_name,credit_reversed:isCreditBill});}catch(e){}
 
   closeModal('bill-preview-modal');
-  applyFilters();
-  toast('🔓 Bill reopened — use "Edit Bill" to make changes','s',4000);
+  toast('🔓 Bill reopened — opening editor...','s',2000);
+
+  // Auto-redirect to billing.html in edit mode (POS or Manual based on bill source)
+  setTimeout(()=>{
+    const isPOSBill = b.source==='pos' || b.created_via==='pos' || b.pos_mode===true;
+    const targetPage = isPOSBill ? 'billing.html?pos=1&edit_bill=' : 'billing.html?edit_bill=';
+    window.location.href = targetPage + encodeURIComponent(billId);
+  },800);
 }
 
 // ── Void Bill (PIN Protected) ──
