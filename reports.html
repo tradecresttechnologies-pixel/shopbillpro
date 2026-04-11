@@ -1,7 +1,8 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" translate="no" class="notranslate">
 <head>
 <meta charset="UTF-8">
+<meta name="google" content="notranslate">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#F5A623">
 <meta name="mobile-web-app-capable" content="yes">
@@ -758,13 +759,22 @@ function renderForecast(){
   for(let i=2;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);const ym=d.toISOString().slice(0,7);const rev=bills.filter(b=>(b.invoice_date||b.created_at||'').startsWith(ym)).reduce((s,b)=>s+parseFloat(b.grand_total||b.amount||0),0);months.push({ym,rev,label:d.toLocaleDateString('en-IN',{month:'short'})});}
   const trend=months.length>=2?months[months.length-1].rev-months[months.length-2].rev:0;
   const forecast=Math.max(0,months[months.length-1].rev+trend);
-  // Stock reorder
+  // Stock reorder — read bill_items + item_name (correct schema)
   const itemSales={};const cutoff30=new Date();cutoff30.setDate(cutoff30.getDate()-30);
-  bills.filter(b=>new Date(b.created_at||b.invoice_date)>cutoff30).forEach(b=>{(b.items||[]).forEach(it=>{const nm=(it.nm||it.name||'').toLowerCase();itemSales[nm]=(itemSales[nm]||0)+parseFloat(it.q||it.qty||1);});});
+  bills.filter(b=>new Date(b.created_at||b.invoice_date)>cutoff30).forEach(b=>{
+    const its=b.bill_items||b.items||[];
+    its.forEach(it=>{
+      const nm=(it.item_name||it.nm||it.name||'').toLowerCase();
+      if(nm)itemSales[nm]=(itemSales[nm]||0)+parseFloat(it.qty||it.q||1);
+    });
+  });
   const reorderAlerts=products.filter(p=>{const daily=(itemSales[(p.name||'').toLowerCase()]||0)/30;if(daily<=0||!p.stock_qty)return false;p._daysLeft=Math.round(p.stock_qty/daily);p._daily=daily;return p._daysLeft<=10&&p._daysLeft>=0;}).sort((a,b)=>a._daysLeft-b._daysLeft).slice(0,5);
-  // Churn
+  // Churn — read from correct field (customer_name, not cust_name)
   const activeCustomers=new Set();
-  bills.filter(b=>new Date(b.created_at||b.invoice_date)>cutoff30).forEach(b=>activeCustomers.add(b.cust_name||b.custName||''));
+  bills.filter(b=>new Date(b.created_at||b.invoice_date)>cutoff30).forEach(b=>{
+    const nm=(b.customer_name||b.cust_name||b.custName||'').trim();
+    if(nm)activeCustomers.add(nm);
+  });
   const churnList=customers.filter(c=>c.name&&!activeCustomers.has(c.name)&&c.name!=='Walk-in Customer').slice(0,5);
 
   wrap.innerHTML='<div style="padding:16px;display:flex;flex-direction:column;gap:14px">'

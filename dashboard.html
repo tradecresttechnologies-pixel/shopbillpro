@@ -1,7 +1,8 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" translate="no" class="notranslate">
 <head>
 <meta charset="UTF-8">
+<meta name="google" content="notranslate">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#F5A623">
 <meta name="mobile-web-app-capable" content="yes">
@@ -652,7 +653,7 @@ html,body{height:100%;overflow:hidden}
     <div class="ni" onclick="goTo('billing.html')" style="align-items:center;justify-content:center">
       <div class="nav-fab">＋</div>
     </div>
-    <div class="ni" onclick="goTo('marketing.html')"><span class="ni-ic">📢</span><span class="ni-lb"><span class="lang-en">Marketing</span><span class="lang-hi">मार्केटिंग</span></span></div>
+    <div class="ni" onclick="gatedGoTo('marketing.html','Marketing Center')" style="position:relative"><span class="ni-ic">📢</span><span class="ni-lb"><span class="lang-en">Marketing</span><span class="lang-hi">मार्केटिंग</span></span><span style="position:absolute;top:2px;right:8px;font-size:7px;font-weight:800;background:linear-gradient(135deg,#F59E0B,#EF4444);color:#fff;border-radius:4px;padding:1px 4px;letter-spacing:.3px">BIZ</span></div>
     <div class="ni" onclick="goTo('settings.html')">
       <span class="ni-ic">☰</span><span class="ni-lb"><span class="lang-en">More</span><span class="lang-hi">अधिक</span></span>
     </div>
@@ -720,6 +721,25 @@ function _updateOfflineBar() {
 
 // ══ Navigation ══
 function goTo(page) { window.location.href = page; }
+
+function gatedGoTo(page, featureName){
+  const shop=JSON.parse(localStorage.getItem('sbp_shop')||'{}');
+  const plan=shop.plan||'free';
+  if(plan==='enterprise'||plan==='business'){ goTo(page); return; }
+  const isHindi=(localStorage.getItem('sbp_lang')||'en')==='hi';
+  let modal=document.getElementById('biz-upgrade-modal');
+  if(!modal){ modal=document.createElement('div'); modal.id='biz-upgrade-modal'; modal.style.cssText='position:fixed;inset:0;z-index:1100;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;padding:20px'; document.body.appendChild(modal); }
+  modal.innerHTML=`<div style="background:var(--surf,#1C1C28);border-radius:20px;padding:28px 24px;max-width:340px;width:100%;text-align:center">
+    <div style="font-size:44px;margin-bottom:12px">🔒</div>
+    <div style="font-family:'Outfit',sans-serif;font-size:18px;font-weight:800;margin-bottom:6px;color:var(--text,#F0EFF8)">${featureName}</div>
+    <div style="font-size:11px;font-weight:700;background:linear-gradient(135deg,#F59E0B,#EF4444);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:12px;letter-spacing:.5px">BUSINESS PLAN FEATURE</div>
+    <div style="font-size:13px;color:var(--t2,#8A8AA8);line-height:1.6;margin-bottom:20px">${isHindi?featureName+' sirf Business plan mein available hai!':featureName+' is available in the Business plan!'}</div>
+    <button onclick="goTo('subscription.html')" style="width:100%;padding:13px;border-radius:12px;background:linear-gradient(135deg,#F5A623,#FF8A00);border:none;color:#0A0E1A;font-family:'Outfit',sans-serif;font-size:14px;font-weight:800;cursor:pointer;margin-bottom:8px">🚀 ${isHindi?'अपग्रेड करें — ₹199/mo':'Upgrade — ₹199/month'}</button>
+    <button onclick="document.getElementById('biz-upgrade-modal').style.display='none'" style="width:100%;padding:10px;border-radius:10px;border:1.5px solid var(--bord,#2A2A3A);background:transparent;color:var(--t2,#8A8AA8);font-size:12px;font-weight:700;cursor:pointer">${isHindi?'बाद में':'Maybe Later'}</button>
+  </div>`;
+  modal.style.display='flex';
+  modal.onclick=function(e){if(e.target===modal)modal.style.display='none';};
+}
 
 // ══ Toast ══
 function toast(msg, type = '', dur = 3000) {

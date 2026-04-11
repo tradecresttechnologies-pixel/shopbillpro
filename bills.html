@@ -1,7 +1,8 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" translate="no" class="notranslate">
 <head>
 <meta charset="UTF-8">
+<meta name="google" content="notranslate">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#F5A623">
 <meta name="mobile-web-app-capable" content="yes">
@@ -526,8 +527,10 @@ function openBillPreview(billId){
   const itemsHTML=items.length
     ?items.map((it,idx)=>{
       const voided=it.voided;
+      const gstRate=parseFloat(it.gst_rate||0);
+      const gstAmt=parseFloat(it.gst_amount||(parseFloat(it.line_total||0)*gstRate/(100+gstRate))||0);
       return `<div class="bdoc-table-row" style="${voided?'opacity:.4;text-decoration:line-through':''}">
-        <div><div class="bdoc-item-nm">${it.item_name||'Item'}${voided?' <span style="color:var(--acc2);font-size:10px">[VOID]</span>':''}</div><div class="bdoc-item-sub">Qty: ${it.qty||1} × ₹${it.rate||0} | GST ${it.gst_rate||0}%</div></div>
+        <div><div class="bdoc-item-nm">${it.item_name||'Item'}${voided?' <span style="color:var(--acc2);font-size:10px">[VOID]</span>':''}</div><div class="bdoc-item-sub">Qty: ${it.qty||1} × ₹${it.rate||0} | GST ${gstRate}%${gstRate>0?' (₹'+gstAmt.toFixed(2)+')':''}${it.hsn_code?' · HSN:'+it.hsn_code:''}</div></div>
         <div style="text-align:center">${it.qty||1}</div>
         <div style="text-align:right">₹${it.rate||0}</div>
         <div style="text-align:right;font-weight:800;display:flex;flex-direction:column;align-items:flex-end;gap:3px">
@@ -552,7 +555,7 @@ function openBillPreview(billId){
         ${s.gstin?`<div>🏛️ GSTIN: ${s.gstin}</div>`:''}
       </div>
       <div class="bdoc-inv-badge">
-        <div><div style="font-size:9px;opacity:.6;font-weight:700;letter-spacing:.5px;text-transform:uppercase">Invoice No.</div>
+        <div><div style="font-size:9px;opacity:.6;font-weight:700;letter-spacing:.5px;text-transform:uppercase">${parseFloat(b.gst_amount||0)>0?'Tax Invoice':'Invoice No.'}</div>
         <div class="bdoc-inv-no">${b.invoice_no||'—'}</div></div>
         <div class="bdoc-inv-dates">
           <div>📅 ${fDate(b.invoice_date)}</div>
@@ -577,7 +580,14 @@ function openBillPreview(billId){
       ${itemsHTML}
       <div class="bdoc-totals">
         <div class="bdoc-tot-line"><span>Subtotal</span><span>${fINR(b.subtotal)}</span></div>
-        <div class="bdoc-tot-line"><span>GST</span><span>${fINR(b.gst_amount)}</span></div>
+        ${parseFloat(b.gst_amount||0)>0 && (b.supply_type||'intra')==='intra' ? `
+          <div class="bdoc-tot-line"><span>CGST</span><span style="color:#10B981">${fINR(parseFloat(b.gst_amount)/2)}</span></div>
+          <div class="bdoc-tot-line"><span>SGST</span><span style="color:#10B981">${fINR(parseFloat(b.gst_amount)/2)}</span></div>
+        ` : ''}
+        ${parseFloat(b.gst_amount||0)>0 && (b.supply_type||'intra')!=='intra' ? `
+          <div class="bdoc-tot-line"><span>IGST</span><span style="color:#10B981">${fINR(b.gst_amount)}</span></div>
+        ` : ''}
+        ${parseFloat(b.gst_amount||0)>0?`<div class="bdoc-tot-line" style="font-size:11px;color:var(--t2)"><span>Total Tax</span><span>${fINR(b.gst_amount)}</span></div>`:''}
         ${parseFloat(b.discount||0)>0?`<div class="bdoc-tot-line"><span>Discount</span><span style="color:#EF4444">-${fINR(b.discount)}</span></div>`:''}
         <div class="bdoc-tot-line grand"><span>Grand Total</span><span>${fINR(b.grand_total)}</span></div>
         ${parseFloat(b.paid_amount||0)>0&&parseFloat(b.balance_due||0)>0?`<div class="bdoc-tot-line" style="color:var(--acc3)"><span>Paid</span><span>${fINR(b.paid_amount)}</span></div><div class="bdoc-tot-line" style="color:var(--acc2);font-weight:700"><span>Balance Due</span><span>${fINR(b.balance_due)}</span></div>`:''}
@@ -1162,10 +1172,22 @@ async function init(){
   const filter = params.get('filter');
   if(filter) filterStatus(filter, document.querySelector(`.chip[onclick*="${filter}"]`)||document.querySelector('.chip'));
 
+  // ── Open bill detail IMMEDIATELY from localStorage (don't wait for auth) ──
+  if(billId){
+    const tryOpen=()=>{
+      const b=_bills.find(x=>String(x.id)===String(billId));
+      if(b){openBillPreview(billId);return true;}
+      return false;
+    };
+    if(!tryOpen()){
+      // Bill not in cache yet — retry once after a short delay (modal/DOM ready)
+      setTimeout(tryOpen,150);
+    }
+  }
+
   // ── Auth + cloud sync (non-blocking — page already shows content above) ──
   if(!_sb){
     // Supabase CDN failed — local-only mode, no auth check needed
-    if(billId){const b=_bills.find(x=>x.id===billId);if(b)openBillPreview(billId);}
     return;
   }
 
@@ -1193,7 +1215,9 @@ async function init(){
     console.warn('Auth check failed, local mode:',e);
   }
 
-  if(billId){const b=_bills.find(x=>x.id===billId);if(b)openBillPreview(billId);}
+  if(billId && !document.getElementById('bill-preview-modal')?.classList.contains('open')){
+    const b=_bills.find(x=>String(x.id)===String(billId));if(b)openBillPreview(billId);
+  }
 }
 
 init();

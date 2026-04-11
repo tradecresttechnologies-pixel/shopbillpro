@@ -1,7 +1,8 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" translate="no" class="notranslate">
 <head>
 <meta charset="UTF-8">
+<meta name="google" content="notranslate">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#F5A623">
 <meta name="mobile-web-app-capable" content="yes">
@@ -102,6 +103,9 @@ body{background:var(--bg);color:var(--text)}
 .ic-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .ic-title{font-family:var(--font-h);font-size:14px;font-weight:800}
 .ic-badge{font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px}
+.period-btn{padding:7px 14px;border-radius:20px;border:1.5px solid var(--bord);background:var(--surf2);color:var(--t2);font-family:var(--font-h);font-size:11px;font-weight:700;cursor:pointer;transition:.15s ease}
+.period-btn.on{background:linear-gradient(135deg,rgba(139,92,246,.15),rgba(139,92,246,.08));border-color:var(--mkt);color:var(--mkt)}
+.period-btn:active{transform:scale(.95)}
 
 .stats-row{display:flex;gap:10px;margin-bottom:12px}
 .stat-box{
@@ -415,6 +419,25 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
          TAB 1: CUSTOMER INSIGHTS
     ═══════════════════════════════════════ -->
     <div class="panel on" id="panel-insights">
+
+      <!-- Time Period Filter -->
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
+        <button class="period-btn on" data-period="7" onclick="setInsightPeriod(7,this)">
+          <span class="lang-en">This Week</span><span class="lang-hi">इस हफ्ते</span>
+        </button>
+        <button class="period-btn" data-period="30" onclick="setInsightPeriod(30,this)">
+          <span class="lang-en">This Month</span><span class="lang-hi">इस महीने</span>
+        </button>
+        <button class="period-btn" data-period="90" onclick="setInsightPeriod(90,this)">
+          <span class="lang-en">3 Months</span><span class="lang-hi">3 महीने</span>
+        </button>
+        <button class="period-btn" data-period="180" onclick="setInsightPeriod(180,this)">
+          <span class="lang-en">6 Months</span><span class="lang-hi">6 महीने</span>
+        </button>
+        <button class="period-btn" data-period="365" onclick="setInsightPeriod(365,this)">
+          <span class="lang-en">12 Months</span><span class="lang-hi">12 महीने</span>
+        </button>
+      </div>
 
       <!-- Revenue Trend -->
       <div class="insight-card">
@@ -960,10 +983,20 @@ function switchTab(tab){
 // TAB 1: CUSTOMER INSIGHTS
 // ═══════════════════════════════════════════
 
+let _insightDays = 7; // default: This Week
+
+function setInsightPeriod(days, btnEl){
+  _insightDays = days;
+  document.querySelectorAll('.period-btn').forEach(b=>b.classList.remove('on'));
+  if(btnEl) btnEl.classList.add('on');
+  loadInsights();
+}
+
 function loadInsights(){
   const bills = getBills();
   const customers = getCustomers();
   const products = getProducts();
+  const days = _insightDays;
 
   // Helper: get items from bill (supports both Supabase & local format)
   function getItems(b){ return b.bill_items||b.items||[]; }
@@ -973,10 +1006,23 @@ function loadInsights(){
   function billTotal(b){ return parseFloat(b.grand_total||b.total||0); }
   function billCust(b){ return b.customer_name||b.cust_name||'Walk-in'; }
 
-  // ── Revenue Trend (last 6 months) ──
   const now = new Date();
+  const cutoff = new Date(now.getTime() - days*86400000);
+
+  // Period label for badges
+  const periodLabels = {7:'This Week',30:'This Month',90:'3 Months',180:'6 Months',365:'12 Months'};
+  const periodLabelsHi = {7:'इस हफ्ते',30:'इस महीने',90:'3 महीने',180:'6 महीने',365:'12 महीने'};
+  const periodLabel = periodLabels[days]||days+' Days';
+  const periodLabelHi = periodLabelsHi[days]||days+' दिन';
+
+  // Filter bills by period
+  const periodBills = bills.filter(b => new Date(b.invoice_date||b.created_at||0) >= cutoff);
+
+  // ── Revenue Trend ──
+  // Determine month count based on period
+  const monthCount = days <= 7 ? 1 : days <= 30 ? 1 : days <= 90 ? 3 : days <= 180 ? 6 : 12;
   const months = [];
-  for(let i=5;i>=0;i--){
+  for(let i=monthCount-1;i>=0;i--){
     const d=new Date(now.getFullYear(),now.getMonth()-i,1);
     months.push({
       key: d.toISOString().slice(0,7),
@@ -989,25 +1035,59 @@ function loadInsights(){
     const m=months.find(x=>x.key===ym);
     if(m) m.total+=billTotal(b);
   });
-  const maxRev=Math.max(...months.map(m=>m.total),1);
-  const chartEl=document.getElementById('revenue-chart');
-  chartEl.innerHTML=months.map(m=>{
-    const pct=Math.round((m.total/maxRev)*100);
-    return `<div class="bar-row">
-      <div class="bar-label">${m.label}</div>
-      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:linear-gradient(90deg,var(--mkt),var(--mkt2))">${pct>15?fmt(m.total):''}</div></div>
-      ${pct<=15?`<div class="bar-amt">${fmt(m.total)}</div>`:'<div class="bar-amt"></div>'}
-    </div>`;
-  }).join('');
+
+  // For weekly view — show daily breakdown instead
+  let chartHTML = '';
+  if(days <= 7){
+    const dailyData = [];
+    for(let i=6;i>=0;i--){
+      const d=new Date(now.getTime()-i*86400000);
+      const key=d.toISOString().slice(0,10);
+      const dayLabel=d.toLocaleString('en',{weekday:'short'});
+      const total=bills.filter(b=>(b.invoice_date||b.created_at||'').startsWith(key)).reduce((s,b)=>s+billTotal(b),0);
+      dailyData.push({label:dayLabel,total});
+    }
+    const maxRev=Math.max(...dailyData.map(d=>d.total),1);
+    chartHTML=dailyData.map(d=>{
+      const pct=Math.round((d.total/maxRev)*100);
+      return `<div class="bar-row">
+        <div class="bar-label">${d.label}</div>
+        <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:linear-gradient(90deg,var(--mkt),var(--mkt2))">${pct>15?fmt(d.total):''}</div></div>
+        ${pct<=15?`<div class="bar-amt">${fmt(d.total)}</div>`:'<div class="bar-amt"></div>'}
+      </div>`;
+    }).join('');
+  } else {
+    const maxRev=Math.max(...months.map(m=>m.total),1);
+    chartHTML=months.map(m=>{
+      const pct=Math.round((m.total/maxRev)*100);
+      return `<div class="bar-row">
+        <div class="bar-label">${m.label}</div>
+        <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:linear-gradient(90deg,var(--mkt),var(--mkt2))">${pct>15?fmt(m.total):''}</div></div>
+        ${pct<=15?`<div class="bar-amt">${fmt(m.total)}</div>`:'<div class="bar-amt"></div>'}
+      </div>`;
+    }).join('');
+  }
+  document.getElementById('revenue-chart').innerHTML=chartHTML;
 
   // Revenue stats
-  const thisMonth=months[5]?.total||0;
-  const lastMonth=months[4]?.total||0;
-  const growth=lastMonth>0?Math.round(((thisMonth-lastMonth)/lastMonth)*100):0;
-  const totalRev=months.reduce((s,m)=>s+m.total,0);
+  const thisMonthRev = months.length ? months[months.length-1]?.total||0 : 0;
+  const lastMonthRev = months.length >= 2 ? months[months.length-2]?.total||0 : 0;
+  // Fix growth: show meaningful % even when lastMonth is 0
+  let growth = 0;
+  if(lastMonthRev > 0) growth = Math.round(((thisMonthRev-lastMonthRev)/lastMonthRev)*100);
+  else if(thisMonthRev > 0) growth = 100; // went from 0 to something = 100% growth
+
+  const totalRev = periodBills.reduce((s,b)=>s+billTotal(b),0);
+
+  // Update revenue badge
+  const revBadge = document.querySelector('#panel-insights .insight-card:first-child .ic-badge');
+  if(revBadge){
+    revBadge.innerHTML=`<span class="lang-en">${periodLabel}</span><span class="lang-hi">${periodLabelHi}</span>`;
+  }
+
   document.getElementById('revenue-stats').innerHTML=`
     <div class="stat-box">
-      <div class="stat-val" style="color:var(--mkt)">${fmt(thisMonth)}</div>
+      <div class="stat-val" style="color:var(--mkt)">${fmt(thisMonthRev)}</div>
       <div class="stat-lbl"><span class="lang-en">This Month</span><span class="lang-hi">इस महीने</span></div>
     </div>
     <div class="stat-box">
@@ -1016,13 +1096,12 @@ function loadInsights(){
     </div>
     <div class="stat-box">
       <div class="stat-val">${fmt(totalRev)}</div>
-      <div class="stat-lbl"><span class="lang-en">6 Month Total</span><span class="lang-hi">6 महीने कुल</span></div>
+      <div class="stat-lbl"><span class="lang-en">${periodLabel} Total</span><span class="lang-hi">${periodLabelHi} कुल</span></div>
     </div>`;
 
-  // ── Top Products ──
-  const thisYM=now.toISOString().slice(0,7);
+  // ── Top Products (filtered by selected period) ──
   const prodMap={};
-  bills.filter(b=>(b.invoice_date||b.created_at||'').startsWith(thisYM)).forEach(b=>{
+  periodBills.forEach(b=>{
     getItems(b).forEach(it=>{
       const nm=itemName(it);
       if(!prodMap[nm]) prodMap[nm]={name:nm,qty:0,revenue:0};
@@ -1030,10 +1109,13 @@ function loadInsights(){
       prodMap[nm].revenue+=itemAmt(it);
     });
   });
+  // Update top products badge
+  const topBadge = document.querySelectorAll('#panel-insights .insight-card')[1]?.querySelector('.ic-badge');
+  if(topBadge) topBadge.innerHTML=`<span class="lang-en">${periodLabel}</span><span class="lang-hi">${periodLabelHi}</span>`;
   const topProds=Object.values(prodMap).sort((a,b)=>b.revenue-a.revenue).slice(0,5);
   const topEl=document.getElementById('top-products');
   if(!topProds.length){
-    topEl.innerHTML='<div class="empty-state"><div class="empty-emoji">📦</div><div class="empty-desc">'+(hi()?'इस महीने अभी तक कोई बिलिंग नहीं':'No billing data this month yet')+'</div></div>';
+    topEl.innerHTML='<div class="empty-state"><div class="empty-emoji">📦</div><div class="empty-desc">'+(hi()?periodLabelHi+' में अभी तक कोई बिलिंग नहीं':'No billing data for '+periodLabel+' yet')+'</div></div>';
   } else {
     topEl.innerHTML=topProds.map((p,i)=>`
       <div class="prod-rank">
@@ -1046,10 +1128,9 @@ function loadInsights(){
       </div>`).join('');
   }
 
-  // ── Slow Moving Items ──
-  const thirtyAgo=new Date();thirtyAgo.setDate(thirtyAgo.getDate()-30);
+  // ── Slow Moving Items (use selected period) ──
   const recentSales={};
-  bills.filter(b=>new Date(b.created_at||b.invoice_date||0)>thirtyAgo).forEach(b=>{
+  periodBills.forEach(b=>{
     getItems(b).forEach(it=>{
       const nm=itemName(it).toLowerCase();
       recentSales[nm]=(recentSales[nm]||0)+itemQty(it);
@@ -1068,7 +1149,7 @@ function loadInsights(){
         <div class="pr-num" style="color:var(--acc2)">⚠️</div>
         <div class="pr-info">
           <div class="pr-name">${p.emoji||'📦'} ${p.name}</div>
-          <div class="pr-sub" style="color:var(--acc2)">${recentSales[(p.name||'').toLowerCase()]||0} ${hi()?'बिके 30 दिन में':'sold in 30 days'}</div>
+          <div class="pr-sub" style="color:var(--acc2)">${recentSales[(p.name||'').toLowerCase()]||0} ${hi()?'बिके '+periodLabelHi+' में':'sold in '+periodLabel}</div>
         </div>
         <div class="ci-action" style="background:rgba(245,166,35,.1);border-color:rgba(245,166,35,.3);color:var(--acc)" onclick="prefillOffer('${(p.name||'').replace(/'/g,'')}')">
           ${hi()?'ऑफर बनाएं':'Create Offer'}
@@ -1076,9 +1157,9 @@ function loadInsights(){
       </div>`).join('');
   }
 
-  // ── Peak Hours ──
+  // ── Peak Hours (use selected period) ──
   const hourBills={};
-  bills.forEach(b=>{
+  periodBills.forEach(b=>{
     const dt=b.created_at||b.invoice_date;
     if(!dt) return;
     const h=new Date(dt).getHours();
@@ -1090,8 +1171,8 @@ function loadInsights(){
   }
   const maxH=Math.max(...peakData.map(d=>d.count),1);
   const peakEl=document.getElementById('peak-hours');
-  if(bills.length<5){
-    peakEl.innerHTML='<div style="text-align:center;padding:16px;font-size:12px;color:var(--t2)">'+(hi()?'पर्याप्त डेटा नहीं है अभी':'Not enough data yet')+'</div>';
+  if(periodBills.length<3){
+    peakEl.innerHTML='<div style="text-align:center;padding:16px;font-size:12px;color:var(--t2)">'+(hi()?'पर्याप्त डेटा नहीं है अभी':'Not enough data for this period')+'</div>';
   } else {
     peakEl.innerHTML=peakData.map(d=>{
       const pct=Math.round((d.count/maxH)*100);
@@ -1105,9 +1186,9 @@ function loadInsights(){
     }).join('');
   }
 
-  // ── Customers at Risk (inactive 30+ days) ──
+  // ── Customers at Risk (inactive during selected period) ──
   const activeNames=new Set();
-  bills.filter(b=>new Date(b.created_at||b.invoice_date||0)>thirtyAgo).forEach(b=>{
+  periodBills.forEach(b=>{
     const cn=billCust(b);
     if(cn && cn!=='Walk-in') activeNames.add(cn);
   });
@@ -1119,12 +1200,12 @@ function loadInsights(){
   } else {
     churnEl.innerHTML=churnList.slice(0,8).map(c=>{
       const initials=(c.name||'?').slice(0,2).toUpperCase();
-      const ph=c.phone||c.mobile||'';
+      const ph=c.whatsapp||c.phone||c.mobile||'';
       return `<div class="cust-insight-row">
         <div class="ci-avatar" style="background:linear-gradient(135deg,var(--amber),#D97706);color:#000">${initials}</div>
         <div class="ci-info">
           <div class="ci-name">${c.name}</div>
-          <div class="ci-sub">${ph?ph:(hi()?'30+ दिन से नहीं आए':'30+ days inactive')}</div>
+          <div class="ci-sub">${ph?ph:(hi()?days+'+ दिन से नहीं आए':days+'+ days inactive')}</div>
         </div>
         <div class="ci-action" style="background:rgba(37,211,102,.1);border-color:rgba(37,211,102,.3);color:#25D366" onclick="sendWinBack('${(c.name||'').replace(/'/g,'')}','${ph}')">
           💬 ${hi()?'मैसेज':'Message'}
@@ -1133,9 +1214,9 @@ function loadInsights(){
     }).join('');
   }
 
-  // ── Top Customers by Revenue ──
+  // ── Top Customers by Revenue (use selected period) ──
   const custRev={};
-  bills.forEach(b=>{
+  periodBills.forEach(b=>{
     const nm=billCust(b);
     if(nm==='Walk-in Customer'||nm==='Cash Customer'||nm==='Walk-in') return;
     custRev[nm]=(custRev[nm]||0)+billTotal(b);
@@ -1245,17 +1326,18 @@ function loadCampaigns(){
 }
 
 function getAllCustsForWA(){
-  // Primary: saved customers
+  // Primary: saved customers — normalize phone from whatsapp/phone/mobile
   let custs = getCustomers().filter(c=>c.name && !['Walk-in Customer','Cash Customer','वॉक-इन',''].includes(c.name));
+  custs = custs.map(c => ({...c, phone: c.whatsapp||c.phone||c.mobile||''}));
   // Fallback: extract unique named customers from bills if list is empty
   if(!custs.length){
     const seen = new Set();
     getBills().forEach(b=>{
       const n=b.customer_name||b.customerName||'';
-      const p=b.customer_phone||b.customerPhone||b.customer_mobile||'';
+      const p=b.customer_wa||b.customer_phone||b.customerPhone||b.customer_mobile||'';
       if(n && n!=='Walk-in Customer' && n!=='Cash Customer' && !seen.has(n)){
         seen.add(n);
-        custs.push({name:n, phone:p, mobile:p});
+        custs.push({name:n, phone:p, mobile:p, whatsapp:p});
       }
     });
   }
@@ -2266,10 +2348,8 @@ document.addEventListener('DOMContentLoaded',function(){
   loadCampaigns();
 
   // Business plan check - show lock if not Business plan
-  // For now, allow access for testing. Uncomment below for production:
-  /*
   if(!isBusiness()){
-    // Show upgrade prompt
+    // Show upgrade prompt over each panel
     document.querySelectorAll('.panel').forEach(p=>{
       p.style.position='relative';
       const lock=document.createElement('div');
@@ -2278,11 +2358,10 @@ document.addEventListener('DOMContentLoaded',function(){
         <div class="lock-emoji">🔒</div>
         <div class="lock-title">${hi()?'Business Plan Feature':'Business Plan Feature'}</div>
         <div class="lock-desc">${hi()?'Marketing Center sirf Business plan mein available hai. Apni dukaan grow karo!':'Marketing Center is available in the Business plan. Grow your shop!'}</div>
-        <button class="lock-btn" onclick="goTo('subscription.html')">🚀 ${hi()?'अपग्रेड करें':'Upgrade Now'}</button>`;
+        <button class="lock-btn" onclick="goTo('subscription.html')">🚀 ${hi()?'अपग्रेड करें — ₹199/month':'Upgrade to Business — ₹199/month'}</button>`;
       p.appendChild(lock);
     });
   }
-  */
 });
 
 /* ══ Desktop Sidebar ══ */

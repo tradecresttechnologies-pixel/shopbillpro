@@ -1,7 +1,8 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" translate="no" class="notranslate">
 <head>
 <meta charset="UTF-8">
+<meta name="google" content="notranslate">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#F5A623">
 <meta name="mobile-web-app-capable" content="yes">
@@ -1015,6 +1016,57 @@ function buildBillHTML(b, status='DRAFT'){
   const isPaid = (paymentStatus||'').toLowerCase() === 'paid';
   const watermark = (s.plan||'free') === 'free';
 
+  // ── GST Tax Summary (group by rate for CGST/SGST table) ──
+  const gstSlabs = {};
+  if(displayGST){
+    itemRows.forEach(it => {
+      const rate = parseFloat(it.gstRate)||0;
+      if(rate > 0){
+        if(!gstSlabs[rate]) gstSlabs[rate] = {taxable:0, gst:0};
+        gstSlabs[rate].taxable += it.lineNet;
+        gstSlabs[rate].gst += it.lineGST;
+      }
+    });
+  }
+  const isIntraState = (b.supplyType||'intra') === 'intra';
+  const hasGSTSlabs = Object.keys(gstSlabs).length > 0;
+
+  const taxSummaryHTML = (displayGST && hasGSTSlabs) ? `
+  <div style="margin-bottom:14px">
+    <div style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Tax Summary</div>
+    <table style="width:100%;border-collapse:collapse;font-size:11px">
+      <thead>
+        <tr style="background:#F8F7FF">
+          <th style="padding:6px 8px;text-align:left;font-weight:700;color:#666;border-bottom:1px solid #E5E0FF">GST Rate</th>
+          <th style="padding:6px 8px;text-align:right;font-weight:700;color:#666;border-bottom:1px solid #E5E0FF">Taxable ₹</th>
+          ${isIntraState
+            ? '<th style="padding:6px 8px;text-align:right;font-weight:700;color:#666;border-bottom:1px solid #E5E0FF">CGST ₹</th><th style="padding:6px 8px;text-align:right;font-weight:700;color:#666;border-bottom:1px solid #E5E0FF">SGST ₹</th>'
+            : '<th style="padding:6px 8px;text-align:right;font-weight:700;color:#666;border-bottom:1px solid #E5E0FF">IGST ₹</th>'}
+          <th style="padding:6px 8px;text-align:right;font-weight:700;color:#666;border-bottom:1px solid #E5E0FF">Total Tax</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${Object.entries(gstSlabs).map(([rate, v]) => `
+        <tr>
+          <td style="padding:5px 8px;border-bottom:1px solid #F0EEFF">${rate}%</td>
+          <td style="padding:5px 8px;text-align:right;border-bottom:1px solid #F0EEFF">₹${v.taxable.toFixed(2)}</td>
+          ${isIntraState
+            ? '<td style="padding:5px 8px;text-align:right;border-bottom:1px solid #F0EEFF;color:#10B981">₹'+(v.gst/2).toFixed(2)+'</td><td style="padding:5px 8px;text-align:right;border-bottom:1px solid #F0EEFF;color:#10B981">₹'+(v.gst/2).toFixed(2)+'</td>'
+            : '<td style="padding:5px 8px;text-align:right;border-bottom:1px solid #F0EEFF;color:#10B981">₹'+v.gst.toFixed(2)+'</td>'}
+          <td style="padding:5px 8px;text-align:right;font-weight:700;border-bottom:1px solid #F0EEFF">₹${v.gst.toFixed(2)}</td>
+        </tr>`).join('')}
+        <tr style="font-weight:700;background:#F8F7FF">
+          <td style="padding:6px 8px">Total</td>
+          <td style="padding:6px 8px;text-align:right">₹${itemRows.reduce((s,it)=>s+(parseFloat(it.gstRate||0)>0?it.lineNet:0),0).toFixed(2)}</td>
+          ${isIntraState
+            ? '<td style="padding:6px 8px;text-align:right;color:#10B981">₹'+(totalGST/2).toFixed(2)+'</td><td style="padding:6px 8px;text-align:right;color:#10B981">₹'+(totalGST/2).toFixed(2)+'</td>'
+            : '<td style="padding:6px 8px;text-align:right;color:#10B981">₹'+totalGST.toFixed(2)+'</td>'}
+          <td style="padding:6px 8px;text-align:right;font-weight:800">₹${totalGST.toFixed(2)}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>` : '';
+
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -1084,6 +1136,7 @@ function buildBillHTML(b, status='DRAFT'){
       <div class="customer-meta">
         ${custPhone ? '📞 ' + custPhone : ''}
         ${custAddress ? '<br>' + custAddress : ''}
+        ${(b.custGSTIN||b.gst) ? '<br>🏛️ GSTIN: ' + (b.custGSTIN||b.gst) : ''}
       </div>
     </div>
     <div style="text-align:right">
@@ -1096,11 +1149,12 @@ function buildBillHTML(b, status='DRAFT'){
   <table class="items-table">
     <thead>
       <tr>
-        <th style="width:40%">Item / Service</th>
+        <th style="width:35%">Item / Service</th>
         <th style="text-align:right">Qty</th>
         <th style="text-align:right">Rate</th>
         ${b.items.some(it=>parseFloat(it.disc||0)>0) ? '<th style="text-align:right">Disc</th>' : ''}
-        ${displayGST ? '<th style="text-align:right">GST</th>' : ''}
+        ${displayGST ? '<th style="text-align:right">GST%</th>' : ''}
+        ${displayGST ? '<th style="text-align:right">GST ₹</th>' : ''}
         <th>Amount</th>
       </tr>
     </thead>
@@ -1112,6 +1166,7 @@ function buildBillHTML(b, status='DRAFT'){
         <td style="text-align:right">₹${it.r}</td>
         ${b.items.some(i=>parseFloat(i.disc||0)>0) ? '<td style="text-align:right">' + (it.disc>0?'₹'+it.disc.toFixed(2):'—') + '</td>' : ''}
         ${displayGST ? '<td style="text-align:right;color:#10B981">' + it.gstRate + '%</td>' : ''}
+        ${displayGST ? '<td style="text-align:right;color:#10B981">₹' + it.lineGST.toFixed(2) + '</td>' : ''}
         <td style="text-align:right;font-weight:600">₹${(it.lineNet + it.lineGST).toFixed(2)}</td>
       </tr>`).join('')}
     </tbody>
@@ -1123,10 +1178,18 @@ function buildBillHTML(b, status='DRAFT'){
       <div class="total-row"><span>Subtotal</span><span>₹${subtotal.toFixed(2)}</span></div>
       ${itemDisc > 0 ? `<div class="total-row"><span>Item Discount</span><span style="color:#EF4444">-₹${itemDisc.toFixed(2)}</span></div>` : ''}
       ${billDisc > 0 ? `<div class="total-row"><span>Bill Discount</span><span style="color:#EF4444">-₹${billDisc.toFixed(2)}</span></div>` : ''}
-      ${displayGST && totalGST > 0 ? `<div class="total-row"><span>GST</span><span style="color:#10B981">₹${totalGST.toFixed(2)}</span></div>` : ''}
+      ${displayGST && totalGST > 0 && isIntraState ? `
+        <div class="total-row"><span>CGST</span><span style="color:#10B981">₹${(totalGST/2).toFixed(2)}</span></div>
+        <div class="total-row"><span>SGST</span><span style="color:#10B981">₹${(totalGST/2).toFixed(2)}</span></div>
+      ` : ''}
+      ${displayGST && totalGST > 0 && !isIntraState ? `
+        <div class="total-row"><span>IGST</span><span style="color:#10B981">₹${totalGST.toFixed(2)}</span></div>
+      ` : ''}
       <div class="total-row grand"><span>Grand Total</span><span style="color:#F5A623">₹${grandTotal.toFixed(2)}</span></div>
     </div>
   </div>
+
+  ${taxSummaryHTML}
 
   ${billNote ? `<div class="note-box">📝 Note: ${billNote}</div>` : ''}
 
@@ -1368,6 +1431,17 @@ async function confirmSettle(){
 
     toast('✅ Bill saved!','s');
     closeModal('bill-preview-modal');
+
+    // Auto-send WhatsApp if user enabled the preference
+    if(localStorage.getItem('sbp_auto_wa')==='1'){
+      const wa=(b.wa||'').replace(/\D/g,'');
+      if(wa.length>=10){
+        setTimeout(()=>{
+          window.open('https://wa.me/91'+wa+'?text='+encodeURIComponent(buildWAMsg(b)),'_blank');
+        },300);
+      }
+    }
+
     setTimeout(()=>resetBillForm(),400);
 
   }catch(err){
@@ -1381,28 +1455,51 @@ function buildWAMsg(b){
   const s=_shop||JSON.parse(localStorage.getItem('sbp_shop')||'{}');
   const isPaid=(s.plan||'free')!=='free';
   const isHindi=(localStorage.getItem('sbp_lang')||'en')==='hi';
+  const isIntra=(b.supplyType||'intra')==='intra';
+  const gstAmt=parseFloat(b.gstAmt||0);
+  const hasGST=gstAmt>0;
 
-  // Item lines WITH item-wise GST transparency
+  // Item lines WITH item-wise GST + HSN
   const lines=b.items.map(it=>{
     const gstRate=parseFloat(it.rate||it.gst||0);
-    const gstAmt=parseFloat(it.lineGST||0);
+    const gstAmtLine=parseFloat(it.lineGST||0);
     const tot=parseFloat(it.tot||0);
-    const gstStr=gstRate>0?` [GST ${gstRate}%: ₹${gstAmt.toFixed(2)}]`:'';
-    return `• ${it.nm} x${it.q} @ ₹${it.r}${gstStr} = *₹${tot.toFixed(2)}*`;
+    const gstStr=gstRate>0?` [GST ${gstRate}%: ₹${gstAmtLine.toFixed(2)}]`:'';
+    const hsnStr=(it.hsn||it.hsn_code)?` (HSN:${it.hsn||it.hsn_code})`:'';
+    return `• ${it.nm} x${it.q} @ ₹${it.r}${hsnStr}${gstStr} = *₹${tot.toFixed(2)}*`;
   }).join('\n');
+
+  // CGST/SGST or IGST
+  let taxLines='';
+  if(hasGST){
+    if(isIntra){
+      taxLines=`\n🏛️ CGST: ₹${(gstAmt/2).toFixed(2)}\n🏛️ SGST: ₹${(gstAmt/2).toFixed(2)}`;
+    }else{
+      taxLines=`\n🏛️ IGST: ₹${gstAmt.toFixed(2)}`;
+    }
+    taxLines+=`\n🏛️ Total Tax: ₹${gstAmt.toFixed(2)}`;
+  }
 
   let msg;
   if(isHindi){
-    msg=`🧾 *बिल — ${s.name||'ShopBill Pro'}*\n━━━━━━━━━━━━━\n📋 *${b.invno}*\n📅 ${b.invdate}\n👤 *${b.nm}*\n\n📦 *सामान:*\n${lines}\n━━━━━━━━━━━━━\n💰 उप-कुल: ₹${parseFloat(b.sub).toFixed(2)}`;
-    if(b.gstAmt>0) msg+=`\n🏛️ कुल GST: ₹${parseFloat(b.gstAmt).toFixed(2)}`;
+    msg=`🧾 *${hasGST?'TAX INVOICE':'बिल'} — ${s.name||'ShopBill Pro'}*\n━━━━━━━━━━━━━`;
+    if(s.gstin) msg+=`\n🏛️ GSTIN: ${s.gstin}`;
+    msg+=`\n📋 *${b.invno}*\n📅 ${b.invdate}\n👤 *${b.nm}*`;
+    if(b.custGSTIN) msg+=`\n🏛️ ग्राहक GSTIN: ${b.custGSTIN}`;
+    msg+=`\n\n📦 *सामान:*\n${lines}\n━━━━━━━━━━━━━\n💰 उप-कुल: ₹${parseFloat(b.sub).toFixed(2)}`;
+    msg+=taxLines;
     if(b.itemDiscAmt>0) msg+=`\n🎁 आइटम छूट: -₹${parseFloat(b.itemDiscAmt).toFixed(2)}`;
     if(b.discAmt>0) msg+=`\n🎁 बिल छूट: -₹${parseFloat(b.discAmt).toFixed(2)}`;
     msg+=`\n\n✅ *कुल: ₹${parseFloat(b.grand).toFixed(2)}*\n💳 ${b.paymode||_payMethod||'Cash'}`;
     if(s.upi) msg+=`\n\n📲 *UPI से भुगतान करें:* ${s.upi}\n_(बिल प्रिंट में QR कोड देखें)_`;
     msg+=`\n\n🙏 धन्यवाद! फिर आइए।`;
   }else{
-    msg=`🧾 *INVOICE — ${s.name||'ShopBill Pro'}*\n━━━━━━━━━━━━━\n📋 *${b.invno}*\n📅 ${b.invdate}\n👤 *${b.nm}*\n\n📦 *Items:*\n${lines}\n━━━━━━━━━━━━━\n💰 Subtotal: ₹${parseFloat(b.sub).toFixed(2)}`;
-    if(b.gstAmt>0) msg+=`\n🏛️ Total GST: ₹${parseFloat(b.gstAmt).toFixed(2)}`;
+    msg=`🧾 *${hasGST?'TAX INVOICE':'INVOICE'} — ${s.name||'ShopBill Pro'}*\n━━━━━━━━━━━━━`;
+    if(s.gstin) msg+=`\n🏛️ GSTIN: ${s.gstin}`;
+    msg+=`\n📋 *${b.invno}*\n📅 ${b.invdate}\n👤 *${b.nm}*`;
+    if(b.custGSTIN) msg+=`\n🏛️ Cust GSTIN: ${b.custGSTIN}`;
+    msg+=`\n\n📦 *Items:*\n${lines}\n━━━━━━━━━━━━━\n💰 Subtotal: ₹${parseFloat(b.sub).toFixed(2)}`;
+    msg+=taxLines;
     if(b.itemDiscAmt>0) msg+=`\n🎁 Item Disc: -₹${parseFloat(b.itemDiscAmt).toFixed(2)}`;
     if(b.discAmt>0) msg+=`\n🎁 Bill Disc: -₹${parseFloat(b.discAmt).toFixed(2)}`;
     msg+=`\n\n✅ *Total: ₹${parseFloat(b.grand).toFixed(2)}*\n💳 ${b.paymode||_payMethod||'Cash'}`;
@@ -1944,10 +2041,19 @@ function posCheckout(){
   document.getElementById('pco-cust-wa').value='';
   document.getElementById('pco-disc-val').value='';
   _pcoPayMethod='Cash';_pcoDiscType='flat';
+  // Honor saved auto-send preferences (settings → Print/Share Preferences)
   Object.keys(_pcoSend).forEach(k=>_pcoSend[k]=false);
+  if(localStorage.getItem('sbp_auto_wa')==='1') _pcoSend.wa=true;
+  if(localStorage.getItem('sbp_auto_pdf')==='1') _pcoSend.pdf=true;
+  if(localStorage.getItem('sbp_auto_print')==='1') _pcoSend.print=true;
   document.querySelectorAll('#pco-pay-grid .pm-card').forEach((c,i)=>c.classList.toggle('on',i===0));
   ['pco-sopt-wa','pco-sopt-pdf','pco-sopt-print'].forEach(id=>{
-    const el=document.getElementById(id);if(el){el.style.background='var(--surf2)';el.style.borderColor='var(--bord)';el.style.color='var(--t2)'}
+    const el=document.getElementById(id);if(!el)return;
+    const key=id.replace('pco-sopt-','');
+    const on=_pcoSend[key];
+    el.style.background=on?'rgba(245,166,35,.1)':'var(--surf2)';
+    el.style.borderColor=on?'var(--acc)':'var(--bord)';
+    el.style.color=on?'var(--acc)':'var(--t2)';
   });
   pcoRenderSummary();pcoCalcTotal();
   closeModal('pos-cart-sheet');
@@ -2022,7 +2128,7 @@ async function confirmPOSCheckout(){
     if(!item)return null;
     const lineAmt=item.price*(cart[id]||0);
     const lineGST=lineAmt*(item.gst_rate||0)/100;
-    return{nm:item.name,q:cart[id],r:item.price,rate:item.gst_rate||0,disc:0,lineAmt,lineNet:lineAmt,lineGST,tot:(lineAmt+lineGST).toFixed(2),productId:item.id};
+    return{nm:item.name,q:cart[id],r:item.price,rate:item.gst_rate||0,disc:0,lineAmt,lineNet:lineAmt,lineGST,tot:(lineAmt+lineGST).toFixed(2),productId:item.id,hsn:item.hsn_code||''};
   }).filter(Boolean);
 
   const shop=JSON.parse(localStorage.getItem('sbp_shop')||'{}');
@@ -2079,8 +2185,10 @@ async function confirmPOSCheckout(){
     cached.unshift({...savedBill,bill_items:items});
     localStorage.setItem('sbp_bills',JSON.stringify(cached));
 
-    // Send bill
-    const posB={nm:custName,wa:custWA,invno:invNo,invdate:todayISO(),duedate:'',paymode:_pcoPayMethod,note:'',sub,gstAmt:gstTotal,discAmt:billDisc,grand,items,isGSTInvoice:false,supplyType:'intra',placeOfSupply:'',custGSTIN:'',gst:'',hsn:''};
+    // Send bill — detect GST dynamically from items
+    const hasGST=items.some(it=>parseFloat(it.rate||0)>0);
+    const custObj=_custs.find(c=>c.name===custName);
+    const posB={nm:custName,wa:custWA,invno:invNo,invdate:todayISO(),duedate:'',paymode:_pcoPayMethod,note:'',sub,gstAmt:gstTotal,discAmt:billDisc,grand,items,isGSTInvoice:hasGST,supplyType:'intra',placeOfSupply:'',custGSTIN:custObj?.gstin||'',gst:'',hsn:''};
     _billSnap=posB;
 
     if(_pcoSend.wa&&custWA){
@@ -2088,7 +2196,12 @@ async function confirmPOSCheckout(){
       if(wa.length>=10)window.open('https://wa.me/91'+wa+'?text='+encodeURIComponent(buildWAMsg(posB)),'_blank');
     }
     if(_pcoSend.pdf)downloadPDF();
-    if(_pcoSend.print)printBill();
+    if(_pcoSend.print){
+      const pType=localStorage.getItem('sbp_printer_type')||'a4';
+      if(pType==='58mm') printThermal(58);
+      else if(pType==='80mm') printThermal(80);
+      else printBill();
+    }
 
     closeModal('pos-checkout-modal');
     cart={};renderCart();renderPOS();
@@ -2315,7 +2428,7 @@ function printThermal(size){
         <span style="white-space:nowrap;font-weight:700">₹${tot.toFixed(2)}</span>
       </div>
       <div style="color:#555;font-size:${fsSm}">
-        ${qty} × ₹${rate.toFixed(2)}${gstR > 0 ? ` + GST ${gstR}% (₹${gstAmt.toFixed(2)})` : ''}
+        ${qty} × ₹${rate.toFixed(2)}${gstR > 0 ? ` + GST ${gstR}% (₹${gstAmt.toFixed(2)})` : ''}${(it.hsn||it.hsn_code) ? ` · HSN:${it.hsn||it.hsn_code}` : ''}
       </div>
     </div>`;
   }).join('');
@@ -2382,6 +2495,7 @@ function printThermal(size){
   ${shopAddr ? `<div class="center sm" style="margin-bottom:2px">${shopAddr}</div>` : ''}
   ${shopPhone ? `<div class="center sm">Ph: ${shopPhone}</div>` : ''}
   ${shopGSTIN ? `<div class="center sm">GSTIN: ${shopGSTIN}</div>` : ''}
+  ${gstAmt > 0 ? `<div class="center bold" style="margin-top:4px;letter-spacing:1px;font-size:${fsSm}">--- TAX INVOICE ---</div>` : ''}
 
   ${divider}
 
@@ -2390,6 +2504,7 @@ function printThermal(size){
   <div class="row"><span>Date:</span><span>${validDate}</span></div>
   <div class="row"><span>Customer:</span><span class="bold">${custName}</span></div>
   ${custPhone ? `<div class="row"><span>Phone:</span><span>${custPhone}</span></div>` : ''}
+  ${(b.custGSTIN||b.gst) ? `<div class="row"><span>GSTIN:</span><span style="font-size:${fsSm}">${b.custGSTIN||b.gst}</span></div>` : ''}
   <div class="row"><span>Payment:</span><span class="badge">${payMode}</span></div>
 
   ${divider}
@@ -2402,7 +2517,11 @@ function printThermal(size){
 
   <!-- Totals -->
   <div class="row"><span>Subtotal</span><span>₹${sub.toFixed(2)}</span></div>
-  ${gstAmt > 0 ? `${gstSummary ? gstSummary : ''}<div class="row"><span>Total GST</span><span>₹${gstAmt.toFixed(2)}</span></div>` : ''}
+  ${gstAmt > 0 ? `${gstSummary ? gstSummary : ''}
+    ${(b.supplyType||'intra')==='intra'
+      ? `<div class="row"><span>CGST</span><span>₹${(gstAmt/2).toFixed(2)}</span></div><div class="row"><span>SGST</span><span>₹${(gstAmt/2).toFixed(2)}</span></div>`
+      : `<div class="row"><span>IGST</span><span>₹${gstAmt.toFixed(2)}</span></div>`}
+    <div class="row"><span>Total Tax</span><span>₹${gstAmt.toFixed(2)}</span></div>` : ''}
   ${itemDisc > 0 ? `<div class="row"><span>Item Disc.</span><span>-₹${itemDisc.toFixed(2)}</span></div>` : ''}
   ${discAmt > 0 ? `<div class="row"><span>Bill Disc.</span><span>-₹${discAmt.toFixed(2)}</span></div>` : ''}
 
