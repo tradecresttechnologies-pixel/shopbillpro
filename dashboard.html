@@ -990,7 +990,7 @@ function renderRecentBills(bills) {
     const amt    = parseFloat(b.grand_total || 0);
     const paid   = parseFloat(b.paid_amount || 0);
     const bal    = parseFloat(b.balance_due || 0);
-    return `<div class="bill-card ${sc}" onclick="goTo('bills.html?id=${b.id}')">
+    return `<div class="bill-card ${sc}" onclick="sessionStorage.setItem('sbp_open_bill','${b.id}');goTo('bills.html?id=${b.id}')">
       <div class="bc-top">
         <span class="bc-inv">${b.invoice_no || '—'}</span>
         <span class="bc-date">📅 ${fDate(b.invoice_date || b.created_at)}</span>

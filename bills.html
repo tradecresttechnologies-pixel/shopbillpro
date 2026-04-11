@@ -1166,13 +1166,14 @@ async function init(){
   if(_bl&&_bl.querySelector('.spinner'))_bl.innerHTML='';
   applyFilters();
 
-  // ── Handle URL params ──
+  // ── Handle URL params + sessionStorage backup ──
   const params = new URLSearchParams(window.location.search);
-  const billId = params.get('id');
+  const billId = params.get('id') || sessionStorage.getItem('sbp_open_bill');
+  sessionStorage.removeItem('sbp_open_bill');
   const filter = params.get('filter');
   if(filter) filterStatus(filter, document.querySelector(`.chip[onclick*="${filter}"]`)||document.querySelector('.chip'));
 
-  // ── Open bill detail IMMEDIATELY from localStorage (don't wait for auth) ──
+  // ── Open bill detail with multiple retries ──
   if(billId){
     const tryOpen=()=>{
       const b=_bills.find(x=>String(x.id)===String(billId));
@@ -1180,8 +1181,9 @@ async function init(){
       return false;
     };
     if(!tryOpen()){
-      // Bill not in cache yet — retry once after a short delay (modal/DOM ready)
       setTimeout(tryOpen,150);
+      setTimeout(tryOpen,500);
+      setTimeout(tryOpen,1500);
     }
   }
 
