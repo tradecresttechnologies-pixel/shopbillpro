@@ -2301,7 +2301,19 @@ async function init(){
   if(_theme==='light'){document.documentElement.setAttribute('data-theme','light');document.getElementById('theme-btn').textContent='🌙'}
 
   // Session check
-  if(!_sb){return;} // Supabase CDN unavailable - local mode OK
+  if(!_sb){
+    // Supabase CDN unavailable — local mode
+    _custs=JSON.parse(localStorage.getItem('sbp_customers')||'[]');
+    _posItems=JSON.parse(localStorage.getItem('sbp_products')||'[]');
+    _shop=JSON.parse(localStorage.getItem('sbp_shop')||'{}');
+    const prefix=_shop.invoice_prefix||'INV';
+    const counter=_shop.invoice_counter||1;
+    document.getElementById('inv-no').value=prefix+'-'+String(counter).padStart(4,'0');
+    document.getElementById('inv-date').value=todayISO();
+    addItem();
+    loadFromTemplateParams();
+    return;
+  }
   const{data:{session}}=await _sb.auth.getSession();
   if(!session){window.location.href='index.html';return}
   const last=parseInt(localStorage.getItem('sbp_last_activity')||'0');
@@ -2363,9 +2375,10 @@ async function init(){
       document.getElementById('inv-no').value=(shops.invoice_prefix||'INV')+'-'+String(shops.invoice_counter||1).padStart(4,'0');
     }
   }
-}
 
-// ── Load from Bill Template params ──
+  // ── Run AFTER init is fully done (items-wrap ready, data loaded) ──
+  loadFromTemplateParams();
+}
 function loadFromTemplateParams(){
   const params=new URLSearchParams(window.location.search);
 
@@ -2825,7 +2838,6 @@ function openShareDefaultPicker(){
 }
 
 init();
-loadFromTemplateParams();
 setTimeout(()=>{ renderPrinterButtons(); applyDefaultShare(); }, 150);
 
 /* ══ Desktop Sidebar ══ */
