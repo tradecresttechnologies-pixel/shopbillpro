@@ -756,20 +756,23 @@ function renderBillActions(b){
   const btnStyle='font-size:11px;padding:7px 14px;border-radius:10px;cursor:pointer;font-weight:700;border:1px solid';
   let html='';
 
-  // Edit Bill — only for Pending (reopened) bills
+  // ── Edit Bill — only for Pending (reopened) bills ──
   if(isPending){
     html+=`<button onclick="editBill('${b.id}')" style="${btnStyle};background:rgba(6,182,212,.1);border-color:rgba(6,182,212,.3);color:#06B6D4">✏️ Edit Bill</button>`;
-  }
-
-  if(isPaid){
+    html+=`<button onclick="voidBill('${b.id}')" style="${btnStyle};background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.25);color:var(--acc2)">🚫 Void Bill</button>`;
+    html+=`<button onclick="deleteBill('${b.id}')" style="${btnStyle};background:rgba(239,68,68,.06);border-color:rgba(239,68,68,.2);color:#ff6b6b">🗑️ Delete</button>`;
+  } else if(isPaid){
     html+=`<button onclick="reopenBill('${b.id}')" style="${btnStyle};background:rgba(245,166,35,.08);border-color:rgba(245,166,35,.25);color:var(--acc)">🔓 Reopen</button>`;
     html+=`<button onclick="voidBill('${b.id}')" style="${btnStyle};background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.25);color:var(--acc2)">🚫 Void Bill</button>`;
-  }else if(isVoided){
+  } else if(isVoided){
     html+=`<button onclick="reopenBill('${b.id}')" style="${btnStyle};background:rgba(245,166,35,.08);border-color:rgba(245,166,35,.25);color:var(--acc)">🔓 Reopen</button>`;
-  }else{
-    // Pending, Credit, Partial
+    html+=`<button onclick="deleteBill('${b.id}')" style="${btnStyle};background:rgba(239,68,68,.06);border-color:rgba(239,68,68,.2);color:#ff6b6b">🗑️ Delete</button>`;
+  } else {
+    // Credit / Partial
     if(isCredit){
       html+=`<button onclick="reopenBill('${b.id}')" style="${btnStyle};background:rgba(245,166,35,.08);border-color:rgba(245,166,35,.25);color:var(--acc)">🔓 Reopen & Reverse</button>`;
+    } else {
+      html+=`<button onclick="reopenBill('${b.id}')" style="${btnStyle};background:rgba(245,166,35,.08);border-color:rgba(245,166,35,.25);color:var(--acc)">🔓 Reopen</button>`;
     }
     html+=`<button onclick="voidBill('${b.id}')" style="${btnStyle};background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.25);color:var(--acc2)">🚫 Void Bill</button>`;
   }
@@ -786,21 +789,33 @@ function editBill(billId){
 function _doEditBill(billId){
   const b=_bills.find(x=>x.id===billId||String(x.id)===String(billId));
   if(!b){toast('Bill not found','e');return;}
-  // Store bill for editing in localStorage
-  localStorage.setItem('sbp_edit_bill',JSON.stringify(b));
+  // Store full edit payload in localStorage
+  const editPayload={
+    id:b.id,invoice_no:b.invoice_no||b.invno||'',
+    invoice_date:b.invoice_date||b.invdate||'',
+    customer_name:b.customer_name||b.nm||'',
+    customer_phone:b.customer_phone||b.customer_wa||b.wa||'',
+    customer_gstin:b.customer_gstin||b.custGSTIN||'',
+    note:b.note||b.notes||'',
+    payment_mode:b.payment_mode||b.paymode||'Cash',
+    is_gst_invoice:b.is_gst_invoice||b.isGSTInvoice||false,
+    supply_type:b.supply_type||b.supplyType||'intra',
+    place_of_supply:b.place_of_supply||b.placeOfSupply||'',
+    discount:b.discount||0,discount_type:b.discount_type||'flat',
+    source:b.source||'',created_via:b.created_via||'',pos_mode:b.pos_mode||false,
+    bill_items:b.bill_items||b.items||[],
+    _edit_mode:true,_old_status:b.status||'Pending'
+  };
+  localStorage.setItem('sbp_edit_bill',JSON.stringify(editPayload));
   logAudit('edit_bill_start',{bill_id:billId,invoice_no:b.invoice_no,customer:b.customer_name});
-  // Per-bill audit
   const idx=_bills.findIndex(x=>x.id===billId||String(x.id)===String(billId));
   if(idx>=0){
     if(!_bills[idx].audit_log) _bills[idx].audit_log=[];
-    _bills[idx].audit_log.unshift({
-      action:'edit_started',ts:new Date().toISOString(),
-      user:localStorage.getItem('sbp_role')||'Admin',
-      note:'Bill opened for editing'
-    });
+    _bills[idx].audit_log.unshift({action:'edit_started',ts:new Date().toISOString(),user:localStorage.getItem('sbp_role')||'Admin',note:'Bill opened for editing'});
     localStorage.setItem('sbp_bills',JSON.stringify(_bills));
   }
-  window.location.href='billing.html?edit_bill='+encodeURIComponent(billId);
+  const isPOSBill=b.source==='pos'||b.created_via==='pos'||b.pos_mode===true;
+  window.location.href=(isPOSBill?'billing.html?mode=pos&edit_bill=':'billing.html?edit_bill=')+encodeURIComponent(billId);
 }
 
 // ── Audit Trail Viewer ──
@@ -907,13 +922,39 @@ async function _doReopenBill(billId){
 
   try{logAudit('reopen_bill',{bill_id:billId,invoice_no:b.invoice_no,old_status:oldStatus,customer:b.customer_name,credit_reversed:isCreditBill});}catch(e){}
 
+  // ── Save full bill data to localStorage so billing.html can load it ──
+  const editPayload = {
+    id: b.id,
+    invoice_no: b.invoice_no || b.invno || '',
+    invoice_date: b.invoice_date || b.invdate || '',
+    customer_name: b.customer_name || b.nm || '',
+    customer_phone: b.customer_phone || b.customer_wa || b.wa || '',
+    customer_gstin: b.customer_gstin || b.custGSTIN || '',
+    note: b.note || b.notes || '',
+    payment_mode: b.payment_mode || b.paymode || 'Cash',
+    is_gst_invoice: b.is_gst_invoice || b.isGSTInvoice || false,
+    supply_type: b.supply_type || b.supplyType || 'intra',
+    place_of_supply: b.place_of_supply || b.placeOfSupply || '',
+    gst_no: b.gst_no || '',
+    discount: b.discount || 0,
+    discount_type: b.discount_type || 'flat',
+    source: b.source || '',
+    created_via: b.created_via || '',
+    pos_mode: b.pos_mode || false,
+    bill_items: b.bill_items || b.items || [],
+    _edit_mode: true,
+    _old_status: oldStatus
+  };
+  localStorage.setItem('sbp_edit_bill', JSON.stringify(editPayload));
+
   closeModal('bill-preview-modal');
   toast('🔓 Bill reopened — opening editor...','s',2000);
 
   // Auto-redirect to billing.html in edit mode (POS or Manual based on bill source)
   setTimeout(()=>{
     const isPOSBill = b.source==='pos' || b.created_via==='pos' || b.pos_mode===true;
-    const targetPage = isPOSBill ? 'billing.html?pos=1&edit_bill=' : 'billing.html?edit_bill=';
+    // Use ?mode=pos (billing.html reads params.get('mode'))
+    const targetPage = isPOSBill ? 'billing.html?mode=pos&edit_bill=' : 'billing.html?edit_bill=';
     window.location.href = targetPage + encodeURIComponent(billId);
   },800);
 }

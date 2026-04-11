@@ -1382,42 +1382,116 @@ async function confirmSettle(){
       notes:b.note||''
     };
 
-    // Save to Supabase or local
+    // ── Determine if this is an EDIT (update) or a NEW bill (insert) ──
+    const isEditMode = !!window._editBillId;
+    const editBillId = window._editBillId || null;
     let savedBill=null;
     const online=navigator.onLine;
 
-    if(_sb&&online&&_shopId){
-      const{data,error}=await _sb.from('bills').insert(billData).select().single();
-      if(!error){
-        savedBill=data;
-        // Save items
-        if(b.items.length){
-          await _sb.from('bill_items').insert(b.items.map(it=>({
-            bill_id:data.id,item_name:it.nm,qty:it.q,rate:it.r,
-            gst_rate:it.rate,discount:it.disc,
-            line_total:parseFloat(it.tot),gst_amount:it.lineGST
-          })));
-        }
-        // Update invoice counter
-        const shop=JSON.parse(localStorage.getItem('sbp_shop')||'{}');
-        const next=(shop.invoice_counter||1)+1;
-        if(_sb)await _sb.from('shops').update({invoice_counter:next}).eq('id',_shopId);
-        shop.invoice_counter=next;
-        localStorage.setItem('sbp_shop',JSON.stringify(shop));
+    if(isEditMode){
+      // ════════════════════════════════════════════
+      // UPDATE EXISTING BILL
+      // ════════════════════════════════════════════
+      const updatePayload={
+        invoice_date:billData.invoice_date,due_date:billData.due_date,
+        customer_name:billData.customer_name,customer_wa:billData.customer_wa,
+        customer_gstin:billData.customer_gstin,payment_mode:billData.payment_mode,
+        status:billData.status,subtotal:billData.subtotal,gst_amount:billData.gst_amount,
+        discount:billData.discount,grand_total:billData.grand_total,
+        paid_amount:billData.paid_amount,balance_due:billData.balance_due,
+        is_gst_invoice:billData.is_gst_invoice,supply_type:billData.supply_type,
+        place_of_supply:billData.place_of_supply,notes:billData.notes,
+        updated_at:new Date().toISOString()
+      };
+
+      // Supabase update
+      if(_sb&&online&&!String(editBillId).startsWith('local_')){
+        try{
+          const{error:uerr}=await _sb.from('bills').update(updatePayload).eq('id',editBillId);
+          if(!uerr){
+            // Replace bill_items: delete old, insert new
+            await _sb.from('bill_items').delete().eq('bill_id',editBillId);
+            if(b.items.length){
+              await _sb.from('bill_items').insert(b.items.map(it=>({
+                bill_id:editBillId,item_name:it.nm,qty:it.q,rate:it.r,
+                gst_rate:it.rate,discount:it.disc||0,
+                line_total:parseFloat(it.tot),gst_amount:parseFloat(it.lineGST||0)
+              })));
+            }
+            savedBill={...updatePayload,id:editBillId};
+          }
+        }catch(e){console.warn('Supabase update failed:',e);}
       }
+
+      // Local cache update (always — even if Supabase succeeded)
+      const cached=JSON.parse(localStorage.getItem('sbp_bills')||'[]');
+      const existIdx=cached.findIndex(x=>String(x.id)===String(editBillId));
+      const updatedBill={
+        ...(existIdx>=0?cached[existIdx]:{}),
+        ...updatePayload,
+        id:editBillId,
+        bill_items:b.items
+      };
+      if(existIdx>=0) cached[existIdx]=updatedBill;
+      else cached.unshift(updatedBill);
+      localStorage.setItem('sbp_bills',JSON.stringify(cached));
+      savedBill=updatedBill;
+
+      // Audit log the edit
+      try{
+        const auditEntry={action:'bill_edited',ts:new Date().toISOString(),
+          user:localStorage.getItem('sbp_role')||'Admin',
+          note:`Bill edited: ${billData.invoice_no} → new total ₹${billData.grand_total}`};
+        const cidx=cached.findIndex(x=>String(x.id)===String(editBillId));
+        if(cidx>=0){
+          if(!cached[cidx].audit_log) cached[cidx].audit_log=[];
+          cached[cidx].audit_log.unshift(auditEntry);
+          localStorage.setItem('sbp_bills',JSON.stringify(cached));
+        }
+        logAudit('bill_edited',{bill_id:editBillId,invoice_no:billData.invoice_no,
+          new_total:billData.grand_total,customer:billData.customer_name});
+      }catch(e){}
+
+      // Clear edit context
+      window._editBillId=null;
+      window._editBillOriginalStatus=null;
+      toast('✅ Bill updated successfully!','s',3000);
+
+    } else {
+      // ════════════════════════════════════════════
+      // INSERT NEW BILL
+      // ════════════════════════════════════════════
+      if(_sb&&online&&_shopId){
+        const{data,error}=await _sb.from('bills').insert(billData).select().single();
+        if(!error){
+          savedBill=data;
+          if(b.items.length){
+            await _sb.from('bill_items').insert(b.items.map(it=>({
+              bill_id:data.id,item_name:it.nm,qty:it.q,rate:it.r,
+              gst_rate:it.rate,discount:it.disc||0,
+              line_total:parseFloat(it.tot),gst_amount:parseFloat(it.lineGST||0)
+            })));
+          }
+          // Bump invoice counter only for NEW bills
+          const shop=JSON.parse(localStorage.getItem('sbp_shop')||'{}');
+          const next=(shop.invoice_counter||1)+1;
+          if(_sb)await _sb.from('shops').update({invoice_counter:next}).eq('id',_shopId);
+          shop.invoice_counter=next;
+          localStorage.setItem('sbp_shop',JSON.stringify(shop));
+        }
+      }
+
+      if(!savedBill){
+        savedBill={...billData,id:'local_'+Date.now(),bill_items:b.items,created_at:new Date().toISOString()};
+      }
+
+      const cached=JSON.parse(localStorage.getItem('sbp_bills')||'[]');
+      cached.unshift({...savedBill,bill_items:b.items});
+      localStorage.setItem('sbp_bills',JSON.stringify(cached));
+      toast('✅ Bill saved!','s');
     }
 
-    if(!savedBill){
-      // Offline save
-      savedBill={...billData,id:'local_'+Date.now(),bill_items:b.items,created_at:new Date().toISOString()};
-    }
-
-    // Update local cache
-    const cached=JSON.parse(localStorage.getItem('sbp_bills')||'[]');
-    cached.unshift({...savedBill,bill_items:b.items});
-    localStorage.setItem('sbp_bills',JSON.stringify(cached));
-
-    // Update customer balance if credit
+    // ── Update customer balance if credit (both modes) ──
     if(balance>0){
       const cust=_custs.find(c=>c.name===b.nm);
       if(cust){
@@ -1429,7 +1503,6 @@ async function confirmSettle(){
       }
     }
 
-    toast('✅ Bill saved!','s');
     closeModal('bill-preview-modal');
 
     // Auto-send WhatsApp if user enabled the preference
@@ -1740,6 +1813,12 @@ function loadDraft(){
 
 // ── Reset Form ──
 function resetBillForm(){
+  // ── Clear edit mode context ──
+  window._editBillId=null;
+  window._editBillOriginalStatus=null;
+  const banner=document.getElementById('edit-mode-banner');
+  if(banner) banner.remove();
+
   document.getElementById('cust-nm').value='';
   document.getElementById('cust-wa').value='';
   document.getElementById('cust-gst').value='';
@@ -2292,27 +2371,82 @@ function loadFromTemplateParams(){
 
   // ── Edit Bill Mode (from bills.html reopen) ──
   if(params.get('edit_bill')){
-    const editData=localStorage.getItem('sbp_edit_bill');
+    const editId=params.get('edit_bill');
+    let editData=localStorage.getItem('sbp_edit_bill');
+
+    // Fallback: if localStorage missing, search sbp_bills by id
+    if(!editData){
+      const allBills=JSON.parse(localStorage.getItem('sbp_bills')||'[]');
+      const found=allBills.find(x=>String(x.id)===String(editId));
+      if(found) editData=JSON.stringify(found);
+    }
+
     if(editData){
       try{
         const b=JSON.parse(editData);
         localStorage.removeItem('sbp_edit_bill');
 
-        // Show banner
+        // ── Show Edit Mode Banner ──
+        const existingBanner=document.getElementById('edit-mode-banner');
+        if(existingBanner) existingBanner.remove();
         const banner=document.createElement('div');
-        banner.style.cssText='background:rgba(6,182,212,.12);border:1.5px solid rgba(6,182,212,.3);border-radius:var(--rs);padding:10px 14px;margin-bottom:10px;font-size:12px;font-weight:700;color:#06B6D4;display:flex;align-items:center;gap:8px';
-        banner.innerHTML=`<span>✏️</span><span>Editing: ${b.invoice_no} — ${b.customer_name}. Changes will update this bill.</span>`;
-        document.getElementById('cust-nm')?.parentElement?.parentElement?.insertBefore(banner,document.getElementById('cust-nm')?.parentElement?.parentElement?.firstChild);
+        banner.id='edit-mode-banner';
+        banner.style.cssText='background:rgba(6,182,212,.12);border:1.5px solid rgba(6,182,212,.4);border-radius:var(--rs);padding:12px 14px;margin-bottom:12px;font-size:12px;font-weight:700;color:#06B6D4;display:flex;align-items:center;gap:8px;flex-wrap:wrap';
+        banner.innerHTML=`<span style="font-size:16px">✏️</span><span style="flex:1">Editing Bill: <strong>${b.invoice_no||''}</strong> — ${b.customer_name||'Customer'}. <span style="opacity:.8">Save will update this bill.</span></span><span onclick="if(confirm('Cancel editing? Form will reset.'))resetBillForm()" style="cursor:pointer;color:var(--acc2);font-size:11px;padding:3px 8px;border:1px solid rgba(239,68,68,.3);border-radius:6px;background:rgba(239,68,68,.08)">✕ Cancel Edit</span>`;
+        const itemsParent=document.getElementById('items-wrap')?.closest('.fsec')||document.getElementById('items-wrap')?.parentElement;
+        const mainPad=document.querySelector('.sb .pad');
+        if(mainPad) mainPad.insertBefore(banner,mainPad.firstChild);
 
-        // Populate fields
-        if(b.customer_name||b.nm) document.getElementById('cust-nm').value=b.customer_name||b.nm||'';
-        const phone=b.customer_phone||b.wa||b.customer_mobile||'';
-        if(phone) document.getElementById('cust-wa').value=phone;
-        if(b.invoice_no) document.getElementById('inv-no').value=b.invoice_no;
-        if(b.invoice_date||b.invdate) document.getElementById('inv-date').value=b.invoice_date||b.invdate||todayISO();
-        if(b.note||b.notes) document.getElementById('inv-note').value=b.note||b.notes||'';
+        // ── Populate Customer Fields ──
+        const custNm=document.getElementById('cust-nm');
+        const custWa=document.getElementById('cust-wa');
+        if(custNm) custNm.value=b.customer_name||b.nm||'';
+        if(custWa) custWa.value=b.customer_phone||b.customer_wa||b.wa||'';
 
-        // Load items (supports both bill_items and items array formats)
+        // ── Invoice fields ──
+        const invNo=document.getElementById('inv-no');
+        const invDate=document.getElementById('inv-date');
+        const invNote=document.getElementById('inv-note');
+        if(invNo&&b.invoice_no) invNo.value=b.invoice_no;
+        if(invDate&&(b.invoice_date||b.invdate)) invDate.value=b.invoice_date||b.invdate||todayISO();
+        if(invNote&&(b.note||b.notes)) invNote.value=b.note||b.notes||'';
+
+        // ── Restore GST Mode ──
+        const isGST=b.is_gst_invoice||b.isGSTInvoice||false;
+        if(isGST){
+          setTimeout(()=>{
+            _gstMode=true;
+            const chk=document.getElementById('gst-mode-chk');
+            if(chk) chk.checked=true;
+            const extra=document.getElementById('gst-extra');
+            if(extra) extra.classList.add('show');
+            // Restore GSTIN and supply type
+            const custGstin=document.getElementById('cust-gstin');
+            const supplyType=document.getElementById('supply-type');
+            const placeOfSupply=document.getElementById('place-of-supply');
+            if(custGstin&&(b.customer_gstin||b.custGSTIN)) custGstin.value=b.customer_gstin||b.custGSTIN||'';
+            if(supplyType&&(b.supply_type||b.supplyType)) supplyType.value=b.supply_type||b.supplyType||'intra';
+            if(placeOfSupply&&(b.place_of_supply||b.placeOfSupply)) placeOfSupply.value=b.place_of_supply||b.placeOfSupply||'';
+          },100);
+        }
+
+        // ── Restore Payment Mode ──
+        const payMode=b.payment_mode||b.paymode||b.payMode||'Cash';
+        setTimeout(()=>{
+          _payMethod=payMode;
+          document.querySelectorAll('#bm-pay-grid .pm-card').forEach(c=>{
+            const nm=c.querySelector('.pm-nm')?.textContent||'';
+            c.classList.toggle('on',nm.toLowerCase()===payMode.toLowerCase()||
+              (payMode==='UPI'&&nm.includes('UPI'))||
+              (payMode==='Bank'&&nm.includes('Bank'))||
+              (payMode==='Cheque'&&nm.includes('Cheque'))||
+              (payMode==='Credit'&&nm.includes('Credit'))||
+              (payMode==='Card'&&nm.includes('Card'))||
+              (payMode==='Cash'&&nm.includes('Cash')));
+          });
+        },150);
+
+        // ── Load Items ──
         const rawItems=b.bill_items||b.items||[];
         if(rawItems.length){
           document.getElementById('items-wrap').innerHTML='';
@@ -2324,16 +2458,43 @@ function loadFromTemplateParams(){
               row.querySelector('.it-nm').value=it.item_name||it.nm||'';
               row.querySelector('.it-qty').value=it.qty||it.q||1;
               row.querySelector('.it-rt').value=it.rate||it.r||0;
-              row.querySelector('.it-gst').value=it.gst_rate||it.rate_gst||it.g||5;
+              const gstSel=row.querySelector('.it-gst');
+              if(gstSel) gstSel.value=it.gst_rate||it.rate_gst||it.g||0;
+              // Restore HSN if field exists
+              const hsnFld=row.querySelector('.it-hsn');
+              if(hsnFld&&it.hsn_code) hsnFld.value=it.hsn_code||'';
             }
           });
-          calcTotals();
+          setTimeout(()=>calcTotals(),200);
         }
 
-        // Store original bill ID for audit logging when saved
-        window._editBillId=params.get('edit_bill');
+        // ── Restore Discount ──
+        setTimeout(()=>{
+          const discVal=parseFloat(b.discount||0);
+          const discType=b.discount_type||'flat';
+          if(discVal>0){
+            const discInput=document.getElementById('disc-val');
+            const discTypeFlat=document.querySelector('.disc-type-btn[onclick*="flat"]');
+            const discTypePct=document.querySelector('.disc-type-btn[onclick*="pct"]');
+            if(discInput) discInput.value=discVal;
+            if(discType==='pct'||discType==='percent'){
+              _discType='pct';
+              if(discTypePct) discTypePct.classList.add('on');
+              if(discTypeFlat) discTypeFlat.classList.remove('on');
+            }
+            calcTotals();
+          }
+        },250);
+
+        // ── Store edit context (used by confirmSettle to UPDATE instead of INSERT) ──
+        window._editBillId=editId;
+        window._editBillOriginalStatus=b._old_status||b.status||'Pending';
+
         toast('✏️ Bill loaded for editing — make changes and save','s',4000);
-      }catch(e){console.warn('Edit bill load error:',e);}
+      }catch(e){console.warn('Edit bill load error:',e);toast('⚠️ Could not load bill for editing','e');}
+    } else {
+      // Data not found anywhere — show error
+      toast('⚠️ Bill data not found. Please reopen from Bills page.','e',4000);
     }
     return;
   }
