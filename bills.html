@@ -271,7 +271,7 @@ html,body{height:100%;overflow:hidden}
 
   <!-- Search -->
   <div class="search-wrap">
-    <input class="search-inp" id="bill-search" placeholder="Search by name, invoice no, date..." oninput="searchBills(this.value)">
+    <input class="search-inp" id="bill-search" name="bill-search-q" type="search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search by name, invoice no, date..." oninput="searchBills(this.value)">
   </div>
 
   <!-- Status Filter Chips -->
@@ -774,6 +774,7 @@ function renderBillActions(b){
     html+=`<button onclick="voidBill('${b.id}')" style="${btnStyle};background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.25);color:var(--acc2)">🚫 Void Bill</button>`;
   }
 
+  const hasAudit = b.audit_log && Array.isArray(b.audit_log) && b.audit_log.length > 0;
   html+=`<button onclick="showBillAuditTrail('${b.id}')" style="${btnStyle};background:${hasAudit?'rgba(139,92,246,.1)':'rgba(138,138,168,.06)'};border-color:${hasAudit?'rgba(139,92,246,.3)':'rgba(138,138,168,.2)'};color:${hasAudit?'#8B5CF6':'var(--t2)'}">📋 Audit${hasAudit?` (${b.audit_log.length})`:''}</button>`;
   el.innerHTML=html;
 }
