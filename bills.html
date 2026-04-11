@@ -419,10 +419,10 @@ function verifyPIN(){
   const entered=document.getElementById('pin-input').value;
   const correct=getManagerPIN();
   if(entered===correct){
+    const cb=_pinCallback; // save BEFORE closePINModal nulls it
     closePINModal();
-    if(_pinCallback)_pinCallback();
-    _pinCallback=null;
     logAudit('pin_verified',{action:'manager_access'});
+    if(cb)cb();
   }else{
     _pinAttempts++;
     document.getElementById('pin-error').textContent='❌ Wrong PIN (Attempt '+_pinAttempts+'/5)';
