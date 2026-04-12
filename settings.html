@@ -816,41 +816,8 @@ html,body{height:100%;overflow:hidden}
   </div>
 </div>
 
-<!-- Staff Modal -->
-<div class="overlay" id="staff-modal">
-  <div class="sheet">
-    <div class="handle"></div>
-    <div class="sheet-title">👥 Staff & Roles</div>
-    <div style="font-size:12px;color:var(--t2);margin-bottom:12px">Add staff members who can access your shop with their own login</div>
-    <div id="staff-list" style="margin-bottom:12px"></div>
-    <button class="btn-pri" onclick="openAddStaff()">＋ Add Staff Member</button>
-    <button class="btn-sec" onclick="closeModal('staff-modal')" style="margin-top:8px">Close</button>
-    <div style="height:8px"></div>
-  </div>
-</div>
+<!-- Staff Modal — REMOVED (consolidated into team.html). openStaffGated() now redirects to team.html -->
 
-<!-- Add Staff Modal -->
-<div class="overlay" id="add-staff-modal">
-  <div class="sheet">
-    <div class="handle"></div>
-    <div class="sheet-title">➕ Add Staff Member</div>
-    <div style="background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.2);border-radius:var(--rs);padding:10px;margin-bottom:12px;font-size:11px;color:var(--t2)">Staff will get their own login credentials linked to your shop.</div>
-    <div class="ff"><label>Full Name *</label><input type="text" id="stf-name" placeholder="Staff name" autocomplete="off"></div>
-    <div class="ff"><label>Email *</label><input type="text" id="stf-email" placeholder="staff@email.com" autocomplete="off"></div>
-    <div class="ff"><label>Phone / WhatsApp</label><input type="text" id="stf-phone" placeholder="Mobile number" autocomplete="off" inputmode="numeric"></div>
-    <div class="ff"><label>Password *</label><input type="password" id="stf-pass" placeholder="Min 6 characters" autocomplete="new-password"></div>
-    <div class="ff"><label>Role</label>
-      <select id="stf-role">
-        <option value="Staff">Staff — Bills only</option>
-        <option value="Manager">Manager — Bills + Customers + Reports</option>
-        <option value="Accountant">Accountant — View reports only</option>
-      </select>
-    </div>
-    <button class="btn-pri" onclick="addStaff()">✅ Add Staff</button>
-    <button class="btn-sec" onclick="closeModal('add-staff-modal');openModal('staff-modal')" style="margin-top:8px">Back</button>
-    <div style="height:8px"></div>
-  </div>
-</div>
 
 <div id="toast-container"></div>
 <input type="file" id="import-file" accept=".json" style="display:none" onchange="processImport(this)">
@@ -981,7 +948,7 @@ function loadAutoSendSettings(){
 }
 function toast(msg,type='',dur=3000){const c=document.getElementById('toast-container');const t=document.createElement('div');t.className='toast'+(type?' '+type:'');t.textContent=msg;c.appendChild(t);setTimeout(()=>{t.style.opacity='0';t.style.transition='.2s';setTimeout(()=>t.remove(),220);},dur)}
 function toggleTheme(){_theme=_theme==='dark'?'light':'dark';localStorage.setItem('sbp_theme',_theme);document.documentElement.setAttribute('data-theme',_theme==='light'?'light':'');document.getElementById('theme-btn').textContent=_theme==='light'?'🌙':'☀️';document.getElementById('theme-chk').checked=_theme==='light'}
-function openModal(id){const el=document.getElementById(id);if(id==='sync-modal')updateSyncStats();if(id==='staff-modal')renderStaff();el.classList.add('open');el.style.display='flex';el.addEventListener('click',e=>{if(e.target===el)closeModal(id);},{once:true})}
+function openModal(id){const el=document.getElementById(id);if(id==='sync-modal')updateSyncStats();el.classList.add('open');el.style.display='flex';el.addEventListener('click',e=>{if(e.target===el)closeModal(id);},{once:true})}
 function closeModal(id){const el=document.getElementById(id);el.classList.remove('open');el.style.display='none'}
 
 // ── Shop Settings ──
@@ -1205,13 +1172,7 @@ function renderStaff(){
 }
 
 function openStaffGated(){
-  const plan=JSON.parse(localStorage.getItem('sbp_shop')||'{}').plan||'free';
-  if(plan!=='enterprise'){
-    toast('👥 Staff Management is a Business plan feature — upgrade to ₹199/month','i',4000);
-    setTimeout(()=>window.location.href='subscription.html',1500);
-    return;
-  }
-  openModal('staff-modal');
+  gatedGoTo('team.html','Staff & Roles');
 }
 
 function openAddStaff(){

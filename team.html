@@ -124,6 +124,27 @@ html,body{height:100%;overflow:hidden}
 
 
       <!-- Staff Activity -->
+      <div class="section-title">🔐 Manager PINs</div>
+      <div class="card" id="pin-management">
+        <div style="font-size:12px;color:var(--t2);margin-bottom:12px">Manager PINs are used to authorize sensitive actions like voiding bills, deleting items, and reopening settled bills. Each manager gets their own PIN for audit tracking.</div>
+        <div id="pin-list"></div>
+      </div>
+
+      <!-- Set PIN Modal -->
+      <div class="overlay" id="set-pin-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9500;align-items:center;justify-content:center;backdrop-filter:blur(6px)">
+        <div style="background:var(--surf);border-radius:var(--rs2);padding:24px;width:min(340px,90vw);text-align:center">
+          <div style="font-family:var(--font-h);font-size:16px;font-weight:800;margin-bottom:6px;color:var(--acc)">🔐 Set Manager PIN</div>
+          <div style="font-size:12px;color:var(--t2);margin-bottom:16px" id="set-pin-label">For: Manager</div>
+          <input type="password" id="new-pin-input" maxlength="6" placeholder="Enter 4-6 digit PIN" inputmode="numeric" pattern="[0-9]*" autocomplete="off" style="width:100%;padding:14px;border-radius:var(--rs);border:1.5px solid var(--bord);background:var(--surf2);color:var(--text);font-size:22px;text-align:center;letter-spacing:12px;outline:none;font-family:var(--font-h);font-weight:800;margin-bottom:8px">
+          <input type="password" id="confirm-pin-input" maxlength="6" placeholder="Confirm PIN" inputmode="numeric" pattern="[0-9]*" autocomplete="off" style="width:100%;padding:14px;border-radius:var(--rs);border:1.5px solid var(--bord);background:var(--surf2);color:var(--text);font-size:22px;text-align:center;letter-spacing:12px;outline:none;font-family:var(--font-h);font-weight:800;margin-bottom:12px">
+          <div id="pin-set-error" style="font-size:11px;color:var(--acc2);margin-bottom:10px;min-height:16px"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <button class="btn-sec" onclick="document.getElementById('set-pin-modal').style.display='none'" style="margin:0">Cancel</button>
+            <button class="btn-pri" onclick="saveStaffPin()" style="margin:0">✅ Save PIN</button>
+          </div>
+        </div>
+      </div>
+
       <div class="section-title">Staff Activity Log</div>
       <div class="card" id="activity-log">
         <div style="text-align:center;padding:12px;color:var(--t2);font-size:13px">No activity recorded yet</div>
@@ -444,6 +465,71 @@ function renderActivityLog() {
   }).join('');
 }
 renderActivityLog();
+
+// ══ MANAGER PIN MANAGEMENT ══
+let _pinEditStaffId=null;
+
+function renderPinSection(){
+  const el=document.getElementById('pin-list');if(!el)return;
+  const shopUsers=JSON.parse(localStorage.getItem('sbp_shop_users')||'[]');
+  const shop=JSON.parse(localStorage.getItem('sbp_shop')||'{}');
+  const pinUsers=[];
+  pinUsers.push({id:'owner',name:shop.owner_name||'Owner',role:'Owner',pin:localStorage.getItem('sbp_manager_pin')||'',pin_active:true,isOwner:true});
+  shopUsers.filter(s=>String(s.role||'').toLowerCase()==='manager').forEach(s=>{
+    pinUsers.push({id:s.id,name:s.name,role:s.role,pin:s.pin||'',pin_active:s.pin_active!==false});
+  });
+  if(pinUsers.length===1){el.innerHTML+='<div style="font-size:11px;color:var(--t2);padding:8px 0;margin-top:6px;border-top:1px dashed var(--bord)">💡 Invite a Manager role staff member below to give them their own PIN.</div>';}
+  el.innerHTML=pinUsers.map(u=>{
+    const hasPin=!!u.pin;const active=u.pin_active!==false;
+    return `<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--bord)">
+      <div class="user-avatar" style="width:36px;height:36px;font-size:13px;border-radius:10px;background:${u.isOwner?'linear-gradient(135deg,#F59E0B,#EF4444)':'rgba(245,166,35,.3)'}">${(u.name||'M')[0].toUpperCase()}</div>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:700;color:var(--text)">${u.name}</div>
+        <div style="font-size:11px;color:var(--t2)">${u.role} · PIN: ${hasPin?(active?'✅ Active':'⛔ Disabled'):'❌ Not Set'}</div>
+      </div>
+      <div style="display:flex;gap:6px">
+        ${hasPin&&!u.isOwner?`<button onclick="toggleStaffPinActive('${u.id}')" style="font-size:10px;padding:5px 8px;border-radius:8px;border:1px solid ${active?'rgba(239,68,68,.3)':'rgba(16,185,129,.3)'};background:${active?'rgba(239,68,68,.08)':'rgba(16,185,129,.08)'};color:${active?'var(--acc2)':'var(--acc3)'};cursor:pointer">${active?'Disable':'Enable'}</button>`:''}
+        <button onclick="openSetPin('${u.id}','${u.name}')" style="font-size:10px;padding:5px 10px;border-radius:8px;border:1px solid rgba(245,166,35,.3);background:rgba(245,166,35,.08);color:var(--acc);cursor:pointer;font-weight:700">${hasPin?'Change':'Set PIN'}</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openSetPin(staffId,staffName){
+  _pinEditStaffId=staffId;
+  document.getElementById('set-pin-label').textContent='For: '+staffName;
+  document.getElementById('new-pin-input').value='';
+  document.getElementById('confirm-pin-input').value='';
+  document.getElementById('pin-set-error').textContent='';
+  document.getElementById('set-pin-modal').style.display='flex';
+  setTimeout(()=>document.getElementById('new-pin-input').focus(),200);
+}
+
+function saveStaffPin(){
+  const pin=document.getElementById('new-pin-input').value;
+  const confirmPin=document.getElementById('confirm-pin-input').value;
+  const errEl=document.getElementById('pin-set-error');
+  if(!pin||pin.length<4){errEl.textContent='PIN must be at least 4 digits';return;}
+  if(!/^\d+$/.test(pin)){errEl.textContent='PIN must be numbers only';return;}
+  if(pin!==confirmPin){errEl.textContent='PINs do not match';return;}
+  if(_pinEditStaffId==='owner'){
+    localStorage.setItem('sbp_manager_pin',pin);
+  }else{
+    const shopUsers=JSON.parse(localStorage.getItem('sbp_shop_users')||'[]');
+    const idx=shopUsers.findIndex(s=>String(s.id)===String(_pinEditStaffId));
+    if(idx>=0){shopUsers[idx].pin=pin;shopUsers[idx].pin_active=true;localStorage.setItem('sbp_shop_users',JSON.stringify(shopUsers));}
+  }
+  document.getElementById('set-pin-modal').style.display='none';
+  toast('✅ PIN saved','s');
+  renderPinSection();
+}
+
+function toggleStaffPinActive(staffId){
+  const shopUsers=JSON.parse(localStorage.getItem('sbp_shop_users')||'[]');
+  const idx=shopUsers.findIndex(s=>String(s.id)===String(staffId));
+  if(idx>=0){shopUsers[idx].pin_active=!shopUsers[idx].pin_active;localStorage.setItem('sbp_shop_users',JSON.stringify(shopUsers));toast(shopUsers[idx].pin_active?'✅ PIN enabled':'⛔ PIN disabled','s');renderPinSection();}
+}
+setTimeout(renderPinSection,500);
 </script>
 </body>
 </html>

@@ -398,17 +398,33 @@ let _curSettleBill=null,_settlePayMethod='Cash',_settleType='full';
 let _curPreviewBill=null;
 let _online=navigator.onLine;
 
-// ══ MANAGER PIN SYSTEM ══
+// ══ MANAGER PIN SYSTEM (Multi-Manager) ══
 let _pinCallback=null;
 let _pinAttempts=0;
+let _lastPinUser=null; // tracks which manager verified
 
-function getManagerPIN(){
-  return localStorage.getItem('sbp_manager_pin')||'1234';
+function getManagerPINs(){
+  // Returns array of {name, pin, role, id}
+  const shopUsers=JSON.parse(localStorage.getItem('sbp_shop_users')||'[]');
+  const pins=shopUsers.filter(s=>s.pin&&s.pin_active!==false&&String(s.role||'').toLowerCase()==='manager')
+    .map(s=>({name:s.name,pin:s.pin,role:s.role,id:s.id}));
+  // Always include owner PIN (primary manager)
+  const ownerPin=localStorage.getItem('sbp_manager_pin');
+  if(ownerPin){
+    const shop=JSON.parse(localStorage.getItem('sbp_shop')||'{}');
+    pins.unshift({name:shop.owner_name||'Owner',pin:ownerPin,role:'Owner',id:'owner'});
+  }
+  // Legacy fallback: if nothing configured at all, use default
+  if(!pins.length){
+    pins.push({name:'Admin',pin:'1234',role:'Owner',id:'owner'});
+  }
+  return pins;
 }
 
 function requirePIN(action,callback){
   _pinCallback=callback;
   _pinAttempts=0;
+  _lastPinUser=null;
   document.getElementById('pin-error').textContent='';
   document.getElementById('pin-input').value='';
   document.getElementById('pin-modal').classList.add('open');
@@ -417,11 +433,13 @@ function requirePIN(action,callback){
 
 function verifyPIN(){
   const entered=document.getElementById('pin-input').value;
-  const correct=getManagerPIN();
-  if(entered===correct){
-    const cb=_pinCallback; // save BEFORE closePINModal nulls it
+  const pins=getManagerPINs();
+  const match=pins.find(p=>p.pin===entered);
+  if(match){
+    _lastPinUser=match;
+    const cb=_pinCallback;
     closePINModal();
-    logAudit('pin_verified',{action:'manager_access'});
+    logAudit('pin_verified',{action:'manager_access',verified_by:match.name,role:match.role,staff_id:match.id});
     if(cb)cb();
   }else{
     _pinAttempts++;
@@ -441,6 +459,9 @@ function closePINModal(){
   document.getElementById('pin-modal').classList.remove('open');
   _pinCallback=null;
 }
+
+// Helper: get name of last PIN-verified manager (for audit trail attribution)
+function getPinUser(){return _lastPinUser?_lastPinUser.name:(localStorage.getItem('sbp_role')||'Admin');}
 let _sessionTimeout=parseInt(localStorage.getItem('sbp_session_timeout')||'30');
 let _actTimer;
 
@@ -624,14 +645,17 @@ function printBillPreview(size){
   
   const pageSize=size==='58mm'?'58mm auto':size==='80mm'?'80mm auto':'A4';
   
+  const bodyW=size==='58mm'?'58mm':size==='80mm'?'80mm':'auto';
+  
   win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${b.invoice_no}</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Noto+Sans:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
       *{box-sizing:border-box;margin:0;padding:0}
-      body{margin:0;padding:20px;background:#f5f5f5;font-family:'Noto Sans',sans-serif}
+      body{margin:0 auto;padding:${size?'2mm':'20px'};background:#fff;font-family:'Noto Sans',sans-serif;width:${bodyW};max-width:${bodyW}}
       .bill-action-btn{display:none!important}
-      @page{size:${pageSize};margin:${size?'2mm':'10mm'}}
-      @media print{body{padding:0;background:#fff}.bill-action-btn{display:none!important}}
+      @page{size:${pageSize};margin:${size?'0':'10mm'}}
+      @media print{body{padding:${size?'2mm':'0'};background:#fff;width:${bodyW};max-width:${bodyW}}.bill-action-btn{display:none!important}}
+      ${size?`img{max-width:100%!important} *{font-size:10px!important} .bill-header{padding:8px!important}`:''}
     </style></head><body>
     ${content}
     <script>window.addEventListener('load',function(){setTimeout(function(){window.print();},500)});<\/script>
@@ -811,7 +835,7 @@ function _doEditBill(billId){
   const idx=_bills.findIndex(x=>x.id===billId||String(x.id)===String(billId));
   if(idx>=0){
     if(!_bills[idx].audit_log) _bills[idx].audit_log=[];
-    _bills[idx].audit_log.unshift({action:'edit_started',ts:new Date().toISOString(),user:localStorage.getItem('sbp_role')||'Admin',note:'Bill opened for editing'});
+    _bills[idx].audit_log.unshift({action:'edit_started',ts:new Date().toISOString(),user:getPinUser(),note:'Bill opened for editing'});
     localStorage.setItem('sbp_bills',JSON.stringify(_bills));
   }
   const isPOSBill=b.source==='pos'||b.created_via==='pos'||b.pos_mode===true;
@@ -911,9 +935,9 @@ async function _doReopenBill(billId){
   _bills[idx].paid_amount=0;
   _bills[idx].balance_due=parseFloat(b.grand_total||0);
   _bills[idx].reopened_at=new Date().toISOString();
-  _bills[idx].reopened_by=localStorage.getItem('sbp_role')||'Admin';
+  _bills[idx].reopened_by=getPinUser();
   if(!_bills[idx].audit_log) _bills[idx].audit_log=[];
-  _bills[idx].audit_log.unshift({action:'reopen_bill',ts:new Date().toISOString(),user:localStorage.getItem('sbp_role')||'Admin',before:{status:oldStatus},after:{status:'Pending'},note:isCreditBill?'Credit bill reopened + ledger reversed':'Bill reopened for editing'});
+  _bills[idx].audit_log.unshift({action:'reopen_bill',ts:new Date().toISOString(),user:getPinUser(),before:{status:oldStatus},after:{status:'Pending'},note:isCreditBill?'Credit bill reopened + ledger reversed':'Bill reopened for editing'});
   localStorage.setItem('sbp_bills',JSON.stringify(_bills));
 
   if(_online&&_sb&&!String(billId).startsWith('local_')){
@@ -941,6 +965,7 @@ async function _doReopenBill(billId){
     source: b.source || '',
     created_via: b.created_via || '',
     pos_mode: b.pos_mode || false,
+    bill_mode: b.bill_mode || (b.source==='pos'||b.created_via==='pos'||b.pos_mode===true ? 'pos' : 'manual'),
     bill_items: b.bill_items || b.items || [],
     _edit_mode: true,
     _old_status: oldStatus
@@ -952,7 +977,7 @@ async function _doReopenBill(billId){
 
   // Auto-redirect to billing.html in edit mode (POS or Manual based on bill source)
   setTimeout(()=>{
-    const isPOSBill = b.source==='pos' || b.created_via==='pos' || b.pos_mode===true;
+    const isPOSBill = b.bill_mode==='pos' || b.source==='pos' || b.created_via==='pos' || b.pos_mode===true;
     // Use ?mode=pos (billing.html reads params.get('mode'))
     const targetPage = isPOSBill ? 'billing.html?mode=pos&edit_bill=' : 'billing.html?edit_bill=';
     window.location.href = targetPage + encodeURIComponent(billId);
@@ -977,7 +1002,7 @@ async function _doVoidBill(billId){
   if(!_bills[idx].audit_log) _bills[idx].audit_log=[];
   _bills[idx].audit_log.unshift({
     action:'void_bill',ts:new Date().toISOString(),
-    user:localStorage.getItem('sbp_role')||'Admin',
+    user:getPinUser(),
     before:{status:oldStatus,grand_total:oldGrand},
     after:{status:'Voided'},
     note:'Entire bill voided'
@@ -1035,7 +1060,7 @@ async function _doVoidItem(billId,itemIdx){
   
   items[itemIdx].voided=true;
   items[itemIdx].voided_at=new Date().toISOString();
-  items[itemIdx].voided_by=localStorage.getItem('sbp_role')||'Admin';
+  items[itemIdx].voided_by=getPinUser();
 
   // Recalculate bill totals excluding voided items
   recalcBillTotals(b);
@@ -1044,7 +1069,7 @@ async function _doVoidItem(billId,itemIdx){
   if(!b.audit_log) b.audit_log=[];
   b.audit_log.unshift({
     action:'void_item',ts:new Date().toISOString(),
-    user:localStorage.getItem('sbp_role')||'Admin',
+    user:getPinUser(),
     before:{item_name:itemName,line_total:itemTotal,voided:false},
     after:{voided:true},
     note:`Item voided: ${itemName}`
@@ -1129,7 +1154,7 @@ function logAudit(action,details){
     id:'aud_'+Date.now(),
     action,
     details,
-    user:localStorage.getItem('sbp_role')||'Admin',
+    user:getPinUser(),
     timestamp:new Date().toISOString(),
     shop_id:_shopId
   };

@@ -1378,6 +1378,7 @@ async function confirmSettle(){
       grand_total:b.grand,paid_amount:paid,balance_due:balance,
       is_gst_invoice:b.isGSTInvoice||false,
       supply_type:b.supplyType||'intra',
+      bill_mode:'manual',
       place_of_supply:b.placeOfSupply||'',
       notes:b.note||''
     };
@@ -2190,6 +2191,7 @@ function setPCODiscType(type,el){
 
 function togglePCOOpt(el,key){
   _pcoSend[key]=!_pcoSend[key];
+  localStorage.setItem('sbp_auto_'+key,_pcoSend[key]?'1':'0');
   el.style.background=_pcoSend[key]?'rgba(245,166,35,.1)':'var(--surf2)';
   el.style.borderColor=_pcoSend[key]?'var(--acc)':'var(--bord)';
   el.style.color=_pcoSend[key]?'var(--acc)':'var(--t2)';
@@ -2210,10 +2212,21 @@ async function confirmPOSCheckout(){
     return{nm:item.name,q:cart[id],r:item.price,rate:item.gst_rate||0,disc:0,lineAmt,lineNet:lineAmt,lineGST,tot:(lineAmt+lineGST).toFixed(2),productId:item.id,hsn:item.hsn_code||''};
   }).filter(Boolean);
 
+  const isEditMode=!!window._editBillId;
+  const editBillId=window._editBillId||null;
+
   const shop=JSON.parse(localStorage.getItem('sbp_shop')||'{}');
-  const prefix=shop.invoice_prefix||'INV';
-  const counter=shop.invoice_counter||1;
-  const invNo=prefix+'-'+String(counter).padStart(4,'0');
+  let invNo;
+  if(isEditMode){
+    // Reuse original invoice number
+    const allBills=JSON.parse(localStorage.getItem('sbp_bills')||'[]');
+    const origBill=allBills.find(x=>String(x.id)===String(editBillId));
+    invNo=origBill?.invoice_no||'EDIT';
+  }else{
+    const prefix=shop.invoice_prefix||'INV';
+    const counter=shop.invoice_counter||1;
+    invNo=prefix+'-'+String(counter).padStart(4,'0');
+  }
   const status=_pcoPayMethod==='Credit'?'Credit':'Paid';
   const paid=_pcoPayMethod==='Credit'?0:grand;
   const balance=Math.max(0,grand-paid);
@@ -2227,42 +2240,80 @@ async function confirmPOSCheckout(){
       customer_name:custName,customer_wa:custWA,
       payment_mode:_pcoPayMethod,status,
       subtotal:sub,gst_amount:gstTotal,discount:billDisc,
-      grand_total:grand,paid_amount:paid,balance_due:balance
+      grand_total:grand,paid_amount:paid,balance_due:balance,
+      bill_mode:'pos'
     };
 
     let savedBill=null;
     if(isPro()&&navigator.onLine&&_shopId){
-      const{data,error}=await _sb.from('bills').insert(billData).select().single();
-      if(!error&&data){
-        savedBill=data;
-        await _sb.from('bill_items').insert(items.map(it=>({
-          bill_id:data.id,item_name:it.nm,qty:it.q,rate:it.r,
-          gst_rate:it.rate,discount:0,line_total:parseFloat(it.tot),gst_amount:it.lineGST
-        })));
-        // Deduct stock
-        for(const it of items){
-          const idx=_posItems.findIndex(p=>String(p.id)===String(it.productId));
-          if(idx>=0){
-            const ns=Math.max(0,(parseFloat(_posItems[idx].stock_qty)||0)-it.q);
-            _posItems[idx].stock_qty=ns;
-            await _sb.from('products').update({stock_qty:ns}).eq('id',it.productId);
+      if(isEditMode){
+        // ── EDIT MODE: UPDATE existing bill ──
+        const updatePayload={customer_name:billData.customer_name,customer_wa:billData.customer_wa,payment_mode:billData.payment_mode,status:billData.status,subtotal:billData.subtotal,gst_amount:billData.gst_amount,discount:billData.discount,grand_total:billData.grand_total,paid_amount:billData.paid_amount,balance_due:billData.balance_due};
+        try{
+          const{error:uerr}=await _sb.from('bills').update(updatePayload).eq('id',editBillId);
+          if(!uerr){
+            await _sb.from('bill_items').delete().eq('bill_id',editBillId);
+            await _sb.from('bill_items').insert(items.map(it=>({bill_id:editBillId,item_name:it.nm,qty:it.q,rate:it.r,gst_rate:it.rate,discount:0,line_total:parseFloat(it.tot),gst_amount:it.lineGST})));
+            savedBill={...updatePayload,id:editBillId};
           }
+        }catch(e){console.warn('POS edit save error:',e);}
+        // Update localStorage cache
+        const cached=JSON.parse(localStorage.getItem('sbp_bills')||'[]');
+        const cidx=cached.findIndex(x=>String(x.id)===String(editBillId));
+        if(cidx>=0){
+          cached[cidx]={...cached[cidx],...billData,...(savedBill||{}),bill_items:items};
+          // Audit log
+          if(!cached[cidx].audit_log) cached[cidx].audit_log=[];
+          cached[cidx].audit_log.unshift({action:'bill_edited',ts:new Date().toISOString(),user:localStorage.getItem('sbp_role')||'Admin',note:'POS bill edited after reopen',after:{grand_total:grand,status,items_count:items.length}});
+        }else{
+          cached.unshift({...billData,id:editBillId,bill_items:items});
         }
-        localStorage.setItem('sbp_products',JSON.stringify(_posItems));
-        // Increment counter
-        shop.invoice_counter=counter+1;
-        await _sb.from('shops').update({invoice_counter:counter+1}).eq('id',_shopId);
-        localStorage.setItem('sbp_shop',JSON.stringify(shop));
+        localStorage.setItem('sbp_bills',JSON.stringify(cached));
+        try{logAudit('bill_edited',{bill_id:editBillId,invoice_no:invNo,customer:custName,new_total:grand,new_status:status,mode:'pos'});}catch(e){}
+        window._editBillId=null;window._editBillOriginalStatus=null;
+        // Remove edit banner
+        const eb=document.getElementById('edit-mode-banner');if(eb)eb.remove();
+      }else{
+        // ── NEW BILL: INSERT ──
+        const{data,error}=await _sb.from('bills').insert(billData).select().single();
+        if(!error&&data){
+          savedBill=data;
+          await _sb.from('bill_items').insert(items.map(it=>({bill_id:data.id,item_name:it.nm,qty:it.q,rate:it.r,gst_rate:it.rate,discount:0,line_total:parseFloat(it.tot),gst_amount:it.lineGST})));
+          // Deduct stock
+          for(const it of items){
+            const idx=_posItems.findIndex(p=>String(p.id)===String(it.productId));
+            if(idx>=0){
+              const ns=Math.max(0,(parseFloat(_posItems[idx].stock_qty)||0)-it.q);
+              _posItems[idx].stock_qty=ns;
+              await _sb.from('products').update({stock_qty:ns}).eq('id',it.productId);
+            }
+          }
+          localStorage.setItem('sbp_products',JSON.stringify(_posItems));
+          // Increment counter
+          const counter=shop.invoice_counter||1;
+          shop.invoice_counter=counter+1;
+          await _sb.from('shops').update({invoice_counter:counter+1}).eq('id',_shopId);
+          localStorage.setItem('sbp_shop',JSON.stringify(shop));
+        }
+        // Cache new bill
+        if(!savedBill) savedBill={...billData,id:'local_'+Date.now(),bill_items:items,created_at:new Date().toISOString()};
+        const cached=JSON.parse(localStorage.getItem('sbp_bills')||'[]');
+        cached.unshift({...savedBill,bill_items:items});
+        localStorage.setItem('sbp_bills',JSON.stringify(cached));
       }
+    }else{
+      if(!savedBill) savedBill={...billData,id:isEditMode?editBillId:'local_'+Date.now(),bill_items:items,created_at:new Date().toISOString()};
+      const cached=JSON.parse(localStorage.getItem('sbp_bills')||'[]');
+      if(isEditMode){
+        const cidx=cached.findIndex(x=>String(x.id)===String(editBillId));
+        if(cidx>=0) cached[cidx]={...cached[cidx],...savedBill,bill_items:items};
+        else cached.unshift({...savedBill,bill_items:items});
+        window._editBillId=null;window._editBillOriginalStatus=null;
+      }else{
+        cached.unshift({...savedBill,bill_items:items});
+      }
+      localStorage.setItem('sbp_bills',JSON.stringify(cached));
     }
-
-    if(!savedBill){
-      savedBill={...billData,id:'local_'+Date.now(),bill_items:items,created_at:new Date().toISOString()};
-    }
-
-    const cached=JSON.parse(localStorage.getItem('sbp_bills')||'[]');
-    cached.unshift({...savedBill,bill_items:items});
-    localStorage.setItem('sbp_bills',JSON.stringify(cached));
 
     // Send bill — detect GST dynamically from items
     const hasGST=items.some(it=>parseFloat(it.rate||0)>0);
@@ -2410,7 +2461,45 @@ function loadFromTemplateParams(){
         const mainPad=document.querySelector('.sb .pad');
         if(mainPad) mainPad.insertBefore(banner,mainPad.firstChild);
 
-        // ── Populate Customer Fields ──
+        // ── Store edit context globally ──
+        window._editBillId=editId;
+        window._editBillOriginalStatus=b._old_status||b.status||'Pending';
+
+        // ── POS Mode Edit: populate cart ──
+        if(b.bill_mode==='pos'){
+          const rawItems=b.bill_items||b.items||[];
+          cart={};
+          rawItems.filter(it=>!it.voided).forEach(it=>{
+            const pid=it.productId||it.product_id||'';
+            const nm=it.item_name||it.nm||'';
+            // Match to _posItems by productId or name
+            let match=pid?_posItems.find(p=>String(p.id)===String(pid)):null;
+            if(!match) match=_posItems.find(p=>p.name===nm);
+            if(match){
+              cart[match.id]=(cart[match.id]||0)+(it.qty||it.q||1);
+            }else{
+              // Product not found in POS — add as temporary item
+              const tempId='temp_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);
+              _posItems.push({id:tempId,name:nm,price:it.rate||it.r||0,gst_rate:it.gst_rate||it.rate_gst||it.g||0,stock_qty:999,hsn_code:it.hsn_code||'',category:'Uncategorized',_temp:true});
+              cart[tempId]=(it.qty||it.q||1);
+            }
+          });
+          renderCart();
+          // Set customer
+          const pcoCN=document.getElementById('pco-cust-name');
+          const pcoCW=document.getElementById('pco-cust-wa');
+          if(pcoCN) pcoCN.value=b.customer_name||b.nm||'';
+          if(pcoCW) pcoCW.value=b.customer_phone||b.customer_wa||b.wa||'';
+          // Set payment method
+          _pcoPayMethod=b.payment_mode||b.paymode||'Cash';
+          // Recalc
+          if(typeof pcoCalcTotal==='function') pcoCalcTotal();
+          if(typeof renderCart==='function') renderCart();
+          toast('✏️ POS bill loaded for editing — make changes and confirm','s',4000);
+          return; // Skip manual form population below
+        }
+
+        // ── Populate Customer Fields (Manual Mode) ──
         const custNm=document.getElementById('cust-nm');
         const custWa=document.getElementById('cust-wa');
         if(custNm) custNm.value=b.customer_name||b.nm||'';
@@ -2498,10 +2587,6 @@ function loadFromTemplateParams(){
             calcTotals();
           }
         },250);
-
-        // ── Store edit context (used by confirmSettle to UPDATE instead of INSERT) ──
-        window._editBillId=editId;
-        window._editBillOriginalStatus=b._old_status||b.status||'Pending';
 
         toast('✏️ Bill loaded for editing — make changes and save','s',4000);
       }catch(e){console.warn('Edit bill load error:',e);toast('⚠️ Could not load bill for editing','e');}
