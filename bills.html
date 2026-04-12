@@ -414,14 +414,18 @@ function getManagerPINs(){
     const shop=JSON.parse(localStorage.getItem('sbp_shop')||'{}');
     pins.unshift({name:shop.owner_name||'Owner',pin:ownerPin,role:'Owner',id:'owner'});
   }
-  // Legacy fallback: if nothing configured at all, use default
-  if(!pins.length){
-    pins.push({name:'Admin',pin:'1234',role:'Owner',id:'owner'});
-  }
   return pins;
 }
 
 function requirePIN(action,callback){
+  // Check if any PIN is configured
+  const pins=getManagerPINs();
+  if(!pins.length){
+    if(confirm('⚠️ No Manager PIN has been set yet.\n\nYou must set a Manager PIN to authorize sensitive actions like voiding bills or deleting items.\n\nSet one now in Team & Users?')){
+      window.location.href='team.html';
+    }
+    return;
+  }
   _pinCallback=callback;
   _pinAttempts=0;
   _lastPinUser=null;
