@@ -631,7 +631,7 @@ function renderCustomers(list){
 
   el.innerHTML='<div style="padding-top:6px">'+list.map(c=>{
     const bal=custLiveBal(c.name);
-    const {bills:totalBills,totalVal}=custLiveSales(c.name);
+    const {activeBills:totalBills,totalVal}=custLiveSales(c.name);
     const typeClass=c.customer_type==='VIP'?'vip':c.customer_type==='Wholesale'?'who':'reg';
     return `<div class="cust-card" onclick="openCustDetail('${c.id}')">
       <div class="cust-top">
@@ -702,20 +702,25 @@ function openCustDetail(custId){
   const c=_custs.find(x=>x.id===custId||String(x.id)===String(custId));
   if(!c)return;
   const bal=custLiveBal(c.name);
-  const {bills:custBills,totalVal,totalPaid}=custLiveSales(c.name);
+  const {bills:custBills,activeBills,totalVal,totalPaid,voidedCount,voidedVal}=custLiveSales(c.name);
 
   const histHTML=custBills.length
     ?custBills.slice(0,10).map(b=>{
       const sc=(b.status||'pending').toLowerCase();
+      const voided=isVoided(b);
       const items=b.bill_items?.map(i=>i.item_name).join(', ')||'—';
-      return `<div class="hist-item" onclick="goTo('bills.html?id=${b.id}')">
+      const amtBlock=voided
+        ? `<div class="hist-amt" style="text-decoration:line-through;color:var(--t2)">${fINR(b.grand_total)}</div>
+           <div style="font-size:10px;color:var(--acc2);font-weight:700;margin-top:2px">−${fINR(b.grand_total)} Reversed</div>`
+        : `<div class="hist-amt">${fINR(b.grand_total)}</div>`;
+      return `<div class="hist-item ${voided?'voided':''}" style="${voided?'opacity:.65':''}" onclick="goTo('bills.html?id=${b.id}')">
         <div style="flex:1;min-width:0">
           <div class="hist-inv">${b.invoice_no||'—'}</div>
           <div class="hist-dt">📅 ${fDate(b.invoice_date||b.created_at)}</div>
           <div class="hist-items">${items}</div>
         </div>
         <div>
-          <div class="hist-amt">${fINR(b.grand_total)}</div>
+          ${amtBlock}
           <div style="margin-top:4px"><span class="badge ${sc}">${b.status||'Pending'}</span></div>
           <div class="hist-tap">👆 Tap to view</div>
         </div>
@@ -735,7 +740,7 @@ function openCustDetail(custId){
     </div>
 
     <div class="det-stats">
-      <div class="ds-card"><div class="ds-val">${custBills.length}</div><div class="ds-lbl">Bills</div></div>
+      <div class="ds-card"><div class="ds-val">${activeBills.length}</div><div class="ds-lbl">Bills${voidedCount>0?` <span style="font-size:9px;color:var(--t2)">(${voidedCount} voided)</span>`:''}</div></div>
       <div class="ds-card"><div class="ds-val">${fINR(totalVal)}</div><div class="ds-lbl">Total Value</div></div>
       <div class="ds-card"><div class="ds-val ${bal>0?'':''}"><span style="color:${bal>0?'var(--acc2)':'var(--acc3)'}">${fINR(bal)}</span></div><div class="ds-lbl">${bal>0?'Due':'Clear'}</div></div>
     </div>
@@ -1204,20 +1209,29 @@ async function saveExpense(){
 
 // ── Auto-backfill customers from bills (runs once on load) ──
 
-// ── Live balance from bills (always accurate, never stale) ──
+// ── Helper: is this bill voided? ──
+function isVoided(b){ return (b?.status||'').toLowerCase()==='voided'; }
+
+// ── Live balance from bills (excludes voided — they don't owe anything) ──
 function custLiveBal(custName){
   if(!custName||custName==='Walk-in Customer') return 0;
   return _bills
     .filter(b=>(b.customer_name||'').toLowerCase()===custName.toLowerCase())
+    .filter(b=>!isVoided(b))
     .reduce((s,b)=>s+parseFloat(b.balance_due||0), 0);
 }
 function custLiveSales(custName){
-  if(!custName) return {bills:[],totalVal:0,totalPaid:0};
+  if(!custName) return {bills:[],activeBills:[],totalVal:0,totalPaid:0,voidedCount:0,voidedVal:0};
   const cb=_bills.filter(b=>(b.customer_name||'').toLowerCase()===custName.toLowerCase());
+  const active=cb.filter(b=>!isVoided(b));
+  const voided=cb.filter(isVoided);
   return {
-    bills:cb,
-    totalVal: cb.reduce((s,b)=>s+parseFloat(b.grand_total||0),0),
-    totalPaid:cb.reduce((s,b)=>s+parseFloat(b.paid_amount||0),0)
+    bills:cb,                    // everything (for history list)
+    activeBills:active,          // non-voided (for counts)
+    totalVal:  active.reduce((s,b)=>s+parseFloat(b.grand_total||0),0),
+    totalPaid: active.reduce((s,b)=>s+parseFloat(b.paid_amount||0),0),
+    voidedCount: voided.length,
+    voidedVal:   voided.reduce((s,b)=>s+parseFloat(b.grand_total||0),0)
   };
 }
 

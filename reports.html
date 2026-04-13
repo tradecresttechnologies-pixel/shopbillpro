@@ -155,8 +155,8 @@ html[lang="hi"] .lang-en{display:none!important}
 /* Mobile: whole page scrolls */
 @media(max-width:1023px){
   html,body{height:auto!important;min-height:100dvh!important;overflow-x:hidden;overflow-y:auto!important}
-  #app{height:100dvh!important;display:flex!important;flex-direction:column!important;overflow:hidden!important}
-  .sb{overflow-y:visible!important}
+  #app{height:auto!important;min-height:100dvh!important;display:flex!important;flex-direction:column!important;overflow:visible!important}
+  .sb{overflow-y:visible!important;padding-bottom:calc(90px + var(--safe-bottom))!important}
   .bnav{position:fixed!important;bottom:0!important;left:0!important;right:0!important;z-index:100!important}
 }
 /* Desktop: #app fills viewport, .sb scrolls inside */
@@ -165,6 +165,49 @@ html[lang="hi"] .lang-en{display:none!important}
   #app{height:100vh!important;overflow:hidden!important;display:flex!important;flex-direction:column!important}
   .sb{flex:1!important;overflow-y:auto!important;min-height:0!important}
 }
+/* ── Day Close Summary ── */
+.dc-hero{background:linear-gradient(135deg,#10B981,#059669);border-radius:18px;padding:18px;margin-bottom:16px;color:#fff;box-shadow:0 6px 24px rgba(16,185,129,.25)}
+.dc-hero-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+.dc-hero-lbl{font-family:var(--font-h);font-size:12px;font-weight:700;opacity:.92;letter-spacing:.3px}
+.dc-hero-period{font-size:11px;opacity:.8;margin-top:2px}
+.dc-export-btn{background:rgba(255,255,255,.22);color:#fff;border:1px solid rgba(255,255,255,.35);padding:7px 12px;border-radius:10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit}
+.dc-hero-big{font-family:var(--font-h);font-size:32px;font-weight:900;line-height:1.1;margin-top:6px}
+.dc-hero-sub{font-size:12px;opacity:.9;margin-top:4px}
+.dc-section{margin-bottom:18px}
+.dc-sec-title{font-family:var(--font-h);font-size:12px;font-weight:800;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:9px;padding-left:2px}
+.dc-grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.dc-card{background:var(--surf);border:1px solid var(--bord);border-radius:14px;padding:13px 12px;position:relative;overflow:hidden}
+.dc-card.g{border-color:rgba(16,185,129,.35);background:linear-gradient(135deg,rgba(16,185,129,.08),transparent)}
+.dc-card.p{border-color:rgba(245,166,35,.35);background:linear-gradient(135deg,rgba(245,166,35,.08),transparent)}
+.dc-card.r{border-color:rgba(239,68,68,.35);background:linear-gradient(135deg,rgba(239,68,68,.08),transparent)}
+.dc-card.y{border-color:rgba(147,197,253,.3);background:linear-gradient(135deg,rgba(99,102,241,.08),transparent)}
+.dc-lbl{font-family:var(--font-h);font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px}
+.dc-val{font-family:var(--font-h);font-size:18px;font-weight:900;color:var(--text);line-height:1.15}
+.dc-sub{font-size:10px;color:var(--t3);margin-top:3px}
+.dc-pm-list{background:var(--surf);border:1px solid var(--bord);border-radius:14px;padding:6px 12px}
+.dc-pm-row{display:grid;grid-template-columns:1fr auto;gap:4px;padding:10px 0;border-bottom:1px solid var(--bord);position:relative}
+.dc-pm-row:last-child{border-bottom:none}
+.dc-pm-l{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600}
+.dc-pm-ic{font-size:16px}
+.dc-pm-ct{font-size:10px;color:var(--t3);margin-left:4px}
+.dc-pm-r{text-align:right;display:flex;flex-direction:column;align-items:flex-end}
+.dc-pm-amt{font-family:var(--font-h);font-size:14px;font-weight:800}
+.dc-pm-pct{font-size:10px;color:var(--t2)}
+.dc-pm-bar{grid-column:1/-1;height:3px;background:var(--surf2);border-radius:2px;margin-top:6px;overflow:hidden}
+.dc-pm-fill{height:100%;background:linear-gradient(90deg,var(--acc),var(--acc3));border-radius:2px;transition:width .3s}
+.dc-cashbox{background:var(--surf);border:1px solid var(--bord);border-radius:14px;padding:12px 14px}
+.dc-cf-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dashed var(--bord);font-size:13px}
+.dc-cf-row:last-child{border-bottom:none}
+.dc-cf-tot{font-weight:800;font-family:var(--font-h);color:var(--acc);border-top:2px solid var(--bord);border-bottom:2px solid var(--bord);margin:4px 0}
+.dc-gstbox{background:var(--surf);border:1px solid var(--bord);border-radius:14px;padding:14px;display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.dc-gst-col{text-align:left}
+.dc-ti-row{display:flex;align-items:center;gap:12px;padding:11px 14px;border-bottom:1px solid var(--bord)}
+.dc-ti-row:last-child{border-bottom:none}
+.dc-ti-rank{width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,var(--acc),var(--acc3));color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;flex-shrink:0}
+.dc-ti-nm{flex:1;font-size:13px;font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.dc-ti-sub{font-size:10px;color:var(--t3);font-weight:400;margin-top:1px}
+.dc-ti-val{font-family:var(--font-h);font-size:13px;font-weight:800;color:var(--acc)}
+.dc-close-btn{width:100%;padding:14px;margin-top:8px;border-radius:14px;background:linear-gradient(135deg,var(--acc),#F59E0B);border:none;color:#fff;font-family:var(--font-h);font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 4px 16px rgba(245,166,35,.25)}
 </style>
 <link rel="stylesheet" href="fix.css">
 </head>
@@ -186,7 +229,8 @@ html[lang="hi"] .lang-en{display:none!important}
 
   <!-- Report Tabs -->
   <div class="sub-tabs">
-    <div class="sub-tab on" id="tab-sales"   onclick="showTab('sales')">📊 Sales</div>
+    <div class="sub-tab on" id="tab-dayclose" onclick="showTab('dayclose')">💼 Day Close</div>
+    <div class="sub-tab" id="tab-sales"   onclick="showTab('sales')">📊 Sales</div>
     <div class="sub-tab"    id="tab-daily"   onclick="showTab('daily')">📅 Daily</div>
     <div class="sub-tab"    id="tab-gst"     onclick="showTab('gst')">🏛️ GST</div>
     <div class="sub-tab"    id="tab-customers" onclick="showTab('customers')">👥 Customers</div>
@@ -246,7 +290,7 @@ const _sb=supabase.createClient(SB_URL,SB_KEY);
 let _shop=null,_shopId=null,_user=null;
 let _theme=localStorage.getItem('sbp_theme')||'dark';
 let _bills=[],_expenses=[],_custs=[];
-let _curTab='sales',_curPeriod='month';
+let _curTab='dayclose',_curPeriod='month';
 let _sessionTimeout=parseInt(localStorage.getItem('sbp_session_timeout')||'30');
 let _actTimer;
 
@@ -324,6 +368,7 @@ function showTab(tab){
 
 function renderTab(tab){
   switch(tab){
+    case 'dayclose': renderDayClose();break;
     case 'sales':    renderSales();break;
     case 'daily':    renderDailyReport();break;
     case 'gst':      renderGST();break;
@@ -335,9 +380,234 @@ function renderTab(tab){
   }
 }
 
+// ══════════════════════════════════════════════════════════
+// DAY CLOSE — Consolidated closing summary for the selected period
+// ══════════════════════════════════════════════════════════
+function renderDayClose(){
+  const isVoid = b => (b.status||'').toLowerCase()==='voided';
+  const allPeriod    = _filterByPeriod(_bills);
+  const bills        = allPeriod.filter(b=>!isVoid(b));
+  const voidedBills  = allPeriod.filter(isVoid);
+  const expenses     = _filterByPeriod((_expenses||[]).map(e=>({...e,invoice_date:e.expense_date})));
+  const auditLog     = JSON.parse(localStorage.getItem('sbp_audit_log')||'[]')
+                        .filter(e=>_inCurrentPeriod(e.ts||e.timestamp));
+
+  // ── SALES ──────────────────────────────────────────────
+  const totalSales  = bills.reduce((s,b)=>s+parseFloat(b.grand_total||0),0);
+  const totalPaid   = bills.reduce((s,b)=>s+parseFloat(b.paid_amount||0),0);
+  const totalDue    = bills.reduce((s,b)=>s+parseFloat(b.balance_due||0),0);
+  const billCount   = bills.length;
+  const avgBill     = billCount ? totalSales/billCount : 0;
+
+  // ── DISCOUNTS ──────────────────────────────────────────
+  const totalDiscount = bills.reduce((s,b)=>s+parseFloat(b.discount||b.discount_amount||0),0);
+  const discountedBills = bills.filter(b=>parseFloat(b.discount||b.discount_amount||0)>0).length;
+
+  // ── VOIDS / ITEM EDITS ─────────────────────────────────
+  const voidBillCount  = voidedBills.length;
+  const voidBillAmt    = voidedBills.reduce((s,b)=>s+parseFloat(b.grand_total||0),0);
+  const voidItemCount  = auditLog.filter(e=>e.action==='void_item').length;
+  const itemEditCount  = auditLog.filter(e=>e.action==='edit_item'||e.action==='delete_item').length;
+  const reopenCount    = auditLog.filter(e=>e.action==='reopen_bill').length;
+
+  // ── SETTLEMENT BY MODE ─────────────────────────────────
+  const modes={Cash:0,UPI:0,Card:0,Credit:0,Other:0};
+  const modeCounts={Cash:0,UPI:0,Card:0,Credit:0,Other:0};
+  bills.forEach(b=>{
+    const pm=(b.payment_mode||'Cash').toLowerCase();
+    const amt=parseFloat(b.paid_amount||0);
+    let key='Other';
+    if(pm==='cash') key='Cash';
+    else if(pm.includes('upi')) key='UPI';
+    else if(pm==='card') key='Card';
+    else if(pm==='credit'||b.status==='Credit') key='Credit';
+    if(key==='Credit'){
+      modes.Credit += parseFloat(b.balance_due||0);
+    } else {
+      modes[key] += amt;
+    }
+    modeCounts[key]++;
+  });
+
+  // ── CASH FLOW ──────────────────────────────────────────
+  const cashIn   = modes.Cash;
+  const cashOut  = expenses.reduce((s,e)=>s+parseFloat(e.amount||0),0);
+  const openingCash = parseFloat(localStorage.getItem('sbp_cash_opening')||'0');
+  const expectedCash = openingCash + cashIn - cashOut;
+  const actualCash   = parseFloat(localStorage.getItem('sbp_cash_closing')||'0');
+  const cashDiff     = actualCash - expectedCash;
+
+  // ── COLLECTIONS ────────────────────────────────────────
+  const collectionRate = totalSales>0 ? Math.round(totalPaid/totalSales*100) : 0;
+
+  // ── GST ────────────────────────────────────────────────
+  const gstCollected = bills.reduce((s,b)=>s+parseFloat(b.gst_amount||0),0);
+  const taxable      = bills.reduce((s,b)=>s+parseFloat(b.subtotal||0),0);
+
+  // ── TOP ITEMS (top 5 by value) ─────────────────────────
+  const itemMap={};
+  bills.forEach(b=>(b.bill_items||[]).forEach(it=>{
+    if(it.voided)return;
+    const nm=it.item_name||'Item';
+    if(!itemMap[nm])itemMap[nm]={name:nm,qty:0,value:0};
+    itemMap[nm].qty += parseFloat(it.qty||1);
+    itemMap[nm].value += parseFloat(it.line_total||(it.qty*it.rate)||0);
+  }));
+  const topItems = Object.values(itemMap).sort((a,b)=>b.value-a.value).slice(0,5);
+
+  // ── CUSTOMER ACTIVITY ──────────────────────────────────
+  const custNames = new Set();
+  bills.forEach(b=>{const n=b.customer_name;if(n&&n!=='Walk-in Customer')custNames.add(n);});
+  const uniqueCusts = custNames.size;
+  const newCustsInPeriod = _custs.filter(c=>_inCurrentPeriod(c.joined_at||c.created_at)).length;
+  const walkInCount = bills.filter(b=>!b.customer_name||b.customer_name==='Walk-in Customer').length;
+
+  // ── RENDER ─────────────────────────────────────────────
+  const periodLbl = ({today:'Today',week:'This Week',month:'This Month',quarter:'Quarter',year:'This Year',custom:'Custom Range',all:'All Time'})[_curPeriod]||'Period';
+
+  let html = `
+  <div style="padding:12px 14px 30px">
+    <!-- Hero header -->
+    <div class="dc-hero">
+      <div class="dc-hero-top">
+        <div>
+          <div class="dc-hero-lbl">💼 Day Closing Summary</div>
+          <div class="dc-hero-period">${periodLbl}</div>
+        </div>
+        <button class="dc-export-btn" onclick="exportDayClose()">📥 Export</button>
+      </div>
+      <div class="dc-hero-big">${fINR(totalSales)}</div>
+      <div class="dc-hero-sub">${billCount} bills · Avg ${fINR(avgBill)} · Collected ${collectionRate}%</div>
+    </div>
+
+    <!-- Sales + Collections -->
+    <div class="dc-section">
+      <div class="dc-sec-title">💰 Sales & Collections</div>
+      <div class="dc-grid2">
+        <div class="dc-card g"><div class="dc-lbl">Total Sales</div><div class="dc-val">${fINR(totalSales)}</div><div class="dc-sub">${billCount} bills</div></div>
+        <div class="dc-card p"><div class="dc-lbl">Collected</div><div class="dc-val">${fINR(totalPaid)}</div><div class="dc-sub">${collectionRate}% of sales</div></div>
+        <div class="dc-card r"><div class="dc-lbl">Outstanding</div><div class="dc-val">${fINR(totalDue)}</div><div class="dc-sub">still due</div></div>
+        <div class="dc-card y"><div class="dc-lbl">Avg Bill</div><div class="dc-val">${fINR(avgBill)}</div><div class="dc-sub">per transaction</div></div>
+      </div>
+    </div>
+
+    <!-- Payment modes -->
+    <div class="dc-section">
+      <div class="dc-sec-title">💳 Payment Mode Breakdown</div>
+      <div class="dc-pm-list">
+        ${['Cash','UPI','Card','Credit','Other'].map(k=>{
+          const pct = totalSales>0 ? Math.round((modes[k]/totalSales)*100) : 0;
+          const icon = {Cash:'💵',UPI:'📱',Card:'💳',Credit:'📝',Other:'🔖'}[k];
+          return `<div class="dc-pm-row">
+            <div class="dc-pm-l"><span class="dc-pm-ic">${icon}</span><span>${k}</span><span class="dc-pm-ct">${modeCounts[k]} bills</span></div>
+            <div class="dc-pm-r"><span class="dc-pm-amt">${fINR(modes[k])}</span><span class="dc-pm-pct">${pct}%</span></div>
+            <div class="dc-pm-bar"><div class="dc-pm-fill" style="width:${pct}%"></div></div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+
+    <!-- Cash flow -->
+    <div class="dc-section">
+      <div class="dc-sec-title">🏦 Cash Flow</div>
+      <div class="dc-cashbox">
+        <div class="dc-cf-row"><span>Opening Cash</span><span>${fINR(openingCash)}</span></div>
+        <div class="dc-cf-row"><span>+ Cash Sales</span><span style="color:var(--acc3)">+${fINR(cashIn)}</span></div>
+        <div class="dc-cf-row"><span>− Cash Expenses</span><span style="color:var(--acc2)">−${fINR(cashOut)}</span></div>
+        <div class="dc-cf-row dc-cf-tot"><span>Expected Closing</span><span>${fINR(expectedCash)}</span></div>
+        <div class="dc-cf-row"><span>Actual Closing</span><span>${fINR(actualCash)}</span></div>
+        ${actualCash>0?`<div class="dc-cf-row" style="color:${Math.abs(cashDiff)<1?'var(--acc3)':'var(--acc2)'};font-weight:700"><span>${cashDiff>=0?'Surplus':'Shortage'}</span><span>${fINR(Math.abs(cashDiff))}</span></div>`:''}
+      </div>
+    </div>
+
+    <!-- Discounts / Voids / Edits -->
+    <div class="dc-section">
+      <div class="dc-sec-title">⚠️ Adjustments & Audit</div>
+      <div class="dc-grid2">
+        <div class="dc-card"><div class="dc-lbl">Discounts Given</div><div class="dc-val">${fINR(totalDiscount)}</div><div class="dc-sub">${discountedBills} bill${discountedBills!==1?'s':''}</div></div>
+        <div class="dc-card"><div class="dc-lbl">Voided Bills</div><div class="dc-val">${voidBillCount}</div><div class="dc-sub">${fINR(voidBillAmt)} reversed</div></div>
+        <div class="dc-card"><div class="dc-lbl">Voided Items</div><div class="dc-val">${voidItemCount}</div><div class="dc-sub">within bills</div></div>
+        <div class="dc-card"><div class="dc-lbl">Bill Edits</div><div class="dc-val">${itemEditCount+reopenCount}</div><div class="dc-sub">${reopenCount} reopens</div></div>
+      </div>
+    </div>
+
+    <!-- GST Summary -->
+    <div class="dc-section">
+      <div class="dc-sec-title">🏛️ GST Summary</div>
+      <div class="dc-gstbox">
+        <div class="dc-gst-col"><div class="dc-lbl">Taxable Value</div><div class="dc-val">${fINR(taxable)}</div></div>
+        <div class="dc-gst-col"><div class="dc-lbl">GST Collected</div><div class="dc-val" style="color:var(--acc)">${fINR(gstCollected)}</div></div>
+        <div class="dc-gst-col"><div class="dc-lbl">CGST</div><div class="dc-val">${fINR(gstCollected/2)}</div></div>
+        <div class="dc-gst-col"><div class="dc-lbl">SGST</div><div class="dc-val">${fINR(gstCollected/2)}</div></div>
+      </div>
+    </div>
+
+    <!-- Top Items -->
+    <div class="dc-section">
+      <div class="dc-sec-title">🏆 Top Items</div>
+      <div class="dc-cashbox" style="padding:0">
+        ${topItems.length?topItems.map((it,i)=>`
+          <div class="dc-ti-row">
+            <div class="dc-ti-rank">${i+1}</div>
+            <div class="dc-ti-nm">${it.name}<div class="dc-ti-sub">Qty ${it.qty}</div></div>
+            <div class="dc-ti-val">${fINR(it.value)}</div>
+          </div>`).join(''):'<div style="padding:16px;text-align:center;color:var(--t2);font-size:12px">No items sold in this period</div>'}
+      </div>
+    </div>
+
+    <!-- Customer activity -->
+    <div class="dc-section">
+      <div class="dc-sec-title">👥 Customer Activity</div>
+      <div class="dc-grid2">
+        <div class="dc-card"><div class="dc-lbl">Unique Customers</div><div class="dc-val">${uniqueCusts}</div><div class="dc-sub">served</div></div>
+        <div class="dc-card"><div class="dc-lbl">New Customers</div><div class="dc-val">${newCustsInPeriod}</div><div class="dc-sub">added in period</div></div>
+        <div class="dc-card"><div class="dc-lbl">Walk-ins</div><div class="dc-val">${walkInCount}</div><div class="dc-sub">unnamed bills</div></div>
+        <div class="dc-card"><div class="dc-lbl">Repeat Rate</div><div class="dc-val">${uniqueCusts>0?Math.round((uniqueCusts/(uniqueCusts+walkInCount))*100):0}%</div><div class="dc-sub">of transactions</div></div>
+      </div>
+    </div>
+
+    <button class="dc-close-btn" onclick="exportDayClose()">📥 Export Day Close Report (CSV)</button>
+    <div style="height:20px"></div>
+  </div>`;
+
+  document.getElementById('report-content').innerHTML = html;
+}
+
+// Helper: check if a timestamp falls within current period filter
+function _inCurrentPeriod(ts){
+  if(!ts)return false;
+  const d=(ts||'').substring(0,10);
+  const today=todayISO();
+  const now=new Date();
+  switch(_curPeriod){
+    case 'today':   return d===today;
+    case 'week':{const w=new Date(now-7*86400000).toISOString().split('T')[0];return d>=w;}
+    case 'month':   return d.startsWith(today.substring(0,7));
+    case 'quarter':{const q=new Date(now-90*86400000).toISOString().split('T')[0];return d>=q;}
+    case 'year':    return d.startsWith(today.substring(0,4));
+    case 'custom':  return _customFrom&&_customTo?(d>=_customFrom&&d<=_customTo):true;
+    default:        return true;
+  }
+}
+
+// Export Day Close as CSV
+function exportDayClose(){
+  const c=document.getElementById('report-content').innerText||'';
+  const rows=[['ShopBill Pro — Day Close Report'],[(_shop?.name||'Shop'),new Date().toLocaleString('en-IN')],['']];
+  // Simple line-by-line capture of visible labels + values
+  c.split('\n').forEach(line=>{const t=line.trim();if(t)rows.push([t]);});
+  const csv=rows.map(r=>r.map(v=>`"${(v||'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob=new Blob([csv],{type:'text/csv'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='day-close-'+_curPeriod+'-'+new Date().toISOString().split('T')[0]+'.csv';
+  a.click();
+  toast('✅ Day Close report exported','s');
+}
+
 // ── Sales Report ──
 function renderSales(){
-  const bills=_filterByPeriod(_bills);
+  const bills=_filterByPeriod(_bills).filter(b=>(b.status||'').toLowerCase()!=='voided');
   const expenses=_filterByPeriod(_expenses.map(e=>({...e,invoice_date:e.expense_date})));
 
   // ── Core numbers ──
@@ -446,7 +716,7 @@ function renderSales(){
 
 // ── GST Report ──
 function renderGST(){
-  const bills=_filterByPeriod(_bills);
+  const bills=_filterByPeriod(_bills).filter(b=>(b.status||'').toLowerCase()!=='voided');
   const gstMap={0:0,5:0,12:0,18:0,28:0};
   let totalGST=0,totalTaxable=0;
 
@@ -552,7 +822,7 @@ function renderGST(){
 
 // ── Top Customers ──
 function renderTopCustomers(){
-  const bills=_filterByPeriod(_bills);
+  const bills=_filterByPeriod(_bills).filter(b=>(b.status||'').toLowerCase()!=='voided');
   const map={};
   bills.forEach(b=>{
     const nm=b.customer_name||'Walk-in';
@@ -584,7 +854,7 @@ function renderTopCustomers(){
 
 // ── Top Items ──
 function renderTopItems(){
-  const bills=_filterByPeriod(_bills);
+  const bills=_filterByPeriod(_bills).filter(b=>(b.status||'').toLowerCase()!=='voided');
   const map={};
   bills.forEach(b=>{
     (b.bill_items||[]).forEach(it=>{

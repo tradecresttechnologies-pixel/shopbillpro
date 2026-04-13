@@ -483,11 +483,12 @@ function fDate(d){if(!d)return '—';try{return new Date(d).toLocaleDateString('
 // ── Render Bills ──
 function renderBills(list){
   const el=document.getElementById('bills-list');
-  // Summary
+  // Summary — exclude voided bills from financial totals (still counted in list view)
+  const activeList=list.filter(b=>(b.status||'').toLowerCase()!=='voided');
   document.getElementById('s-bills').textContent=list.length;
-  document.getElementById('s-received').textContent=fINR(list.reduce((s,b)=>s+parseFloat(b.paid_amount||0),0));
-  document.getElementById('s-due').textContent=fINR(list.reduce((s,b)=>s+parseFloat(b.balance_due||0),0));
-  document.getElementById('s-partial').textContent=list.filter(b=>b.status==='Partial').length;
+  document.getElementById('s-received').textContent=fINR(activeList.reduce((s,b)=>s+parseFloat(b.paid_amount||0),0));
+  document.getElementById('s-due').textContent=fINR(activeList.reduce((s,b)=>s+parseFloat(b.balance_due||0),0));
+  document.getElementById('s-partial').textContent=activeList.filter(b=>b.status==='Partial').length;
 
   if(!list.length){
     el.innerHTML=`<div class="empty-state"><div class="es-ic">🧾</div><div class="es-t">No bills found</div><div class="es-s">Tap <strong>＋</strong> to create your first bill</div></div>`;
@@ -496,6 +497,7 @@ function renderBills(list){
 
   el.innerHTML='<div style="padding-top:6px">'+list.map(b=>{
     const sc=(b.status||'pending').toLowerCase();
+    const voided=sc==='voided';
     const items=b.bill_items?.map(i=>i.item_name).join(', ')||b.items_summary||'—';
     const bal=parseFloat(b.balance_due||0);
     return `<div class="bill-card ${sc}" onclick="openBillPreview('${b.id}')">
@@ -507,8 +509,8 @@ function renderBills(list){
       <div class="bc-items">${items}</div>
       <div class="bc-bot">
         <div>
-          <div class="bc-amt">${fINR(b.grand_total)}</div>
-          ${bal>0?`<div style="font-size:10px;color:var(--acc2);margin-top:2px">Due: ${fINR(bal)}</div>`:''}
+          <div class="bc-amt" style="${voided?'text-decoration:line-through;color:var(--t2)':''}">${fINR(b.grand_total)}</div>
+          ${bal>0&&!voided?`<div style="font-size:10px;color:var(--acc2);margin-top:2px">Due: ${fINR(bal)}</div>`:''}
         </div>
         <div class="bc-actions" onclick="event.stopPropagation()">
           <span class="badge ${sc}">${b.status||'Pending'}</span>

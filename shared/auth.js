@@ -169,83 +169,118 @@ const Auth = (() => {
     }
   }
 
-  /* ── Load Shop after login ── */
+  /* ── Load Shop after login ──
+     Resolution order:
+       1. STAFF path (meta.is_staff or shop_users row exists) → load PARENT shop
+       2. OWNER path → load shop where owner_id = user.id
+       3. First-time owner → create default shop
+     CRITICAL: never auto-create a shop for a staff user (would orphan them).
+  */
   async function _loadShop() {
     try {
-      const meta = window.SBP.user?.user_metadata || {};
+      const meta   = window.SBP.user?.user_metadata || {};
+      const userId = window.SBP.user.id;
+      let shop = null;
+      let role = null;
+      let isStaff = false;
 
-      let { data: shops, error } = await _sb
-        .from('shops')
-        .select('*')
-        .eq('owner_id', window.SBP.user.id)
+      // ── 1. STAFF PATH ──────────────────────────────────────
+      // Check shop_users table first (authoritative source)
+      const { data: suRows } = await _sb
+        .from('shop_users')
+        .select('shop_id, role, is_active')
+        .eq('user_id', userId)
+        .eq('is_active', true)
         .limit(1);
 
-      if (error) throw error;
+      const suRow = suRows?.[0];
+      const staffShopId = suRow?.shop_id || (meta.is_staff ? meta.shop_id : null);
 
-      // If no owned shop, check if user is staff member
-      if (!shops || !shops.length) {
-        if (meta.is_staff && meta.shop_id) {
-          const { data: staffShop } = await _sb
-            .from('shops').select('*').eq('id', meta.shop_id).limit(1);
-          if (staffShop?.length) {
-            shops = staffShop;
-            window.SBP.role = meta.role || 'cashier';
-          }
+      if (staffShopId) {
+        isStaff = true;
+        role    = suRow?.role || meta.role || 'Cashier';
+
+        const { data: parentShop, error: psErr } = await _sb
+          .from('shops').select('*').eq('id', staffShopId).single();
+
+        if (psErr || !parentShop) {
+          // Staff is registered but parent shop not readable.
+          // Almost always an RLS or deleted-shop issue. DO NOT auto-create.
+          throw new Error(
+            'Could not load your shop. Please ask the shop owner to re-invite you, ' +
+            'or check your internet connection.'
+          );
         }
-        // Also check shop_users table
-        if (!shops || !shops.length) {
-          const { data: suData } = await _sb
-            .from('shop_users').select('shop_id,role')
-            .eq('user_id', window.SBP.user.id).eq('is_active', true).limit(1);
-          if (suData?.length) {
-            const { data: staffShop2 } = await _sb
-              .from('shops').select('*').eq('id', suData[0].shop_id).limit(1);
-            if (staffShop2?.length) {
-              shops = staffShop2;
-              window.SBP.role = suData[0].role || meta.role || 'cashier';
-            }
-          }
+        shop = parentShop;
+      }
+
+      // ── 2. OWNER PATH ──────────────────────────────────────
+      if (!shop) {
+        const { data: ownedShops, error: osErr } = await _sb
+          .from('shops').select('*').eq('owner_id', userId).limit(1);
+        if (osErr) throw osErr;
+
+        if (ownedShops?.length) {
+          shop = ownedShops[0];
+          role = 'Admin';
         }
       }
 
-      if (!shops || !shops.length) {
-        // First login — create default shop
+      // ── 3. FIRST-TIME OWNER → create default shop ──────────
+      if (!shop) {
+        // Safety: only create if user is clearly NOT a staff member
+        if (meta.is_staff) {
+          throw new Error(
+            'Staff account has no linked shop. Please contact your shop owner.'
+          );
+        }
         const { data: newShop, error: se } = await _sb.from('shops').insert({
-          owner_id:       window.SBP.user.id,
-          name:           meta.shop || meta.name + "'s Shop",
-          owner_name:     meta.name || 'User',
-          email:          window.SBP.user.email,
-          invoice_prefix: 'INV',
+          owner_id:        userId,
+          name:            meta.shop || (meta.name || 'My') + "'s Shop",
+          owner_name:      meta.name || 'User',
+          email:           window.SBP.user.email,
+          invoice_prefix:  'INV',
           invoice_counter: 1
         }).select().single();
-
         if (se) throw se;
-        shops = [newShop];
+        shop = newShop;
+        role = 'Admin';
       }
 
-      const shop = shops[0];
-      window.SBP.shopId = shop.id;
-      window.SBP.shop   = shop;
-      window.SBP.role   = window.SBP.role || meta.role || 'Admin';
-      window.SBP.ready  = true;
-      window.SBP.isStaff = !!meta.is_staff;
+      // ── Commit to global state ─────────────────────────────
+      window.SBP.shopId  = shop.id;
+      window.SBP.shop    = shop;
+      window.SBP.role    = role;
+      window.SBP.isStaff = isStaff;
+      window.SBP.ready   = true;
 
       // Persist for offline
-      localStorage.setItem('sbp_shop',    JSON.stringify(shop));
-      localStorage.setItem('sbp_role',    window.SBP.role);
-      localStorage.setItem('sbp_shop_id', shop.id);
+      localStorage.setItem('sbp_shop',         JSON.stringify(shop));
+      localStorage.setItem('sbp_role',         role);
+      localStorage.setItem('sbp_shop_id',      shop.id);
+      localStorage.setItem('sbp_is_staff',     isStaff ? '1' : '0');
 
     } catch (err) {
       console.error('Shop load error:', err);
-      // Try offline fallback
+
+      // Offline fallback — only if we have cached data
       const cached = localStorage.getItem('sbp_shop');
       if (cached) {
-        const shop        = JSON.parse(cached);
-        window.SBP.shopId = shop.id || localStorage.getItem('sbp_shop_id');
-        window.SBP.shop   = shop;
-        window.SBP.role   = localStorage.getItem('sbp_role') || 'Admin';
-        window.SBP.ready  = true;
+        const shop = JSON.parse(cached);
+        window.SBP.shopId  = shop.id || localStorage.getItem('sbp_shop_id');
+        window.SBP.shop    = shop;
+        window.SBP.role    = localStorage.getItem('sbp_role') || 'Admin';
+        window.SBP.isStaff = localStorage.getItem('sbp_is_staff') === '1';
+        window.SBP.ready   = true;
+        return;
       }
+
+      // No cache + error → bubble up so login screen can show the message
+      window.SBP.ready = false;
+      if (typeof UI !== 'undefined' && UI.toast) {
+        UI.toast('❌ ' + (err.message || 'Could not load shop'), 'error', 6000);
+      }
+      throw err;
     }
   }
 

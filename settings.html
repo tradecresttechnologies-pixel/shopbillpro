@@ -1078,20 +1078,26 @@ function setFontSize(val){
   document.getElementById('font-size-lbl').textContent=val+'px';
   const p=document.getElementById('font-preview');if(p)p.style.fontSize=val+'px';
 }
-function applyFontSettings(){
+function applyFontSettings(silent){
   const fontMap={default:'inherit',mono:"'Courier New',monospace",rounded:"'DM Sans',sans-serif",sharp:"'Outfit',sans-serif"};
   let st=document.getElementById('sbp-font-override');
   if(!st){st=document.createElement('style');st.id='sbp-font-override';document.head.appendChild(st);}
   st.textContent=`.sc-val,.bdoc-inv-no,#s-grand,#s-sub,.cart-total-val{font-family:${fontMap[_curDigitStyle]}!important}body{font-size:${_curFontSize}px}`;
   localStorage.setItem('sbp_digit_style',_curDigitStyle);
   localStorage.setItem('sbp_font_size',_curFontSize.toString());
-  closeModal('font-modal');
-  toast('✅ Display style applied!','s');
+  if(!silent){
+    closeModal('font-modal');
+    toast('✅ Display style applied!','s');
+  }
 }
 function loadFontSettings(){
   const ds=localStorage.getItem('sbp_digit_style');
   const fs=localStorage.getItem('sbp_font_size');
-  if(ds||fs){_curDigitStyle=ds||'default';_curFontSize=parseInt(fs||'15');applyFontSettings();}
+  // The pre-body inline script already injected the <style> override.
+  // Just sync in-memory vars so the UI controls match — do NOT re-run applyFontSettings
+  // (re-injecting the same style forces a reflow and causes a visible blink/jank).
+  if(ds) _curDigitStyle=ds;
+  if(fs) _curFontSize=parseInt(fs);
   const rng=document.getElementById('font-size-range');if(rng)rng.value=_curFontSize;
   document.getElementById('font-size-lbl').textContent=_curFontSize+'px';
 }
@@ -1241,11 +1247,12 @@ async function init(){
   _shop=JSON.parse(localStorage.getItem('sbp_shop')||'{}');
   _resetTimer();
 
-  // Profile
+  // Profile — show LOGGED-IN user, not shop owner
   const meta=_user.user_metadata||{};
-  const name=meta.name||_shop.owner_name||'User';
-  const role=localStorage.getItem('sbp_role')||'Admin';
-  const roleIcons={Admin:'👑',Owner:'🏪',Staff:'👤',Manager:'🎯'};
+  const isStaff=localStorage.getItem('sbp_is_staff')==='1';
+  const name=meta.name||(isStaff?'Staff':_shop.owner_name)||'User';
+  const role=localStorage.getItem('sbp_role')||(isStaff?'Cashier':'Admin');
+  const roleIcons={Admin:'👑',Owner:'🏪',Manager:'🎯',Cashier:'💰',Viewer:'👁️',Staff:'👤'};
   document.getElementById('prof-pic').textContent=roleIcons[role]||'👤';
   document.getElementById('prof-nm').textContent=name;
   document.getElementById('prof-shop').textContent=_shop.name||'Your Shop';

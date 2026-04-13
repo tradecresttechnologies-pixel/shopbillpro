@@ -927,25 +927,29 @@ function renderStats(bills, custs) {
   const thisMonth = today.substring(0, 7);
 
   const todayBills = bills.filter(b => (b.invoice_date || b.created_at || '').startsWith(today));
-  const monthBills = bills.filter(b => (b.invoice_date || b.created_at || '').startsWith(thisMonth));
-  const overdue    = bills.filter(b => b.status === 'Overdue');
+  // Exclude voided bills from all financial totals (still visible in lists, just not counted)
+  const isVoided   = b => (b.status||'').toLowerCase()==='voided';
+  const activeBills= bills.filter(b=>!isVoided(b));
+  const monthBills = activeBills.filter(b => (b.invoice_date || b.created_at || '').startsWith(thisMonth));
+  const overdue    = activeBills.filter(b => b.status === 'Overdue');
   const dueBillSet = new Set(
-    bills.filter(b=>parseFloat(b.balance_due||0)>0 && b.customer_name && b.customer_name!=='Walk-in Customer')
+    activeBills.filter(b=>parseFloat(b.balance_due||0)>0 && b.customer_name && b.customer_name!=='Walk-in Customer')
          .map(b=>b.customer_name)
   );
   const dueCusts = {length: dueBillSet.size};
 
-  const todaySales    = todayBills.reduce((s, b) => s + parseFloat(b.paid_amount || 0), 0);
-  const outstanding   = bills.filter(b => {
+  const todayBillsActive = todayBills.filter(b=>!isVoided(b));
+  const todaySales    = todayBillsActive.reduce((s, b) => s + parseFloat(b.paid_amount || 0), 0);
+  const outstanding   = activeBills.filter(b => {
     const nm = (b.customer_name||'').trim();
     return nm && nm !== 'Walk-in Customer' && parseFloat(b.balance_due||0) > 0;
   }).reduce((s, b) => s + parseFloat(b.balance_due || 0), 0);
   const gstCollected  = monthBills.reduce((s, b) => s + parseFloat(b.gst_amount || 0), 0);
 
   document.getElementById('s-today').textContent = fINR(todaySales);
-  document.getElementById('s-today-sub').textContent = todayBills.length + ' bill' + (todayBills.length !== 1 ? 's' : '') + ' today';
+  document.getElementById('s-today-sub').textContent = todayBillsActive.length + ' bill' + (todayBillsActive.length !== 1 ? 's' : '') + ' today';
   document.getElementById('s-bills').textContent = monthBills.length;
-  document.getElementById('s-bills-sub').textContent = bills.length + ' all time';
+  document.getElementById('s-bills-sub').textContent = activeBills.length + ' all time';
   document.getElementById('s-outstanding').textContent = fINR(outstanding);
   document.getElementById('s-out-sub').textContent = dueCusts.length + ' client' + (dueCusts.length !== 1 ? 's' : '') + ' due';
   document.getElementById('s-gst').textContent = fINR(gstCollected);
@@ -990,6 +994,7 @@ function renderRecentBills(bills) {
     const amt    = parseFloat(b.grand_total || 0);
     const paid   = parseFloat(b.paid_amount || 0);
     const bal    = parseFloat(b.balance_due || 0);
+    const voided = sc === 'voided';
     return `<div class="bill-card ${sc}" onclick="sessionStorage.setItem('sbp_open_bill','${b.id}');goTo('bills.html?id=${b.id}')">
       <div class="bc-top">
         <span class="bc-inv">${b.invoice_no || '—'}</span>
@@ -999,8 +1004,8 @@ function renderRecentBills(bills) {
       <div class="bc-items">${items}</div>
       <div class="bc-bot">
         <div>
-          <div class="bc-amt">${fINR(amt)}</div>
-          ${bal > 0 ? `<div style="font-size:10px;color:var(--acc2);margin-top:2px">Due: ${fINR(bal)}</div>` : ''}
+          <div class="bc-amt" style="${voided?'text-decoration:line-through;color:var(--t2)':''}">${fINR(amt)}</div>
+          ${bal > 0 && !voided ? `<div style="font-size:10px;color:var(--acc2);margin-top:2px">Due: ${fINR(bal)}</div>` : ''}
         </div>
         <div class="bc-right">
           <span class="badge ${sc}">${b.status || 'Pending'}</span>
@@ -1058,7 +1063,8 @@ function setGreeting() {
   const h  = new Date().getHours();
   const g  = h < 12 ? 'Good Morning' : h < 17 ? 'Good Afternoon' : 'Good Evening';
   const em = h < 12 ? '🌅' : h < 17 ? '☀️' : '🌙';
-  const name = _shop?.owner_name || _user?.user_metadata?.name || 'there';
+  // Always show the LOGGED-IN user's name (staff or owner), fall back to shop owner only if missing
+  const name = _user?.user_metadata?.name || _shop?.owner_name || 'there';
   document.getElementById('greet-h').textContent = `${g}, ${name}! ${em}`;
   document.getElementById('greet-s').textContent = _shop?.name || 'Here\'s your shop overview';
 
