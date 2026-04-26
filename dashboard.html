@@ -913,13 +913,26 @@ async function loadDashboard() {
       ]);
 
       if (billRes.data) {
-        // Merge Supabase data with any locally-updated bills (e.g. after collect payment)
+        // FIX — Merge Supabase data with locally-updated bills, AND preserve any
+        // local-only bills (id starts with 'local_' OR not present in Supabase)
+        // that haven't synced yet — otherwise newly created bills disappear from dashboard.
         const localBills = JSON.parse(localStorage.getItem('sbp_bills')||'[]');
+        const sbIds = new Set(billRes.data.map(b => String(b.id)));
+        // Start with Supabase data, prefer local version when local has newer payment data
         const merged = billRes.data.map(sb => {
           const local = localBills.find(l=>String(l.id)===String(sb.id));
-          // Use local version if it has lower balance_due (payment was made locally)
           if(local && parseFloat(local.balance_due||0) < parseFloat(sb.balance_due||0)) return local;
           return sb;
+        });
+        // Append any local-only bills (offline-created, not yet synced)
+        localBills.forEach(lb => {
+          if (!sbIds.has(String(lb.id))) merged.unshift(lb);
+        });
+        // Sort newest first (created_at or invoice_date)
+        merged.sort((a,b) => {
+          const at = new Date(a.created_at||a.invoice_date||0).getTime();
+          const bt = new Date(b.created_at||b.invoice_date||0).getTime();
+          return bt - at;
         });
         _bills = merged;
         localStorage.setItem('sbp_bills', JSON.stringify(_bills));

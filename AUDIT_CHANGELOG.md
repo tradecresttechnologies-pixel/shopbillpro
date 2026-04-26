@@ -146,3 +146,25 @@ Generated against the latest `shopbillpro` zip uploaded April 26, 2026 (commit `
 **New (3):** audit_round_db_patch.sql, README.md, AUDIT_CHANGELOG.md
 
 **Deleted (2):** db-local.js, shared/ folder
+
+---
+
+## Post-deploy fixes (from user screenshots Apr 26)
+
+### Issue: Total Bills not updating after creating new bill (screenshot 1)
+**Root cause:** `loadDashboard()` merge dropped local-only bills. When a new bill saved with `id='local_xxx'` (offline-created or not yet synced), Supabase response overwrote local cache and erased it from the count.
+**Fix:** `dashboard.html` — Modified merge to preserve any local-only bills (IDs not present in Supabase response) and re-sort by date.
+
+### Issue: `getStorageInfo is not defined` + `syncNow is not defined` (screenshots 3, 4)
+**Root cause:** Settings page called these functions but they were never defined.
+**Fix:** `settings.html` — Added `getStorageInfo()` (computes localStorage usage) and `syncNow()` (pulls latest Supabase data when Pro plan active).
+
+### Issue: "Local Storage" shown despite Business plan active (screenshots 4, 5)
+**Root cause:** `openSyncModal()` checked `isPro()` which was undefined in settings.html. `loadPlanInfo()` checked only `plan === 'enterprise'`, missing `'business'`.
+**Fix:** `settings.html` — Added unified `_sbpPlanInfo()` / `isPro()` / `isBiz()` helpers. Normalized plan-name handling so both `'enterprise'` and `'business'` are recognized.
+
+### Issue: `isPro is not defined` at reports.html:1235 (screenshots 6, 7, 8)
+**Root cause:** Reports page's `init()` function called `isPro()` for the cloud-sync step but never defined it. ReferenceError aborted init → reports stayed on stale local cache → calculations looked wrong.
+**Fix:** `reports.html` — Added unified `_sbpPlanInfo()` / `isPro()` / `isBiz()` helpers. Removed local shadowing consts in `renderInsights()` and `renderForecast()` so they use the global helpers.
+
+**Files changed:** `dashboard.html`, `reports.html`, `settings.html`

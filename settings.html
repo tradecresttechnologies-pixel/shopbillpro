@@ -54,6 +54,81 @@ function sbpY(){return sbpToday().slice(0,4);}
 const SB_URL='https://jfqeirfrkjdkqqixivru.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmcWVpcmZya2pka3FxaXhpdnJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzNzQ4MzgsImV4cCI6MjA4OTk1MDgzOH0.akd4E0nil8ypLR4WOykkeYIL8g4uuNU6XdSVh_Y1utk';
 const _sb=supabase.createClient(SB_URL,SB_KEY,{auth:{autoRefreshToken:true,persistSession:true,detectSessionInUrl:false}});
+
+// FIX — Unified plan check (was missing — caused multiple ReferenceErrors)
+function _sbpPlanInfo(){
+  const s=JSON.parse(localStorage.getItem('sbp_shop')||'{}');
+  let plan=(s.plan||'free').toLowerCase();
+  if(plan==='enterprise') plan='business';
+  const exp=s.plan_expires_at;
+  if(exp && plan!=='free' && new Date(exp) < new Date()) plan='free';
+  return {plan, expired:!!(exp && new Date(exp) < new Date())};
+}
+function isPro(){const p=_sbpPlanInfo().plan;return p==='pro'||p==='business';}
+function isBiz(){return _sbpPlanInfo().plan==='business';}
+function isFree(){return _sbpPlanInfo().plan==='free';}
+
+// FIX — getStorageInfo helper (referenced by updateStorageBadge)
+function getStorageInfo(){
+  let total = 0;
+  try {
+    for(let i=0; i<localStorage.length; i++){
+      const k = localStorage.key(i);
+      const v = localStorage.getItem(k) || '';
+      total += k.length + v.length;
+    }
+  } catch(e){}
+  // Browsers typically allow ~5MB
+  const maxKB = 5120;
+  const usedKB = Math.round(total / 1024);
+  const pct = Math.round((usedKB / maxKB) * 100);
+  return {
+    used_bytes: total,
+    used_kb: usedKB,
+    max_kb: maxKB,
+    pct: Math.min(100, pct),
+    formatted: usedKB < 1024 ? usedKB + ' KB' : (usedKB/1024).toFixed(1) + ' MB'
+  };
+}
+
+// FIX — syncNow stub (referenced by Sync Now button)
+async function syncNow(){
+  const btn = event && event.target;
+  if(btn) { btn.disabled = true; btn.textContent = '⏳ Syncing...'; }
+  if(!navigator.onLine){
+    toast('🔴 No internet — cannot sync','e',3000);
+    if(btn) { btn.disabled = false; btn.textContent = '☁️ Sync Now'; }
+    return;
+  }
+  if(!isPro()){
+    toast('☁️ Cloud sync is a Pro feature. Upgrade to enable automatic backups.','i',5000);
+    if(btn) { btn.disabled = false; btn.textContent = '☁️ Sync Now'; }
+    return;
+  }
+  try {
+    const shopId = localStorage.getItem('sbp_shop_id');
+    if(!shopId){
+      toast('❌ Shop not configured','e',3000);
+      if(btn) { btn.disabled = false; btn.textContent = '☁️ Sync Now'; }
+      return;
+    }
+    // Pull latest from Supabase and refresh local cache
+    const [billsRes, custsRes, prodsRes] = await Promise.all([
+      _sb.from('bills').select('*').eq('shop_id', shopId).order('created_at',{ascending:false}).limit(500),
+      _sb.from('customers').select('*').eq('shop_id', shopId),
+      _sb.from('products').select('*').eq('shop_id', shopId)
+    ]);
+    if(billsRes.data) localStorage.setItem('sbp_bills', JSON.stringify(billsRes.data));
+    if(custsRes.data) localStorage.setItem('sbp_customers', JSON.stringify(custsRes.data));
+    if(prodsRes.data) localStorage.setItem('sbp_products', JSON.stringify(prodsRes.data));
+    toast('✅ Synced! '+(billsRes.data?.length||0)+' bills, '+(custsRes.data?.length||0)+' customers','s',3000);
+    if(typeof updateStorageBadge === 'function') updateStorageBadge();
+  } catch(err){
+    console.warn('Sync error:', err);
+    toast('❌ Sync failed: ' + (err.message || 'unknown error'), 'e', 4000);
+  }
+  if(btn) { btn.disabled = false; btn.textContent = '☁️ Sync Now'; }
+}
 window._sb=_sb;
 window.SBP=window.SBP||{};window.SBP.online=navigator.onLine;
 window.addEventListener('online',()=>{window.SBP.online=true});
@@ -1278,10 +1353,9 @@ async function init(){
   // Fill shop form
   fillShopForm();
 
-  // Check online status
-  const _isPro2=((JSON.parse(localStorage.getItem('sbp_shop')||'{}')).plan||'free')==='pro';
+  // Check online status — FIX use unified isPro() (handles business plan too)
   if(!navigator.onLine){document.getElementById('sync-badge').textContent='🔴 Offline';document.getElementById('sync-badge').className='mi-badge off';}
-  else if(_isPro2){document.getElementById('sync-badge').textContent='🟢 Live';document.getElementById('sync-badge').className='mi-badge on';}
+  else if(isPro()){document.getElementById('sync-badge').textContent='🟢 Live';document.getElementById('sync-badge').className='mi-badge on';}
   else{document.getElementById('sync-badge').textContent='💾 Local';document.getElementById('sync-badge').className='mi-badge';}
   
   // Load plan info
@@ -1328,28 +1402,30 @@ init();
 /* ══ Plan Display ══ */
 function loadPlanInfo() {
   const shop = JSON.parse(localStorage.getItem('sbp_shop') || '{}');
-  const plan = shop.plan || 'free';
-  const isPro = plan === 'pro' || plan === 'enterprise';
+  let plan = (shop.plan || 'free').toLowerCase();
+  if(plan === 'enterprise') plan = 'business';  // FIX — normalize legacy name
+  const isProLocal = plan === 'pro' || plan === 'business';
+  const isBizLocal = plan === 'business';
   const bills = JSON.parse(localStorage.getItem('sbp_bills') || '[]');
   const ym = sbpYM();
   const count = bills.filter(b => (b.invoice_date||b.created_at||'').startsWith(ym)).length;
   const limit = 999999; // Unlimited
   const pct = Math.min(100, Math.round((count/limit)*100));
 
-  document.getElementById('plan-icon').textContent = plan==='enterprise'?'🏭':plan==='pro'?'💎':'⚡';
-  const planLabel = plan==='enterprise'?'Business Plan':plan==='pro'?'Pro Plan':'Free Plan';
+  document.getElementById('plan-icon').textContent = isBizLocal?'🏭':plan==='pro'?'💎':'⚡';
+  const planLabel = isBizLocal?'Business Plan':plan==='pro'?'Pro Plan':'Free Plan';
   document.getElementById('plan-name').textContent = planLabel;
-  const planStatus = plan==='enterprise'?'Multi-user · Advanced insights · Priority support':plan==='pro'?'Cloud backup · Smart insights · No watermark':'Unlimited bills · Local storage · Free forever';
+  const planStatus = isBizLocal?'Multi-user · Advanced insights · Priority support':plan==='pro'?'Cloud backup · Smart insights · No watermark':'Unlimited bills · Local storage · Free forever';
   document.getElementById('plan-status').textContent = planStatus;
-  document.getElementById('plan-badge').textContent = plan==='enterprise'?'BUSINESS':plan==='pro'?'PRO':'FREE';
-  document.getElementById('plan-badge').style.background = isPro ? 'rgba(16,185,129,.2)' : 'rgba(245,166,35,.2)';
-  document.getElementById('plan-badge').style.color = isPro ? 'var(--acc3)' : 'var(--acc)';
+  document.getElementById('plan-badge').textContent = isBizLocal?'BUSINESS':plan==='pro'?'PRO':'FREE';
+  document.getElementById('plan-badge').style.background = isProLocal ? 'rgba(16,185,129,.2)' : 'rgba(245,166,35,.2)';
+  document.getElementById('plan-badge').style.color = isProLocal ? 'var(--acc3)' : 'var(--acc)';
   document.getElementById('bill-count-display').textContent = 'Unlimited';
   document.getElementById('bill-progress').style.width = '100%';
   document.getElementById('bill-progress').style.background = pct >= 90 ? 'linear-gradient(90deg,#EF4444,#F97316)' : 'linear-gradient(90deg,var(--acc),#FF8A00)';
   const btn = document.getElementById('upgrade-btn');
-  if (plan==='enterprise') { btn.textContent = '🏭 Business Plan Active'; btn.style.background = 'rgba(245,158,11,.1)'; btn.style.border = '1px solid rgba(245,158,11,.3)'; btn.style.color = '#F59E0B'; btn.onclick = null; }
-  else if (isPro) { btn.textContent = '✅ Pro Plan Active'; btn.style.background = 'rgba(16,185,129,.15)'; btn.style.border = '1px solid rgba(16,185,129,.3)'; btn.style.color = 'var(--acc3)'; btn.onclick = null; }
+  if (isBizLocal) { btn.textContent = '🏭 Business Plan Active'; btn.style.background = 'rgba(245,158,11,.1)'; btn.style.border = '1px solid rgba(245,158,11,.3)'; btn.style.color = '#F59E0B'; btn.onclick = null; }
+  else if (isProLocal) { btn.textContent = '✅ Pro Plan Active'; btn.style.background = 'rgba(16,185,129,.15)'; btn.style.border = '1px solid rgba(16,185,129,.3)'; btn.style.color = 'var(--acc3)'; btn.onclick = null; }
 }
 
 function openUpgradeModal() {

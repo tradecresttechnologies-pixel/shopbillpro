@@ -299,6 +299,19 @@ const SB_URL='https://jfqeirfrkjdkqqixivru.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmcWVpcmZya2pka3FxaXhpdnJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzNzQ4MzgsImV4cCI6MjA4OTk1MDgzOH0.akd4E0nil8ypLR4WOykkeYIL8g4uuNU6XdSVh_Y1utk';
 const _sb=supabase.createClient(SB_URL,SB_KEY);
 
+// FIX — Unified plan check (was missing — caused 'isPro is not defined' on cloud sync)
+function _sbpPlanInfo(){
+  const s=JSON.parse(localStorage.getItem('sbp_shop')||'{}');
+  let plan=(s.plan||'free').toLowerCase();
+  if(plan==='enterprise') plan='business';
+  const exp=s.plan_expires_at;
+  if(exp && plan!=='free' && new Date(exp) < new Date()) plan='free';
+  return {plan, expired:!!(exp && new Date(exp) < new Date())};
+}
+function isPro(){const p=_sbpPlanInfo().plan;return p==='pro'||p==='business';}
+function isBiz(){return _sbpPlanInfo().plan==='business';}
+function isFree(){return _sbpPlanInfo().plan==='free';}
+
 let _shop=null,_shopId=null,_user=null;
 let _theme=localStorage.getItem('sbp_theme')||'dark';
 let _bills=[],_expenses=[],_custs=[];
@@ -1288,10 +1301,8 @@ async function refreshShopPlan() {
 
 /* ══ Smart Insights — Level 2 (Pro) ══ */
 function renderInsights(){
-  const plan=(JSON.parse(localStorage.getItem('sbp_shop')||'{}')).plan||'free';
-  const isPro=plan==='pro'||plan==='enterprise';
   const wrap=document.getElementById('report-content');
-  if(!isPro){
+  if(!isPro()){
     wrap.innerHTML='<div style="text-align:center;padding:48px 20px"><div style="font-size:44px;margin-bottom:12px">🧠</div><div style="font-family:var(--font-h);font-size:17px;font-weight:800;margin-bottom:8px">Smart Insights</div><div style="font-size:13px;color:var(--t2);margin-bottom:20px;line-height:1.6">Rush hours, dead stock alerts,<br>payment patterns & more</div><button onclick="window.location.href=\'subscription.html\'" style="padding:13px 28px;border-radius:12px;background:linear-gradient(135deg,#F5A623,#FF8A00);border:none;color:#0A0E1A;font-family:var(--font-h);font-size:14px;font-weight:700;cursor:pointer">🚀 Upgrade to Pro — ₹99/month</button></div>';
     return;
   }
@@ -1326,10 +1337,8 @@ function renderInsights(){
 
 /* ══ Forecasting — Level 3 (Business) ══ */
 function renderForecast(){
-  const plan=(JSON.parse(localStorage.getItem('sbp_shop')||'{}')).plan||'free';
-  const isBiz=plan==='enterprise';
   const wrap=document.getElementById('report-content');
-  if(!isBiz){
+  if(!isBiz()){
     wrap.innerHTML='<div style="text-align:center;padding:48px 20px"><div style="font-size:44px;margin-bottom:12px">🔮</div><div style="font-family:var(--font-h);font-size:17px;font-weight:800;margin-bottom:8px">Advanced Forecasting</div><div style="font-size:13px;color:var(--t2);margin-bottom:20px;line-height:1.6">Stock reorder alerts, revenue predictions,<br>customer churn — Business plan</div><button onclick="window.location.href=\'subscription.html\'" style="padding:13px 28px;border-radius:12px;background:linear-gradient(135deg,#F59E0B,#EF4444);border:none;color:#fff;font-family:var(--font-h);font-size:14px;font-weight:700;cursor:pointer">🏭 Upgrade to Business — ₹199/month</button></div>';
     return;
   }
