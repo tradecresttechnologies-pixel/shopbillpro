@@ -1,7 +1,8 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" translate="no" class="notranslate">
 <head>
 <meta charset="UTF-8">
+<meta name="google" content="notranslate">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#F5A623">
 <meta name="mobile-web-app-capable" content="yes">
@@ -12,6 +13,14 @@
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Noto+Sans:wght@300;400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+// FIX #3 — IST-aware date (UTC toISOString shifts -5:30 in India)
+function sbpToday(){var d=new Date();return sbpFmt(d);}
+function sbpFmt(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function sbpYM(){return sbpToday().slice(0,7);}
+function sbpY(){return sbpToday().slice(0,4);}
+</script>
+
 
 
 <script src="lang.js"></script>
@@ -154,8 +163,8 @@ html[lang="hi"] .lang-en{display:none!important}
 /* Mobile: whole page scrolls */
 @media(max-width:1023px){
   html,body{height:auto!important;min-height:100dvh!important;overflow-x:hidden;overflow-y:auto!important}
-  #app{height:100dvh!important;display:flex!important;flex-direction:column!important;overflow:hidden!important}
-  .sb{overflow-y:visible!important}
+  #app{height:auto!important;min-height:100dvh!important;display:flex!important;flex-direction:column!important;overflow:visible!important}
+  .sb{overflow-y:visible!important;padding-bottom:calc(90px + var(--safe-bottom))!important}
   .bnav{position:fixed!important;bottom:0!important;left:0!important;right:0!important;z-index:100!important}
 }
 /* Desktop: #app fills viewport, .sb scrolls inside */
@@ -164,6 +173,49 @@ html[lang="hi"] .lang-en{display:none!important}
   #app{height:100vh!important;overflow:hidden!important;display:flex!important;flex-direction:column!important}
   .sb{flex:1!important;overflow-y:auto!important;min-height:0!important}
 }
+/* ── Day Close Summary ── */
+.dc-hero{background:linear-gradient(135deg,#10B981,#059669);border-radius:18px;padding:18px;margin-bottom:16px;color:#fff;box-shadow:0 6px 24px rgba(16,185,129,.25)}
+.dc-hero-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+.dc-hero-lbl{font-family:var(--font-h);font-size:12px;font-weight:700;opacity:.92;letter-spacing:.3px}
+.dc-hero-period{font-size:11px;opacity:.8;margin-top:2px}
+.dc-export-btn{background:rgba(255,255,255,.22);color:#fff;border:1px solid rgba(255,255,255,.35);padding:7px 12px;border-radius:10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit}
+.dc-hero-big{font-family:var(--font-h);font-size:32px;font-weight:900;line-height:1.1;margin-top:6px}
+.dc-hero-sub{font-size:12px;opacity:.9;margin-top:4px}
+.dc-section{margin-bottom:18px}
+.dc-sec-title{font-family:var(--font-h);font-size:12px;font-weight:800;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:9px;padding-left:2px}
+.dc-grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.dc-card{background:var(--surf);border:1px solid var(--bord);border-radius:14px;padding:13px 12px;position:relative;overflow:hidden}
+.dc-card.g{border-color:rgba(16,185,129,.35);background:linear-gradient(135deg,rgba(16,185,129,.08),transparent)}
+.dc-card.p{border-color:rgba(245,166,35,.35);background:linear-gradient(135deg,rgba(245,166,35,.08),transparent)}
+.dc-card.r{border-color:rgba(239,68,68,.35);background:linear-gradient(135deg,rgba(239,68,68,.08),transparent)}
+.dc-card.y{border-color:rgba(147,197,253,.3);background:linear-gradient(135deg,rgba(99,102,241,.08),transparent)}
+.dc-lbl{font-family:var(--font-h);font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px}
+.dc-val{font-family:var(--font-h);font-size:18px;font-weight:900;color:var(--text);line-height:1.15}
+.dc-sub{font-size:10px;color:var(--t3);margin-top:3px}
+.dc-pm-list{background:var(--surf);border:1px solid var(--bord);border-radius:14px;padding:6px 12px}
+.dc-pm-row{display:grid;grid-template-columns:1fr auto;gap:4px;padding:10px 0;border-bottom:1px solid var(--bord);position:relative}
+.dc-pm-row:last-child{border-bottom:none}
+.dc-pm-l{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600}
+.dc-pm-ic{font-size:16px}
+.dc-pm-ct{font-size:10px;color:var(--t3);margin-left:4px}
+.dc-pm-r{text-align:right;display:flex;flex-direction:column;align-items:flex-end}
+.dc-pm-amt{font-family:var(--font-h);font-size:14px;font-weight:800}
+.dc-pm-pct{font-size:10px;color:var(--t2)}
+.dc-pm-bar{grid-column:1/-1;height:3px;background:var(--surf2);border-radius:2px;margin-top:6px;overflow:hidden}
+.dc-pm-fill{height:100%;background:linear-gradient(90deg,var(--acc),var(--acc3));border-radius:2px;transition:width .3s}
+.dc-cashbox{background:var(--surf);border:1px solid var(--bord);border-radius:14px;padding:12px 14px}
+.dc-cf-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dashed var(--bord);font-size:13px}
+.dc-cf-row:last-child{border-bottom:none}
+.dc-cf-tot{font-weight:800;font-family:var(--font-h);color:var(--acc);border-top:2px solid var(--bord);border-bottom:2px solid var(--bord);margin:4px 0}
+.dc-gstbox{background:var(--surf);border:1px solid var(--bord);border-radius:14px;padding:14px;display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.dc-gst-col{text-align:left}
+.dc-ti-row{display:flex;align-items:center;gap:12px;padding:11px 14px;border-bottom:1px solid var(--bord)}
+.dc-ti-row:last-child{border-bottom:none}
+.dc-ti-rank{width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,var(--acc),var(--acc3));color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;flex-shrink:0}
+.dc-ti-nm{flex:1;font-size:13px;font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.dc-ti-sub{font-size:10px;color:var(--t3);font-weight:400;margin-top:1px}
+.dc-ti-val{font-family:var(--font-h);font-size:13px;font-weight:800;color:var(--acc)}
+.dc-close-btn{width:100%;padding:14px;margin-top:8px;border-radius:14px;background:linear-gradient(135deg,var(--acc),#F59E0B);border:none;color:#fff;font-family:var(--font-h);font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 4px 16px rgba(245,166,35,.25)}
 </style>
 <link rel="stylesheet" href="fix.css">
 </head>
@@ -185,7 +237,8 @@ html[lang="hi"] .lang-en{display:none!important}
 
   <!-- Report Tabs -->
   <div class="sub-tabs">
-    <div class="sub-tab on" id="tab-sales"   onclick="showTab('sales')">📊 Sales</div>
+    <div class="sub-tab on" id="tab-dayclose" onclick="showTab('dayclose')">💼 Day Close</div>
+    <div class="sub-tab" id="tab-sales"   onclick="showTab('sales')">📊 Sales</div>
     <div class="sub-tab"    id="tab-daily"   onclick="showTab('daily')">📅 Daily</div>
     <div class="sub-tab"    id="tab-gst"     onclick="showTab('gst')">🏛️ GST Summary</div>
     <div class="sub-tab"    id="tab-gstr1"   onclick="showTab('gstr1')">📋 GSTR-1</div>
@@ -234,7 +287,7 @@ html[lang="hi"] .lang-en{display:none!important}
     <div class="ni" onclick="goTo('dashboard.html')"><span class="ni-ic">🏠</span><span class="ni-lb"><span class="lang-en">Home</span><span class="lang-hi">होम</span></span></div>
     <div class="ni" onclick="goTo('bills.html')"><span class="ni-ic">🧾</span><span class="ni-lb"><span class="lang-en">Bills</span><span class="lang-hi">बिल</span></span></div>
     <div class="ni" onclick="goTo('billing.html')" style="align-items:center;justify-content:center"><div class="nav-fab">＋</div></div>
-    <div class="ni" onclick="goTo('customers.html')"><span class="ni-ic">👥</span><span class="ni-lb"><span class="lang-en">Customers</span><span class="lang-hi">ग्राहक</span></span></div>
+    <div class="ni" onclick="goTo('marketing.html')"><span class="ni-ic">📢</span><span class="ni-lb"><span class="lang-en">Marketing</span><span class="lang-hi">मार्केटिंग</span></span></div>
     <div class="ni" onclick="goTo('settings.html')"><span class="ni-ic">☰</span><span class="ni-lb"><span class="lang-en">More</span><span class="lang-hi">अधिक</span></span></div>
   </div>
 </div>
@@ -249,7 +302,7 @@ const _sb=supabase.createClient(SB_URL,SB_KEY);
 let _shop=null,_shopId=null,_user=null;
 let _theme=localStorage.getItem('sbp_theme')||'dark';
 let _bills=[],_expenses=[],_custs=[];
-let _curTab='sales',_curPeriod='month';
+let _curTab='dayclose',_curPeriod='month';
 let _sessionTimeout=parseInt(localStorage.getItem('sbp_session_timeout')||'30');
 let _actTimer;
 
@@ -261,12 +314,7 @@ function toast(msg,type='',dur=3000){const c=document.getElementById('toast-cont
 function toggleTheme(){_theme=_theme==='dark'?'light':'dark';localStorage.setItem('sbp_theme',_theme);document.documentElement.setAttribute('data-theme',_theme==='light'?'light':'');document.getElementById('theme-btn').textContent=_theme==='light'?'🌙':'☀️'}
 function fINR(n){return '₹'+(parseFloat(n)||0).toLocaleString('en-IN',{maximumFractionDigits:0})}
 function fDate(d){if(!d)return '—';try{return new Date(d).toLocaleDateString('en-IN',{day:'2-digit',month:'short'});}catch{return d}}
-// FIX #3 — IST-aware date. UTC toISOString() shifts back 5:30hrs in India,
-// breaking "today" filters between 00:00 and 05:30 IST every day.
-function todayISO(){
-  const d=new Date();
-  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-}
+function todayISO(){return sbpToday()}
 
 // ── Period filter ──
 let _customFrom='',_customTo='';
@@ -284,7 +332,7 @@ function setPeriod(period,el){
     if(!_customFrom||!_customTo){
       const now=new Date();
       _customTo=todayISO();
-      _customFrom=new Date(now-30*86400000).toISOString().split('T')[0];
+      _customFrom=sbpFmt(new Date(now-30*86400000));
       document.getElementById('report-date-from').value=_customFrom;
       document.getElementById('report-date-to').value=_customTo;
     }
@@ -307,9 +355,9 @@ function _filterByPeriod(bills){
   const now=new Date();
   switch(_curPeriod){
     case 'today':   return bills.filter(b=>(b.invoice_date||b.created_at||'').startsWith(today));
-    case 'week':{const w=new Date(now-7*86400000).toISOString().split('T')[0];return bills.filter(b=>(b.invoice_date||b.created_at||'')>=w)}
+    case 'week':{const w=sbpFmt(new Date(now-7*86400000));return bills.filter(b=>(b.invoice_date||b.created_at||'')>=w)}
     case 'month':   return bills.filter(b=>(b.invoice_date||b.created_at||'').startsWith(today.substring(0,7)));
-    case 'quarter':{const q=new Date(now-90*86400000).toISOString().split('T')[0];return bills.filter(b=>(b.invoice_date||b.created_at||'')>=q)}
+    case 'quarter':{const q=sbpFmt(new Date(now-90*86400000));return bills.filter(b=>(b.invoice_date||b.created_at||'')>=q)}
     case 'year':    return bills.filter(b=>(b.invoice_date||b.created_at||'').startsWith(today.substring(0,4)));
     case 'custom':{
       if(!_customFrom||!_customTo) return bills;
@@ -319,49 +367,6 @@ function _filterByPeriod(bills){
       });
     }
     default:        return bills;
-  }
-}
-
-// PRO — previous comparable period (yesterday, last week, last month, etc.)
-function _filterByPreviousPeriod(bills){
-  const today=todayISO();
-  const now=new Date();
-  const fmt = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-  switch(_curPeriod){
-    case 'today': {
-      const y = new Date(now.getTime() - 86400000);
-      const ystr = fmt(y);
-      return bills.filter(b=>(b.invoice_date||b.created_at||'').startsWith(ystr));
-    }
-    case 'week': {
-      const start = new Date(now.getTime() - 14*86400000);
-      const end   = new Date(now.getTime() - 7*86400000);
-      return bills.filter(b=>{const d=(b.invoice_date||b.created_at||'').substring(0,10); return d>=fmt(start)&&d<fmt(end);});
-    }
-    case 'month': {
-      const lm = new Date(now.getFullYear(), now.getMonth()-1, 1);
-      const lmStr = lm.getFullYear()+'-'+String(lm.getMonth()+1).padStart(2,'0');
-      return bills.filter(b=>(b.invoice_date||b.created_at||'').startsWith(lmStr));
-    }
-    case 'quarter': {
-      const start = new Date(now.getTime() - 180*86400000);
-      const end   = new Date(now.getTime() - 90*86400000);
-      return bills.filter(b=>{const d=(b.invoice_date||b.created_at||'').substring(0,10); return d>=fmt(start)&&d<fmt(end);});
-    }
-    case 'year': {
-      const lyStr = String(now.getFullYear()-1);
-      return bills.filter(b=>(b.invoice_date||b.created_at||'').startsWith(lyStr));
-    }
-    case 'custom': {
-      if(!_customFrom||!_customTo) return [];
-      const fromD = new Date(_customFrom), toD = new Date(_customTo);
-      const span = Math.max(1, Math.ceil((toD - fromD) / 86400000));
-      const prevTo = new Date(fromD.getTime() - 86400000);
-      const prevFrom = new Date(prevTo.getTime() - span*86400000);
-      const a = fmt(prevFrom), b = fmt(prevTo);
-      return bills.filter(x=>{const d=(x.invoice_date||x.created_at||'').substring(0,10); return d>=a&&d<=b;});
-    }
-    default: return [];
   }
 }
 
@@ -375,6 +380,7 @@ function showTab(tab){
 
 function renderTab(tab){
   switch(tab){
+    case 'dayclose': renderDayClose();break;
     case 'sales':    renderSales();break;
     case 'daily':    renderDailyReport();break;
     case 'gst':      renderGST();break;
@@ -390,18 +396,235 @@ function renderTab(tab){
   }
 }
 
+// ══════════════════════════════════════════════════════════
+// DAY CLOSE — Consolidated closing summary for the selected period
+// ══════════════════════════════════════════════════════════
+function renderDayClose(){
+  const isVoid = b => (b.status||'').toLowerCase()==='voided';
+  const allPeriod    = _filterByPeriod(_bills);
+  const bills        = allPeriod.filter(b=>!isVoid(b));
+  const voidedBills  = allPeriod.filter(isVoid);
+  const expenses     = _filterByPeriod((_expenses||[]).map(e=>({...e,invoice_date:e.expense_date})));
+  const auditLog     = JSON.parse(localStorage.getItem('sbp_audit_log')||'[]')
+                        .filter(e=>_inCurrentPeriod(e.ts||e.timestamp));
+
+  // ── SALES ──────────────────────────────────────────────
+  const totalSales  = bills.reduce((s,b)=>s+parseFloat(b.grand_total||0),0);
+  const totalPaid   = bills.reduce((s,b)=>s+parseFloat(b.paid_amount||0),0);
+  const totalDue    = bills.reduce((s,b)=>s+parseFloat(b.balance_due||0),0);
+  const billCount   = bills.length;
+  const avgBill     = billCount ? totalSales/billCount : 0;
+
+  // ── DISCOUNTS ──────────────────────────────────────────
+  const totalDiscount = bills.reduce((s,b)=>s+parseFloat(b.discount||b.discount_amount||0),0);
+  const discountedBills = bills.filter(b=>parseFloat(b.discount||b.discount_amount||0)>0).length;
+
+  // ── VOIDS / ITEM EDITS ─────────────────────────────────
+  const voidBillCount  = voidedBills.length;
+  const voidBillAmt    = voidedBills.reduce((s,b)=>s+parseFloat(b.grand_total||0),0);
+  const voidItemCount  = auditLog.filter(e=>e.action==='void_item').length;
+  const itemEditCount  = auditLog.filter(e=>e.action==='edit_item'||e.action==='delete_item').length;
+  const reopenCount    = auditLog.filter(e=>e.action==='reopen_bill').length;
+
+  // ── SETTLEMENT BY MODE ─────────────────────────────────
+  const modes={Cash:0,UPI:0,Card:0,Credit:0,Other:0};
+  const modeCounts={Cash:0,UPI:0,Card:0,Credit:0,Other:0};
+  bills.forEach(b=>{
+    const pm=(b.payment_mode||'Cash').toLowerCase();
+    const amt=parseFloat(b.paid_amount||0);
+    let key='Other';
+    if(pm==='cash') key='Cash';
+    else if(pm.includes('upi')) key='UPI';
+    else if(pm==='card') key='Card';
+    else if(pm==='credit'||b.status==='Credit') key='Credit';
+    if(key==='Credit'){
+      modes.Credit += parseFloat(b.balance_due||0);
+    } else {
+      modes[key] += amt;
+    }
+    modeCounts[key]++;
+  });
+
+  // ── CASH FLOW ──────────────────────────────────────────
+  const cashIn   = modes.Cash;
+  const cashOut  = expenses.reduce((s,e)=>s+parseFloat(e.amount||0),0);
+  const openingCash = parseFloat(localStorage.getItem('sbp_cash_opening')||'0');
+  const expectedCash = openingCash + cashIn - cashOut;
+  const actualCash   = parseFloat(localStorage.getItem('sbp_cash_closing')||'0');
+  const cashDiff     = actualCash - expectedCash;
+
+  // ── COLLECTIONS ────────────────────────────────────────
+  const collectionRate = totalSales>0 ? Math.round(totalPaid/totalSales*100) : 0;
+
+  // ── GST ────────────────────────────────────────────────
+  const gstCollected = bills.reduce((s,b)=>s+parseFloat(b.gst_amount||0),0);
+  const taxable      = bills.reduce((s,b)=>s+parseFloat(b.subtotal||0),0);
+
+  // ── TOP ITEMS (top 5 by value) ─────────────────────────
+  const itemMap={};
+  bills.forEach(b=>(b.bill_items||[]).forEach(it=>{
+    if(it.voided)return;
+    const nm=it.item_name||'Item';
+    if(!itemMap[nm])itemMap[nm]={name:nm,qty:0,value:0};
+    itemMap[nm].qty += parseFloat(it.qty||1);
+    itemMap[nm].value += parseFloat(it.line_total||(it.qty*it.rate)||0);
+  }));
+  const topItems = Object.values(itemMap).sort((a,b)=>b.value-a.value).slice(0,5);
+
+  // ── CUSTOMER ACTIVITY ──────────────────────────────────
+  const custNames = new Set();
+  bills.forEach(b=>{const n=b.customer_name;if(n&&n!=='Walk-in Customer')custNames.add(n);});
+  const uniqueCusts = custNames.size;
+  const newCustsInPeriod = _custs.filter(c=>_inCurrentPeriod(c.joined_at||c.created_at)).length;
+  const walkInCount = bills.filter(b=>!b.customer_name||b.customer_name==='Walk-in Customer').length;
+
+  // ── RENDER ─────────────────────────────────────────────
+  const periodLbl = ({today:'Today',week:'This Week',month:'This Month',quarter:'Quarter',year:'This Year',custom:'Custom Range',all:'All Time'})[_curPeriod]||'Period';
+
+  let html = `
+  <div style="padding:12px 14px 30px">
+    <!-- Hero header -->
+    <div class="dc-hero">
+      <div class="dc-hero-top">
+        <div>
+          <div class="dc-hero-lbl">💼 Day Closing Summary</div>
+          <div class="dc-hero-period">${periodLbl}</div>
+        </div>
+        <button class="dc-export-btn" onclick="exportDayClose()">📥 Export</button>
+      </div>
+      <div class="dc-hero-big">${fINR(totalSales)}</div>
+      <div class="dc-hero-sub">${billCount} bills · Avg ${fINR(avgBill)} · Collected ${collectionRate}%</div>
+    </div>
+
+    <!-- Sales + Collections -->
+    <div class="dc-section">
+      <div class="dc-sec-title">💰 Sales & Collections</div>
+      <div class="dc-grid2">
+        <div class="dc-card g"><div class="dc-lbl">Total Sales</div><div class="dc-val">${fINR(totalSales)}</div><div class="dc-sub">${billCount} bills</div></div>
+        <div class="dc-card p"><div class="dc-lbl">Collected</div><div class="dc-val">${fINR(totalPaid)}</div><div class="dc-sub">${collectionRate}% of sales</div></div>
+        <div class="dc-card r"><div class="dc-lbl">Outstanding</div><div class="dc-val">${fINR(totalDue)}</div><div class="dc-sub">still due</div></div>
+        <div class="dc-card y"><div class="dc-lbl">Avg Bill</div><div class="dc-val">${fINR(avgBill)}</div><div class="dc-sub">per transaction</div></div>
+      </div>
+    </div>
+
+    <!-- Payment modes -->
+    <div class="dc-section">
+      <div class="dc-sec-title">💳 Payment Mode Breakdown</div>
+      <div class="dc-pm-list">
+        ${['Cash','UPI','Card','Credit','Other'].map(k=>{
+          const pct = totalSales>0 ? Math.round((modes[k]/totalSales)*100) : 0;
+          const icon = {Cash:'💵',UPI:'📱',Card:'💳',Credit:'📝',Other:'🔖'}[k];
+          return `<div class="dc-pm-row">
+            <div class="dc-pm-l"><span class="dc-pm-ic">${icon}</span><span>${k}</span><span class="dc-pm-ct">${modeCounts[k]} bills</span></div>
+            <div class="dc-pm-r"><span class="dc-pm-amt">${fINR(modes[k])}</span><span class="dc-pm-pct">${pct}%</span></div>
+            <div class="dc-pm-bar"><div class="dc-pm-fill" style="width:${pct}%"></div></div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+
+    <!-- Cash flow -->
+    <div class="dc-section">
+      <div class="dc-sec-title">🏦 Cash Flow</div>
+      <div class="dc-cashbox">
+        <div class="dc-cf-row"><span>Opening Cash</span><span>${fINR(openingCash)}</span></div>
+        <div class="dc-cf-row"><span>+ Cash Sales</span><span style="color:var(--acc3)">+${fINR(cashIn)}</span></div>
+        <div class="dc-cf-row"><span>− Cash Expenses</span><span style="color:var(--acc2)">−${fINR(cashOut)}</span></div>
+        <div class="dc-cf-row dc-cf-tot"><span>Expected Closing</span><span>${fINR(expectedCash)}</span></div>
+        <div class="dc-cf-row"><span>Actual Closing</span><span>${fINR(actualCash)}</span></div>
+        ${actualCash>0?`<div class="dc-cf-row" style="color:${Math.abs(cashDiff)<1?'var(--acc3)':'var(--acc2)'};font-weight:700"><span>${cashDiff>=0?'Surplus':'Shortage'}</span><span>${fINR(Math.abs(cashDiff))}</span></div>`:''}
+      </div>
+    </div>
+
+    <!-- Discounts / Voids / Edits -->
+    <div class="dc-section">
+      <div class="dc-sec-title">⚠️ Adjustments & Audit</div>
+      <div class="dc-grid2">
+        <div class="dc-card"><div class="dc-lbl">Discounts Given</div><div class="dc-val">${fINR(totalDiscount)}</div><div class="dc-sub">${discountedBills} bill${discountedBills!==1?'s':''}</div></div>
+        <div class="dc-card"><div class="dc-lbl">Voided Bills</div><div class="dc-val">${voidBillCount}</div><div class="dc-sub">${fINR(voidBillAmt)} reversed</div></div>
+        <div class="dc-card"><div class="dc-lbl">Voided Items</div><div class="dc-val">${voidItemCount}</div><div class="dc-sub">within bills</div></div>
+        <div class="dc-card"><div class="dc-lbl">Bill Edits</div><div class="dc-val">${itemEditCount+reopenCount}</div><div class="dc-sub">${reopenCount} reopens</div></div>
+      </div>
+    </div>
+
+    <!-- GST Summary -->
+    <div class="dc-section">
+      <div class="dc-sec-title">🏛️ GST Summary</div>
+      <div class="dc-gstbox">
+        <div class="dc-gst-col"><div class="dc-lbl">Taxable Value</div><div class="dc-val">${fINR(taxable)}</div></div>
+        <div class="dc-gst-col"><div class="dc-lbl">GST Collected</div><div class="dc-val" style="color:var(--acc)">${fINR(gstCollected)}</div></div>
+        <div class="dc-gst-col"><div class="dc-lbl">CGST</div><div class="dc-val">${fINR(gstCollected/2)}</div></div>
+        <div class="dc-gst-col"><div class="dc-lbl">SGST</div><div class="dc-val">${fINR(gstCollected/2)}</div></div>
+      </div>
+    </div>
+
+    <!-- Top Items -->
+    <div class="dc-section">
+      <div class="dc-sec-title">🏆 Top Items</div>
+      <div class="dc-cashbox" style="padding:0">
+        ${topItems.length?topItems.map((it,i)=>`
+          <div class="dc-ti-row">
+            <div class="dc-ti-rank">${i+1}</div>
+            <div class="dc-ti-nm">${it.name}<div class="dc-ti-sub">Qty ${it.qty}</div></div>
+            <div class="dc-ti-val">${fINR(it.value)}</div>
+          </div>`).join(''):'<div style="padding:16px;text-align:center;color:var(--t2);font-size:12px">No items sold in this period</div>'}
+      </div>
+    </div>
+
+    <!-- Customer activity -->
+    <div class="dc-section">
+      <div class="dc-sec-title">👥 Customer Activity</div>
+      <div class="dc-grid2">
+        <div class="dc-card"><div class="dc-lbl">Unique Customers</div><div class="dc-val">${uniqueCusts}</div><div class="dc-sub">served</div></div>
+        <div class="dc-card"><div class="dc-lbl">New Customers</div><div class="dc-val">${newCustsInPeriod}</div><div class="dc-sub">added in period</div></div>
+        <div class="dc-card"><div class="dc-lbl">Walk-ins</div><div class="dc-val">${walkInCount}</div><div class="dc-sub">unnamed bills</div></div>
+        <div class="dc-card"><div class="dc-lbl">Repeat Rate</div><div class="dc-val">${uniqueCusts>0?Math.round((uniqueCusts/(uniqueCusts+walkInCount))*100):0}%</div><div class="dc-sub">of transactions</div></div>
+      </div>
+    </div>
+
+    <button class="dc-close-btn" onclick="exportDayClose()">📥 Export Day Close Report (CSV)</button>
+    <div style="height:20px"></div>
+  </div>`;
+
+  document.getElementById('report-content').innerHTML = html;
+}
+
+// Helper: check if a timestamp falls within current period filter
+function _inCurrentPeriod(ts){
+  if(!ts)return false;
+  const d=(ts||'').substring(0,10);
+  const today=todayISO();
+  const now=new Date();
+  switch(_curPeriod){
+    case 'today':   return d===today;
+    case 'week':{const w=sbpFmt(new Date(now-7*86400000));return d>=w;}
+    case 'month':   return d.startsWith(today.substring(0,7));
+    case 'quarter':{const q=sbpFmt(new Date(now-90*86400000));return d>=q;}
+    case 'year':    return d.startsWith(today.substring(0,4));
+    case 'custom':  return _customFrom&&_customTo?(d>=_customFrom&&d<=_customTo):true;
+    default:        return true;
+  }
+}
+
+// Export Day Close as CSV
+function exportDayClose(){
+  const c=document.getElementById('report-content').innerText||'';
+  const rows=[['ShopBill Pro — Day Close Report'],[(_shop?.name||'Shop'),new Date().toLocaleString('en-IN')],['']];
+  // Simple line-by-line capture of visible labels + values
+  c.split('\n').forEach(line=>{const t=line.trim();if(t)rows.push([t]);});
+  const csv=rows.map(r=>r.map(v=>`"${(v||'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob=new Blob([csv],{type:'text/csv'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='day-close-'+_curPeriod+'-'+sbpToday()+'.csv';
+  a.click();
+  toast('✅ Day Close report exported','s');
+}
+
 // ── Sales Report ──
 function renderSales(){
-  // FIX #6 — Exclude voided bills from sales totals
-  const allInPeriod=_filterByPeriod(_bills);
-  const bills=allInPeriod.filter(b=>b.status!=='Voided');
-  const voidedBills=allInPeriod.filter(b=>b.status==='Voided');
+  const bills=_filterByPeriod(_bills).filter(b=>(b.status||'').toLowerCase()!=='voided');
   const expenses=_filterByPeriod(_expenses.map(e=>({...e,invoice_date:e.expense_date})));
-
-  // PRO — previous period comparison (this week vs last week, etc.)
-  const prevBills = _filterByPreviousPeriod(_bills).filter(b=>b.status!=='Voided');
-  const prevTotalSales = prevBills.reduce((s,b)=>s+parseFloat(b.grand_total||0),0);
-  const prevBillCount = prevBills.length;
 
   // ── Core numbers ──
   const totalSales     = bills.reduce((s,b)=>s+parseFloat(b.grand_total||0),0);  // what was billed
@@ -412,13 +635,6 @@ function renderSales(){
   const paidCount      = bills.filter(b=>b.status==='Paid').length;
   const outstanding    = bills.reduce((s,b)=>s+parseFloat(b.balance_due||0),0);
   const avgBill        = totalBills ? totalSales/totalBills : 0;
-
-  // PRO — period-over-period growth
-  let salesGrowthPct = 0, billsGrowthPct = 0;
-  if(prevTotalSales > 0) salesGrowthPct = Math.round(((totalSales - prevTotalSales) / prevTotalSales) * 100);
-  else if(totalSales > 0) salesGrowthPct = 100;
-  if(prevBillCount > 0) billsGrowthPct = Math.round(((totalBills - prevBillCount) / prevBillCount) * 100);
-  else if(totalBills > 0) billsGrowthPct = 100;
 
   // ── GST on collected only (proportional) ──
   // GST rate = totalGSTBilled / totalSales  →  apply to collected only
@@ -447,7 +663,7 @@ function renderSales(){
   const days=[];const now=new Date();
   for(let i=6;i>=0;i--){
     const d=new Date(now-i*86400000);
-    const ds=d.toISOString().split('T')[0];
+    const ds=sbpFmt(d);
     const dayBills=_bills.filter(b=>(b.invoice_date||b.created_at||'').startsWith(ds));
     const dayRevenue=dayBills.reduce((s,b)=>s+parseFloat(b.grand_total||0),0);
     days.push({label:d.toLocaleDateString('en-IN',{weekday:'short'}),value:dayRevenue,date:ds});
@@ -464,26 +680,6 @@ function renderSales(){
   const el=document.getElementById('report-content');
   el.innerHTML=`
     <div style="padding-bottom:80px">
-      ${prevBillCount > 0 || prevTotalSales > 0 ? `
-      <div style="margin:12px 14px 0;background:var(--surf2);border:1px solid var(--bord);border-radius:12px;padding:12px;display:flex;align-items:center;gap:14px">
-        <div style="flex:1">
-          <div style="font-size:11px;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;font-weight:700">VS PREVIOUS ${_curPeriod.toUpperCase()}</div>
-          <div style="display:flex;gap:14px;margin-top:6px;flex-wrap:wrap">
-            <div>
-              <div style="font-size:11px;color:var(--t2)">Sales</div>
-              <div style="font-weight:800;font-size:14px">${fINR(prevTotalSales)} → ${fINR(totalSales)}</div>
-            </div>
-            <div>
-              <div style="font-size:11px;color:var(--t2)">Bills</div>
-              <div style="font-weight:800;font-size:14px">${prevBillCount} → ${totalBills}</div>
-            </div>
-          </div>
-        </div>
-        <div style="text-align:right">
-          <div style="font-size:24px;font-weight:900;color:${salesGrowthPct>=0?'var(--acc3)':'var(--acc2)'}">${salesGrowthPct>=0?'+':''}${salesGrowthPct}%</div>
-          <div style="font-size:10px;color:var(--t2)">${salesGrowthPct>=0?'↑':'↓'} ${billsGrowthPct>=0?'+':''}${billsGrowthPct}% bills</div>
-        </div>
-      </div>` : ''}
       <div style="padding:12px 14px 4px;font-family:var(--font-h);font-size:13px;font-weight:700;color:var(--t2)">PERIOD SUMMARY</div>
       <div class="stats-grid">
         <div class="scard g">
@@ -536,27 +732,22 @@ function renderSales(){
 
 // ── GST Report ──
 function renderGST(){
-  // FIX #5 — Exclude voided bills from GST totals (would inflate GSTR filings)
-  const bills=_filterByPeriod(_bills).filter(b=>b.status!=='Voided');
+  const bills=_filterByPeriod(_bills).filter(b=>(b.status||'').toLowerCase()!=='voided');
   const gstMap={0:0,5:0,12:0,18:0,28:0};
   let totalGST=0,totalTaxable=0,totalCGST=0,totalSGST=0,totalIGST=0;
 
   bills.forEach(b=>{
     const gst=parseFloat(b.gst_amount||0);
     const sub=parseFloat(b.subtotal||0);
-    // FIX #7 — Taxable value = post-discount (Section 15 CGST Act).
-    // Subtract item discount + bill discount if those fields exist.
+    // FIX #7 — Taxable value = post-discount (Section 15 CGST Act)
     const itemDisc=parseFloat(b.item_discount||b.itemDiscAmt||0);
     const billDisc=parseFloat(b.discount||b.discAmt||0);
-    const postDiscTaxable=Math.max(0, sub - itemDisc - billDisc);
-    totalGST+=gst;
-    totalTaxable+=postDiscTaxable;
-
-    // FIX #4 — Split CGST/SGST/IGST per bill's supply_type
+    const taxable=Math.max(0, sub - itemDisc - billDisc);
+    totalGST+=gst; totalTaxable+=taxable;
+    // FIX #4 — per-bill split
     const supplyType=(b.supply_type||b.supplyType||'intra').toLowerCase();
     if(supplyType==='inter') totalIGST+=gst;
     else { totalCGST+=gst/2; totalSGST+=gst/2; }
-
     if(b.bill_items?.length){
       b.bill_items.forEach(it=>{
         const rate=parseFloat(it.gst_rate||it.rate||0);
@@ -578,10 +769,10 @@ function renderGST(){
     }
   });
 
-  // FIX #4 — Use real per-bill split, not blanket /2
+  // FIX #4 — use real per-bill split
   const cgst=totalCGST, sgst=totalSGST, igst=totalIGST;
   const thisMonth=todayISO().substring(0,7);
-  const monthBills=_bills.filter(b=>b.status!=='Voided' && (b.invoice_date||b.created_at||'').startsWith(thisMonth));
+  const monthBills=_bills.filter(b=>(b.status||'').toLowerCase()!=='voided' && (b.invoice_date||b.created_at||'').startsWith(thisMonth));
 
   const el=document.getElementById('report-content');
   el.innerHTML=`
@@ -656,7 +847,7 @@ function renderGST(){
 
 // ── Top Customers ──
 function renderTopCustomers(){
-  const bills=_filterByPeriod(_bills);
+  const bills=_filterByPeriod(_bills).filter(b=>(b.status||'').toLowerCase()!=='voided');
   const map={};
   bills.forEach(b=>{
     const nm=b.customer_name||'Walk-in';
@@ -688,7 +879,7 @@ function renderTopCustomers(){
 
 // ── Top Items ──
 function renderTopItems(){
-  const bills=_filterByPeriod(_bills);
+  const bills=_filterByPeriod(_bills).filter(b=>(b.status||'').toLowerCase()!=='voided');
   const map={};
   bills.forEach(b=>{
     (b.bill_items||[]).forEach(it=>{
@@ -721,19 +912,10 @@ function renderTopItems(){
 }
 
 function exportReport(){
-  // FIX #41 — exclude voided bills from accounting export
-  const bills=_filterByPeriod(_bills).filter(b=>b.status!=='Voided');
-  // FIX #40 — Proper CSV cell escape: wrap in quotes if contains comma/quote/newline; double-up internal quotes
-  const esc = v => {
-    if(v===null||v===undefined) return '';
-    const s = String(v);
-    if(/[",\n\r]/.test(s)) return '"'+s.replace(/"/g,'""')+'"';
-    return s;
-  };
+  const bills=_filterByPeriod(_bills);
   const rows=['Invoice No,Date,Customer,Subtotal,GST,Grand Total,Paid,Balance,Status'];
-  bills.forEach(b=>rows.push([b.invoice_no,b.invoice_date,b.customer_name,b.subtotal||0,b.gst_amount||0,b.grand_total||0,b.paid_amount||0,b.balance_due||0,b.status||''].map(esc).join(',')));
-  // FIX #42 — UTF-8 BOM so Excel reads Hindi correctly
-  const blob=new Blob(['\ufeff'+rows.join('\r\n')],{type:'text/csv;charset=utf-8'});
+  bills.forEach(b=>rows.push([b.invoice_no,b.invoice_date,b.customer_name,b.subtotal||0,b.gst_amount||0,b.grand_total||0,b.paid_amount||0,b.balance_due||0,b.status||''].join(',')));
+  const blob=new Blob([rows.join('\n')],{type:'text/csv'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='report_'+_curPeriod+'.csv';a.click();
   toast('📤 Report exported!','s');
 }
@@ -742,7 +924,6 @@ function exportReport(){
 // PRO REPORTS — GSTR-1, GSTR-3B, P&L, Payments
 // ════════════════════════════════════════════════════════════════
 
-// CSV escape helper (FIX #40 #42)
 function _csvEsc(v){
   if(v===null||v===undefined) return '';
   const s=String(v);
@@ -754,69 +935,58 @@ function _csvDownload(filename, rows){
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;a.click();
 }
 
-// ─── GSTR-1: Outward supplies (sales) ──────────────────────────
+// ─── GSTR-1: Outward supplies ─────────────────────────
 function renderGSTR1(){
-  const bills=_filterByPeriod(_bills).filter(b=>b.status!=='Voided');
-  const shop = _shop || JSON.parse(localStorage.getItem('sbp_shop')||'{}');
-
-  // Split into B2B (customer GSTIN present) vs B2C
+  const bills=_filterByPeriod(_bills).filter(b=>(b.status||'').toLowerCase()!=='voided');
+  const shop = JSON.parse(localStorage.getItem('sbp_shop')||'{}');
   const b2b = bills.filter(b => (b.customer_gstin||b.custGSTIN||'').trim());
   const b2c = bills.filter(b => !(b.customer_gstin||b.custGSTIN||'').trim());
-
-  const sumOf = arr => arr.reduce((s,b)=>({
-    taxable: s.taxable + Math.max(0, parseFloat(b.subtotal||0) - parseFloat(b.discount||0) - parseFloat(b.item_discount||0)),
-    igst:    s.igst + ((b.supply_type||'intra')==='inter' ? parseFloat(b.gst_amount||0) : 0),
-    cgst:    s.cgst + ((b.supply_type||'intra')==='inter' ? 0 : parseFloat(b.gst_amount||0)/2),
-    sgst:    s.sgst + ((b.supply_type||'intra')==='inter' ? 0 : parseFloat(b.gst_amount||0)/2),
-    total:   s.total + parseFloat(b.grand_total||0)
-  }), {taxable:0,igst:0,cgst:0,sgst:0,total:0});
-
+  const sumOf = arr => arr.reduce((s,b)=>{
+    const tax = Math.max(0, parseFloat(b.subtotal||0) - parseFloat(b.discount||0) - parseFloat(b.item_discount||0));
+    const gst = parseFloat(b.gst_amount||0);
+    const isInter = (b.supply_type||'intra')==='inter';
+    return {
+      taxable: s.taxable + tax,
+      igst:    s.igst + (isInter ? gst : 0),
+      cgst:    s.cgst + (isInter ? 0 : gst/2),
+      sgst:    s.sgst + (isInter ? 0 : gst/2),
+      total:   s.total + parseFloat(b.grand_total||0)
+    };
+  }, {taxable:0,igst:0,cgst:0,sgst:0,total:0});
   const b2bSum = sumOf(b2b);
   const b2cSum = sumOf(b2c);
 
   const el=document.getElementById('report-content');
-  el.innerHTML = `<div style="padding:14px;display:flex;flex-direction:column;gap:14px">
-    <div style="background:rgba(245,166,35,.06);border:1px solid rgba(245,166,35,.2);border-radius:12px;padding:12px;font-size:12px;color:var(--t2)">
-      📋 <strong style="color:var(--text)">GSTR-1</strong> — Outward supplies (sales) for ${_curPeriod === 'month' ? 'this month' : _curPeriod}.
-      <br><span style="font-size:11px">GSTIN: <strong>${shop.gstin || '—'}</strong> · ${bills.length} invoices, exclusive of voided.</span>
-    </div>
-
-    <div class="stats-grid">
-      <div class="scard g"><div class="sc-lbl">Total Taxable Value</div><div class="sc-val g">${fINR(b2bSum.taxable + b2cSum.taxable)}</div><div class="sc-sub">${bills.length} invoices</div></div>
-      <div class="scard p"><div class="sc-lbl">Total Tax</div><div class="sc-val p">${fINR(b2bSum.igst+b2bSum.cgst+b2bSum.sgst+b2cSum.igst+b2cSum.cgst+b2cSum.sgst)}</div><div class="sc-sub">CGST+SGST+IGST</div></div>
-    </div>
-
-    <div class="sec">
-      <div class="sec-t">B2B Invoices (with GSTIN)</div>
-      <div style="padding:14px;display:grid;grid-template-columns:repeat(2,1fr);gap:8px">
-        <div style="background:var(--surf2);padding:10px;border-radius:8px"><div style="font-size:10px;color:var(--t2)">Invoices</div><div style="font-weight:800;font-size:18px">${b2b.length}</div></div>
-        <div style="background:var(--surf2);padding:10px;border-radius:8px"><div style="font-size:10px;color:var(--t2)">Taxable</div><div style="font-weight:800;font-size:18px">${fINR(b2bSum.taxable)}</div></div>
-        <div style="background:var(--surf2);padding:10px;border-radius:8px"><div style="font-size:10px;color:var(--t2)">CGST + SGST</div><div style="font-weight:800;font-size:14px">${fINR(b2bSum.cgst + b2bSum.sgst)}</div></div>
-        <div style="background:var(--surf2);padding:10px;border-radius:8px"><div style="font-size:10px;color:var(--t2)">IGST</div><div style="font-weight:800;font-size:14px">${fINR(b2bSum.igst)}</div></div>
-      </div>
-    </div>
-
-    <div class="sec">
-      <div class="sec-t">B2C Invoices (no GSTIN)</div>
-      <div style="padding:14px;display:grid;grid-template-columns:repeat(2,1fr);gap:8px">
-        <div style="background:var(--surf2);padding:10px;border-radius:8px"><div style="font-size:10px;color:var(--t2)">Invoices</div><div style="font-weight:800;font-size:18px">${b2c.length}</div></div>
-        <div style="background:var(--surf2);padding:10px;border-radius:8px"><div style="font-size:10px;color:var(--t2)">Taxable</div><div style="font-weight:800;font-size:18px">${fINR(b2cSum.taxable)}</div></div>
-        <div style="background:var(--surf2);padding:10px;border-radius:8px"><div style="font-size:10px;color:var(--t2)">CGST + SGST</div><div style="font-weight:800;font-size:14px">${fINR(b2cSum.cgst + b2cSum.sgst)}</div></div>
-        <div style="background:var(--surf2);padding:10px;border-radius:8px"><div style="font-size:10px;color:var(--t2)">IGST</div><div style="font-weight:800;font-size:14px">${fINR(b2cSum.igst)}</div></div>
-      </div>
-    </div>
-
-    <button class="btn-pri" onclick="exportGSTR1B2B()">📤 Export B2B Section (CSV)</button>
-    <button class="btn-pri" onclick="exportGSTR1B2C()" style="background:linear-gradient(135deg,#06B6D4,#0891B2)">📤 Export B2C Summary (CSV)</button>
-    <div style="font-size:11px;color:var(--t2);text-align:center;padding:10px">
-      💡 Use these CSVs as a base for filing on the GST portal or with your CA.
-    </div>
-    <div class="spacer"></div>
-  </div>`;
+  el.innerHTML = '<div style="padding:14px;display:flex;flex-direction:column;gap:14px">'
+    + '<div style="background:rgba(245,166,35,.06);border:1px solid rgba(245,166,35,.2);border-radius:12px;padding:12px;font-size:12px;color:var(--t2)">'
+    + '📋 <strong style="color:var(--text)">GSTR-1</strong> — Outward supplies (sales) for ' + _curPeriod + '.<br>'
+    + '<span style="font-size:11px">GSTIN: <strong>' + (shop.gstin || '—') + '</strong> · ' + bills.length + ' invoices, exclusive of voided.</span></div>'
+    + '<div class="stats-grid">'
+    + '<div class="scard g"><div class="sc-lbl">Total Taxable Value</div><div class="sc-val g">'+fINR(b2bSum.taxable+b2cSum.taxable)+'</div><div class="sc-sub">'+bills.length+' invoices</div></div>'
+    + '<div class="scard p"><div class="sc-lbl">Total Tax</div><div class="sc-val p">'+fINR(b2bSum.igst+b2bSum.cgst+b2bSum.sgst+b2cSum.igst+b2cSum.cgst+b2cSum.sgst)+'</div><div class="sc-sub">CGST+SGST+IGST</div></div>'
+    + '</div>'
+    + '<div class="sec"><div class="sec-t">B2B Invoices (with GSTIN)</div>'
+    + '<div style="padding:14px;display:grid;grid-template-columns:repeat(2,1fr);gap:8px">'
+    + '<div style="background:var(--surf2);padding:10px;border-radius:8px"><div style="font-size:10px;color:var(--t2)">Invoices</div><div style="font-weight:800;font-size:18px">'+b2b.length+'</div></div>'
+    + '<div style="background:var(--surf2);padding:10px;border-radius:8px"><div style="font-size:10px;color:var(--t2)">Taxable</div><div style="font-weight:800;font-size:18px">'+fINR(b2bSum.taxable)+'</div></div>'
+    + '<div style="background:var(--surf2);padding:10px;border-radius:8px"><div style="font-size:10px;color:var(--t2)">CGST + SGST</div><div style="font-weight:800;font-size:14px">'+fINR(b2bSum.cgst+b2bSum.sgst)+'</div></div>'
+    + '<div style="background:var(--surf2);padding:10px;border-radius:8px"><div style="font-size:10px;color:var(--t2)">IGST</div><div style="font-weight:800;font-size:14px">'+fINR(b2bSum.igst)+'</div></div>'
+    + '</div></div>'
+    + '<div class="sec"><div class="sec-t">B2C Invoices (no GSTIN)</div>'
+    + '<div style="padding:14px;display:grid;grid-template-columns:repeat(2,1fr);gap:8px">'
+    + '<div style="background:var(--surf2);padding:10px;border-radius:8px"><div style="font-size:10px;color:var(--t2)">Invoices</div><div style="font-weight:800;font-size:18px">'+b2c.length+'</div></div>'
+    + '<div style="background:var(--surf2);padding:10px;border-radius:8px"><div style="font-size:10px;color:var(--t2)">Taxable</div><div style="font-weight:800;font-size:18px">'+fINR(b2cSum.taxable)+'</div></div>'
+    + '<div style="background:var(--surf2);padding:10px;border-radius:8px"><div style="font-size:10px;color:var(--t2)">CGST + SGST</div><div style="font-weight:800;font-size:14px">'+fINR(b2cSum.cgst+b2cSum.sgst)+'</div></div>'
+    + '<div style="background:var(--surf2);padding:10px;border-radius:8px"><div style="font-size:10px;color:var(--t2)">IGST</div><div style="font-weight:800;font-size:14px">'+fINR(b2cSum.igst)+'</div></div>'
+    + '</div></div>'
+    + '<button class="btn-pri" onclick="exportGSTR1B2B()">📤 Export B2B Section (CSV)</button>'
+    + '<button class="btn-pri" onclick="exportGSTR1B2C()" style="background:linear-gradient(135deg,#06B6D4,#0891B2)">📤 Export B2C Summary (CSV)</button>'
+    + '<div style="font-size:11px;color:var(--t2);text-align:center;padding:10px">💡 Use these CSVs as a base for filing on the GST portal or with your CA.</div>'
+    + '<div class="spacer"></div></div>';
 }
 
 function exportGSTR1B2B(){
-  const bills=_filterByPeriod(_bills).filter(b=>b.status!=='Voided' && (b.customer_gstin||b.custGSTIN||'').trim());
+  const bills=_filterByPeriod(_bills).filter(b=>(b.status||'').toLowerCase()!=='voided' && (b.customer_gstin||b.custGSTIN||'').trim());
   const rows = [['GSTIN of Recipient','Receiver Name','Invoice No','Invoice Date','Invoice Value','Place of Supply','Reverse Charge','Invoice Type','Rate','Taxable Value','Integrated Tax','Central Tax','State Tax']];
   bills.forEach(b => {
     const gstin = (b.customer_gstin || b.custGSTIN || '').toUpperCase();
@@ -824,29 +994,14 @@ function exportGSTR1B2B(){
     const taxable = Math.max(0, parseFloat(b.subtotal||0) - parseFloat(b.discount||0) - parseFloat(b.item_discount||0));
     const gst = parseFloat(b.gst_amount||0);
     const rate = taxable > 0 ? Math.round((gst/taxable)*100) : 0;
-    rows.push([
-      gstin,
-      b.customer_name || '',
-      b.invoice_no || '',
-      (b.invoice_date || '').slice(0,10),
-      parseFloat(b.grand_total||0).toFixed(2),
-      b.place_of_supply || '',
-      'N',
-      'Regular',
-      rate,
-      taxable.toFixed(2),
-      isInter ? gst.toFixed(2) : '0',
-      isInter ? '0' : (gst/2).toFixed(2),
-      isInter ? '0' : (gst/2).toFixed(2)
-    ]);
+    rows.push([gstin, b.customer_name||'', b.invoice_no||'', (b.invoice_date||'').slice(0,10), parseFloat(b.grand_total||0).toFixed(2), b.place_of_supply||'', 'N', 'Regular', rate, taxable.toFixed(2), isInter?gst.toFixed(2):'0', isInter?'0':(gst/2).toFixed(2), isInter?'0':(gst/2).toFixed(2)]);
   });
   _csvDownload('GSTR1_B2B_'+_curPeriod+'.csv', rows);
   toast('📤 GSTR-1 B2B exported','s');
 }
 
 function exportGSTR1B2C(){
-  const bills=_filterByPeriod(_bills).filter(b=>b.status!=='Voided' && !(b.customer_gstin||b.custGSTIN||'').trim());
-  // GSTR-1 B2C is summarized by rate × place of supply
+  const bills=_filterByPeriod(_bills).filter(b=>(b.status||'').toLowerCase()!=='voided' && !(b.customer_gstin||b.custGSTIN||'').trim());
   const groups = {};
   bills.forEach(b => {
     const taxable = Math.max(0, parseFloat(b.subtotal||0) - parseFloat(b.discount||0) - parseFloat(b.item_discount||0));
@@ -870,7 +1025,7 @@ function exportGSTR1B2C(){
 
 // ─── GSTR-3B: Tax summary ──────────────────────────
 function renderGSTR3B(){
-  const bills=_filterByPeriod(_bills).filter(b=>b.status!=='Voided');
+  const bills=_filterByPeriod(_bills).filter(b=>(b.status||'').toLowerCase()!=='voided');
   let taxable=0, igst=0, cgst=0, sgst=0, exemptTaxable=0;
   bills.forEach(b => {
     const tax = Math.max(0, parseFloat(b.subtotal||0) - parseFloat(b.discount||0) - parseFloat(b.item_discount||0));
@@ -880,45 +1035,31 @@ function renderGSTR3B(){
       taxable += tax;
       if(isInter) igst += gst;
       else { cgst += gst/2; sgst += gst/2; }
-    } else {
-      // 0% rate or exempt
-      exemptTaxable += tax;
-    }
+    } else exemptTaxable += tax;
   });
   const totalTax = igst + cgst + sgst;
 
   const el=document.getElementById('report-content');
-  el.innerHTML = `<div style="padding:14px;display:flex;flex-direction:column;gap:14px">
-    <div style="background:rgba(99,102,241,.06);border:1px solid rgba(99,102,241,.2);border-radius:12px;padding:12px;font-size:12px;color:var(--t2)">
-      📋 <strong style="color:var(--text)">GSTR-3B</strong> — Monthly summary return for ${_curPeriod}.
-    </div>
-
-    <div class="sec">
-      <div class="sec-t">3.1 (a) Outward taxable supplies (other than zero rated, nil rated and exempted)</div>
-      <div style="padding:14px;display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div style="background:var(--surf2);padding:12px;border-radius:10px"><div style="font-size:10px;color:var(--t2)">Total Taxable Value</div><div style="font-weight:900;font-size:20px;color:var(--acc3)">${fINR(taxable)}</div></div>
-        <div style="background:var(--surf2);padding:12px;border-radius:10px"><div style="font-size:10px;color:var(--t2)">Total Tax</div><div style="font-weight:900;font-size:20px;color:var(--acc)">${fINR(totalTax)}</div></div>
-        <div style="background:var(--surf2);padding:12px;border-radius:10px"><div style="font-size:10px;color:var(--t2)">IGST</div><div style="font-weight:900;font-size:18px">${fINR(igst)}</div></div>
-        <div style="background:var(--surf2);padding:12px;border-radius:10px"><div style="font-size:10px;color:var(--t2)">CGST</div><div style="font-weight:900;font-size:18px">${fINR(cgst)}</div></div>
-        <div style="background:var(--surf2);padding:12px;border-radius:10px;grid-column:span 2"><div style="font-size:10px;color:var(--t2)">SGST/UTGST</div><div style="font-weight:900;font-size:18px">${fINR(sgst)}</div></div>
-      </div>
-    </div>
-
-    <div class="sec">
-      <div class="sec-t">3.1 (c) Other outward supplies (Nil rated, exempted)</div>
-      <div style="padding:14px"><div style="background:var(--surf2);padding:12px;border-radius:10px"><div style="font-size:10px;color:var(--t2)">Nil-rated / Exempt Taxable Value</div><div style="font-weight:900;font-size:20px">${fINR(exemptTaxable)}</div></div></div>
-    </div>
-
-    <button class="btn-pri" onclick="exportGSTR3B()">📤 Export GSTR-3B Summary (CSV)</button>
-    <div style="font-size:11px;color:var(--t2);text-align:center;padding:10px">
-      💡 GSTR-3B is filed by 20th of the following month. Use this summary alongside your CA's review.
-    </div>
-    <div class="spacer"></div>
-  </div>`;
+  el.innerHTML = '<div style="padding:14px;display:flex;flex-direction:column;gap:14px">'
+    + '<div style="background:rgba(99,102,241,.06);border:1px solid rgba(99,102,241,.2);border-radius:12px;padding:12px;font-size:12px;color:var(--t2)">'
+    + '📋 <strong style="color:var(--text)">GSTR-3B</strong> — Monthly summary return for ' + _curPeriod + '.</div>'
+    + '<div class="sec"><div class="sec-t">3.1 (a) Outward taxable supplies (other than zero rated, nil rated and exempted)</div>'
+    + '<div style="padding:14px;display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+    + '<div style="background:var(--surf2);padding:12px;border-radius:10px"><div style="font-size:10px;color:var(--t2)">Total Taxable Value</div><div style="font-weight:900;font-size:20px;color:var(--acc3)">'+fINR(taxable)+'</div></div>'
+    + '<div style="background:var(--surf2);padding:12px;border-radius:10px"><div style="font-size:10px;color:var(--t2)">Total Tax</div><div style="font-weight:900;font-size:20px;color:var(--acc)">'+fINR(totalTax)+'</div></div>'
+    + '<div style="background:var(--surf2);padding:12px;border-radius:10px"><div style="font-size:10px;color:var(--t2)">IGST</div><div style="font-weight:900;font-size:18px">'+fINR(igst)+'</div></div>'
+    + '<div style="background:var(--surf2);padding:12px;border-radius:10px"><div style="font-size:10px;color:var(--t2)">CGST</div><div style="font-weight:900;font-size:18px">'+fINR(cgst)+'</div></div>'
+    + '<div style="background:var(--surf2);padding:12px;border-radius:10px;grid-column:span 2"><div style="font-size:10px;color:var(--t2)">SGST/UTGST</div><div style="font-weight:900;font-size:18px">'+fINR(sgst)+'</div></div>'
+    + '</div></div>'
+    + '<div class="sec"><div class="sec-t">3.1 (c) Other outward supplies (Nil rated, exempted)</div>'
+    + '<div style="padding:14px"><div style="background:var(--surf2);padding:12px;border-radius:10px"><div style="font-size:10px;color:var(--t2)">Nil-rated / Exempt Taxable Value</div><div style="font-weight:900;font-size:20px">'+fINR(exemptTaxable)+'</div></div></div></div>'
+    + '<button class="btn-pri" onclick="exportGSTR3B()">📤 Export GSTR-3B Summary (CSV)</button>'
+    + '<div style="font-size:11px;color:var(--t2);text-align:center;padding:10px">💡 GSTR-3B is filed by 20th of the following month.</div>'
+    + '<div class="spacer"></div></div>';
 }
 
 function exportGSTR3B(){
-  const bills=_filterByPeriod(_bills).filter(b=>b.status!=='Voided');
+  const bills=_filterByPeriod(_bills).filter(b=>(b.status||'').toLowerCase()!=='voided');
   let taxable=0, igst=0, cgst=0, sgst=0, exemptTaxable=0;
   bills.forEach(b => {
     const tax = Math.max(0, parseFloat(b.subtotal||0) - parseFloat(b.discount||0) - parseFloat(b.item_discount||0));
@@ -928,16 +1069,14 @@ function exportGSTR3B(){
     else exemptTaxable += tax;
   });
   const rows = [
-    ['GSTR-3B Summary — Period', _curPeriod],
-    [''],
+    ['GSTR-3B Summary — Period', _curPeriod], [''],
     ['3.1 Outward & inward supplies liable to reverse charge'],
     ['Nature','Total Taxable Value','IGST','CGST','SGST/UTGST','Cess'],
-    ['(a) Outward taxable supplies (other than zero rated, nil rated and exempted)', taxable.toFixed(2), igst.toFixed(2), cgst.toFixed(2), sgst.toFixed(2), '0.00'],
+    ['(a) Outward taxable supplies', taxable.toFixed(2), igst.toFixed(2), cgst.toFixed(2), sgst.toFixed(2), '0.00'],
     ['(b) Outward taxable supplies (zero rated)','0.00','0.00','-','-','0.00'],
     ['(c) Other outward supplies (Nil rated, exempted)', exemptTaxable.toFixed(2),'-','-','-','-'],
     ['(d) Inward supplies (liable to reverse charge)','0.00','0.00','0.00','0.00','0.00'],
-    ['(e) Non-GST outward supplies','0.00','-','-','-','-'],
-    [''],
+    ['(e) Non-GST outward supplies','0.00','-','-','-','-'], [''],
     ['Generated by ShopBill Pro — Verify with your CA before filing']
   ];
   _csvDownload('GSTR3B_'+_curPeriod+'.csv', rows);
@@ -946,13 +1085,12 @@ function exportGSTR3B(){
 
 // ─── Profit & Loss ──────────────────────────
 function renderProfitLoss(){
-  const bills=_filterByPeriod(_bills).filter(b=>b.status!=='Voided');
+  const bills=_filterByPeriod(_bills).filter(b=>(b.status||'').toLowerCase()!=='voided');
   const expenses=_filterByPeriod(_expenses.map(e=>({...e,invoice_date:e.expense_date})));
   const products=JSON.parse(localStorage.getItem('sbp_products')||'[]');
   const productMap={};
   products.forEach(p => { productMap[String(p.id)] = p; productMap[(p.name||'').toLowerCase().trim()] = p; });
 
-  // Revenue (excl. GST collected, since GST is pass-through)
   let grossSales=0, gstCollected=0, totalDiscount=0, cogs=0, missingCost=0, totalUnits=0;
   bills.forEach(b => {
     grossSales += parseFloat(b.grand_total||0);
@@ -961,14 +1099,9 @@ function renderProfitLoss(){
     (b.bill_items || b.items || []).forEach(it => {
       const qty = parseFloat(it.qty || it.q || 0);
       totalUnits += qty;
-      const pid = String(it.product_id || it.productId || '');
-      const nm = (it.item_name || it.nm || '').toLowerCase().trim();
-      const prod = productMap[pid] || productMap[nm];
-      if(prod && parseFloat(prod.cost_price||0) > 0){
-        cogs += qty * parseFloat(prod.cost_price);
-      } else {
-        missingCost += qty;
-      }
+      const prod = productMap[String(it.product_id || it.productId || '')] || productMap[(it.item_name || it.nm || '').toLowerCase().trim()];
+      if(prod && parseFloat(prod.cost_price||0) > 0) cogs += qty * parseFloat(prod.cost_price);
+      else missingCost += qty;
     });
   });
   const netSales = grossSales - gstCollected;
@@ -978,43 +1111,33 @@ function renderProfitLoss(){
   const grossMarginPct = netSales > 0 ? Math.round((grossProfit / netSales) * 100) : 0;
 
   const el=document.getElementById('report-content');
-  el.innerHTML = `<div style="padding:14px;display:flex;flex-direction:column;gap:12px">
-    <div class="stats-grid">
-      <div class="scard g"><div class="sc-lbl">Net Sales</div><div class="sc-val g">${fINR(netSales)}</div><div class="sc-sub">excl. GST</div></div>
-      <div class="scard p"><div class="sc-lbl">Gross Profit</div><div class="sc-val p">${fINR(grossProfit)}</div><div class="sc-sub">${grossMarginPct}% margin</div></div>
-      <div class="scard ${netProfit>=0?'g':'r'}"><div class="sc-lbl">Net Profit</div><div class="sc-val ${netProfit>=0?'g':'r'}">${fINR(netProfit)}</div><div class="sc-sub">after expenses</div></div>
-      <div class="scard a"><div class="sc-lbl">Total Expenses</div><div class="sc-val a">${fINR(totalExpenses)}</div><div class="sc-sub">${expenses.length} entries</div></div>
-    </div>
-
-    <div class="sec">
-      <div class="sec-t">P&L Breakdown</div>
-      <div style="padding:14px">
-        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bord)"><span>Gross Sales (incl. GST)</span><span style="font-weight:800">${fINR(grossSales)}</span></div>
-        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bord);color:var(--t2);font-size:13px"><span>(−) GST collected (pass-through)</span><span>${fINR(gstCollected)}</span></div>
-        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bord);color:var(--t2);font-size:13px"><span>(−) Discounts given</span><span>${fINR(totalDiscount)}</span></div>
-        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:2px solid var(--bord);font-weight:800"><span>Net Sales</span><span style="color:var(--acc3)">${fINR(netSales)}</span></div>
-        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bord);color:var(--t2);font-size:13px"><span>(−) Cost of goods sold (COGS)</span><span>${fINR(cogs)}</span></div>
-        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:2px solid var(--bord);font-weight:800"><span>Gross Profit</span><span style="color:${grossProfit>=0?'var(--acc3)':'var(--acc2)'}">${fINR(grossProfit)} (${grossMarginPct}%)</span></div>
-        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bord);color:var(--t2);font-size:13px"><span>(−) Operating expenses</span><span>${fINR(totalExpenses)}</span></div>
-        <div style="display:flex;justify-content:space-between;padding:12px 0;font-weight:900;font-size:16px;background:rgba(245,166,35,.05);margin:0 -14px;padding:12px 14px"><span>Net Profit</span><span style="color:${netProfit>=0?'var(--acc3)':'var(--acc2)'}">${fINR(netProfit)}</span></div>
-      </div>
-    </div>
-
-    ${missingCost > 0 ? `<div style="background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.25);border-radius:10px;padding:12px;font-size:12px;color:var(--acc)">
-      ⚠️ ${missingCost} units sold had no cost price set. Add cost prices in Stock to get an accurate COGS and profit.
-    </div>` : ''}
-
-    <button class="btn-pri" onclick="exportProfitLoss()">📤 Export P&L (CSV)</button>
-    <div class="spacer"></div>
-  </div>`;
+  el.innerHTML = '<div style="padding:14px;display:flex;flex-direction:column;gap:12px">'
+    + '<div class="stats-grid">'
+    + '<div class="scard g"><div class="sc-lbl">Net Sales</div><div class="sc-val g">'+fINR(netSales)+'</div><div class="sc-sub">excl. GST</div></div>'
+    + '<div class="scard p"><div class="sc-lbl">Gross Profit</div><div class="sc-val p">'+fINR(grossProfit)+'</div><div class="sc-sub">'+grossMarginPct+'% margin</div></div>'
+    + '<div class="scard '+(netProfit>=0?'g':'r')+'"><div class="sc-lbl">Net Profit</div><div class="sc-val '+(netProfit>=0?'g':'r')+'">'+fINR(netProfit)+'</div><div class="sc-sub">after expenses</div></div>'
+    + '<div class="scard a"><div class="sc-lbl">Total Expenses</div><div class="sc-val a">'+fINR(totalExpenses)+'</div><div class="sc-sub">'+expenses.length+' entries</div></div>'
+    + '</div>'
+    + '<div class="sec"><div class="sec-t">P&L Breakdown</div><div style="padding:14px">'
+    + '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bord)"><span>Gross Sales (incl. GST)</span><span style="font-weight:800">'+fINR(grossSales)+'</span></div>'
+    + '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bord);color:var(--t2);font-size:13px"><span>(−) GST collected (pass-through)</span><span>'+fINR(gstCollected)+'</span></div>'
+    + '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bord);color:var(--t2);font-size:13px"><span>(−) Discounts given</span><span>'+fINR(totalDiscount)+'</span></div>'
+    + '<div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:2px solid var(--bord);font-weight:800"><span>Net Sales</span><span style="color:var(--acc3)">'+fINR(netSales)+'</span></div>'
+    + '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bord);color:var(--t2);font-size:13px"><span>(−) Cost of goods sold (COGS)</span><span>'+fINR(cogs)+'</span></div>'
+    + '<div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:2px solid var(--bord);font-weight:800"><span>Gross Profit</span><span style="color:'+(grossProfit>=0?'var(--acc3)':'var(--acc2)')+'">'+fINR(grossProfit)+' ('+grossMarginPct+'%)</span></div>'
+    + '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bord);color:var(--t2);font-size:13px"><span>(−) Operating expenses</span><span>'+fINR(totalExpenses)+'</span></div>'
+    + '<div style="display:flex;justify-content:space-between;padding:12px 0;font-weight:900;font-size:16px;background:rgba(245,166,35,.05);margin:0 -14px;padding:12px 14px"><span>Net Profit</span><span style="color:'+(netProfit>=0?'var(--acc3)':'var(--acc2)')+'">'+fINR(netProfit)+'</span></div>'
+    + '</div></div>'
+    + (missingCost > 0 ? '<div style="background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.25);border-radius:10px;padding:12px;font-size:12px;color:var(--acc)">⚠️ '+missingCost+' units sold had no cost price set. Add cost prices in Stock to get accurate COGS.</div>' : '')
+    + '<button class="btn-pri" onclick="exportProfitLoss()">📤 Export P&L (CSV)</button>'
+    + '<div class="spacer"></div></div>';
 }
 
 function exportProfitLoss(){
-  const bills=_filterByPeriod(_bills).filter(b=>b.status!=='Voided');
+  const bills=_filterByPeriod(_bills).filter(b=>(b.status||'').toLowerCase()!=='voided');
   const expenses=_filterByPeriod(_expenses.map(e=>({...e,invoice_date:e.expense_date})));
   const products=JSON.parse(localStorage.getItem('sbp_products')||'[]');
   const productMap={}; products.forEach(p => { productMap[String(p.id)] = p; productMap[(p.name||'').toLowerCase().trim()] = p; });
-
   let grossSales=0, gstCollected=0, totalDiscount=0, cogs=0;
   bills.forEach(b => {
     grossSales += parseFloat(b.grand_total||0);
@@ -1030,83 +1153,57 @@ function exportProfitLoss(){
   const grossProfit = netSales - cogs;
   const totalExpenses = expenses.reduce((s,e)=>s+parseFloat(e.amount||0),0);
   const netProfit = grossProfit - totalExpenses;
-
   const rows = [
-    ['Profit & Loss Statement — '+_curPeriod],
-    [''],
+    ['Profit & Loss Statement — '+_curPeriod], [''],
     ['REVENUE'],
     ['Gross Sales (incl. GST)', grossSales.toFixed(2)],
     ['Less: GST collected (pass-through)', gstCollected.toFixed(2)],
     ['Less: Discounts given', totalDiscount.toFixed(2)],
-    ['Net Sales', netSales.toFixed(2)],
-    [''],
+    ['Net Sales', netSales.toFixed(2)], [''],
     ['COST OF GOODS SOLD'],
-    ['Total COGS', cogs.toFixed(2)],
-    [''],
-    ['Gross Profit', grossProfit.toFixed(2)],
-    [''],
+    ['Total COGS', cogs.toFixed(2)], [''],
+    ['Gross Profit', grossProfit.toFixed(2)], [''],
     ['OPERATING EXPENSES']
   ];
   expenses.forEach(e => rows.push([(e.title || e.category || 'Expense'), parseFloat(e.amount||0).toFixed(2)]));
-  rows.push(['Total Expenses', totalExpenses.toFixed(2)]);
-  rows.push(['']);
-  rows.push(['NET PROFIT', netProfit.toFixed(2)]);
+  rows.push(['Total Expenses', totalExpenses.toFixed(2)], [''], ['NET PROFIT', netProfit.toFixed(2)]);
   _csvDownload('Profit_Loss_'+_curPeriod+'.csv', rows);
   toast('📤 P&L exported','s');
 }
 
 // ─── Payments breakdown ──────────────────────────
 function renderPayments(){
-  const bills=_filterByPeriod(_bills).filter(b=>b.status!=='Voided');
+  const bills=_filterByPeriod(_bills).filter(b=>(b.status||'').toLowerCase()!=='voided');
   const map = {Cash:0, UPI:0, Card:0, Bank:0, Cheque:0, Credit:0, Other:0};
   const countMap = {Cash:0, UPI:0, Card:0, Bank:0, Cheque:0, Credit:0, Other:0};
   bills.forEach(b => {
     const pm = (b.payment_mode || 'Cash').trim();
     const key = ['Cash','UPI','Card','Bank','Cheque','Credit'].find(k => pm.toLowerCase().includes(k.toLowerCase())) || 'Other';
-    // Use paid_amount for cash basis; for credit bills paid=0
     const amt = key === 'Credit' ? parseFloat(b.grand_total||0) : parseFloat(b.paid_amount||0);
     map[key] += amt;
     countMap[key] += 1;
   });
   const total = Object.values(map).reduce((s,v)=>s+v, 0);
-
-  const el=document.getElementById('report-content');
+  const icons = {Cash:'💵', UPI:'📲', Card:'💳', Bank:'🏦', Cheque:'📑', Credit:'📒', Other:'💰'};
   const rowsHtml = Object.keys(map).filter(k => map[k] > 0 || countMap[k] > 0).map(k => {
     const pct = total > 0 ? Math.round((map[k]/total)*100) : 0;
-    const icons = {Cash:'💵', UPI:'📲', Card:'💳', Bank:'🏦', Cheque:'📑', Credit:'📒', Other:'💰'};
-    return `<div style="padding:12px;background:var(--surf2);border-radius:10px;margin-bottom:8px">
-      <div style="display:flex;justify-content:space-between;margin-bottom:6px">
-        <span style="font-weight:700">${icons[k]} ${k}</span>
-        <span style="font-weight:900;color:var(--acc3)">${fINR(map[k])}</span>
-      </div>
-      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--t2);margin-bottom:6px">
-        <span>${countMap[k]} bill${countMap[k]!==1?'s':''}</span>
-        <span>${pct}%</span>
-      </div>
-      <div style="height:6px;background:var(--surf3);border-radius:3px;overflow:hidden"><div style="height:100%;width:${pct}%;background:linear-gradient(90deg,var(--acc),var(--acc3))"></div></div>
-    </div>`;
+    return '<div style="padding:12px;background:var(--surf2);border-radius:10px;margin-bottom:8px">'
+      + '<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-weight:700">'+icons[k]+' '+k+'</span><span style="font-weight:900;color:var(--acc3)">'+fINR(map[k])+'</span></div>'
+      + '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--t2);margin-bottom:6px"><span>'+countMap[k]+' bill'+(countMap[k]!==1?'s':'')+'</span><span>'+pct+'%</span></div>'
+      + '<div style="height:6px;background:var(--surf3);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,var(--acc),var(--acc3))"></div></div>'
+      + '</div>';
   }).join('');
-
-  el.innerHTML = `<div style="padding:14px">
-    <div class="sec"><div class="sec-t">💳 Payment Mode Breakdown</div><div style="padding:14px">${rowsHtml || '<div style="text-align:center;padding:20px;color:var(--t2)">No payments in this period</div>'}</div></div>
-    <button class="btn-pri" onclick="exportPayments()" style="margin-top:14px">📤 Export Payments (CSV)</button>
-    <div class="spacer"></div>
-  </div>`;
+  const el=document.getElementById('report-content');
+  el.innerHTML = '<div style="padding:14px"><div class="sec"><div class="sec-t">💳 Payment Mode Breakdown</div>'
+    + '<div style="padding:14px">' + (rowsHtml || '<div style="text-align:center;padding:20px;color:var(--t2)">No payments in this period</div>') + '</div></div>'
+    + '<button class="btn-pri" onclick="exportPayments()" style="margin-top:14px">📤 Export Payments (CSV)</button>'
+    + '<div class="spacer"></div></div>';
 }
 
 function exportPayments(){
-  const bills=_filterByPeriod(_bills).filter(b=>b.status!=='Voided');
+  const bills=_filterByPeriod(_bills).filter(b=>(b.status||'').toLowerCase()!=='voided');
   const rows = [['Date','Invoice','Customer','Payment Mode','Bill Total','Paid','Balance','Status']];
-  bills.forEach(b => rows.push([
-    (b.invoice_date||'').slice(0,10),
-    b.invoice_no || '',
-    b.customer_name || '',
-    b.payment_mode || 'Cash',
-    parseFloat(b.grand_total||0).toFixed(2),
-    parseFloat(b.paid_amount||0).toFixed(2),
-    parseFloat(b.balance_due||0).toFixed(2),
-    b.status || ''
-  ]));
+  bills.forEach(b => rows.push([(b.invoice_date||'').slice(0,10), b.invoice_no||'', b.customer_name||'', b.payment_mode||'Cash', parseFloat(b.grand_total||0).toFixed(2), parseFloat(b.paid_amount||0).toFixed(2), parseFloat(b.balance_due||0).toFixed(2), b.status||'']));
   _csvDownload('Payments_'+_curPeriod+'.csv', rows);
   toast('📤 Payments exported','s');
 }
@@ -1156,6 +1253,7 @@ init();
     {ic:'📊',lb:'Reports',url:'reports.html'},
     {ic:'🛒',lb:'POS Admin',url:'pos-admin.html'},
     {ic:'💬',lb:'WhatsApp',url:'wa-center.html'},
+    {ic:'📢',lb:'Marketing',url:'marketing.html'},
     {ic:'💰',lb:'Cash Register',url:'cash-register.html'},
     {ic:'🚚',lb:'Suppliers',url:'supplier.html'},
     {ic:'🔄',lb:'Recurring',url:'recurring.html'},
@@ -1241,16 +1339,25 @@ function renderForecast(){
   const now=new Date();
   // Revenue trend
   const months=[];
-  for(let i=2;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);const ym=d.toISOString().slice(0,7);const rev=bills.filter(b=>(b.invoice_date||b.created_at||'').startsWith(ym)).reduce((s,b)=>s+parseFloat(b.grand_total||b.amount||0),0);months.push({ym,rev,label:d.toLocaleDateString('en-IN',{month:'short'})});}
+  for(let i=2;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);const ym=sbpFmt(d).slice(0,7);const rev=bills.filter(b=>(b.invoice_date||b.created_at||'').startsWith(ym)).reduce((s,b)=>s+parseFloat(b.grand_total||b.amount||0),0);months.push({ym,rev,label:d.toLocaleDateString('en-IN',{month:'short'})});}
   const trend=months.length>=2?months[months.length-1].rev-months[months.length-2].rev:0;
   const forecast=Math.max(0,months[months.length-1].rev+trend);
-  // Stock reorder
+  // Stock reorder — read bill_items + item_name (correct schema)
   const itemSales={};const cutoff30=new Date();cutoff30.setDate(cutoff30.getDate()-30);
-  bills.filter(b=>new Date(b.created_at||b.invoice_date)>cutoff30).forEach(b=>{(b.items||[]).forEach(it=>{const nm=(it.nm||it.name||'').toLowerCase();itemSales[nm]=(itemSales[nm]||0)+parseFloat(it.q||it.qty||1);});});
+  bills.filter(b=>new Date(b.created_at||b.invoice_date)>cutoff30).forEach(b=>{
+    const its=b.bill_items||b.items||[];
+    its.forEach(it=>{
+      const nm=(it.item_name||it.nm||it.name||'').toLowerCase();
+      if(nm)itemSales[nm]=(itemSales[nm]||0)+parseFloat(it.qty||it.q||1);
+    });
+  });
   const reorderAlerts=products.filter(p=>{const daily=(itemSales[(p.name||'').toLowerCase()]||0)/30;if(daily<=0||!p.stock_qty)return false;p._daysLeft=Math.round(p.stock_qty/daily);p._daily=daily;return p._daysLeft<=10&&p._daysLeft>=0;}).sort((a,b)=>a._daysLeft-b._daysLeft).slice(0,5);
-  // Churn
+  // Churn — read from correct field (customer_name, not cust_name)
   const activeCustomers=new Set();
-  bills.filter(b=>new Date(b.created_at||b.invoice_date)>cutoff30).forEach(b=>activeCustomers.add(b.cust_name||b.custName||''));
+  bills.filter(b=>new Date(b.created_at||b.invoice_date)>cutoff30).forEach(b=>{
+    const nm=(b.customer_name||b.cust_name||b.custName||'').trim();
+    if(nm)activeCustomers.add(nm);
+  });
   const churnList=customers.filter(c=>c.name&&!activeCustomers.has(c.name)&&c.name!=='Walk-in Customer').slice(0,5);
 
   wrap.innerHTML='<div style="padding:16px;display:flex;flex-direction:column;gap:14px">'
@@ -1299,12 +1406,11 @@ function renderDailyReport(){
   const periodDates=dates.filter(d=>{
     const dt=new Date(d);
     const now=new Date();
-    const todayStr=todayISO();  // FIX #3
-    if(_curPeriod==='today')return d===todayStr;
+    if(_curPeriod==='today')return d===sbpFmt(now);
     if(_curPeriod==='week'){const w=new Date();w.setDate(w.getDate()-7);return dt>=w;}
-    if(_curPeriod==='month')return d.slice(0,7)===todayStr.slice(0,7);
+    if(_curPeriod==='month')return d.slice(0,7)===sbpFmt(now).slice(0,7);
     if(_curPeriod==='quarter'){const q=new Date();q.setMonth(q.getMonth()-3);return dt>=q;}
-    if(_curPeriod==='year')return d.slice(0,4)===todayStr.slice(0,4);
+    if(_curPeriod==='year')return d.slice(0,4)===sbpFmt(now).slice(0,4);
     return true;
   });
 
@@ -1380,7 +1486,7 @@ function exportDailyCSV(){
     rows.push([d,v.count,v.sales.toFixed(2),v.collected.toFixed(2),v.gst.toFixed(2),v.outstanding.toFixed(2)].join(','));
   });
   const blob=new Blob([rows.join('\n')],{type:'text/csv'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='daily-report-'+new Date().toISOString().split('T')[0]+'.csv';a.click();
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='daily-report-'+sbpToday()+'.csv';a.click();
   toast('📤 Daily report exported!','s');
 }
 
@@ -1394,16 +1500,14 @@ function renderVoidsReport(){
   
   // Period filter
   const now=new Date();
-  const todayStr=todayISO();  // FIX #3
   function inPeriod(ts){
     if(!ts)return true;
     const d=new Date(ts);
-    const dStr=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-    if(_curPeriod==='today')return dStr===todayStr;
+    if(_curPeriod==='today')return sbpFmt(d)===sbpFmt(now);
     if(_curPeriod==='week'){const w=new Date();w.setDate(w.getDate()-7);return d>=w;}
-    if(_curPeriod==='month')return dStr.slice(0,7)===todayStr.slice(0,7);
+    if(_curPeriod==='month')return sbpFmt(d).slice(0,7)===sbpFmt(now).slice(0,7);
     if(_curPeriod==='quarter'){const q=new Date();q.setMonth(q.getMonth()-3);return d>=q;}
-    if(_curPeriod==='year')return dStr.slice(0,4)===todayStr.slice(0,4);
+    if(_curPeriod==='year')return sbpFmt(d).slice(0,4)===sbpFmt(now).slice(0,4);
     return true;
   }
 
@@ -1510,7 +1614,7 @@ function exportAuditCSV(){
     ].join(','));
   });
   const blob=new Blob([rows.join('\n')],{type:'text/csv'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='audit-log-'+new Date().toISOString().split('T')[0]+'.csv';a.click();
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='audit-log-'+sbpToday()+'.csv';a.click();
   toast('📤 Audit log exported!','s');
 }
 

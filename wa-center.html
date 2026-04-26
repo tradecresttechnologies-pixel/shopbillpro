@@ -1,7 +1,8 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" translate="no" class="notranslate">
 <head>
 <meta charset="UTF-8">
+<meta name="google" content="notranslate">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#F5A623">
 <meta name="mobile-web-app-capable" content="yes">
@@ -12,14 +13,13 @@
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Noto+Sans:wght@300;400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
-// FIX #50 — Normalize Indian phone (strip leading 91/+91/0 to avoid 9191... duplicates)
-window.sbpWAUrl=function(phone,msg){var n=String(phone||'').replace(/\D/g,'');if(n.length>10)n=n.slice(-10);if(n.length<10)return null;return 'https://wa.me/91'+String(n).replace(/\D/g,'').slice(-10)+(msg?'?text='+encodeURIComponent(msg):'');};
-
 // FIX #3 — IST-aware date (UTC toISOString shifts -5:30 in India)
-function sbpToday(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function sbpFmt(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function sbpToday(){return sbpFmt(new Date());}
 function sbpYM(){return sbpToday().slice(0,7);}
 function sbpY(){return sbpToday().slice(0,4);}
 </script>
+
 
 
 <script src="lang.js"></script>
@@ -266,7 +266,7 @@ html,body{height:100%;overflow:hidden}
     <div class="ni" onclick="goTo('dashboard.html')"><span class="ni-ic">🏠</span><span class="ni-lb"><span class="lang-en">Home</span><span class="lang-hi">होम</span></span></div>
     <div class="ni" onclick="goTo('bills.html')"><span class="ni-ic">🧾</span><span class="ni-lb"><span class="lang-en">Bills</span><span class="lang-hi">बिल</span></span></div>
     <div class="ni" onclick="goTo('billing.html')" style="align-items:center;justify-content:center"><div class="nav-fab">＋</div></div>
-    <div class="ni" onclick="goTo('customers.html')"><span class="ni-ic">👥</span><span class="ni-lb"><span class="lang-en">Customers</span><span class="lang-hi">ग्राहक</span></span></div>
+    <div class="ni" onclick="goTo('marketing.html')"><span class="ni-ic">📢</span><span class="ni-lb"><span class="lang-en">Marketing</span><span class="lang-hi">मार्केटिंग</span></span></div>
     <div class="ni on" onclick="goTo('settings.html')"><span class="ni-ic">☰</span><span class="ni-lb"><span class="lang-en">More</span><span class="lang-hi">अधिक</span></span></div>
   </div>
 </div>
@@ -587,7 +587,7 @@ function fillTplSendFromCust(val){
   if(!val)return;
   const c=_custs.find(x=>x.id===val||String(x.id)===val);
   if(c){
-    document.getElementById('send-tpl-num').value=c.whatsapp||c.phone||'';
+    document.getElementById('send-tpl-num').value=(c.whatsapp||c.phone||c.mobile||'').replace(/\D/g,'').slice(-10);
     const filled=fillVars(_selTplMsg,c);
     document.getElementById('send-tpl-preview').innerHTML=filled.replace(/\*([^*]+)\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');
   }
@@ -644,14 +644,14 @@ document.addEventListener('DOMContentLoaded',()=>{
 
 // ── Quick Send ──
 function fillCustSelects(){
-  const opts='<option value="">— Choose customer —</option>'+_custs.map(c=>`<option value="${c.id}">${c.name} — ${c.whatsapp||c.phone||'No number'}</option>`).join('');
+  const opts='<option value="">— Choose customer —</option>'+_custs.map(c=>`<option value="${c.id}">${c.name} — ${c.whatsapp||c.phone||c.mobile||'No number'}</option>`).join('');
   ['qs-cust-pick','send-tpl-cust','bulk'].forEach(id=>{const el=document.getElementById(id);if(el&&el.tagName==='SELECT')el.innerHTML=opts;});
 }
 
 function fillQSFromCustomer(val){
   if(!val)return;
   const c=_custs.find(x=>String(x.id)===val);
-  if(c)document.getElementById('qs-num').value=c.whatsapp||c.phone||'';
+  if(c)document.getElementById('qs-num').value=(c.whatsapp||c.phone||c.mobile||'').replace(/\D/g,'').slice(-10);
   updateQSPreview();
 }
 
@@ -687,21 +687,32 @@ function loadBulkCustomers(filter){
   if(filter==='outstanding')list=list.filter(c=>parseFloat(c.balance||0)>0);
   else if(filter==='overdue')list=list.filter(c=>_bills.some(b=>b.status==='Overdue'&&(b.customer_id===c.id||b.customer_name===c.name)));
   else if(filter==='vip')list=list.filter(c=>c.customer_type==='VIP');
-  else if(filter==='no-bill-30'){const cutoff=new Date(Date.now()-30*86400000).toISOString().split('T')[0];list=list.filter(c=>!_bills.some(b=>(b.customer_id===c.id||b.customer_name===c.name)&&(b.invoice_date||b.created_at||'')>=cutoff));}
+  else if(filter==='no-bill-30'){const cutoff=sbpFmt(new Date(Date.now()-30*86400000));list=list.filter(c=>!_bills.some(b=>(b.customer_id===c.id||b.customer_name===c.name)&&(b.invoice_date||b.created_at||'')>=cutoff));}
 
   _bulkSelected=new Set();
   const el=document.getElementById('bulk-cust-list');
-  if(!list.filter(c=>c.whatsapp||c.phone).length){el.innerHTML='<div style="text-align:center;padding:24px;color:var(--t2);font-size:12px">No customers with WhatsApp numbers in this filter</div>';updateBulkCount();return}
 
-  el.innerHTML=list.filter(c=>c.whatsapp||c.phone).map(c=>`
+  // Normalize: accept whatsapp, phone, or mobile field
+  const withContact = list.filter(c => c.whatsapp||c.phone||c.mobile);
+
+  if(!withContact.length){
+    el.innerHTML='<div style="text-align:center;padding:24px;color:var(--t2);font-size:12px">📵 No customers with phone numbers found.<br><span style="font-size:11px;margin-top:4px;display:block">Add phone numbers in the Customers section.</span></div>';
+    updateBulkCount();
+    return;
+  }
+
+  el.innerHTML=withContact.map(c=>{
+    const contact = c.whatsapp||c.phone||c.mobile||'';
+    return `
     <div class="cust-pick-item" id="bcp-${c.id}" onclick="toggleBulkSel('${c.id}')">
       <div class="cp-av" style="background:${avatarColor(c.name)}">${initials(c.name)}</div>
       <div style="flex:1;min-width:0">
         <div class="cp-nm">${c.name}</div>
-        <div class="cp-info">📱 ${c.whatsapp||c.phone}${parseFloat(c.balance||0)>0?' · Due: '+fINR(c.balance):''}</div>
+        <div class="cp-info">📱 ${contact}${parseFloat(c.balance||0)>0?' · Due: '+fINR(c.balance):''}</div>
       </div>
       <div class="cp-check" id="chk-${c.id}"></div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
   updateBulkCount();
 }
 
@@ -718,10 +729,9 @@ function updateBulkCount(){const n=_bulkSelected.size;document.getElementById('b
 function updateBulkPreview(){}
 function openBulkWithTpl(idx){showTab('bulk');document.getElementById('bulk-tpl-pick').value=idx;}
 
-// FIX #51 — Bulk send hard cap to protect from WhatsApp number flag/block
-// Conservative defaults; can be overridden if marketing.html WA_LIMIT is loaded
+// FIX #51 — Daily cap to protect WhatsApp number from being flagged
 var WA_BULK_DAILY_CAP = 30;
-var WA_BULK_INTERVAL_MS = 1500; // 1.5s between opens — gives mobile browser time
+var WA_BULK_INTERVAL_MS = 1500;
 var _waBulkAbort = false;
 function abortBulkSend(){_waBulkAbort=true;toast('🛑 Bulk send stopped','i');}
 
@@ -746,21 +756,19 @@ async function startBulkSend(){
   }
   const toSend = ids.slice(0, remaining);
 
-  // FIX #53 — Provide abort
+  // FIX #53 — abort flag + sequential await (mobile browsers block multiple opens)
   _waBulkAbort = false;
-  toast('📢 Opening WhatsApp for '+toSend.length+' customer'+(toSend.length>1?'s':'')+' — tap "Send" in each tab',  's', 5000);
-  var sentCount = 0;
+  toast('📢 Opening WhatsApp for '+toSend.length+' customer'+(toSend.length>1?'s':'')+' — tap "Send" in each tab','s',5000);
+  let sentCount = 0;
   for(let i=0;i<toSend.length;i++){
     if(_waBulkAbort) break;
-    await new Promise(r=>setTimeout(r, i===0 ? 0 : WA_BULK_INTERVAL_MS));
+    if(i > 0) await new Promise(r=>setTimeout(r, WA_BULK_INTERVAL_MS));
     const id = toSend[i];
     const c=_custs.find(x=>String(x.id)===id);if(!c)continue;
-    // FIX #50 — phone normalization (use sbpWAUrl if available)
-    const num = String(c.whatsapp||c.phone||'').replace(/\D/g,'').slice(-10);
+    const num=String(c.whatsapp||c.phone||c.mobile||'').replace(/\D/g,'').slice(-10);
     if(num.length<10) continue;
     const msg=fillVars(tpl.body,c);
-    const url = (typeof sbpWAUrl==='function') ? sbpWAUrl(num,msg) : ('https://wa.me/91'+num+'?text='+encodeURIComponent(msg));
-    if(url) window.open(url,'_blank');
+    window.open('https://wa.me/91'+num+'?text='+encodeURIComponent(msg),'_blank');
     sentCount++;
   }
   localStorage.setItem(sentKey, String(sentToday + sentCount));
@@ -776,8 +784,29 @@ async function init(){
   // Load fresh customers
   const shopId=localStorage.getItem('sbp_shop_id');
   if(navigator.onLine&&shopId){
-    try{const{data}=await _sb.from('customers').select('*').eq('shop_id',shopId).order('name');if(data){_custs=data;localStorage.setItem('sbp_customers',JSON.stringify(_custs));}}catch(e){}
+    try{const{data}=await _sb.from('customers').select('*').eq('shop_id',shopId).order('name');if(data&&data.length){_custs=data;localStorage.setItem('sbp_customers',JSON.stringify(_custs));}}catch(e){}
     try{const{data}=await _sb.from('bills').select('id,invoice_no,invoice_date,customer_name,customer_id,customer_wa,grand_total,balance_due,gst_amount,status,paid_amount').eq('shop_id',shopId).order('created_at',{ascending:false}).limit(200);if(data){_bills=data;localStorage.setItem('sbp_bills',JSON.stringify(_bills));}}catch(e){}
+  }
+
+  // Fallback: if customers list is empty, extract unique customers from bills
+  if(!_custs.length){
+    const seen=new Set();
+    _bills.forEach(b=>{
+      const name=b.customer_name||'';
+      const phone=(b.customer_wa||b.customer_phone||'').replace(/\D/g,'');
+      if(name&&name!=='Walk-in Customer'&&name!=='Cash Customer'&&!seen.has(name)){
+        seen.add(name);
+        _custs.push({
+          id:'bill_'+seen.size,
+          name,
+          phone,
+          whatsapp:phone,
+          mobile:phone,
+          balance:0
+        });
+      }
+    });
+    if(_custs.length) toast(`👥 ${_custs.length} customers loaded from bills`,'s',2500);
   }
 
   renderTemplates();
@@ -804,6 +833,7 @@ init();
     {ic:'📊',lb:'Reports',url:'reports.html'},
     {ic:'🛒',lb:'POS Admin',url:'pos-admin.html'},
     {ic:'💬',lb:'WhatsApp',url:'wa-center.html'},
+    {ic:'📢',lb:'Marketing',url:'marketing.html'},
     {ic:'💰',lb:'Cash Register',url:'cash-register.html'},
     {ic:'🚚',lb:'Suppliers',url:'supplier.html'},
     {ic:'🔄',lb:'Recurring',url:'recurring.html'},

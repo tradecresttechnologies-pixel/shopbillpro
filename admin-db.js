@@ -16,9 +16,7 @@ class AdminDB {
     if (!this.sb) return this.getMockMetrics();
 
     try {
-      // FIX #56 — Try users table first, fall back to deriving from shops
-      // (Supabase auth.users isn't directly queryable from anon key; many setups
-      // don't mirror it to public.users)
+      // FIX #56 — try users table; fall back to deriving from shops if missing
       let users = null;
       try {
         const r = await this.sb.from('users').select('id, created_at');
@@ -29,6 +27,7 @@ class AdminDB {
         .from('shops')
         .select('id, plan, plan_expires_at, created_at, owner_id');
 
+      // FIX #54 — schema field is grand_total, not total. Also need status to filter voided.
       const { data: bills, error: billErr } = await this.sb
         .from('bills')
         .select('id, grand_total, status, created_at');
@@ -38,19 +37,20 @@ class AdminDB {
         return this.getMockMetrics();
       }
 
-      // FIX #56 — If users query failed, derive unique users from shops.owner_id
+      // FIX #56 — derive user count from shops if users table unavailable
       let totalUsers;
       if(users) totalUsers = users.length;
       else totalUsers = new Set((shops||[]).map(s => s.owner_id).filter(Boolean)).size;
+
       // FIX #55 — count business plan as paid (was excluded)
       const proUsers = shops?.filter(s => s.plan === 'pro' || s.plan === 'business' || s.plan === 'enterprise').length || 0;
       const freeUsers = totalUsers - proUsers;
-      // FIX #54 — schema field is grand_total, not total. Also exclude voided.
+
+      // FIX #54 — exclude voided bills from revenue
       const liveBills = (bills||[]).filter(b => b.status !== 'Voided');
       const totalBills = liveBills.length;
       const totalRevenue = liveBills.reduce((sum, b) => sum + (parseFloat(b.grand_total)||0), 0);
 
-      // Calculate growth (last 7 days vs previous 7 days)
       const now = Date.now();
       const week = 7 * 24 * 60 * 60 * 1000;
       const recentBills = liveBills.filter(b => Date.parse(b.created_at) > now - week).length || 0;
@@ -58,7 +58,7 @@ class AdminDB {
         const d = Date.parse(b.created_at);
         return d > now - 2 * week && d <= now - week;
       }).length || 0;
-      // FIX #57 — both periods 0 should mean 0% growth, not 100%
+      // FIX #57 — both 0 = 0% growth, not 100%
       let billGrowth;
       if(prevBills === 0 && recentBills === 0) billGrowth = 0;
       else if(prevBills === 0) billGrowth = 100;

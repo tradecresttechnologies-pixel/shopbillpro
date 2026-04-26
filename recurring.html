@@ -1,7 +1,8 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" translate="no" class="notranslate">
 <head>
 <meta charset="UTF-8">
+<meta name="google" content="notranslate">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#F5A623">
 <meta name="mobile-web-app-capable" content="yes">
@@ -13,10 +14,12 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
 // FIX #3 — IST-aware date (UTC toISOString shifts -5:30 in India)
-function sbpToday(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function sbpFmt(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function sbpToday(){return sbpFmt(new Date());}
 function sbpYM(){return sbpToday().slice(0,7);}
 function sbpY(){return sbpToday().slice(0,4);}
 </script>
+
 
 
 <script src="lang.js"></script>
@@ -204,7 +207,7 @@ html,body{height:100%;overflow:hidden}
     <div class="ni" onclick="goTo('dashboard.html')"><span class="ni-ic">🏠</span><span class="ni-lb"><span class="lang-en">Home</span><span class="lang-hi">होम</span></span></div>
     <div class="ni" onclick="goTo('bills.html')"><span class="ni-ic">🧾</span><span class="ni-lb"><span class="lang-en">Bills</span><span class="lang-hi">बिल</span></span></div>
     <div class="ni" onclick="goTo('billing.html')" style="align-items:center;justify-content:center"><div class="nav-fab">＋</div></div>
-    <div class="ni" onclick="goTo('customers.html')"><span class="ni-ic">👥</span><span class="ni-lb"><span class="lang-en">Customers</span><span class="lang-hi">ग्राहक</span></span></div>
+    <div class="ni" onclick="goTo('marketing.html')"><span class="ni-ic">📢</span><span class="ni-lb"><span class="lang-en">Marketing</span><span class="lang-hi">मार्केटिंग</span></span></div>
     <div class="ni on" onclick="goTo('settings.html')"><span class="ni-ic">☰</span><span class="ni-lb"><span class="lang-en">More</span><span class="lang-hi">अधिक</span></span></div>
   </div>
 </div>
@@ -295,7 +298,7 @@ function nextDate(r){
   else if(freq==='monthly')n.setMonth(n.getMonth()+1);
   else if(freq==='quarterly')n.setMonth(n.getMonth()+3);
   else n.setDate(n.getDate()+(parseInt(r.customDays)||30));
-  return n.toISOString().split('T')[0];
+  return sbpFmt(n);
 }
 
 function isDue(r){return r.status==='active'&&(r.nextDate||r.startDate)<=TODAY}
@@ -486,8 +489,7 @@ function generateAllDue(){
   const due=_recurring.filter(r=>isDue(r));
   if(!due.length){toast('No bills due today','i');return}
   // FIX #21 — Each generateBill triggers a redirect that cancels the previous one,
-  // so only the last bill survives. Instead, we persist each as a draft template
-  // and offer a single review/finalize step.
+  // so only the last bill survives. Instead, persist all as drafts and open the first.
   toast('⏰ Preparing '+due.length+' bill'+(due.length>1?'s':'')+'...','s',2500);
   const drafts = JSON.parse(localStorage.getItem('sbp_recurring_drafts')||'[]');
   due.forEach(r => {
@@ -501,28 +503,16 @@ function generateAllDue(){
       items: r.items || [],
       created_at: new Date().toISOString()
     });
-    // Update the recurring record's nextDate
-    const idx = _recurring.findIndex(x => x === r);
-    if(idx >= 0){
-      _recurring[idx].nextDate = nextDate(r);
-      _recurring[idx].generatedCount = (_recurring[idx].generatedCount || 0) + 1;
-      _recurring[idx].lastGenerated = sbpToday();
-      if(r.endDate && _recurring[idx].nextDate > r.endDate) _recurring[idx].status = 'paused';
-    }
   });
   localStorage.setItem('sbp_recurring_drafts', JSON.stringify(drafts));
-  save();
-  // Open the FIRST draft for review; user can come back for the rest
-  const first = due[0];
-  const params=new URLSearchParams({
-    tpl:'1',nm:first.custName||'',wa:first.custWA||'',
-    paymode:first.paymode||'Cash',date:sbpToday(),
-    note:'Recurring: '+first.name,
-    items:JSON.stringify(first.items||[]),
-    recurring_batch:'1',
-    pending: String(due.length - 1)
-  });
-  setTimeout(()=>goTo('billing.html?'+params.toString()),600);
+  // Open the first one for review (others remain as drafts)
+  const firstIdx = _recurring.findIndex(x => x === due[0]);
+  if(firstIdx >= 0){
+    setTimeout(()=>generateBill(firstIdx), 800);
+    if(due.length > 1){
+      setTimeout(()=>toast('💡 '+(due.length-1)+' more recurring bill'+(due.length-1>1?'s':'')+' saved as drafts','i',5000), 1500);
+    }
+  }
 }
 
 function init(){
@@ -553,6 +543,7 @@ init();
     {ic:'📊',lb:'Reports',url:'reports.html'},
     {ic:'🛒',lb:'POS Admin',url:'pos-admin.html'},
     {ic:'💬',lb:'WhatsApp',url:'wa-center.html'},
+    {ic:'📢',lb:'Marketing',url:'marketing.html'},
     {ic:'💰',lb:'Cash Register',url:'cash-register.html'},
     {ic:'🚚',lb:'Suppliers',url:'supplier.html'},
     {ic:'🔄',lb:'Recurring',url:'recurring.html'},

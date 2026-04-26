@@ -1,7 +1,8 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" translate="no" class="notranslate">
 <head>
 <meta charset="UTF-8">
+<meta name="google" content="notranslate">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#F5A623">
 <meta name="mobile-web-app-capable" content="yes">
@@ -12,11 +13,27 @@
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Noto+Sans:wght@300;400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script>
-// FIX #50 — Normalize Indian phone (strip leading 91/+91/0 to avoid 9191... duplicates)
-window.sbpWAUrl=function(phone,msg){var n=String(phone||'').replace(/\D/g,'');if(n.length>10)n=n.slice(-10);if(n.length<10)return null;return 'https://wa.me/91'+String(n).replace(/\D/g,'').slice(-10)+(msg?'?text='+encodeURIComponent(msg):'');};
+// FIX #18, #48, #49 — Unified plan check with name normalization + expiry
+function _sbpPlanInfo(){
+  const s=JSON.parse(localStorage.getItem('sbp_shop')||'{}');
+  let plan=(s.plan||'free').toLowerCase();
+  if(plan==='enterprise') plan='business';
+  const exp=s.plan_expires_at;
+  if(exp && plan!=='free' && new Date(exp) < new Date()) plan='free';
+  return {plan, expired:!!(exp && new Date(exp) < new Date())};
+}
+function isPro(){const p=_sbpPlanInfo().plan;return p==='pro'||p==='business';}
+function isBiz(){return _sbpPlanInfo().plan==='business';}
+function isBusiness(){return _sbpPlanInfo().plan==='business';}
+function isFree(){return _sbpPlanInfo().plan==='free';}
+// FIX #3 — IST-aware date (UTC toISOString shifts -5:30 in India)
+function sbpToday(){var d=new Date();return sbpFmt(d);}
+function sbpFmt(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function sbpYM(){return sbpToday().slice(0,7);}
+function sbpY(){return sbpToday().slice(0,4);}
 </script>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
 
@@ -413,15 +430,7 @@ html,body{height:100%;overflow:hidden}
           <div class="ff"><label>Invoice No.</label><input type="text" id="inv-no" value="INV-0001"></div>
           <div class="ff"><label>Date</label><input type="date" id="inv-date"></div>
         </div>
-        <div class="row2">
-          <div class="ff"><label>Notes</label><input type="text" id="bill-note" placeholder="Optional note"></div>
-          <div class="ff"><label>Payment Mode</label>
-            <select id="pay-mode" onchange="checkCreditLimit()">
-              <option>Cash</option><option>UPI / QR</option><option>Bank Transfer</option>
-              <option>Card</option><option>Cheque</option><option>Credit</option>
-            </select>
-          </div>
-        </div>
+        <div class="ff"><label>Notes</label><input type="text" id="bill-note" placeholder="Optional note"></div>
       </div>
 
       <!-- Items -->
@@ -458,14 +467,14 @@ html,body{height:100%;overflow:hidden}
       </div>
 
       <!-- Action Buttons -->
-      <div class="btn-row col3" style="margin-bottom:6px">
-        <button class="btn-wa" onclick="quickWA()">📲 WhatsApp</button>
-        <button class="btn-sec" onclick="downloadPDF()">📄 PDF</button>
-        <button class="btn-sec" onclick="printBill()">🖨️ A4</button>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <div style="font-size:11px;font-weight:700;color:var(--t2)">📤 Send & Share</div>
+        <div id="default-share-badge" style="font-size:10px;font-weight:700;color:var(--acc);background:rgba(245,166,35,.1);border:1px solid rgba(245,166,35,.2);border-radius:20px;padding:2px 8px;cursor:pointer" onclick="openShareDefaultPicker()" title="Tap to change default">⭐ WA</div>
       </div>
-      <div class="btn-row col2" style="margin-bottom:10px">
-        <button class="btn-sec" onclick="printThermal(58)">🧾 58mm</button>
-        <button class="btn-sec" onclick="printThermal(80)">🧾 80mm</button>
+      <div class="btn-row col3" style="margin-bottom:6px">
+        <button id="sbtn-wa" data-share="wa" class="btn-wa" onclick="autoDefault('wa');quickWA()">📲 WhatsApp</button>
+        <button id="sbtn-pdf" data-share="pdf" class="btn-sec" onclick="autoDefault('pdf');downloadPDF()">📄 PDF</button>
+        <div id="print-btn-area" style="display:contents"></div>
       </div>
       <button class="btn-pri" onclick="previewAndSave()">👁 Preview & Save Bill</button>
 
@@ -515,7 +524,7 @@ html,body{height:100%;overflow:hidden}
     <div class="ni" onclick="goTo('dashboard.html')"><span class="ni-ic">🏠</span><span class="ni-lb">Home</span></div>
     <div class="ni" onclick="goTo('bills.html')"><span class="ni-ic">🧾</span><span class="ni-lb">Bills</span></div>
     <div class="ni on" onclick="" style="align-items:center;justify-content:center"><div class="nav-fab">＋</div></div>
-    <div class="ni" onclick="goTo('customers.html')"><span class="ni-ic">👥</span><span class="ni-lb">Customers</span></div>
+    <div class="ni" onclick="goTo('marketing.html')"><span class="ni-ic">📢</span><span class="ni-lb">Marketing</span></div>
     <div class="ni" onclick="goTo('settings.html')"><span class="ni-ic">☰</span><span class="ni-lb">More</span></div>
   </div>
 </div>
@@ -550,14 +559,10 @@ html,body{height:100%;overflow:hidden}
     </div>
 
     <!-- Send Options -->
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:6px">
-      <button class="btn-wa" onclick="sendWA()">📲 WA</button>
-      <button class="btn-sec" onclick="downloadPDF()">📄 PDF</button>
-      <button class="btn-sec" onclick="printBill()">🖨️ A4</button>
-    </div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
-      <button class="btn-sec" onclick="printThermal(58)">🧾 58mm</button>
-      <button class="btn-sec" onclick="printThermal(80)">🧾 80mm</button>
+      <button id="sse-wa" data-share="wa" class="btn-wa" onclick="autoDefault('wa');sendWA()">📲 WA</button>
+      <button id="sse-pdf" data-share="pdf" class="btn-sec" onclick="autoDefault('pdf');downloadPDF()">📄 PDF</button>
+      <div id="settle-print-btn-area" style="display:contents"></div>
       <button class="btn-sec" onclick="closeModal('bill-preview-modal')" style="color:var(--t2)">← Back</button>
     </div>
     <button class="btn-pri" id="confirm-settle-btn" onclick="confirmSettle()">✅ Confirm & Save — Cash</button>
@@ -701,18 +706,8 @@ const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZ
 let _sb=null;
 try{_sb=supabase.createClient(SB_URL,SB_KEY);}catch(e){console.warn('Supabase unavailable, local-only mode:',e);}
 
-// ── Plan Helper — FIX #18, #48, #49 ──
-function _sbpPlanInfo(){
-  const s=JSON.parse(localStorage.getItem('sbp_shop')||'{}');
-  let plan=(s.plan||'free').toLowerCase();
-  if(plan==='enterprise') plan='business';
-  const exp=s.plan_expires_at;
-  if(exp && plan!=='free' && new Date(exp) < new Date()) plan='free';
-  return {plan, expired:!!(exp && new Date(exp) < new Date())};
-}
-function isPro(){const p=_sbpPlanInfo().plan;return p==='pro'||p==='business';}
-function isBiz(){return _sbpPlanInfo().plan==='business';}
-function isFree(){return _sbpPlanInfo().plan==='free';}
+// ── Plan Helper ──
+
 
 // ── Font & Display settings from settings.html ──
 (function applyGlobalFontSettings(){
@@ -770,52 +765,21 @@ function toggleTheme(){
 function openModal(id){const el=document.getElementById(id);el.classList.add('open');el.style.display='flex';el.addEventListener('click',e=>{if(e.target===el)closeModal(id);},{once:true})}
 function closeModal(id){const el=document.getElementById(id);el.classList.remove('open');el.style.display='none'}
 function fINR(n){return '₹'+(parseFloat(n)||0).toLocaleString('en-IN',{maximumFractionDigits:2})}
-// FIX #3 — IST-aware date (UTC toISOString shifts -5:30 in India)
-function todayISO(){
-  const d=new Date();
-  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-}
-// FIX #10 — Auto-record cash entry in Cash Register if it's open today
+function todayISO(){return sbpToday()}
+// FIX #10 — Auto-record cash entry in Cash Register if open today
 function sbpRecordCashIn(amount, desc, who){
   try {
     const reg = JSON.parse(localStorage.getItem('sbp_register')||'{}');
-    const today = todayISO();
-    if(!reg.isOpen || reg.openDate !== today) return; // register not open today
-    if(!reg.entries) reg.entries = [];
-    const now = new Date();
-    const time = String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
-    reg.entries.unshift({
-      type:'in', amt: parseFloat(amount)||0,
-      desc: desc || 'Cash sale',
-      cat: 'Sales',
-      time: time,
-      ts: Date.now(),
-      auto: true,
-      ref: who || ''
-    });
-    localStorage.setItem('sbp_register', JSON.stringify(reg));
-  } catch(e){}
-}
-function sbpRecordCashOut(amount, desc){
-  try {
-    const reg = JSON.parse(localStorage.getItem('sbp_register')||'{}');
-    const today = todayISO();
+    const today = sbpToday();
     if(!reg.isOpen || reg.openDate !== today) return;
     if(!reg.entries) reg.entries = [];
     const now = new Date();
     const time = String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
-    reg.entries.unshift({
-      type:'out', amt: parseFloat(amount)||0,
-      desc: desc || 'Refund',
-      cat: 'Refund',
-      time: time,
-      ts: Date.now(),
-      auto: true
-    });
+    reg.entries.unshift({type:'in', amt:parseFloat(amount)||0, desc:desc||'Cash sale', cat:'Sales', time, ts:Date.now(), auto:true, ref:who||''});
     localStorage.setItem('sbp_register', JSON.stringify(reg));
   } catch(e){}
 }
-function futureDateISO(d=15){const dd=new Date();dd.setDate(dd.getDate()+d);return dd.toISOString().split('T')[0]}
+function futureDateISO(d=15){const dd=new Date();dd.setDate(dd.getDate()+d);return sbpFmt(dd)}
 function initials(name=''){return name.split(' ').map(w=>w[0]||'').join('').substring(0,2).toUpperCase()||'??'}
 function avatarColor(s=''){const c=['#F5A623','#2563EB','#059669','#D97706','#DC2626','#0891B2','#E8940D','#65A30D'];let h=0;for(let i=0;i<s.length;i++)h=s.charCodeAt(i)+((h<<5)-h);return c[Math.abs(h)%c.length]}
 
@@ -1032,7 +996,7 @@ function gatherBill(){
     invno:  document.getElementById('inv-no')?.value||'INV-0001',
     invdate:document.getElementById('inv-date')?.value||todayISO(),
     duedate:'',
-    paymode:document.getElementById('pay-mode')?.value||'Cash',
+    paymode:_payMethod||'Cash',
     note:   document.getElementById('inv-note')?.value||'',
     sub:    calc.sub,gstAmt:calc.totalGST,discAmt:calc.billDisc,itemDiscAmt:calc.totalItemDisc,grand:calc.grand,
     items,gstMap:calc.gstMap,isGSTInvoice:_gstMode,
@@ -1082,6 +1046,57 @@ function buildBillHTML(b, status='DRAFT'){
   const grandTotal = subtotal + totalGST - billDisc;
   const isPaid = (paymentStatus||'').toLowerCase() === 'paid';
   const watermark = (s.plan||'free') === 'free';
+
+  // ── GST Tax Summary (group by rate for CGST/SGST table) ──
+  const gstSlabs = {};
+  if(displayGST){
+    itemRows.forEach(it => {
+      const rate = parseFloat(it.gstRate)||0;
+      if(rate > 0){
+        if(!gstSlabs[rate]) gstSlabs[rate] = {taxable:0, gst:0};
+        gstSlabs[rate].taxable += it.lineNet;
+        gstSlabs[rate].gst += it.lineGST;
+      }
+    });
+  }
+  const isIntraState = (b.supplyType||'intra') === 'intra';
+  const hasGSTSlabs = Object.keys(gstSlabs).length > 0;
+
+  const taxSummaryHTML = (displayGST && hasGSTSlabs) ? `
+  <div style="margin-bottom:14px">
+    <div style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Tax Summary</div>
+    <table style="width:100%;border-collapse:collapse;font-size:11px">
+      <thead>
+        <tr style="background:#F8F7FF">
+          <th style="padding:6px 8px;text-align:left;font-weight:700;color:#666;border-bottom:1px solid #E5E0FF">GST Rate</th>
+          <th style="padding:6px 8px;text-align:right;font-weight:700;color:#666;border-bottom:1px solid #E5E0FF">Taxable ₹</th>
+          ${isIntraState
+            ? '<th style="padding:6px 8px;text-align:right;font-weight:700;color:#666;border-bottom:1px solid #E5E0FF">CGST ₹</th><th style="padding:6px 8px;text-align:right;font-weight:700;color:#666;border-bottom:1px solid #E5E0FF">SGST ₹</th>'
+            : '<th style="padding:6px 8px;text-align:right;font-weight:700;color:#666;border-bottom:1px solid #E5E0FF">IGST ₹</th>'}
+          <th style="padding:6px 8px;text-align:right;font-weight:700;color:#666;border-bottom:1px solid #E5E0FF">Total Tax</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${Object.entries(gstSlabs).map(([rate, v]) => `
+        <tr>
+          <td style="padding:5px 8px;border-bottom:1px solid #F0EEFF">${rate}%</td>
+          <td style="padding:5px 8px;text-align:right;border-bottom:1px solid #F0EEFF">₹${v.taxable.toFixed(2)}</td>
+          ${isIntraState
+            ? '<td style="padding:5px 8px;text-align:right;border-bottom:1px solid #F0EEFF;color:#10B981">₹'+(v.gst/2).toFixed(2)+'</td><td style="padding:5px 8px;text-align:right;border-bottom:1px solid #F0EEFF;color:#10B981">₹'+(v.gst/2).toFixed(2)+'</td>'
+            : '<td style="padding:5px 8px;text-align:right;border-bottom:1px solid #F0EEFF;color:#10B981">₹'+v.gst.toFixed(2)+'</td>'}
+          <td style="padding:5px 8px;text-align:right;font-weight:700;border-bottom:1px solid #F0EEFF">₹${v.gst.toFixed(2)}</td>
+        </tr>`).join('')}
+        <tr style="font-weight:700;background:#F8F7FF">
+          <td style="padding:6px 8px">Total</td>
+          <td style="padding:6px 8px;text-align:right">₹${itemRows.reduce((s,it)=>s+(parseFloat(it.gstRate||0)>0?it.lineNet:0),0).toFixed(2)}</td>
+          ${isIntraState
+            ? '<td style="padding:6px 8px;text-align:right;color:#10B981">₹'+(totalGST/2).toFixed(2)+'</td><td style="padding:6px 8px;text-align:right;color:#10B981">₹'+(totalGST/2).toFixed(2)+'</td>'
+            : '<td style="padding:6px 8px;text-align:right;color:#10B981">₹'+totalGST.toFixed(2)+'</td>'}
+          <td style="padding:6px 8px;text-align:right;font-weight:800">₹${totalGST.toFixed(2)}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>` : '';
 
   return `<!DOCTYPE html>
 <html>
@@ -1152,6 +1167,7 @@ function buildBillHTML(b, status='DRAFT'){
       <div class="customer-meta">
         ${custPhone ? '📞 ' + custPhone : ''}
         ${custAddress ? '<br>' + custAddress : ''}
+        ${(b.custGSTIN||b.gst) ? '<br>🏛️ GSTIN: ' + (b.custGSTIN||b.gst) : ''}
       </div>
     </div>
     <div style="text-align:right">
@@ -1164,11 +1180,12 @@ function buildBillHTML(b, status='DRAFT'){
   <table class="items-table">
     <thead>
       <tr>
-        <th style="width:40%">Item / Service</th>
+        <th style="width:35%">Item / Service</th>
         <th style="text-align:right">Qty</th>
         <th style="text-align:right">Rate</th>
         ${b.items.some(it=>parseFloat(it.disc||0)>0) ? '<th style="text-align:right">Disc</th>' : ''}
-        ${displayGST ? '<th style="text-align:right">GST</th>' : ''}
+        ${displayGST ? '<th style="text-align:right">GST%</th>' : ''}
+        ${displayGST ? '<th style="text-align:right">GST ₹</th>' : ''}
         <th>Amount</th>
       </tr>
     </thead>
@@ -1180,6 +1197,7 @@ function buildBillHTML(b, status='DRAFT'){
         <td style="text-align:right">₹${it.r}</td>
         ${b.items.some(i=>parseFloat(i.disc||0)>0) ? '<td style="text-align:right">' + (it.disc>0?'₹'+it.disc.toFixed(2):'—') + '</td>' : ''}
         ${displayGST ? '<td style="text-align:right;color:#10B981">' + it.gstRate + '%</td>' : ''}
+        ${displayGST ? '<td style="text-align:right;color:#10B981">₹' + it.lineGST.toFixed(2) + '</td>' : ''}
         <td style="text-align:right;font-weight:600">₹${(it.lineNet + it.lineGST).toFixed(2)}</td>
       </tr>`).join('')}
     </tbody>
@@ -1191,10 +1209,18 @@ function buildBillHTML(b, status='DRAFT'){
       <div class="total-row"><span>Subtotal</span><span>₹${subtotal.toFixed(2)}</span></div>
       ${itemDisc > 0 ? `<div class="total-row"><span>Item Discount</span><span style="color:#EF4444">-₹${itemDisc.toFixed(2)}</span></div>` : ''}
       ${billDisc > 0 ? `<div class="total-row"><span>Bill Discount</span><span style="color:#EF4444">-₹${billDisc.toFixed(2)}</span></div>` : ''}
-      ${displayGST && totalGST > 0 ? `<div class="total-row"><span>GST</span><span style="color:#10B981">₹${totalGST.toFixed(2)}</span></div>` : ''}
+      ${displayGST && totalGST > 0 && isIntraState ? `
+        <div class="total-row"><span>CGST</span><span style="color:#10B981">₹${(totalGST/2).toFixed(2)}</span></div>
+        <div class="total-row"><span>SGST</span><span style="color:#10B981">₹${(totalGST/2).toFixed(2)}</span></div>
+      ` : ''}
+      ${displayGST && totalGST > 0 && !isIntraState ? `
+        <div class="total-row"><span>IGST</span><span style="color:#10B981">₹${totalGST.toFixed(2)}</span></div>
+      ` : ''}
       <div class="total-row grand"><span>Grand Total</span><span style="color:#F5A623">₹${grandTotal.toFixed(2)}</span></div>
     </div>
   </div>
+
+  ${taxSummaryHTML}
 
   ${billNote ? `<div class="note-box">📝 Note: ${billNote}</div>` : ''}
 
@@ -1341,6 +1367,7 @@ function selPayMethod(method,el){
   document.querySelectorAll('#bm-pay-grid .pm-card').forEach(c=>c.classList.remove('on'));
   el.classList.add('on');
   document.getElementById('confirm-settle-btn').textContent='✅ Confirm & Save — '+method;
+  checkCreditLimit();
 }
 
 function setPartial(type){
@@ -1382,54 +1409,123 @@ async function confirmSettle(){
       grand_total:b.grand,paid_amount:paid,balance_due:balance,
       is_gst_invoice:b.isGSTInvoice||false,
       supply_type:b.supplyType||'intra',
+      bill_mode:'manual',
       place_of_supply:b.placeOfSupply||'',
       notes:b.note||''
     };
 
-    // Save to Supabase or local
+    // ── Determine if this is an EDIT (update) or a NEW bill (insert) ──
+    const isEditMode = !!window._editBillId;
+    const editBillId = window._editBillId || null;
     let savedBill=null;
     const online=navigator.onLine;
 
-    if(_sb&&online&&_shopId){
-      const{data,error}=await _sb.from('bills').insert(billData).select().single();
-      if(!error){
-        savedBill=data;
-        // Save items
-        if(b.items.length){
-          await _sb.from('bill_items').insert(b.items.map(it=>({
-            bill_id:data.id,item_name:it.nm,qty:it.q,rate:it.r,
-            gst_rate:it.rate,discount:it.disc,
-            line_total:parseFloat(it.tot),gst_amount:it.lineGST
-          })));
+    if(isEditMode){
+      // ════════════════════════════════════════════
+      // UPDATE EXISTING BILL
+      // ════════════════════════════════════════════
+      const updatePayload={
+        invoice_date:billData.invoice_date,due_date:billData.due_date,
+        customer_name:billData.customer_name,customer_wa:billData.customer_wa,
+        customer_gstin:billData.customer_gstin,payment_mode:billData.payment_mode,
+        status:billData.status,subtotal:billData.subtotal,gst_amount:billData.gst_amount,
+        discount:billData.discount,grand_total:billData.grand_total,
+        paid_amount:billData.paid_amount,balance_due:billData.balance_due,
+        is_gst_invoice:billData.is_gst_invoice,supply_type:billData.supply_type,
+        place_of_supply:billData.place_of_supply,notes:billData.notes,
+        updated_at:new Date().toISOString()
+      };
+
+      // Supabase update
+      if(_sb&&online&&!String(editBillId).startsWith('local_')){
+        try{
+          const{error:uerr}=await _sb.from('bills').update(updatePayload).eq('id',editBillId);
+          if(!uerr){
+            // Replace bill_items: delete old, insert new
+            await _sb.from('bill_items').delete().eq('bill_id',editBillId);
+            if(b.items.length){
+              await _sb.from('bill_items').insert(b.items.map(it=>({
+                bill_id:editBillId,item_name:it.nm,qty:it.q,rate:it.r,
+                gst_rate:it.rate,discount:it.disc||0,
+                line_total:parseFloat(it.tot),gst_amount:parseFloat(it.lineGST||0)
+              })));
+            }
+            savedBill={...updatePayload,id:editBillId};
+          }
+        }catch(e){console.warn('Supabase update failed:',e);}
+      }
+
+      // Local cache update (always — even if Supabase succeeded)
+      const cached=JSON.parse(localStorage.getItem('sbp_bills')||'[]');
+      const existIdx=cached.findIndex(x=>String(x.id)===String(editBillId));
+      const updatedBill={
+        ...(existIdx>=0?cached[existIdx]:{}),
+        ...updatePayload,
+        id:editBillId,
+        bill_items:b.items
+      };
+      if(existIdx>=0) cached[existIdx]=updatedBill;
+      else cached.unshift(updatedBill);
+      localStorage.setItem('sbp_bills',JSON.stringify(cached));
+      savedBill=updatedBill;
+
+      // Audit log the edit
+      try{
+        const auditEntry={action:'bill_edited',ts:new Date().toISOString(),
+          user:localStorage.getItem('sbp_role')||'Admin',
+          note:`Bill edited: ${billData.invoice_no} → new total ₹${billData.grand_total}`};
+        const cidx=cached.findIndex(x=>String(x.id)===String(editBillId));
+        if(cidx>=0){
+          if(!cached[cidx].audit_log) cached[cidx].audit_log=[];
+          cached[cidx].audit_log.unshift(auditEntry);
+          localStorage.setItem('sbp_bills',JSON.stringify(cached));
         }
-        // Update invoice counter
-        const shop=JSON.parse(localStorage.getItem('sbp_shop')||'{}');
-        const next=(shop.invoice_counter||1)+1;
-        if(_sb)await _sb.from('shops').update({invoice_counter:next}).eq('id',_shopId);
-        shop.invoice_counter=next;
-        localStorage.setItem('sbp_shop',JSON.stringify(shop));
+        logAudit('bill_edited',{bill_id:editBillId,invoice_no:billData.invoice_no,
+          new_total:billData.grand_total,customer:billData.customer_name});
+      }catch(e){}
+
+      // Clear edit context
+      window._editBillId=null;
+      window._editBillOriginalStatus=null;
+      toast('✅ Bill updated successfully!','s',3000);
+
+    } else {
+      // ════════════════════════════════════════════
+      // INSERT NEW BILL
+      // ════════════════════════════════════════════
+      if(_sb&&online&&_shopId){
+        const{data,error}=await _sb.from('bills').insert(billData).select().single();
+        if(!error){
+          savedBill=data;
+          if(b.items.length){
+            await _sb.from('bill_items').insert(b.items.map(it=>({
+              bill_id:data.id,item_name:it.nm,qty:it.q,rate:it.r,
+              gst_rate:it.rate,discount:it.disc||0,
+              line_total:parseFloat(it.tot),gst_amount:parseFloat(it.lineGST||0)
+            })));
+          }
+          // FIX #23 — Counter was already incremented by next_invoice_no RPC at bill open.
+          // Only bump locally if we're offline (no RPC was called).
+          if(!navigator.onLine){
+            const shop=JSON.parse(localStorage.getItem('sbp_shop')||'{}');
+            const next=(shop.invoice_counter||1)+1;
+            shop.invoice_counter=next;
+            localStorage.setItem('sbp_shop',JSON.stringify(shop));
+          }
+        }
       }
+
+      if(!savedBill){
+        savedBill={...billData,id:'local_'+Date.now(),bill_items:b.items,created_at:new Date().toISOString()};
+      }
+
+      const cached=JSON.parse(localStorage.getItem('sbp_bills')||'[]');
+      cached.unshift({...savedBill,bill_items:b.items});
+      localStorage.setItem('sbp_bills',JSON.stringify(cached));
+      toast('✅ Bill saved!','s');
     }
 
-    if(!savedBill){
-      // Offline save
-      savedBill={...billData,id:'local_'+Date.now(),bill_items:b.items,created_at:new Date().toISOString()};
-    }
-
-    // Update local cache
-    const cached=JSON.parse(localStorage.getItem('sbp_bills')||'[]');
-    cached.unshift({...savedBill,bill_items:b.items});
-    localStorage.setItem('sbp_bills',JSON.stringify(cached));
-
-    // FIX #10 — Auto-record cash receipts in Cash Register (if open today)
-    try {
-      if(paid > 0 && _payMethod === 'Cash'){
-        sbpRecordCashIn(paid, 'Bill '+(savedBill.invoice_no||b.invno||''), b.nm||'Customer');
-      }
-    } catch(e){ console.warn('Cash register auto-entry failed:', e.message); }
-
-    // FIX #15 — Deduct stock for matched products (was missing in manual mode)
-    // Match by productId if present, otherwise by exact item name
+    // FIX #15 — Deduct stock for matched products in manual mode (was missing)
     try {
       const products = JSON.parse(localStorage.getItem('sbp_products')||'[]');
       let stockChanged = false;
@@ -1451,7 +1547,15 @@ async function confirmSettle(){
       if(stockChanged) localStorage.setItem('sbp_products', JSON.stringify(products));
     } catch(e){ console.warn('Stock deduction failed:', e.message); }
 
-    // FIX #9 — Match customer by ID first (then phone, then name as fallback)
+    // FIX #10 — Auto-record cash receipts in Cash Register if open today
+    try {
+      if(paid > 0 && _payMethod === 'Cash'){
+        sbpRecordCashIn(paid, 'Bill '+(savedBill.invoice_no||b.invno||''), b.nm||'Customer');
+      }
+    } catch(e){}
+
+    // ── Update customer balance if credit (both modes) ──
+    // FIX #9 — Match by ID first, phone, then name
     if(balance>0){
       let cust = null;
       if(b.customer_id) cust = _custs.find(c => String(c.id)===String(b.customer_id));
@@ -1469,8 +1573,18 @@ async function confirmSettle(){
       }
     }
 
-    toast('✅ Bill saved!','s');
     closeModal('bill-preview-modal');
+
+    // Auto-send WhatsApp if user enabled the preference
+    if(localStorage.getItem('sbp_auto_wa')==='1'){
+      const wa=(b.wa||'').replace(/\D/g,'');
+      if(wa.length>=10){
+        setTimeout(()=>{
+          window.open('https://wa.me/91'+String(wa).replace(/\D/g,'').slice(-10)+'?text='+encodeURIComponent(buildWAMsg(b)),'_blank');
+        },300);
+      }
+    }
+
     setTimeout(()=>resetBillForm(),400);
 
   }catch(err){
@@ -1484,155 +1598,176 @@ function buildWAMsg(b){
   const s=_shop||JSON.parse(localStorage.getItem('sbp_shop')||'{}');
   const isPaid=(s.plan||'free')!=='free';
   const isHindi=(localStorage.getItem('sbp_lang')||'en')==='hi';
-  const lines=b.items.map(it=>`• ${it.nm} x${it.q} @ ₹${it.r} = ₹${it.tot}`).join('\n');
+  const isIntra=(b.supplyType||'intra')==='intra';
+  const gstAmt=parseFloat(b.gstAmt||0);
+  const hasGST=gstAmt>0;
+
+  // Item lines WITH item-wise GST + HSN
+  const lines=b.items.map(it=>{
+    const gstRate=parseFloat(it.rate||it.gst||0);
+    const gstAmtLine=parseFloat(it.lineGST||0);
+    const tot=parseFloat(it.tot||0);
+    const gstStr=gstRate>0?` [GST ${gstRate}%: ₹${gstAmtLine.toFixed(2)}]`:'';
+    const hsnStr=(it.hsn||it.hsn_code)?` (HSN:${it.hsn||it.hsn_code})`:'';
+    return `• ${it.nm} x${it.q} @ ₹${it.r}${hsnStr}${gstStr} = *₹${tot.toFixed(2)}*`;
+  }).join('\n');
+
+  // CGST/SGST or IGST
+  let taxLines='';
+  if(hasGST){
+    if(isIntra){
+      taxLines=`\n🏛️ CGST: ₹${(gstAmt/2).toFixed(2)}\n🏛️ SGST: ₹${(gstAmt/2).toFixed(2)}`;
+    }else{
+      taxLines=`\n🏛️ IGST: ₹${gstAmt.toFixed(2)}`;
+    }
+    taxLines+=`\n🏛️ Total Tax: ₹${gstAmt.toFixed(2)}`;
+  }
 
   let msg;
   if(isHindi){
-    msg=`🧾 *बिल — ${s.name||'ShopBill Pro'}*\n━━━━━━━━━━━━━\n📋 *${b.invno}*\n📅 ${b.invdate}\n👤 *${b.nm}*\n\n📦 *सामान:*\n${lines}\n━━━━━━━━━━━━━\n💰 उप-कुल: ₹${b.sub.toFixed(2)}`;
-    if(b.gstAmt>0) msg+=`\n🏛️ GST: ₹${b.gstAmt.toFixed(2)}`;
-    if(b.discAmt>0) msg+=`\n🎁 छूट: -₹${b.discAmt.toFixed(2)}`;
-    msg+=`\n\n✅ *कुल: ₹${b.grand.toFixed(2)}*\n💳 ${b.paymode}`;
+    msg=`🧾 *${hasGST?'TAX INVOICE':'बिल'} — ${s.name||'ShopBill Pro'}*\n━━━━━━━━━━━━━`;
+    if(s.gstin) msg+=`\n🏛️ GSTIN: ${s.gstin}`;
+    msg+=`\n📋 *${b.invno}*\n📅 ${b.invdate}\n👤 *${b.nm}*`;
+    if(b.custGSTIN) msg+=`\n🏛️ ग्राहक GSTIN: ${b.custGSTIN}`;
+    msg+=`\n\n📦 *सामान:*\n${lines}\n━━━━━━━━━━━━━\n💰 उप-कुल: ₹${parseFloat(b.sub).toFixed(2)}`;
+    msg+=taxLines;
+    if(b.itemDiscAmt>0) msg+=`\n🎁 आइटम छूट: -₹${parseFloat(b.itemDiscAmt).toFixed(2)}`;
+    if(b.discAmt>0) msg+=`\n🎁 बिल छूट: -₹${parseFloat(b.discAmt).toFixed(2)}`;
+    msg+=`\n\n✅ *कुल: ₹${parseFloat(b.grand).toFixed(2)}*\n💳 ${b.paymode||_payMethod||'Cash'}`;
     if(s.upi) msg+=`\n\n📲 *UPI से भुगतान करें:* ${s.upi}\n_(बिल प्रिंट में QR कोड देखें)_`;
-    msg+=`\n\n🙏 धन्यवाद!`;
+    msg+=`\n\n🙏 धन्यवाद! फिर आइए।`;
   }else{
-    msg=`🧾 *INVOICE — ${s.name||'ShopBill Pro'}*\n━━━━━━━━━━━━━\n📋 *${b.invno}*\n📅 ${b.invdate}\n👤 *${b.nm}*\n\n📦 *Items:*\n${lines}\n━━━━━━━━━━━━━\n💰 Subtotal: ₹${b.sub.toFixed(2)}`;
-    if(b.gstAmt>0) msg+=`\n🏛️ GST: ₹${b.gstAmt.toFixed(2)}`;
-    if(b.discAmt>0) msg+=`\n🎁 Discount: -₹${b.discAmt.toFixed(2)}`;
-    msg+=`\n\n✅ *Total: ₹${b.grand.toFixed(2)}*\n💳 ${b.paymode}`;
+    msg=`🧾 *${hasGST?'TAX INVOICE':'INVOICE'} — ${s.name||'ShopBill Pro'}*\n━━━━━━━━━━━━━`;
+    if(s.gstin) msg+=`\n🏛️ GSTIN: ${s.gstin}`;
+    msg+=`\n📋 *${b.invno}*\n📅 ${b.invdate}\n👤 *${b.nm}*`;
+    if(b.custGSTIN) msg+=`\n🏛️ Cust GSTIN: ${b.custGSTIN}`;
+    msg+=`\n\n📦 *Items:*\n${lines}\n━━━━━━━━━━━━━\n💰 Subtotal: ₹${parseFloat(b.sub).toFixed(2)}`;
+    msg+=taxLines;
+    if(b.itemDiscAmt>0) msg+=`\n🎁 Item Disc: -₹${parseFloat(b.itemDiscAmt).toFixed(2)}`;
+    if(b.discAmt>0) msg+=`\n🎁 Bill Disc: -₹${parseFloat(b.discAmt).toFixed(2)}`;
+    msg+=`\n\n✅ *Total: ₹${parseFloat(b.grand).toFixed(2)}*\n💳 ${b.paymode||_payMethod||'Cash'}`;
     if(s.upi) msg+=`\n\n📲 *Pay via UPI:* ${s.upi}\n_(See QR code on printed bill)_`;
-    msg+=`\n\n🙏 Thank you!`;
+    msg+=`\n\n🙏 Thank you! Visit Again.`;
   }
   if(!isPaid) msg+=`\n_ShopBill Pro_`;
   return msg;
 }
 
 function sendWA(){
-  const b=_billSnap;if(!b)return;
+  const b=_billSnap; if(!b) return;
   const wa=(b.wa||'').replace(/\D/g,'');
-  if(!wa||wa.length<10){toast('Invalid WhatsApp number','e');return}
-  // Phase 1 UPI — Show send-options sheet with QR image + Mark as Paid follow-up
-  sbpShowWASendOptions(b, wa);
+  if(!wa||wa.length<10){ toast('WhatsApp number required','e'); return; }
+  // Show WA send options modal
+  showWASendOptions(b, wa);
 }
 
 function quickWA(){
-  const b=gatherBill();_billSnap=b;sendWA();
+  const b=gatherBill(); _billSnap=b; sendWA();
 }
 
-// ════════════════════════════════════════════════════════════════
-// Phase 1 UPI — WhatsApp send options + QR image + Mark-as-Paid
-// ════════════════════════════════════════════════════════════════
-function sbpShowWASendOptions(b, wa){
-  const isHindi=(localStorage.getItem('sbp_lang')||'en')==='hi';
-  const s=_shop||JSON.parse(localStorage.getItem('sbp_shop')||'{}');
-  const hasUPI = !!s.upi;
-  const isCredit = (b.paymode||_payMethod) === 'Credit';
+function showWASendOptions(b, wa){
   let modal=document.getElementById('wa-send-modal');
-  if(modal) modal.remove();
-  modal=document.createElement('div');
-  modal.id='wa-send-modal';
-  modal.style.cssText='position:fixed;inset:0;z-index:1100;background:rgba(0,0,0,.75);display:flex;align-items:flex-end;justify-content:center';
-  document.body.appendChild(modal);
-  modal.innerHTML = '<div style="background:var(--surf,#1C1C28);border-radius:20px 20px 0 0;padding:20px;width:100%;max-width:520px;max-height:85vh;overflow-y:auto">'
-    + '<div style="font-family:\'Outfit\',sans-serif;font-size:16px;font-weight:800;margin-bottom:4px;color:var(--text,#F0EFF8)">📲 ' + (isHindi?'WhatsApp से भेजें':'Send via WhatsApp') + '</div>'
-    + '<div style="font-size:12px;color:var(--t2,#8A8AA8);margin-bottom:16px">' + (isHindi?'कैसे भेजना है?':'How do you want to send?') + '</div>'
-
-    // Option 1: Plain text bill
-    + '<div onclick="sbpSendWAText()" style="background:rgba(37,211,102,.1);border:1.5px solid rgba(37,211,102,.3);border-radius:14px;padding:14px 16px;margin-bottom:10px;cursor:pointer;display:flex;align-items:center;gap:12px">'
-    +   '<span style="font-size:28px">💬</span>'
-    +   '<div><div style="font-family:\'Outfit\',sans-serif;font-weight:800;color:#25D366;font-size:14px">' + (isHindi?'Text Bill':'Text Bill') + '</div>'
-    +   '<div style="font-size:11px;color:var(--t2,#8A8AA8);margin-top:2px">' + (isHindi?'पूरा bill text में, item-wise GST':'Complete bill as text with GST') + '</div></div>'
-    + '</div>'
-
-    // Option 2: Bill + UPI QR Image (highlighted as recommended for credit/pending)
-    + (hasUPI ? ('<div onclick="sbpSendWAWithQR()" style="background:rgba(245,166,35,.12);border:1.5px solid #F5A623;border-radius:14px;padding:14px 16px;margin-bottom:10px;cursor:pointer;display:flex;align-items:center;gap:12px;position:relative">'
-    +   (isCredit ? '<div style="position:absolute;top:-8px;right:12px;background:#F5A623;color:#0A0E1A;font-size:10px;font-weight:800;padding:2px 8px;border-radius:8px">RECOMMENDED</div>' : '')
-    +   '<span style="font-size:28px">💸</span>'
-    +   '<div><div style="font-family:\'Outfit\',sans-serif;font-weight:800;color:#F5A623;font-size:14px">' + (isHindi?'Bill + UPI QR Image':'Bill + UPI QR Image') + '</div>'
-    +   '<div style="font-size:11px;color:var(--t2,#8A8AA8);margin-top:2px">' + (isHindi?'QR scan करके तुरंत payment ले':'Customer scans QR & pays instantly') + '</div></div>'
-    + '</div>') : '')
-
-    // Option 3: PDF bill
-    + '<div onclick="sbpSendWAPDF()" style="background:rgba(99,102,241,.1);border:1.5px solid rgba(99,102,241,.3);border-radius:14px;padding:14px 16px;margin-bottom:16px;cursor:pointer;display:flex;align-items:center;gap:12px">'
-    +   '<span style="font-size:28px">📎</span>'
-    +   '<div><div style="font-family:\'Outfit\',sans-serif;font-weight:800;color:#818CF8;font-size:14px">' + (isHindi?'PDF / Image bill':'PDF / Image Bill') + '</div>'
-    +   '<div style="font-size:11px;color:var(--t2,#8A8AA8);margin-top:2px">' + (isHindi?'Professional bill image share करें':'Share professional bill as image') + '</div></div>'
-    + '</div>'
-
-    + (!hasUPI ? '<div style="background:rgba(245,166,35,.06);border:1px solid rgba(245,166,35,.2);border-radius:10px;padding:9px 12px;margin-bottom:12px;font-size:11px;color:var(--acc,#F5A623)">💡 ' + (isHindi?'Settings में UPI ID save करें — फिर QR भेज सकते हो':'Save your UPI ID in Settings to enable QR payments') + '</div>' : '')
-
-    + '<button onclick="document.getElementById(\'wa-send-modal\').remove()" style="width:100%;padding:12px;border-radius:12px;border:1.5px solid var(--bord,#2A2A3A);background:transparent;color:var(--t2,#8A8AA8);font-family:\'Outfit\',sans-serif;font-size:13px;font-weight:700;cursor:pointer">'
-    + (isHindi?'रद्द करें':'Cancel') + '</button>'
-    + '</div>';
-}
-
-function sbpSendWAText(){
-  const b=_billSnap;if(!b)return;
-  const wa=(b.wa||'').replace(/\D/g,'').slice(-10);
-  document.getElementById('wa-send-modal')?.remove();
-  if(wa.length<10){toast('Invalid WhatsApp number','e');return}
-  window.open('https://wa.me/91'+wa+'?text='+encodeURIComponent(buildWAMsg(b)),'_blank');
-  toast('📲 Opening WhatsApp...','s');
-}
-
-// Phase 1 UPI — Build a clean QR card and capture as PNG, then prompt user to share
-async function sbpSendWAWithQR(){
-  const b=_billSnap;if(!b)return;
-  const wa=(b.wa||'').replace(/\D/g,'').slice(-10);
-  const s=_shop||JSON.parse(localStorage.getItem('sbp_shop')||'{}');
-  if(!s.upi){toast('Save UPI ID in Settings first','e');return}
-  if(typeof QRCode==='undefined'||typeof html2canvas==='undefined'){
-    toast('QR library not loaded — try Text option','e');
-    sbpSendWAText();
-    return;
+  if(!modal){
+    modal=document.createElement('div');
+    modal.id='wa-send-modal';
+    modal.style.cssText='position:fixed;inset:0;z-index:1100;background:rgba(0,0,0,.75);display:flex;align-items:flex-end;justify-content:center';
+    document.body.appendChild(modal);
   }
+  const isHindi=(localStorage.getItem('sbp_lang')||'en')==='hi';
+  const s = JSON.parse(localStorage.getItem('sbp_shop')||'{}');
+  const hasUPI = !!s.upi;
+  const isCredit = (b.paymode||'') === 'Credit' || parseFloat(b.balance||0) > 0;
+  modal.innerHTML=`
+    <div style="background:var(--surf,#1C1C28);border-radius:20px 20px 0 0;padding:20px;width:100%;max-width:520px;max-height:85vh;overflow-y:auto">
+      <div style="font-family:'Outfit',sans-serif;font-size:16px;font-weight:800;margin-bottom:4px;color:var(--text,#F0EFF8)">📲 ${isHindi?'WhatsApp से भेजें':'Send via WhatsApp'}</div>
+      <div style="font-size:12px;color:var(--t2,#8A8AA8);margin-bottom:16px">${isHindi?'कैसे भेजना है?':'How do you want to send?'}</div>
 
-  document.getElementById('wa-send-modal')?.remove();
+      <div onclick="sendWAText()" style="background:rgba(37,211,102,.1);border:1.5px solid rgba(37,211,102,.3);border-radius:14px;padding:14px 16px;margin-bottom:10px;cursor:pointer;display:flex;align-items:center;gap:12px">
+        <span style="font-size:28px">💬</span>
+        <div>
+          <div style="font-family:'Outfit',sans-serif;font-weight:800;color:#25D366;font-size:14px">${isHindi?'Text Message':'Text Message'}</div>
+          <div style="font-size:11px;color:var(--t2,#8A8AA8);margin-top:2px">${isHindi?'Item-wise GST के साथ text bill':'Bill with item-wise GST breakdown'}</div>
+        </div>
+      </div>
+
+      ${hasUPI ? `<div onclick="sendWAWithUPIQR()" style="background:rgba(245,166,35,.12);border:1.5px solid #F5A623;border-radius:14px;padding:14px 16px;margin-bottom:10px;cursor:pointer;display:flex;align-items:center;gap:12px;position:relative">
+        ${isCredit ? '<div style="position:absolute;top:-8px;right:12px;background:#F5A623;color:#0A0E1A;font-size:10px;font-weight:800;padding:2px 8px;border-radius:8px">RECOMMENDED</div>' : ''}
+        <span style="font-size:28px">💸</span>
+        <div>
+          <div style="font-family:'Outfit',sans-serif;font-weight:800;color:#F5A623;font-size:14px">${isHindi?'Bill + UPI QR Image':'Bill + UPI QR Image'}</div>
+          <div style="font-size:11px;color:var(--t2,#8A8AA8);margin-top:2px">${isHindi?'QR scan करके तुरंत payment ले':'Customer scans QR & pays instantly'}</div>
+        </div>
+      </div>` : ''}
+
+      <div onclick="sendWAPDF()" style="background:rgba(99,102,241,.1);border:1.5px solid rgba(99,102,241,.3);border-radius:14px;padding:14px 16px;margin-bottom:16px;cursor:pointer;display:flex;align-items:center;gap:12px">
+        <span style="font-size:28px">📎</span>
+        <div>
+          <div style="font-family:'Outfit',sans-serif;font-weight:800;color:#818CF8;font-size:14px">${isHindi?'PDF / Image bill':'PDF / Image Bill'}</div>
+          <div style="font-size:11px;color:var(--t2,#8A8AA8);margin-top:2px">${isHindi?'Professional bill photo share karein':'Share professional bill as image/PDF'}</div>
+        </div>
+      </div>
+
+      ${!hasUPI ? '<div style="background:rgba(245,166,35,.06);border:1px solid rgba(245,166,35,.2);border-radius:10px;padding:9px 12px;margin-bottom:12px;font-size:11px;color:var(--acc,#F5A623)">💡 '+(isHindi?'Settings में UPI ID save करें — फिर QR भेज सकते हो':'Save your UPI ID in Settings to enable QR payments')+'</div>' : ''}
+
+      <button onclick="document.getElementById('wa-send-modal').style.display='none'" style="width:100%;padding:12px;border-radius:12px;border:1.5px solid var(--bord,#2A2A3A);background:transparent;color:var(--t2,#8A8AA8);font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;cursor:pointer">
+        ${isHindi?'रद्द करें':'Cancel'}
+      </button>
+    </div>`;
+  modal.style.display='flex';
+  modal.onclick=function(e){ if(e.target===modal) modal.style.display='none'; };
+}
+
+// Phase 1 UPI — Generate UPI QR card image and send via WhatsApp share
+async function sendWAWithUPIQR(){
+  const b=_billSnap; if(!b) return;
+  const wa=(b.wa||'').replace(/\D/g,'').slice(-10);
+  const s = JSON.parse(localStorage.getItem('sbp_shop')||'{}');
+  if(!s.upi){toast('Save UPI ID in Settings first','e');return}
+  document.getElementById('wa-send-modal').style.display='none';
+
+  // Lazy load html2canvas if not present
+  if(!window.html2canvas){
+    await new Promise((res,rej)=>{
+      const sc=document.createElement('script');
+      sc.src='https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
+      sc.onload=res; sc.onerror=rej;
+      document.head.appendChild(sc);
+    }).catch(()=>{});
+  }
+  if(typeof QRCode==='undefined' || typeof html2canvas==='undefined'){
+    toast('QR library failed to load — using text','e');
+    sendWAText(); return;
+  }
   toast('🎨 Generating QR card...','s',2000);
 
-  // Build offscreen card
   const grand = parseFloat(b.grand||0).toFixed(2);
   const isHindi=(localStorage.getItem('sbp_lang')||'en')==='hi';
   const upiLink = 'upi://pay?pa='+encodeURIComponent(s.upi)
     +'&pn='+encodeURIComponent((s.name||'Shop').replace(/[^\w\s]/g,'').slice(0,40))
-    +'&am='+grand
-    +'&cu=INR'
+    +'&am='+grand+'&cu=INR'
     +'&tn='+encodeURIComponent(('Bill '+(b.invno||'')).slice(0,40));
 
   const card = document.createElement('div');
   card.style.cssText='position:fixed;left:-9999px;top:0;width:380px;background:#fff;padding:24px;font-family:Arial,sans-serif;color:#111';
   card.innerHTML = '<div style="text-align:center;border-bottom:2px solid #F5A623;padding-bottom:14px;margin-bottom:14px">'
-    + '<div style="font-size:14px;color:#666;letter-spacing:1px;font-weight:600">' + (isHindi?'भुगतान करें':'PAY VIA UPI') + '</div>'
-    + '<div style="font-size:22px;font-weight:900;color:#111;margin-top:4px">' + (s.name||'Shop') + '</div>'
-    + '</div>'
+    + '<div style="font-size:14px;color:#666;letter-spacing:1px;font-weight:600">'+(isHindi?'भुगतान करें':'PAY VIA UPI')+'</div>'
+    + '<div style="font-size:22px;font-weight:900;color:#111;margin-top:4px">'+(s.name||'Shop')+'</div></div>'
     + '<div style="text-align:center;margin-bottom:14px">'
-    + '<div style="font-size:13px;color:#666">' + (isHindi?'राशि':'Amount') + '</div>'
-    + '<div style="font-size:36px;font-weight:900;color:#0A8043">₹' + grand + '</div>'
-    + (b.invno?('<div style="font-size:12px;color:#888;margin-top:2px">' + (isHindi?'Bill':'Invoice') + ': ' + b.invno + '</div>'):'')
+    + '<div style="font-size:13px;color:#666">'+(isHindi?'राशि':'Amount')+'</div>'
+    + '<div style="font-size:36px;font-weight:900;color:#0A8043">₹'+grand+'</div>'
+    + (b.invno?'<div style="font-size:12px;color:#888;margin-top:2px">'+(isHindi?'Bill':'Invoice')+': '+b.invno+'</div>':'')
     + '</div>'
     + '<div id="sbp-qr-target" style="width:280px;height:280px;margin:0 auto 12px;background:#fff;padding:8px;border:2px solid #F5A623;border-radius:8px"></div>'
-    + '<div style="text-align:center;font-size:13px;color:#444;margin-bottom:6px;font-weight:600">' + (isHindi?'किसी भी UPI app से scan करें':'Scan with any UPI app') + '</div>'
-    + '<div style="text-align:center;font-size:11px;color:#666;font-family:monospace;background:#F5F5F5;padding:6px;border-radius:6px">' + s.upi + '</div>'
+    + '<div style="text-align:center;font-size:13px;color:#444;margin-bottom:6px;font-weight:600">'+(isHindi?'किसी भी UPI app से scan करें':'Scan with any UPI app')+'</div>'
+    + '<div style="text-align:center;font-size:11px;color:#666;font-family:monospace;background:#F5F5F5;padding:6px;border-radius:6px">'+s.upi+'</div>'
     + '<div style="text-align:center;font-size:9px;color:#999;margin-top:14px">Powered by ShopBill Pro</div>';
   document.body.appendChild(card);
 
-  // Generate QR
   try {
     const qrTarget = card.querySelector('#sbp-qr-target');
-    new QRCode(qrTarget, {
-      text: upiLink,
-      width: 264,
-      height: 264,
-      colorDark: '#000',
-      colorLight: '#fff',
-      correctLevel: QRCode.CorrectLevel.M
-    });
-    // Wait for QR to render
+    new QRCode(qrTarget, { text: upiLink, width: 264, height: 264, colorDark: '#000', colorLight: '#fff', correctLevel: QRCode.CorrectLevel.M });
     await new Promise(r => setTimeout(r, 250));
-
     const canvas = await html2canvas(card, { backgroundColor:'#ffffff', scale:2, logging:false });
-    const dataUrl = canvas.toDataURL('image/png');
-
-    // Try Web Share API first (mobile)
     canvas.toBlob(async (blob) => {
       const file = new File([blob], 'pay-'+(b.invno||'bill')+'.png', {type:'image/png'});
       let shared = false;
@@ -1646,84 +1781,101 @@ async function sbpSendWAWithQR(){
             files: [file]
           });
           shared = true;
-        } catch(err) { /* user cancelled or share failed */ }
+        } catch(err){}
       }
-
       if(!shared){
-        // Fallback: download QR + open WhatsApp with text. User attaches manually.
-        const a = document.createElement('a');
-        a.href = dataUrl;
-        a.download = 'pay-'+(b.invno||'bill')+'.png';
-        a.click();
-        const text = (isHindi
-          ? '🧾 *'+(s.name||'')+'*\nBill: '+(b.invno||'')+' — ₹'+grand+'\n\n📲 UPI: '+s.upi+'\n\n_(QR image just downloaded — attach it from your phone gallery)_'
-          : '🧾 *'+(s.name||'')+'*\nBill: '+(b.invno||'')+' — ₹'+grand+'\n\n📲 UPI: '+s.upi+'\n\n_(QR image just downloaded — attach it from your phone gallery)_');
-        if(wa && wa.length>=10){
+        const a=document.createElement('a'); a.href=canvas.toDataURL('image/png'); a.download='pay-'+(b.invno||'bill')+'.png'; a.click();
+        if(wa.length>=10){
+          const text = (isHindi
+            ? '🧾 *'+(s.name||'')+'*\nBill: '+(b.invno||'')+' — ₹'+grand+'\n\n📲 UPI: '+s.upi+'\n\n_(QR image just downloaded — attach it from gallery)_'
+            : '🧾 *'+(s.name||'')+'*\nBill: '+(b.invno||'')+' — ₹'+grand+'\n\n📲 UPI: '+s.upi+'\n\n_(QR image just downloaded — attach it from gallery)_');
           window.open('https://wa.me/91'+wa+'?text='+encodeURIComponent(text),'_blank');
         }
         toast('💾 QR saved — attach it in WhatsApp','s',5000);
       }
-      // Clean up offscreen card
       try { document.body.removeChild(card); } catch(e){}
     }, 'image/png');
   } catch(err){
-    console.warn('QR card generation failed:', err);
+    console.warn(err);
     toast('❌ QR generation failed — using text','e');
     try { document.body.removeChild(card); } catch(e){}
-    sbpSendWAText();
+    sendWAText();
   }
 }
 
-async function sbpSendWAPDF(){
-  const b=_billSnap;if(!b)return;
-  const wa=(b.wa||'').replace(/\D/g,'').slice(-10);
-  document.getElementById('wa-send-modal')?.remove();
-  if(typeof html2canvas==='undefined'){
-    toast('Image library not loaded — using text','e');
-    sbpSendWAText();
-    return;
-  }
-  toast('📎 Generating bill image...','s',2000);
+function sendWAText(){
+  const b=_billSnap; if(!b) return;
+  document.getElementById('wa-send-modal').style.display='none';
+  const wa=(b.wa||'').replace(/\D/g,'');
+  window.open('https://wa.me/91'+String(wa).replace(/\D/g,'').slice(-10)+'?text='+encodeURIComponent(buildWAMsg(b)),'_blank');
+  toast('📲 Opening WhatsApp...','s');
+}
 
-  // Build a clean bill card offscreen
-  const html = buildBillHTML(b, b.paymode==='Credit'?'Credit':'Paid');
-  const wrap = document.createElement('div');
-  wrap.style.cssText='position:fixed;left:-9999px;top:0;width:600px;background:#fff;padding:0';
-  wrap.innerHTML = html;
-  document.body.appendChild(wrap);
+async function sendWAPDF(){
+  const b=_billSnap; if(!b) return;
+  document.getElementById('wa-send-modal').style.display='none';
 
-  try {
-    await new Promise(r => setTimeout(r, 200));
-    const canvas = await html2canvas(wrap, { backgroundColor:'#ffffff', scale:2, logging:false });
-    canvas.toBlob(async (blob) => {
-      const file = new File([blob], 'bill-'+(b.invno||'invoice')+'.png', {type:'image/png'});
-      let shared = false;
-      if(navigator.canShare && navigator.canShare({files:[file]})){
-        try {
-          await navigator.share({
-            title: 'Bill '+(b.invno||''),
-            text: 'Bill '+(b.invno||'')+' — ₹'+parseFloat(b.grand||0).toFixed(2),
-            files: [file]
-          });
-          shared = true;
-        } catch(e){}
-      }
-      if(!shared){
-        const a=document.createElement('a'); a.href=canvas.toDataURL('image/png'); a.download='bill-'+(b.invno||'invoice')+'.png'; a.click();
-        if(wa.length>=10){
-          const text = 'Bill '+(b.invno||'')+' — ₹'+parseFloat(b.grand||0).toFixed(2)+'\n\n_(Image just downloaded — attach from your gallery)_';
-          window.open('https://wa.me/91'+wa+'?text='+encodeURIComponent(text),'_blank');
+  toast('⏳ Generating bill image...','',3000);
+
+  try{
+    // Render bill HTML into offscreen div, capture with html2canvas
+    const html=buildBillHTML(b, b.paymode||_payMethod||'Paid');
+    let offDiv=document.getElementById('_wa_pdf_render');
+    if(!offDiv){
+      offDiv=document.createElement('div');
+      offDiv.id='_wa_pdf_render';
+      offDiv.style.cssText='position:fixed;left:-9999px;top:0;width:580px;background:#fff;z-index:-1;padding:0';
+      document.body.appendChild(offDiv);
+    }
+    offDiv.innerHTML=html;
+
+    // Load html2canvas if not loaded
+    if(!window.html2canvas){
+      await new Promise((res,rej)=>{
+        const s=document.createElement('script');
+        s.src='https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
+        s.onload=res; s.onerror=rej;
+        document.head.appendChild(s);
+      });
+    }
+
+    await new Promise(r=>setTimeout(r,300)); // let DOM render
+    const canvas=await html2canvas(offDiv,{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false});
+    offDiv.innerHTML='';
+
+    canvas.toBlob(async(blob)=>{
+      if(!blob){ toast('Could not generate image','e'); return; }
+      const file=new File([blob],`Bill-${b.invno||'INV'}.png`,{type:'image/png'});
+      const wa=(b.wa||'').replace(/\D/g,'');
+      const msg=buildWAMsg(b);
+
+      if(navigator.share && navigator.canShare && navigator.canShare({files:[file]})){
+        try{
+          await navigator.share({files:[file], text:msg, title:`Bill ${b.invno}`});
+          toast('✅ Bill shared!','s');
+        }catch(e){
+          if(e.name!=='AbortError') fallbackDownload(canvas, b);
         }
-        toast('💾 Bill image saved — attach it in WhatsApp','s',5000);
+      } else {
+        // Fallback: download image + open WA text
+        fallbackDownload(canvas, b);
+        setTimeout(()=>{
+          window.open('https://wa.me/91'+String(wa).replace(/\D/g,'').slice(-10)+'?text='+encodeURIComponent(msg),'_blank');
+        }, 800);
       }
-      try { document.body.removeChild(wrap); } catch(e){}
-    }, 'image/png');
-  } catch(err){
-    console.warn(err);
-    toast('❌ Image generation failed — using text','e');
-    try { document.body.removeChild(wrap); } catch(e){}
-    sbpSendWAText();
+    },'image/png');
+  }catch(err){
+    console.error(err);
+    toast('Error generating PDF — try Text instead','e');
   }
+}
+
+function fallbackDownload(canvas, b){
+  const a=document.createElement('a');
+  a.href=canvas.toDataURL('image/png');
+  a.download=`Bill-${b.invno||'INV'}.png`;
+  a.click();
+  toast('📥 Bill image downloaded — attach in WhatsApp manually','s',4000);
 }
 
 // ── PDF ──
@@ -1831,6 +1983,12 @@ function loadDraft(){
 
 // ── Reset Form ──
 function resetBillForm(){
+  // ── Clear edit mode context ──
+  window._editBillId=null;
+  window._editBillOriginalStatus=null;
+  const banner=document.getElementById('edit-mode-banner');
+  if(banner) banner.remove();
+
   document.getElementById('cust-nm').value='';
   document.getElementById('cust-wa').value='';
   document.getElementById('cust-gst').value='';
@@ -1842,24 +2000,11 @@ function resetBillForm(){
   document.getElementById('items-wrap').innerHTML='';
   addItem();
   calcTotals();
-  // FIX #23/#24 — Use atomic Supabase RPC when online to avoid collisions
-  // across devices. Offline: use a local stamp to avoid duplicate keys when
-  // multiple devices sync later.
+  // New invoice number
   const shop=JSON.parse(localStorage.getItem('sbp_shop')||'{}');
   const prefix=shop.invoice_prefix||'INV';
   const counter=shop.invoice_counter||1;
-  let invNo = prefix+'-'+String(counter).padStart(4,'0');
-  if(window.DB && window.DB.reserveNextInvoiceNo){
-    window.DB.reserveNextInvoiceNo().then(r => { if(r) document.getElementById('inv-no').value = r; }).catch(()=>{});
-  } else if(!navigator.onLine){
-    // Offline: append a short device tag so it stays unique until it syncs
-    const dev = (localStorage.getItem('sbp_device_tag') || (function(){
-      const t = Math.random().toString(36).slice(2,5).toUpperCase();
-      localStorage.setItem('sbp_device_tag', t); return t;
-    })());
-    invNo = prefix + '-' + String(counter).padStart(4,'0') + '-' + dev;
-  }
-  document.getElementById('inv-no').value=invNo;
+  document.getElementById('inv-no').value=prefix+'-'+String(counter).padStart(4,'0');
   document.getElementById('inv-date').value=todayISO();
   localStorage.removeItem('sbp_draft_bill');
   toast('✅ Ready for next bill','s');
@@ -2123,7 +2268,7 @@ function previewPOSBill(){
   const previewB={
     nm:custName,wa:custWA,
     invno:(shop.invoice_prefix||'INV')+'-PREVIEW',
-    invdate:new Date().toISOString().split('T')[0],
+    invdate:sbpToday(),
     duedate:'',paymode:_pcoPayMethod,note:'',
     sub,gstAmt:gstTotal,discAmt:billDisc,grand,
     items,isGSTInvoice:false,supplyType:'intra',
@@ -2145,10 +2290,19 @@ function posCheckout(){
   document.getElementById('pco-cust-wa').value='';
   document.getElementById('pco-disc-val').value='';
   _pcoPayMethod='Cash';_pcoDiscType='flat';
+  // Honor saved auto-send preferences (settings → Print/Share Preferences)
   Object.keys(_pcoSend).forEach(k=>_pcoSend[k]=false);
+  if(localStorage.getItem('sbp_auto_wa')==='1') _pcoSend.wa=true;
+  if(localStorage.getItem('sbp_auto_pdf')==='1') _pcoSend.pdf=true;
+  if(localStorage.getItem('sbp_auto_print')==='1') _pcoSend.print=true;
   document.querySelectorAll('#pco-pay-grid .pm-card').forEach((c,i)=>c.classList.toggle('on',i===0));
   ['pco-sopt-wa','pco-sopt-pdf','pco-sopt-print'].forEach(id=>{
-    const el=document.getElementById(id);if(el){el.style.background='var(--surf2)';el.style.borderColor='var(--bord)';el.style.color='var(--t2)'}
+    const el=document.getElementById(id);if(!el)return;
+    const key=id.replace('pco-sopt-','');
+    const on=_pcoSend[key];
+    el.style.background=on?'rgba(245,166,35,.1)':'var(--surf2)';
+    el.style.borderColor=on?'var(--acc)':'var(--bord)';
+    el.style.color=on?'var(--acc)':'var(--t2)';
   });
   pcoRenderSummary();pcoCalcTotal();
   closeModal('pos-cart-sheet');
@@ -2206,6 +2360,7 @@ function setPCODiscType(type,el){
 
 function togglePCOOpt(el,key){
   _pcoSend[key]=!_pcoSend[key];
+  localStorage.setItem('sbp_auto_'+key,_pcoSend[key]?'1':'0');
   el.style.background=_pcoSend[key]?'rgba(245,166,35,.1)':'var(--surf2)';
   el.style.borderColor=_pcoSend[key]?'var(--acc)':'var(--bord)';
   el.style.color=_pcoSend[key]?'var(--acc)':'var(--t2)';
@@ -2223,13 +2378,24 @@ async function confirmPOSCheckout(){
     if(!item)return null;
     const lineAmt=item.price*(cart[id]||0);
     const lineGST=lineAmt*(item.gst_rate||0)/100;
-    return{nm:item.name,q:cart[id],r:item.price,rate:item.gst_rate||0,disc:0,lineAmt,lineNet:lineAmt,lineGST,tot:(lineAmt+lineGST).toFixed(2),productId:item.id};
+    return{nm:item.name,q:cart[id],r:item.price,rate:item.gst_rate||0,disc:0,lineAmt,lineNet:lineAmt,lineGST,tot:(lineAmt+lineGST).toFixed(2),productId:item.id,hsn:item.hsn_code||''};
   }).filter(Boolean);
 
+  const isEditMode=!!window._editBillId;
+  const editBillId=window._editBillId||null;
+
   const shop=JSON.parse(localStorage.getItem('sbp_shop')||'{}');
-  const prefix=shop.invoice_prefix||'INV';
-  const counter=shop.invoice_counter||1;
-  const invNo=prefix+'-'+String(counter).padStart(4,'0');
+  let invNo;
+  if(isEditMode){
+    // Reuse original invoice number
+    const allBills=JSON.parse(localStorage.getItem('sbp_bills')||'[]');
+    const origBill=allBills.find(x=>String(x.id)===String(editBillId));
+    invNo=origBill?.invoice_no||'EDIT';
+  }else{
+    const prefix=shop.invoice_prefix||'INV';
+    const counter=shop.invoice_counter||1;
+    invNo=prefix+'-'+String(counter).padStart(4,'0');
+  }
   const status=_pcoPayMethod==='Credit'?'Credit':'Paid';
   const paid=_pcoPayMethod==='Credit'?0:grand;
   const balance=Math.max(0,grand-paid);
@@ -2243,57 +2409,85 @@ async function confirmPOSCheckout(){
       customer_name:custName,customer_wa:custWA,
       payment_mode:_pcoPayMethod,status,
       subtotal:sub,gst_amount:gstTotal,discount:billDisc,
-      grand_total:grand,paid_amount:paid,balance_due:balance
+      grand_total:grand,paid_amount:paid,balance_due:balance,
+      bill_mode:'pos'
     };
 
     let savedBill=null;
-    // FIX #14 — Stock deduction must run for ALL plans, even free.
-    // Cloud sync of bill is gated by Pro; stock deduction is not.
-    if(isPro()&&navigator.onLine&&_shopId&&_sb){
-      const{data,error}=await _sb.from('bills').insert(billData).select().single();
-      if(!error&&data){
-        savedBill=data;
-        await _sb.from('bill_items').insert(items.map(it=>({
-          bill_id:data.id,item_name:it.nm,qty:it.q,rate:it.r,
-          gst_rate:it.rate,discount:0,line_total:parseFloat(it.tot),gst_amount:it.lineGST
-        })));
-        // Increment counter (server)
-        shop.invoice_counter=counter+1;
-        await _sb.from('shops').update({invoice_counter:counter+1}).eq('id',_shopId);
-        localStorage.setItem('sbp_shop',JSON.stringify(shop));
-      }
-    }
-
-    // FIX #14 — Always deduct stock locally (and sync to cloud if Pro+online)
-    for(const it of items){
-      const idx=_posItems.findIndex(p=>String(p.id)===String(it.productId));
-      if(idx>=0){
-        const ns=Math.max(0,(parseFloat(_posItems[idx].stock_qty)||0)-it.q);
-        _posItems[idx].stock_qty=ns;
-        if(isPro()&&navigator.onLine&&_sb && it.productId && !String(it.productId).startsWith('local_')){
-          try { await _sb.from('products').update({stock_qty:ns}).eq('id',it.productId); } catch(e){}
+    if(isPro()&&navigator.onLine&&_shopId){
+      if(isEditMode){
+        // ── EDIT MODE: UPDATE existing bill ──
+        const updatePayload={customer_name:billData.customer_name,customer_wa:billData.customer_wa,payment_mode:billData.payment_mode,status:billData.status,subtotal:billData.subtotal,gst_amount:billData.gst_amount,discount:billData.discount,grand_total:billData.grand_total,paid_amount:billData.paid_amount,balance_due:billData.balance_due};
+        try{
+          const{error:uerr}=await _sb.from('bills').update(updatePayload).eq('id',editBillId);
+          if(!uerr){
+            await _sb.from('bill_items').delete().eq('bill_id',editBillId);
+            await _sb.from('bill_items').insert(items.map(it=>({bill_id:editBillId,item_name:it.nm,qty:it.q,rate:it.r,gst_rate:it.rate,discount:0,line_total:parseFloat(it.tot),gst_amount:it.lineGST})));
+            savedBill={...updatePayload,id:editBillId};
+          }
+        }catch(e){console.warn('POS edit save error:',e);}
+        // Update localStorage cache
+        const cached=JSON.parse(localStorage.getItem('sbp_bills')||'[]');
+        const cidx=cached.findIndex(x=>String(x.id)===String(editBillId));
+        if(cidx>=0){
+          cached[cidx]={...cached[cidx],...billData,...(savedBill||{}),bill_items:items};
+          // Audit log
+          if(!cached[cidx].audit_log) cached[cidx].audit_log=[];
+          cached[cidx].audit_log.unshift({action:'bill_edited',ts:new Date().toISOString(),user:localStorage.getItem('sbp_role')||'Admin',note:'POS bill edited after reopen',after:{grand_total:grand,status,items_count:items.length}});
+        }else{
+          cached.unshift({...billData,id:editBillId,bill_items:items});
         }
+        localStorage.setItem('sbp_bills',JSON.stringify(cached));
+        try{logAudit('bill_edited',{bill_id:editBillId,invoice_no:invNo,customer:custName,new_total:grand,new_status:status,mode:'pos'});}catch(e){}
+        window._editBillId=null;window._editBillOriginalStatus=null;
+        // Remove edit banner
+        const eb=document.getElementById('edit-mode-banner');if(eb)eb.remove();
+      }else{
+        // ── NEW BILL: INSERT ──
+        const{data,error}=await _sb.from('bills').insert(billData).select().single();
+        if(!error&&data){
+          savedBill=data;
+          await _sb.from('bill_items').insert(items.map(it=>({bill_id:data.id,item_name:it.nm,qty:it.q,rate:it.r,gst_rate:it.rate,discount:0,line_total:parseFloat(it.tot),gst_amount:it.lineGST})));
+          // Deduct stock
+          for(const it of items){
+            const idx=_posItems.findIndex(p=>String(p.id)===String(it.productId));
+            if(idx>=0){
+              const ns=Math.max(0,(parseFloat(_posItems[idx].stock_qty)||0)-it.q);
+              _posItems[idx].stock_qty=ns;
+              await _sb.from('products').update({stock_qty:ns}).eq('id',it.productId);
+            }
+          }
+          localStorage.setItem('sbp_products',JSON.stringify(_posItems));
+          // Increment counter
+          const counter=shop.invoice_counter||1;
+          shop.invoice_counter=counter+1;
+          await _sb.from('shops').update({invoice_counter:counter+1}).eq('id',_shopId);
+          localStorage.setItem('sbp_shop',JSON.stringify(shop));
+        }
+        // Cache new bill
+        if(!savedBill) savedBill={...billData,id:'local_'+Date.now(),bill_items:items,created_at:new Date().toISOString()};
+        const cached=JSON.parse(localStorage.getItem('sbp_bills')||'[]');
+        cached.unshift({...savedBill,bill_items:items});
+        localStorage.setItem('sbp_bills',JSON.stringify(cached));
       }
-    }
-    localStorage.setItem('sbp_products',JSON.stringify(_posItems));
-
-    if(!savedBill){
-      savedBill={...billData,id:'local_'+Date.now(),bill_items:items,created_at:new Date().toISOString()};
-    }
-
-    const cached=JSON.parse(localStorage.getItem('sbp_bills')||'[]');
-    cached.unshift({...savedBill,bill_items:items});
-    localStorage.setItem('sbp_bills',JSON.stringify(cached));
-
-    // FIX #10 — Auto-record cash receipt in Cash Register
-    try {
-      if(paid > 0 && _pcoPayMethod === 'Cash'){
-        sbpRecordCashIn(paid, 'POS '+invNo, custName||'Walk-in');
+    }else{
+      if(!savedBill) savedBill={...billData,id:isEditMode?editBillId:'local_'+Date.now(),bill_items:items,created_at:new Date().toISOString()};
+      const cached=JSON.parse(localStorage.getItem('sbp_bills')||'[]');
+      if(isEditMode){
+        const cidx=cached.findIndex(x=>String(x.id)===String(editBillId));
+        if(cidx>=0) cached[cidx]={...cached[cidx],...savedBill,bill_items:items};
+        else cached.unshift({...savedBill,bill_items:items});
+        window._editBillId=null;window._editBillOriginalStatus=null;
+      }else{
+        cached.unshift({...savedBill,bill_items:items});
       }
-    } catch(e){}
+      localStorage.setItem('sbp_bills',JSON.stringify(cached));
+    }
 
-    // Send bill
-    const posB={nm:custName,wa:custWA,invno:invNo,invdate:todayISO(),duedate:'',paymode:_pcoPayMethod,note:'',sub,gstAmt:gstTotal,discAmt:billDisc,grand,items,isGSTInvoice:false,supplyType:'intra',placeOfSupply:'',custGSTIN:'',gst:'',hsn:''};
+    // Send bill — detect GST dynamically from items
+    const hasGST=items.some(it=>parseFloat(it.rate||0)>0);
+    const custObj=_custs.find(c=>c.name===custName);
+    const posB={nm:custName,wa:custWA,invno:invNo,invdate:todayISO(),duedate:'',paymode:_pcoPayMethod,note:'',sub,gstAmt:gstTotal,discAmt:billDisc,grand,items,isGSTInvoice:hasGST,supplyType:'intra',placeOfSupply:'',custGSTIN:custObj?.gstin||'',gst:'',hsn:''};
     _billSnap=posB;
 
     if(_pcoSend.wa&&custWA){
@@ -2301,7 +2495,12 @@ async function confirmPOSCheckout(){
       if(wa.length>=10)window.open('https://wa.me/91'+String(wa).replace(/\D/g,'').slice(-10)+'?text='+encodeURIComponent(buildWAMsg(posB)),'_blank');
     }
     if(_pcoSend.pdf)downloadPDF();
-    if(_pcoSend.print)printBill();
+    if(_pcoSend.print){
+      const pType=localStorage.getItem('sbp_printer_type')||'a4';
+      if(pType==='58mm') printThermal(58);
+      else if(pType==='80mm') printThermal(80);
+      else printBill();
+    }
 
     closeModal('pos-checkout-modal');
     cart={};renderCart();renderPOS();
@@ -2322,7 +2521,19 @@ async function init(){
   if(_theme==='light'){document.documentElement.setAttribute('data-theme','light');document.getElementById('theme-btn').textContent='🌙'}
 
   // Session check
-  if(!_sb){return;} // Supabase CDN unavailable - local mode OK
+  if(!_sb){
+    // Supabase CDN unavailable — local mode
+    _custs=JSON.parse(localStorage.getItem('sbp_customers')||'[]');
+    _posItems=JSON.parse(localStorage.getItem('sbp_products')||'[]');
+    _shop=JSON.parse(localStorage.getItem('sbp_shop')||'{}');
+    const prefix=_shop.invoice_prefix||'INV';
+    const counter=_shop.invoice_counter||1;
+    document.getElementById('inv-no').value=prefix+'-'+String(counter).padStart(4,'0');
+    document.getElementById('inv-date').value=todayISO();
+    addItem();
+    loadFromTemplateParams();
+    return;
+  }
   const{data:{session}}=await _sb.auth.getSession();
   if(!session){window.location.href='index.html';return}
   const last=parseInt(localStorage.getItem('sbp_last_activity')||'0');
@@ -2338,11 +2549,33 @@ async function init(){
   _custs=JSON.parse(localStorage.getItem('sbp_customers')||'[]');
   _posItems=JSON.parse(localStorage.getItem('sbp_products')||'[]');
 
-  // Set invoice number
+  // Set invoice number — FIX #23 use atomic RPC online to avoid duplicates across devices
   const prefix=_shop.invoice_prefix||'INV';
   const counter=_shop.invoice_counter||1;
-  document.getElementById('inv-no').value=prefix+'-'+String(counter).padStart(4,'0');
+  let initialInvNo = prefix+'-'+String(counter).padStart(4,'0');
+  // Offline: append device tag to avoid sync collisions (FIX #24)
+  if(!navigator.onLine){
+    const dev = (localStorage.getItem('sbp_device_tag') || (function(){
+      const t = Math.random().toString(36).slice(2,5).toUpperCase();
+      localStorage.setItem('sbp_device_tag', t); return t;
+    })());
+    initialInvNo = prefix+'-'+String(counter).padStart(4,'0')+'-'+dev;
+  }
+  document.getElementById('inv-no').value = initialInvNo;
   document.getElementById('inv-date').value=todayISO();
+  // Try atomic counter (online only) — replaces the naive counter we just showed
+  if(navigator.onLine && _sb && _shopId){
+    try {
+      const { data, error } = await _sb.rpc('next_invoice_no', { p_shop_id: _shopId });
+      if(!error && data && data.length){
+        const row = Array.isArray(data) ? data[0] : data;
+        const newNo = (row.invoice_prefix||'INV')+'-'+String(row.invoice_counter).padStart(4,'0');
+        document.getElementById('inv-no').value = newNo;
+        _shop.invoice_counter = row.invoice_counter;
+        localStorage.setItem('sbp_shop', JSON.stringify(_shop));
+      }
+    } catch(e){ /* RPC not deployed yet — fall back silently */ }
+  }
 
   // Add first item row
   addItem();
@@ -2384,11 +2617,177 @@ async function init(){
       document.getElementById('inv-no').value=(shops.invoice_prefix||'INV')+'-'+String(shops.invoice_counter||1).padStart(4,'0');
     }
   }
-}
 
-// ── Load from Bill Template params ──
+  // ── Run AFTER init is fully done (items-wrap ready, data loaded) ──
+  loadFromTemplateParams();
+}
 function loadFromTemplateParams(){
   const params=new URLSearchParams(window.location.search);
+
+  // ── Edit Bill Mode (from bills.html reopen) ──
+  if(params.get('edit_bill')){
+    const editId=params.get('edit_bill');
+    let editData=localStorage.getItem('sbp_edit_bill');
+
+    // Fallback: if localStorage missing, search sbp_bills by id
+    if(!editData){
+      const allBills=JSON.parse(localStorage.getItem('sbp_bills')||'[]');
+      const found=allBills.find(x=>String(x.id)===String(editId));
+      if(found) editData=JSON.stringify(found);
+    }
+
+    if(editData){
+      try{
+        const b=JSON.parse(editData);
+        localStorage.removeItem('sbp_edit_bill');
+
+        // ── Show Edit Mode Banner ──
+        const existingBanner=document.getElementById('edit-mode-banner');
+        if(existingBanner) existingBanner.remove();
+        const banner=document.createElement('div');
+        banner.id='edit-mode-banner';
+        banner.style.cssText='background:rgba(6,182,212,.12);border:1.5px solid rgba(6,182,212,.4);border-radius:var(--rs);padding:12px 14px;margin-bottom:12px;font-size:12px;font-weight:700;color:#06B6D4;display:flex;align-items:center;gap:8px;flex-wrap:wrap';
+        banner.innerHTML=`<span style="font-size:16px">✏️</span><span style="flex:1">Editing Bill: <strong>${b.invoice_no||''}</strong> — ${b.customer_name||'Customer'}. <span style="opacity:.8">Save will update this bill.</span></span><span onclick="if(confirm('Cancel editing? Form will reset.'))resetBillForm()" style="cursor:pointer;color:var(--acc2);font-size:11px;padding:3px 8px;border:1px solid rgba(239,68,68,.3);border-radius:6px;background:rgba(239,68,68,.08)">✕ Cancel Edit</span>`;
+        const itemsParent=document.getElementById('items-wrap')?.closest('.fsec')||document.getElementById('items-wrap')?.parentElement;
+        const mainPad=document.querySelector('.sb .pad');
+        if(mainPad) mainPad.insertBefore(banner,mainPad.firstChild);
+
+        // ── Store edit context globally ──
+        window._editBillId=editId;
+        window._editBillOriginalStatus=b._old_status||b.status||'Pending';
+
+        // ── POS Mode Edit: populate cart ──
+        if(b.bill_mode==='pos'){
+          const rawItems=b.bill_items||b.items||[];
+          cart={};
+          rawItems.filter(it=>!it.voided).forEach(it=>{
+            const pid=it.productId||it.product_id||'';
+            const nm=it.item_name||it.nm||'';
+            // Match to _posItems by productId or name
+            let match=pid?_posItems.find(p=>String(p.id)===String(pid)):null;
+            if(!match) match=_posItems.find(p=>p.name===nm);
+            if(match){
+              cart[match.id]=(cart[match.id]||0)+(it.qty||it.q||1);
+            }else{
+              // Product not found in POS — add as temporary item
+              const tempId='temp_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);
+              _posItems.push({id:tempId,name:nm,price:it.rate||it.r||0,gst_rate:it.gst_rate||it.rate_gst||it.g||0,stock_qty:999,hsn_code:it.hsn_code||'',category:'Uncategorized',_temp:true});
+              cart[tempId]=(it.qty||it.q||1);
+            }
+          });
+          renderCart();
+          // Set customer
+          const pcoCN=document.getElementById('pco-cust-name');
+          const pcoCW=document.getElementById('pco-cust-wa');
+          if(pcoCN) pcoCN.value=b.customer_name||b.nm||'';
+          if(pcoCW) pcoCW.value=b.customer_phone||b.customer_wa||b.wa||'';
+          // Set payment method
+          _pcoPayMethod=b.payment_mode||b.paymode||'Cash';
+          // Recalc
+          if(typeof pcoCalcTotal==='function') pcoCalcTotal();
+          if(typeof renderCart==='function') renderCart();
+          toast('✏️ POS bill loaded for editing — make changes and confirm','s',4000);
+          return; // Skip manual form population below
+        }
+
+        // ── Populate Customer Fields (Manual Mode) ──
+        const custNm=document.getElementById('cust-nm');
+        const custWa=document.getElementById('cust-wa');
+        if(custNm) custNm.value=b.customer_name||b.nm||'';
+        if(custWa) custWa.value=b.customer_phone||b.customer_wa||b.wa||'';
+
+        // ── Invoice fields ──
+        const invNo=document.getElementById('inv-no');
+        const invDate=document.getElementById('inv-date');
+        const invNote=document.getElementById('inv-note');
+        if(invNo&&b.invoice_no) invNo.value=b.invoice_no;
+        if(invDate&&(b.invoice_date||b.invdate)) invDate.value=b.invoice_date||b.invdate||todayISO();
+        if(invNote&&(b.note||b.notes)) invNote.value=b.note||b.notes||'';
+
+        // ── Restore GST Mode ──
+        const isGST=b.is_gst_invoice||b.isGSTInvoice||false;
+        if(isGST){
+          setTimeout(()=>{
+            _gstMode=true;
+            const chk=document.getElementById('gst-mode-chk');
+            if(chk) chk.checked=true;
+            const extra=document.getElementById('gst-extra');
+            if(extra) extra.classList.add('show');
+            // Restore GSTIN and supply type
+            const custGstin=document.getElementById('cust-gstin');
+            const supplyType=document.getElementById('supply-type');
+            const placeOfSupply=document.getElementById('place-of-supply');
+            if(custGstin&&(b.customer_gstin||b.custGSTIN)) custGstin.value=b.customer_gstin||b.custGSTIN||'';
+            if(supplyType&&(b.supply_type||b.supplyType)) supplyType.value=b.supply_type||b.supplyType||'intra';
+            if(placeOfSupply&&(b.place_of_supply||b.placeOfSupply)) placeOfSupply.value=b.place_of_supply||b.placeOfSupply||'';
+          },100);
+        }
+
+        // ── Restore Payment Mode ──
+        const payMode=b.payment_mode||b.paymode||b.payMode||'Cash';
+        setTimeout(()=>{
+          _payMethod=payMode;
+          document.querySelectorAll('#bm-pay-grid .pm-card').forEach(c=>{
+            const nm=c.querySelector('.pm-nm')?.textContent||'';
+            c.classList.toggle('on',nm.toLowerCase()===payMode.toLowerCase()||
+              (payMode==='UPI'&&nm.includes('UPI'))||
+              (payMode==='Bank'&&nm.includes('Bank'))||
+              (payMode==='Cheque'&&nm.includes('Cheque'))||
+              (payMode==='Credit'&&nm.includes('Credit'))||
+              (payMode==='Card'&&nm.includes('Card'))||
+              (payMode==='Cash'&&nm.includes('Cash')));
+          });
+        },150);
+
+        // ── Load Items ──
+        const rawItems=b.bill_items||b.items||[];
+        if(rawItems.length){
+          document.getElementById('items-wrap').innerHTML='';
+          rawItems.filter(it=>!it.voided).forEach(it=>{
+            addItem();
+            const rows=document.querySelectorAll('#items-wrap .item-row');
+            const row=rows[rows.length-1];
+            if(row){
+              row.querySelector('.it-nm').value=it.item_name||it.nm||'';
+              row.querySelector('.it-qty').value=it.qty||it.q||1;
+              row.querySelector('.it-rt').value=it.rate||it.r||0;
+              const gstSel=row.querySelector('.it-gst');
+              if(gstSel) gstSel.value=it.gst_rate||it.rate_gst||it.g||0;
+              // Restore HSN if field exists
+              const hsnFld=row.querySelector('.it-hsn');
+              if(hsnFld&&it.hsn_code) hsnFld.value=it.hsn_code||'';
+            }
+          });
+          setTimeout(()=>calcTotals(),200);
+        }
+
+        // ── Restore Discount ──
+        setTimeout(()=>{
+          const discVal=parseFloat(b.discount||0);
+          const discType=b.discount_type||'flat';
+          if(discVal>0){
+            const discInput=document.getElementById('disc-val');
+            const discTypeFlat=document.querySelector('.disc-type-btn[onclick*="flat"]');
+            const discTypePct=document.querySelector('.disc-type-btn[onclick*="pct"]');
+            if(discInput) discInput.value=discVal;
+            if(discType==='pct'||discType==='percent'){
+              _discType='pct';
+              if(discTypePct) discTypePct.classList.add('on');
+              if(discTypeFlat) discTypeFlat.classList.remove('on');
+            }
+            calcTotals();
+          }
+        },250);
+
+        toast('✏️ Bill loaded for editing — make changes and save','s',4000);
+      }catch(e){console.warn('Edit bill load error:',e);toast('⚠️ Could not load bill for editing','e');}
+    } else {
+      // Data not found anywhere — show error
+      toast('⚠️ Bill data not found. Please reopen from Bills page.','e',4000);
+    }
+    return;
+  }
+
   // FIX #39 — Support sessionStorage payload for large templates
   let payload = null;
   if(params.get('tpl_payload') === 'session'){
@@ -2411,11 +2810,17 @@ function loadFromTemplateParams(){
   if(wa)document.getElementById('cust-wa').value=wa;
   if(date)document.getElementById('inv-date').value=date;
   if(note)document.getElementById('inv-note').value=note;
-  const pmSel=document.getElementById('pay-mode');
-  if(pmSel&&paymode)pmSel.value=paymode;
-  if(itemsRaw){
+  if(paymode){
+    _payMethod=paymode;
+    document.querySelectorAll('#bm-pay-grid .pm-card').forEach(c=>{
+      const nm=c.querySelector('.pm-nm')?.textContent||'';
+      c.classList.toggle('on', nm.toLowerCase().includes(paymode.toLowerCase()));
+    });
+  }
+  // FIX #39 — load items from either sessionStorage or URL
+  if(itemsObj || itemsRaw){
     try{
-      const items=JSON.parse(decodeURIComponent(itemsRaw));
+      const items = itemsObj ? itemsObj : JSON.parse(decodeURIComponent(itemsRaw));
       document.getElementById('items-wrap').innerHTML='';
       items.forEach(it=>{
         addItem();
@@ -2437,7 +2842,7 @@ function loadFromTemplateParams(){
 // ── Credit Limit Check ──
 function checkCreditLimit(){
   const name=document.getElementById('cust-nm')?.value||'';
-  const paymode=document.getElementById('pay-mode')?.value||'Cash';
+  const paymode=_payMethod||'Cash';
   if(paymode!=='Credit')return;
   const cust=_custs.find(c=>c.name===name);
   if(!cust||!cust.credit_limit||parseFloat(cust.credit_limit)<=0)return;
@@ -2451,71 +2856,277 @@ function checkCreditLimit(){
 
 // ── Thermal Print (58mm) ──
 function printThermal(size){
-  size=size||58;
-  const b=_billSnap||gatherBill();
-  const s=_shop||JSON.parse(localStorage.getItem('sbp_shop')||'{}');
-  const w=size===80?'80mm':'58mm';
-  const charW=size===80?42:32;
-  const sep='─'.repeat(charW);
-  
-  function pad(l,r,width){
-    width=width||charW;
-    const space=width-l.length-r.length;
-    return l+(space>0?' '.repeat(space):' ')+r;
+  size = size || 58;
+  const b = _billSnap || gatherBill();
+  const s = _shop || JSON.parse(localStorage.getItem('sbp_shop')||'{}');
+
+  const mmW    = size === 80 ? '80mm' : '58mm';
+  const pxW    = size === 80 ? '302px' : '220px';
+  const fsBase = size === 80 ? '12px' : '10px';
+  const fsLg   = size === 80 ? '15px' : '13px';
+  const fsXl   = size === 80 ? '18px' : '15px';
+  const fsSm   = size === 80 ? '10px' : '9px';
+
+  const shopName  = (s.name || s.shop_name || 'MY SHOP').toUpperCase();
+  const shopTag   = s.tag || s.tagline || '';
+  const shopAddr  = s.address || '';
+  const shopPhone = s.phone || s.mobile || '';
+  const shopGSTIN = s.gstin || '';
+  const shopUPI   = s.upi || '';
+
+  // ── Item rows ──
+  const itemRows = (b.items || []).map(it => {
+    const name  = (it.nm || it.name || '').substring(0, size === 80 ? 28 : 20);
+    const qty   = parseFloat(it.q || it.qty || 1);
+    const rate  = parseFloat(it.r || it.rate_val || it.rate || 0);
+    const gstR  = parseFloat(it.rate || it.gst || 0);
+    const tot   = parseFloat(it.tot || (qty * rate * (1 + gstR/100)));
+    const gstAmt= parseFloat(it.lineGST || (qty * rate * gstR / 100) || 0);
+
+    return `
+    <div style="margin-bottom:5px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <span style="flex:1;word-break:break-word;padding-right:4px">${name}</span>
+        <span style="white-space:nowrap;font-weight:700">₹${tot.toFixed(2)}</span>
+      </div>
+      <div style="color:#555;font-size:${fsSm}">
+        ${qty} × ₹${rate.toFixed(2)}${gstR > 0 ? ` + GST ${gstR}% (₹${gstAmt.toFixed(2)})` : ''}${(it.hsn||it.hsn_code) ? ` · HSN:${it.hsn||it.hsn_code}` : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  // ── GST Summary ──
+  let gstSummary = '';
+  if(b.gstMap && Object.keys(b.gstMap).length){
+    gstSummary = Object.entries(b.gstMap).map(([rate, amt]) =>
+      `<div style="display:flex;justify-content:space-between">
+        <span>GST ${rate}%</span><span>₹${parseFloat(amt).toFixed(2)}</span>
+      </div>`
+    ).join('');
   }
 
-  const items=b.items.map(it=>{
-    const nm=(it.nm||'').substring(0,charW-2);
-    const detail='  '+it.q+' x Rs.'+parseFloat(it.r||0).toFixed(2);
-    const tot='Rs.'+parseFloat(it.tot||0).toFixed(2);
-    return nm+'\n'+pad(detail,tot);
-  }).join('\n');
+  const validDate = b.invdate || new Date().toLocaleDateString('en-IN');
+  const invoiceNo = b.invno || b.invoiceNo || 'INV-001';
+  const custName  = b.nm || b.custName || 'Walk-in Customer';
+  const custPhone = b.wa || b.custPhone || '';
+  const payMode   = b.paymode || b.payMode || _payMethod || 'Cash';
+  const sub       = parseFloat(b.sub || 0);
+  const gstAmt    = parseFloat(b.gstAmt || 0);
+  const discAmt   = parseFloat(b.discAmt || 0);
+  const itemDisc  = parseFloat(b.itemDiscAmt || 0);
+  const grand     = parseFloat(b.grand || 0);
 
-  const lines=[
-    (s.name||'SHOP').toUpperCase(),
-    s.tag||'',
-    s.address||'',
-    s.phone?'Ph: '+s.phone:'',
-    s.gstin?'GSTIN: '+s.gstin:'',
-    sep,
-    pad('Invoice:',b.invno||''),
-    pad('Date:',b.invdate||''),
-    pad('Customer:',b.nm||'Walk-in'),
-    sep,
-    items,
-    sep,
-    pad('Subtotal:','Rs.'+b.sub.toFixed(2)),
-    b.gstAmt>0?pad('GST:','Rs.'+b.gstAmt.toFixed(2)):'',
-    b.discAmt>0?pad('Discount:','-Rs.'+b.discAmt.toFixed(2)):'',
-    sep,
-    pad('TOTAL:','Rs.'+b.grand.toFixed(2)),
-    sep,
-    pad('Payment:',b.paymode||'Cash'),
-    '',
-    s.upi?'UPI: '+s.upi:'',
-    '',
-    'Thank you! Visit Again',
-    (s.plan||'free')==='free'?'--- ShopBill Pro ---':'',
-  ].filter(l=>l!=='').join('\n');
+  const divider = `<div style="border-top:1px dashed #000;margin:5px 0"></div>`;
 
-  const win=window.open('','_blank','width=400,height=700');
-  if(!win){toast('Allow popups for print','e');return}
-  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${b.invno||'Receipt'}</title>
-    <style>
-      @page{size:${w} auto;margin:2mm}
-      *{box-sizing:border-box;margin:0;padding:0}
-      body{font-family:'Courier New',Courier,monospace;font-size:${size===80?'12px':'11px'};width:${w};margin:0 auto;padding:4px;white-space:pre-wrap;word-wrap:break-word;line-height:1.4;color:#000;background:#fff}
-      @media print{body{padding:2px}}
-    </style></head><body>${lines.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
-    <script>window.addEventListener('load',function(){setTimeout(function(){window.print();},500)});<\/script>
-  </body></html>`);
+  const html = `<!DOCTYPE html>
+<html><head>
+<meta charset="UTF-8">
+<title>${invoiceNo}</title>
+<style>
+  @page { size: ${mmW} auto; margin: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: ${fsBase};
+    width: ${mmW};
+    max-width: ${mmW};
+    margin: 0 auto;
+    padding: 4mm 3mm 8mm 3mm;
+    color: #000;
+    background: #fff;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .center { text-align: center; }
+  .bold   { font-weight: 700; }
+  .lg     { font-size: ${fsLg}; }
+  .xl     { font-size: ${fsXl}; }
+  .sm     { font-size: ${fsSm}; color: #444; }
+  .row    { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; }
+  .total-row { display: flex; justify-content: space-between; font-weight: 700; font-size: ${fsLg}; padding: 4px 0; }
+  .badge  { display: inline-block; border: 1px solid #000; border-radius: 3px; padding: 1px 5px; font-size: ${fsSm}; }
+  @media print {
+    body { padding: 2mm 2mm 6mm 2mm; }
+  }
+</style>
+</head><body>
+
+  <!-- Shop Header -->
+  <div class="center bold xl" style="margin-bottom:3px">${shopName}</div>
+  ${shopTag ? `<div class="center sm" style="margin-bottom:2px">${shopTag}</div>` : ''}
+  ${shopAddr ? `<div class="center sm" style="margin-bottom:2px">${shopAddr}</div>` : ''}
+  ${shopPhone ? `<div class="center sm">Ph: ${shopPhone}</div>` : ''}
+  ${shopGSTIN ? `<div class="center sm">GSTIN: ${shopGSTIN}</div>` : ''}
+  ${gstAmt > 0 ? `<div class="center bold" style="margin-top:4px;letter-spacing:1px;font-size:${fsSm}">--- TAX INVOICE ---</div>` : ''}
+
+  ${divider}
+
+  <!-- Invoice Info -->
+  <div class="row"><span>Invoice:</span><span class="bold">${invoiceNo}</span></div>
+  <div class="row"><span>Date:</span><span>${validDate}</span></div>
+  <div class="row"><span>Customer:</span><span class="bold">${custName}</span></div>
+  ${custPhone ? `<div class="row"><span>Phone:</span><span>${custPhone}</span></div>` : ''}
+  ${(b.custGSTIN||b.gst) ? `<div class="row"><span>GSTIN:</span><span style="font-size:${fsSm}">${b.custGSTIN||b.gst}</span></div>` : ''}
+  <div class="row"><span>Payment:</span><span class="badge">${payMode}</span></div>
+
+  ${divider}
+
+  <!-- Items -->
+  <div class="bold sm" style="margin-bottom:4px">ITEMS</div>
+  ${itemRows}
+
+  ${divider}
+
+  <!-- Totals -->
+  <div class="row"><span>Subtotal</span><span>₹${sub.toFixed(2)}</span></div>
+  ${gstAmt > 0 ? `${gstSummary ? gstSummary : ''}
+    ${(b.supplyType||'intra')==='intra'
+      ? `<div class="row"><span>CGST</span><span>₹${(gstAmt/2).toFixed(2)}</span></div><div class="row"><span>SGST</span><span>₹${(gstAmt/2).toFixed(2)}</span></div>`
+      : `<div class="row"><span>IGST</span><span>₹${gstAmt.toFixed(2)}</span></div>`}
+    <div class="row"><span>Total Tax</span><span>₹${gstAmt.toFixed(2)}</span></div>` : ''}
+  ${itemDisc > 0 ? `<div class="row"><span>Item Disc.</span><span>-₹${itemDisc.toFixed(2)}</span></div>` : ''}
+  ${discAmt > 0 ? `<div class="row"><span>Bill Disc.</span><span>-₹${discAmt.toFixed(2)}</span></div>` : ''}
+
+  <div style="border-top:2px solid #000;margin:4px 0"></div>
+  <div class="total-row"><span>TOTAL</span><span>₹${grand.toFixed(2)}</span></div>
+  <div style="border-bottom:2px solid #000;margin-bottom:6px"></div>
+
+  ${shopUPI ? `
+  <div class="center sm" style="margin-bottom:2px">Pay via UPI</div>
+  <div class="center bold" style="margin-bottom:4px">${shopUPI}</div>
+  ` : ''}
+
+  ${divider}
+
+  <div class="center bold" style="margin:4px 0">Thank you! Visit Again 🙏</div>
+  ${(s.plan||'free')==='free' ? `<div class="center sm" style="margin-top:4px">--- Powered by ShopBill Pro ---</div>` : ''}
+
+<script>
+  window.addEventListener('load', function(){
+    setTimeout(function(){ window.print(); }, 400);
+  });
+<\/script>
+</body></html>`;
+
+  const win = window.open('', '_blank', `width=${size===80?380:300},height=700,menubar=no,toolbar=no`);
+  if(!win){ toast('Allow popups for print','e'); return; }
+  win.document.write(html);
   win.document.close();
-  toast('🧾 Thermal print opening...','s');
+  toast('🧾 '+(size)+'mm print opening...','s');
+}
+
+// ══════════════════════════════════════════
+// PRINTER SETTINGS INTEGRATION
+// ══════════════════════════════════════════
+function renderPrinterButtons(){
+  const enabled=localStorage.getItem('sbp_printer_enabled')==='true';
+  const type=localStorage.getItem('sbp_printer_type')||'a4';
+
+  // Build the correct print button HTML
+  let btnHTML='';
+  if(!enabled){
+    // No printer — show all 3 compact options
+    btnHTML=`<button id="sbtn-a4" data-share="a4" class="btn-sec" onclick="autoDefault('a4');printBill()" style="font-size:10px">🖨️ A4</button>`;
+    const settleHTML=`<button id="sse-a4" data-share="a4" class="btn-sec" onclick="autoDefault('a4');printBill()" style="font-size:10px">🖨️ A4</button>
+      <button id="sse-58" data-share="58mm" class="btn-sec" onclick="autoDefault('58mm');printThermal(58)" style="font-size:10px">🧾 58</button>
+      <button id="sse-80" data-share="80mm" class="btn-sec" onclick="autoDefault('80mm');printThermal(80)" style="font-size:10px">🧾 80</button>`;
+    const sp=document.getElementById('settle-print-btn-area');
+    if(sp) sp.outerHTML=settleHTML;
+  } else if(type==='58mm'){
+    btnHTML=`<button id="sbtn-58" data-share="58mm" class="btn-sec" onclick="autoDefault('58mm');printThermal(58)">🧾 58mm Print</button>`;
+    const settleHTML=`<button id="sse-58" data-share="58mm" class="btn-sec" onclick="autoDefault('58mm');printThermal(58)">🧾 58mm Print</button>`;
+    const sp=document.getElementById('settle-print-btn-area');
+    if(sp) sp.outerHTML=settleHTML;
+  } else if(type==='80mm'){
+    btnHTML=`<button id="sbtn-80" data-share="80mm" class="btn-sec" onclick="autoDefault('80mm');printThermal(80)">🧾 80mm Print</button>`;
+    const settleHTML=`<button id="sse-80" data-share="80mm" class="btn-sec" onclick="autoDefault('80mm');printThermal(80)">🧾 80mm Print</button>`;
+    const sp=document.getElementById('settle-print-btn-area');
+    if(sp) sp.outerHTML=settleHTML;
+  } else {
+    // a4
+    btnHTML=`<button id="sbtn-a4" data-share="a4" class="btn-sec" onclick="autoDefault('a4');printBill()">🖨️ A4 Print</button>`;
+    const settleHTML=`<button id="sse-a4" data-share="a4" class="btn-sec" onclick="autoDefault('a4');printBill()">🖨️ A4 Print</button>`;
+    const sp=document.getElementById('settle-print-btn-area');
+    if(sp) sp.outerHTML=settleHTML;
+  }
+
+  const area=document.getElementById('print-btn-area');
+  if(area) area.outerHTML=btnHTML;
+}
+
+// ══════════════════════════════════════════
+// F2: DEFAULT SHARE PREFERENCE
+// ══════════════════════════════════════════
+const _SHARE_NAMES={wa:'📲 WA',pdf:'📄 PDF',a4:'🖨️ A4','58mm':'🧾 58mm','80mm':'🧾 80mm'};
+
+function autoDefault(key){
+  localStorage.setItem('sbp_default_share',key);
+  applyDefaultShare();
+}
+
+function applyDefaultShare(){
+  const def=localStorage.getItem('sbp_default_share')||'wa';
+  const accent='2px solid var(--acc)';
+  const none='2px solid transparent';
+  ['sbtn-wa','sbtn-pdf','sbtn-a4','sbtn-58','sbtn-80',
+   'sse-wa','sse-pdf','sse-a4','sse-58','sse-80'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el) return;
+    const share=el.dataset.share;
+    el.style.outline=share===def?accent:none;
+    el.style.outlineOffset='2px';
+  });
+  const badge=document.getElementById('default-share-badge');
+  if(badge) badge.textContent='⭐ '+(_SHARE_NAMES[def]||def);
+}
+
+function openShareDefaultPicker(){
+  let modal=document.getElementById('share-default-modal');
+  if(!modal){
+    modal=document.createElement('div');
+    modal.id='share-default-modal';
+    modal.style.cssText='position:fixed;inset:0;z-index:1100;background:rgba(0,0,0,.75);display:flex;align-items:flex-end;justify-content:center';
+    document.body.appendChild(modal);
+  }
+  const def=localStorage.getItem('sbp_default_share')||'wa';
+  const enabled=localStorage.getItem('sbp_printer_enabled')==='true';
+  const type=localStorage.getItem('sbp_printer_type')||'a4';
+  const isHindi=(localStorage.getItem('sbp_lang')||'en')==='hi';
+
+  const opts=[
+    {k:'wa', label:'📲 WhatsApp'},
+    {k:'pdf', label:'📄 PDF'},
+    ...(enabled
+      ? (type==='58mm'?[{k:'58mm',label:'🧾 58mm Thermal'}]:type==='80mm'?[{k:'80mm',label:'🧾 80mm Thermal'}]:[{k:'a4',label:'🖨️ A4 Print'}])
+      : [{k:'a4',label:'🖨️ A4'},{k:'58mm',label:'🧾 58mm'},{k:'80mm',label:'🧾 80mm'}]
+    )
+  ];
+
+  modal.innerHTML=`
+    <div style="background:var(--surf,#13131C);border-radius:20px 20px 0 0;padding:20px;width:100%;max-width:520px">
+      <div style="font-family:'Outfit',sans-serif;font-size:15px;font-weight:800;margin-bottom:4px;color:var(--text,#F0EFF8)">⭐ ${isHindi?'Default Share सेट करें':'Set Default Share'}</div>
+      <div style="font-size:12px;color:var(--t2,#8A8AA8);margin-bottom:14px">${isHindi?'हर bill पर auto-highlight होगा':'Auto-highlights on every bill'}</div>
+      ${opts.map(o=>`
+        <div onclick="autoDefault('${o.k}');document.getElementById('share-default-modal').style.display='none'"
+          style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:12px;margin-bottom:8px;cursor:pointer;
+          background:${o.k===def?'rgba(245,166,35,.1)':'var(--surf2,#1C1C28)'};
+          border:1.5px solid ${o.k===def?'rgba(245,166,35,.4)':'var(--bord,#2A2A3A)'}">
+          <span style="font-size:20px">${o.label.split(' ')[0]}</span>
+          <span style="font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;color:${o.k===def?'var(--acc,#F5A623)':'var(--text,#F0EFF8)'}">
+            ${o.label.substring(o.label.indexOf(' ')+1)} ${o.k===def?'✓':''}
+          </span>
+        </div>`).join('')}
+      <button onclick="document.getElementById('share-default-modal').style.display='none'"
+        style="width:100%;margin-top:4px;padding:11px;border-radius:12px;border:1.5px solid var(--bord,#2A2A3A);background:transparent;color:var(--t2,#8A8AA8);font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;cursor:pointer">
+        ${isHindi?'रद्द करें':'Cancel'}
+      </button>
+    </div>`;
+  modal.style.display='flex';
+  modal.onclick=function(e){if(e.target===modal)modal.style.display='none';};
 }
 
 init();
-// Load template on startup
-loadFromTemplateParams();
+setTimeout(()=>{ renderPrinterButtons(); applyDefaultShare(); }, 150);
 
 /* ══ Desktop Sidebar ══ */
 (function(){
@@ -2530,6 +3141,7 @@ loadFromTemplateParams();
     {ic:'📊',lb:'Reports',url:'reports.html'},
     {ic:'🛒',lb:'POS Admin',url:'pos-admin.html'},
     {ic:'💬',lb:'WhatsApp',url:'wa-center.html'},
+    {ic:'📢',lb:'Marketing',url:'marketing.html'},
     {ic:'💰',lb:'Cash Register',url:'cash-register.html'},
     {ic:'🚚',lb:'Suppliers',url:'supplier.html'},
     {ic:'🔄',lb:'Recurring',url:'recurring.html'},

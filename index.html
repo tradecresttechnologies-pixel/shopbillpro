@@ -1,7 +1,8 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" translate="no" class="notranslate">
 <head>
 <meta charset="UTF-8">
+<meta name="google" content="notranslate">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#F5A623">
 <meta name="mobile-web-app-capable" content="yes">
@@ -657,7 +658,7 @@ async function doSignup(prefix){
   const pass2=(document.getElementById(p+'-s-pass2')||{}).value;
   const role=(document.getElementById(p+'-s-role')||{}).value||'Owner';
   if(!name||!shop||!email){toast('❌ '+(_lang==='hi'?'नाम, दुकान और ईमेल जरूरी हैं':'Name, shop & email are required'),'e');return;}
-  // FIX #26 — basic email + phone validation
+  // FIX #26 — email + phone format validation
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){toast('❌ '+(_lang==='hi'?'सही ईमेल डालें':'Enter a valid email'),'e');return;}
   if(phone){
     const digits = phone.replace(/\D/g,'');
@@ -670,14 +671,10 @@ async function doSignup(prefix){
     const{data,error}=await _sb.auth.signUp({email,password:pass,options:{data:{name,shop,role,phone}}});
     if(error){toast('❌ '+error.message,'e');setLoading(p+'-signup-btn',false);return;}
 
-    // FIX #25 — Handle email-confirmation flow. If a session is required for RLS
-    // but isn't present (because email confirmation is enabled), defer the shop
-    // creation until first login.
+    // FIX #25 — handle email-confirmation flow (no session = email-confirm enabled)
     const session = data.session;
     const userId = data.user?.id;
     if(!session){
-      // No session = email confirmation likely required.
-      // Save pending shop info locally, redirect to login screen.
       localStorage.setItem('sbp_pending_shop', JSON.stringify({
         name:shop, owner_name:name, phone:phone||'', email, role,
         invoice_prefix:'INV', invoice_counter:1
@@ -688,18 +685,18 @@ async function doSignup(prefix){
       return;
     }
 
-    // FIX #27 — Check if shop already exists for this owner before inserting
-    const { data: existingShops } = await _sb.from('shops').select('id').eq('owner_id', userId).limit(1);
+    // FIX #27 — check if shop already exists for this owner before inserting
     let shopRow;
+    const { data: existingShops } = await _sb.from('shops').select('id').eq('owner_id', userId).limit(1);
     if(existingShops && existingShops.length){
-      shopRow = existingShops[0];
+      const { data: full } = await _sb.from('shops').select('*').eq('id', existingShops[0].id).single();
+      shopRow = full;
     } else {
       const{data:newShop,error:shopErr}=await _sb.from('shops').insert({
         owner_id:userId,name:shop,owner_name:name,phone:phone||'',email,
         invoice_prefix:'INV',invoice_counter:1
       }).select().single();
       if(shopErr){
-        // Save pending and let user proceed to dashboard; create on first session refresh
         localStorage.setItem('sbp_pending_shop', JSON.stringify({
           name:shop, owner_name:name, phone:phone||'', email, role,
           invoice_prefix:'INV', invoice_counter:1

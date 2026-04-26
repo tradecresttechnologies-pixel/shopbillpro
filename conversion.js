@@ -16,7 +16,7 @@
   function hi(){ return getLang()==='hi'; }
   function getBillCount(){
     const bills=JSON.parse(localStorage.getItem('sbp_bills')||'[]');
-    const ym=sbpYM();
+    const ym=new Date().toISOString().slice(0,7);
     return bills.filter(b=>(b.invoice_date||b.created_at||'').startsWith(ym)).length;
   }
   function getTotalBills(){

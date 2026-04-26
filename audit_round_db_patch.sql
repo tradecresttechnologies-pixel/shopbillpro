@@ -1,14 +1,14 @@
 -- ════════════════════════════════════════════════════════════════
--- ShopBill Pro — DB Patch for Audit Round
--- Run this in Supabase SQL Editor BEFORE deploying the new client code.
+-- ShopBill Pro — Audit Round DB Patch
+-- Run this in Supabase SQL Editor BEFORE deploying the new client.
+-- Safe to run multiple times.
 -- ════════════════════════════════════════════════════════════════
 
 -- ──────────────────────────────────────────────
 -- FIX #23 — Atomic invoice counter (race-free)
 -- ──────────────────────────────────────────────
--- Two devices reading counter=10 simultaneously and both writing 11
--- would produce duplicate invoice numbers (illegal under GST).
--- This RPC reserves the next number atomically.
+-- Without this, two devices reading counter=10 simultaneously and
+-- both writing 11 would produce duplicate invoice numbers (illegal under GST).
 
 CREATE OR REPLACE FUNCTION public.next_invoice_no(p_shop_id uuid)
 RETURNS TABLE(invoice_prefix text, invoice_counter int)
@@ -19,7 +19,7 @@ DECLARE
   v_prefix  text;
   v_counter int;
 BEGIN
-  -- Lock the shop row for the duration of this txn so two callers serialize.
+  -- Lock the shop row so two callers serialize.
   UPDATE shops
      SET invoice_counter = COALESCE(invoice_counter, 0) + 1
    WHERE id = p_shop_id
@@ -36,15 +36,13 @@ BEGIN
 END;
 $$;
 
--- Allow authenticated users to call it for their own shop only.
 REVOKE ALL ON FUNCTION public.next_invoice_no(uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.next_invoice_no(uuid) TO authenticated;
 
 -- ──────────────────────────────────────────────
--- FIX — Server-side plan expiry enforcement
+-- Server-side plan expiry enforcement
 -- ──────────────────────────────────────────────
--- Auto-downgrade shops whose plan_expires_at is in the past.
--- Call from a daily cron (Supabase Scheduled Function or pg_cron).
+-- Auto-downgrades shops whose plan_expires_at is in the past.
 
 CREATE OR REPLACE FUNCTION public.expire_lapsed_plans()
 RETURNS int
@@ -65,16 +63,16 @@ BEGIN
 END;
 $$;
 
--- Optional: enable pg_cron once and schedule daily.
+-- Optional: schedule daily via pg_cron
 -- (run once)  CREATE EXTENSION IF NOT EXISTS pg_cron;
 -- (run once)  SELECT cron.schedule('expire-plans-daily', '0 1 * * *',
 --               $$ SELECT public.expire_lapsed_plans(); $$);
 
 -- ──────────────────────────────────────────────
--- FIX — Subscription verification trigger
+-- Subscription verification trigger
 -- ──────────────────────────────────────────────
--- When admin updates subscription.status -> 'active', auto-update the shop's plan
--- and plan_expires_at. Removes the manual two-step error window.
+-- When admin updates subscriptions.status -> 'active', auto-update
+-- the shop's plan + plan_expires_at. Removes a manual two-step error window.
 
 CREATE OR REPLACE FUNCTION public.subscription_apply_to_shop()
 RETURNS trigger
@@ -100,7 +98,6 @@ FOR EACH ROW EXECUTE FUNCTION public.subscription_apply_to_shop();
 -- ──────────────────────────────────────────────
 -- Schema additions used by patched client
 -- ──────────────────────────────────────────────
--- These are safe to run multiple times.
 
 ALTER TABLE bills        ADD COLUMN IF NOT EXISTS reopened_at  timestamptz;
 ALTER TABLE bills        ADD COLUMN IF NOT EXISTS voided_at    timestamptz;
@@ -113,16 +110,20 @@ ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS razorpay_order_id text;
 ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS razorpay_signature text;
 
 -- ──────────────────────────────────────────────
--- Manual ops cheatsheet (admin verification flow)
+-- Manual ops: admin verification flow
 -- ──────────────────────────────────────────────
--- 1. Customer pays via UPI/Razorpay. Client inserts subscriptions row with
+-- 1. Customer pays via UPI/Razorpay → client inserts subscriptions row with
 --    status='pending_verification' (no shop plan changes yet).
 -- 2. Admin checks Razorpay dashboard / UPI receiving account.
 -- 3. Admin runs:
---      UPDATE subscriptions
---         SET status = 'active'
---       WHERE id = '<sub_id>';
---    The trigger above will copy plan + expires_at to shops automatically.
+--      UPDATE subscriptions SET status = 'active' WHERE id = '<sub_id>';
+--    The trigger above copies plan + expires_at to shops automatically.
 -- 4. To downgrade after refund:
 --      UPDATE subscriptions SET status='refunded' WHERE id='<sub_id>';
 --      UPDATE shops SET plan='free' WHERE id='<shop_id>';
+
+-- ──────────────────────────────────────────────
+-- Quick verification query (run after deploy)
+-- ──────────────────────────────────────────────
+-- Should return 1 row with prefix='INV' and a counter number:
+--   SELECT * FROM next_invoice_no((SELECT id FROM shops LIMIT 1));

@@ -1,7 +1,8 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" translate="no" class="notranslate">
 <head>
 <meta charset="UTF-8">
+<meta name="google" content="notranslate">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#F5A623">
 <meta name="mobile-web-app-capable" content="yes">
@@ -13,14 +14,38 @@
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Noto+Sans:wght@300;400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
-// FIX #50 — Normalize Indian phone (strip leading 91/+91/0 to avoid 9191... duplicates)
-window.sbpWAUrl=function(phone,msg){var n=String(phone||'').replace(/\D/g,'');if(n.length>10)n=n.slice(-10);if(n.length<10)return null;return 'https://wa.me/91'+String(n).replace(/\D/g,'').slice(-10)+(msg?'?text='+encodeURIComponent(msg):'');};
-
+// FIX #18, #48, #49 — Unified plan check with name normalization + expiry
+function _sbpPlanInfo(){
+  const s=JSON.parse(localStorage.getItem('sbp_shop')||'{}');
+  let plan=(s.plan||'free').toLowerCase();
+  if(plan==='enterprise') plan='business';
+  const exp=s.plan_expires_at;
+  if(exp && plan!=='free' && new Date(exp) < new Date()) plan='free';
+  return {plan, expired:!!(exp && new Date(exp) < new Date())};
+}
+function isPro(){const p=_sbpPlanInfo().plan;return p==='pro'||p==='business';}
+function isBiz(){return _sbpPlanInfo().plan==='business';}
+function isBusiness(){return _sbpPlanInfo().plan==='business';}
+function isFree(){return _sbpPlanInfo().plan==='free';}
 // FIX #3 — IST-aware date (UTC toISOString shifts -5:30 in India)
 function sbpToday(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+// FIX #10 — Auto cash-register entry
+function sbpRecordCashIn(amount, desc, who){
+  try {
+    const reg = JSON.parse(localStorage.getItem('sbp_register')||'{}');
+    const today = sbpToday();
+    if(!reg.isOpen || reg.openDate !== today) return;
+    if(!reg.entries) reg.entries = [];
+    const now = new Date();
+    const time = String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+    reg.entries.unshift({type:'in', amt:parseFloat(amount)||0, desc:desc||'Bill payment', cat:'Sales', time, ts:Date.now(), auto:true, ref:who||''});
+    localStorage.setItem('sbp_register', JSON.stringify(reg));
+  } catch(e){}
+}
 function sbpYM(){return sbpToday().slice(0,7);}
 function sbpY(){return sbpToday().slice(0,4);}
 </script>
+
 
 
 <script src="lang.js"></script>
@@ -279,7 +304,7 @@ html,body{height:100%;overflow:hidden}
 
   <!-- Search -->
   <div class="search-wrap">
-    <input class="search-inp" id="bill-search" placeholder="Search by name, invoice no, date..." oninput="searchBills(this.value)">
+    <input class="search-inp" id="bill-search" name="bill-search-q" type="search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search by name, invoice no, date..." oninput="searchBills(this.value)">
   </div>
 
   <!-- Status Filter Chips -->
@@ -310,7 +335,7 @@ html,body{height:100%;overflow:hidden}
     <div class="ni" onclick="goTo('dashboard.html')"><span class="ni-ic">🏠</span><span class="ni-lb" data-en="Home" data-hi="होम">Home</span></div>
     <div class="ni on" onclick="goTo('bills.html')"><span class="ni-ic">🧾</span><span class="ni-lb" data-en="Bills" data-hi="बिल">Bills</span></div>
     <div class="ni" onclick="goTo('billing.html')" style="align-items:center;justify-content:center"><div class="nav-fab">＋</div></div>
-    <div class="ni" onclick="goTo('customers.html')"><span class="ni-ic">👥</span><span class="ni-lb" data-en="Customers" data-hi="ग्राहक">Customers</span></div>
+    <div class="ni" onclick="goTo('marketing.html')"><span class="ni-ic">📢</span><span class="ni-lb">Marketing</span></div>
     <div class="ni" onclick="goTo('settings.html')"><span class="ni-ic">☰</span><span class="ni-lb" data-en="More" data-hi="अधिक">More</span></div>
   </div>
 </div>
@@ -393,10 +418,7 @@ let _sb=null;
 try{_sb=supabase.createClient(SB_URL,SB_KEY);}catch(e){console.warn('Supabase unavailable:',e);}
 
 // ── Plan Helper ──
-function isPro(){
-  const s=JSON.parse(localStorage.getItem('sbp_shop')||'{}');
-  return s.plan==='pro'||s.plan==='enterprise';
-}
+
 
 let _shop=null,_shopId=null,_user=null;
 let _theme=localStorage.getItem('sbp_theme')||'dark';
@@ -406,17 +428,37 @@ let _curSettleBill=null,_settlePayMethod='Cash',_settleType='full';
 let _curPreviewBill=null;
 let _online=navigator.onLine;
 
-// ══ MANAGER PIN SYSTEM ══
+// ══ MANAGER PIN SYSTEM (Multi-Manager) ══
 let _pinCallback=null;
 let _pinAttempts=0;
+let _lastPinUser=null; // tracks which manager verified
 
-function getManagerPIN(){
-  return localStorage.getItem('sbp_manager_pin')||'1234';
+function getManagerPINs(){
+  // Returns array of {name, pin, role, id}
+  const shopUsers=JSON.parse(localStorage.getItem('sbp_shop_users')||'[]');
+  const pins=shopUsers.filter(s=>s.pin&&s.pin_active!==false&&String(s.role||'').toLowerCase()==='manager')
+    .map(s=>({name:s.name,pin:s.pin,role:s.role,id:s.id}));
+  // Always include owner PIN (primary manager)
+  const ownerPin=localStorage.getItem('sbp_manager_pin');
+  if(ownerPin){
+    const shop=JSON.parse(localStorage.getItem('sbp_shop')||'{}');
+    pins.unshift({name:shop.owner_name||'Owner',pin:ownerPin,role:'Owner',id:'owner'});
+  }
+  return pins;
 }
 
 function requirePIN(action,callback){
+  // Check if any PIN is configured
+  const pins=getManagerPINs();
+  if(!pins.length){
+    if(confirm('⚠️ No Manager PIN has been set yet.\n\nYou must set a Manager PIN to authorize sensitive actions like voiding bills or deleting items.\n\nSet one now in Team & Users?')){
+      window.location.href='team.html';
+    }
+    return;
+  }
   _pinCallback=callback;
   _pinAttempts=0;
+  _lastPinUser=null;
   document.getElementById('pin-error').textContent='';
   document.getElementById('pin-input').value='';
   document.getElementById('pin-modal').classList.add('open');
@@ -425,12 +467,14 @@ function requirePIN(action,callback){
 
 function verifyPIN(){
   const entered=document.getElementById('pin-input').value;
-  const correct=getManagerPIN();
-  if(entered===correct){
+  const pins=getManagerPINs();
+  const match=pins.find(p=>p.pin===entered);
+  if(match){
+    _lastPinUser=match;
+    const cb=_pinCallback;
     closePINModal();
-    if(_pinCallback)_pinCallback();
-    _pinCallback=null;
-    logAudit('pin_verified',{action:'manager_access'});
+    logAudit('pin_verified',{action:'manager_access',verified_by:match.name,role:match.role,staff_id:match.id});
+    if(cb)cb();
   }else{
     _pinAttempts++;
     document.getElementById('pin-error').textContent='❌ Wrong PIN (Attempt '+_pinAttempts+'/5)';
@@ -449,28 +493,9 @@ function closePINModal(){
   document.getElementById('pin-modal').classList.remove('open');
   _pinCallback=null;
 }
-// Helper used by audit logs (FIX #11 reconstruction)
-function getPinUser(){
-  return localStorage.getItem('sbp_role')||localStorage.getItem('sbp_user_name')||'Manager';
-}
-// FIX #10 — Auto-record cash entry in Cash Register if it's open today
-function sbpRecordCashIn(amount, desc, who){
-  try {
-    const reg = JSON.parse(localStorage.getItem('sbp_register')||'{}');
-    const today = sbpToday();
-    if(!reg.isOpen || reg.openDate !== today) return;
-    if(!reg.entries) reg.entries = [];
-    const now = new Date();
-    const time = String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
-    reg.entries.unshift({
-      type:'in', amt: parseFloat(amount)||0,
-      desc: desc || 'Bill payment',
-      cat: 'Sales',
-      time: time, ts: Date.now(), auto: true, ref: who || ''
-    });
-    localStorage.setItem('sbp_register', JSON.stringify(reg));
-  } catch(e){}
-}
+
+// Helper: get name of last PIN-verified manager (for audit trail attribution)
+function getPinUser(){return _lastPinUser?_lastPinUser.name:(localStorage.getItem('sbp_role')||'Admin');}
 let _sessionTimeout=parseInt(localStorage.getItem('sbp_session_timeout')||'30');
 let _actTimer;
 
@@ -488,11 +513,12 @@ function fDate(d){if(!d)return '—';try{return new Date(d).toLocaleDateString('
 // ── Render Bills ──
 function renderBills(list){
   const el=document.getElementById('bills-list');
-  // Summary
+  // Summary — exclude voided bills from financial totals (still counted in list view)
+  const activeList=list.filter(b=>(b.status||'').toLowerCase()!=='voided');
   document.getElementById('s-bills').textContent=list.length;
-  document.getElementById('s-received').textContent=fINR(list.reduce((s,b)=>s+parseFloat(b.paid_amount||0),0));
-  document.getElementById('s-due').textContent=fINR(list.reduce((s,b)=>s+parseFloat(b.balance_due||0),0));
-  document.getElementById('s-partial').textContent=list.filter(b=>b.status==='Partial').length;
+  document.getElementById('s-received').textContent=fINR(activeList.reduce((s,b)=>s+parseFloat(b.paid_amount||0),0));
+  document.getElementById('s-due').textContent=fINR(activeList.reduce((s,b)=>s+parseFloat(b.balance_due||0),0));
+  document.getElementById('s-partial').textContent=activeList.filter(b=>b.status==='Partial').length;
 
   if(!list.length){
     el.innerHTML=`<div class="empty-state"><div class="es-ic">🧾</div><div class="es-t">No bills found</div><div class="es-s">Tap <strong>＋</strong> to create your first bill</div></div>`;
@@ -501,6 +527,7 @@ function renderBills(list){
 
   el.innerHTML='<div style="padding-top:6px">'+list.map(b=>{
     const sc=(b.status||'pending').toLowerCase();
+    const voided=sc==='voided';
     const items=b.bill_items?.map(i=>i.item_name).join(', ')||b.items_summary||'—';
     const bal=parseFloat(b.balance_due||0);
     return `<div class="bill-card ${sc}" onclick="openBillPreview('${b.id}')">
@@ -512,8 +539,8 @@ function renderBills(list){
       <div class="bc-items">${items}</div>
       <div class="bc-bot">
         <div>
-          <div class="bc-amt">${fINR(b.grand_total)}</div>
-          ${bal>0?`<div style="font-size:10px;color:var(--acc2);margin-top:2px">Due: ${fINR(bal)}</div>`:''}
+          <div class="bc-amt" style="${voided?'text-decoration:line-through;color:var(--t2)':''}">${fINR(b.grand_total)}</div>
+          ${bal>0&&!voided?`<div style="font-size:10px;color:var(--acc2);margin-top:2px">Due: ${fINR(bal)}</div>`:''}
         </div>
         <div class="bc-actions" onclick="event.stopPropagation()">
           <span class="badge ${sc}">${b.status||'Pending'}</span>
@@ -557,8 +584,10 @@ function openBillPreview(billId){
   const itemsHTML=items.length
     ?items.map((it,idx)=>{
       const voided=it.voided;
+      const gstRate=parseFloat(it.gst_rate||0);
+      const gstAmt=parseFloat(it.gst_amount||(parseFloat(it.line_total||0)*gstRate/(100+gstRate))||0);
       return `<div class="bdoc-table-row" style="${voided?'opacity:.4;text-decoration:line-through':''}">
-        <div><div class="bdoc-item-nm">${it.item_name||'Item'}${voided?' <span style="color:var(--acc2);font-size:10px">[VOID]</span>':''}</div><div class="bdoc-item-sub">Qty: ${it.qty||1} × ₹${it.rate||0} | GST ${it.gst_rate||0}%</div></div>
+        <div><div class="bdoc-item-nm">${it.item_name||'Item'}${voided?' <span style="color:var(--acc2);font-size:10px">[VOID]</span>':''}</div><div class="bdoc-item-sub">Qty: ${it.qty||1} × ₹${it.rate||0} | GST ${gstRate}%${gstRate>0?' (₹'+gstAmt.toFixed(2)+')':''}${it.hsn_code?' · HSN:'+it.hsn_code:''}</div></div>
         <div style="text-align:center">${it.qty||1}</div>
         <div style="text-align:right">₹${it.rate||0}</div>
         <div style="text-align:right;font-weight:800;display:flex;flex-direction:column;align-items:flex-end;gap:3px">
@@ -583,7 +612,7 @@ function openBillPreview(billId){
         ${s.gstin?`<div>🏛️ GSTIN: ${s.gstin}</div>`:''}
       </div>
       <div class="bdoc-inv-badge">
-        <div><div style="font-size:9px;opacity:.6;font-weight:700;letter-spacing:.5px;text-transform:uppercase">Invoice No.</div>
+        <div><div style="font-size:9px;opacity:.6;font-weight:700;letter-spacing:.5px;text-transform:uppercase">${parseFloat(b.gst_amount||0)>0?'Tax Invoice':'Invoice No.'}</div>
         <div class="bdoc-inv-no">${b.invoice_no||'—'}</div></div>
         <div class="bdoc-inv-dates">
           <div>📅 ${fDate(b.invoice_date)}</div>
@@ -608,7 +637,14 @@ function openBillPreview(billId){
       ${itemsHTML}
       <div class="bdoc-totals">
         <div class="bdoc-tot-line"><span>Subtotal</span><span>${fINR(b.subtotal)}</span></div>
-        <div class="bdoc-tot-line"><span>GST</span><span>${fINR(b.gst_amount)}</span></div>
+        ${parseFloat(b.gst_amount||0)>0 && (b.supply_type||'intra')==='intra' ? `
+          <div class="bdoc-tot-line"><span>CGST</span><span style="color:#10B981">${fINR(parseFloat(b.gst_amount)/2)}</span></div>
+          <div class="bdoc-tot-line"><span>SGST</span><span style="color:#10B981">${fINR(parseFloat(b.gst_amount)/2)}</span></div>
+        ` : ''}
+        ${parseFloat(b.gst_amount||0)>0 && (b.supply_type||'intra')!=='intra' ? `
+          <div class="bdoc-tot-line"><span>IGST</span><span style="color:#10B981">${fINR(b.gst_amount)}</span></div>
+        ` : ''}
+        ${parseFloat(b.gst_amount||0)>0?`<div class="bdoc-tot-line" style="font-size:11px;color:var(--t2)"><span>Total Tax</span><span>${fINR(b.gst_amount)}</span></div>`:''}
         ${parseFloat(b.discount||0)>0?`<div class="bdoc-tot-line"><span>Discount</span><span style="color:#EF4444">-${fINR(b.discount)}</span></div>`:''}
         <div class="bdoc-tot-line grand"><span>Grand Total</span><span>${fINR(b.grand_total)}</span></div>
         ${parseFloat(b.paid_amount||0)>0&&parseFloat(b.balance_due||0)>0?`<div class="bdoc-tot-line" style="color:var(--acc3)"><span>Paid</span><span>${fINR(b.paid_amount)}</span></div><div class="bdoc-tot-line" style="color:var(--acc2);font-weight:700"><span>Balance Due</span><span>${fINR(b.balance_due)}</span></div>`:''}
@@ -645,14 +681,17 @@ function printBillPreview(size){
   
   const pageSize=size==='58mm'?'58mm auto':size==='80mm'?'80mm auto':'A4';
   
+  const bodyW=size==='58mm'?'58mm':size==='80mm'?'80mm':'auto';
+  
   win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${b.invoice_no}</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Noto+Sans:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
       *{box-sizing:border-box;margin:0;padding:0}
-      body{margin:0;padding:20px;background:#f5f5f5;font-family:'Noto Sans',sans-serif}
+      body{margin:0 auto;padding:${size?'2mm':'20px'};background:#fff;font-family:'Noto Sans',sans-serif;width:${bodyW};max-width:${bodyW}}
       .bill-action-btn{display:none!important}
-      @page{size:${pageSize};margin:${size?'2mm':'10mm'}}
-      @media print{body{padding:0;background:#fff}.bill-action-btn{display:none!important}}
+      @page{size:${pageSize};margin:${size?'0':'10mm'}}
+      @media print{body{padding:${size?'2mm':'0'};background:#fff;width:${bodyW};max-width:${bodyW}}.bill-action-btn{display:none!important}}
+      ${size?`img{max-width:100%!important} *{font-size:10px!important} .bill-header{padding:8px!important}`:''}
     </style></head><body>
     ${content}
     <script>window.addEventListener('load',function(){setTimeout(function(){window.print();},500)});<\/script>
@@ -722,9 +761,9 @@ async function doSettle(){
     if(paidNow>(b.balance_due||b.grand_total)){toast('Amount exceeds balance due','e');return}
   }
 
-  // FIX #8 — Settlement is for collecting payment. "Credit" can't settle a bill.
+  // FIX #8 — Settlement is for collecting payment. Cannot settle as Credit.
   if(_settlePayMethod==='Credit'){
-    toast('❌ Cannot settle as Credit. Pick how the customer paid (Cash/UPI/Card/Bank/Cheque).','e',5000);
+    toast('❌ Cannot settle as Credit. Pick how customer paid (Cash/UPI/Card/Bank/Cheque).','e',5000);
     return;
   }
 
@@ -733,7 +772,7 @@ async function doSettle(){
 
   const newPaid=parseFloat(b.paid_amount||0)+paidNow;
   const newBalance=Math.max(0,parseFloat(b.grand_total||0)-newPaid);
-  // FIX #8 — newStatus no longer reads from payment method; only balance decides
+  // FIX #8 — status derived from balance only, not from payment method label
   const newStatus=newBalance<=0?'Paid':'Partial';
 
   // Update local
@@ -757,7 +796,7 @@ async function doSettle(){
     }
   } catch(e){}
 
-  // FIX #9 — Match customer by ID first, phone, then name
+  // FIX #9 — Match by ID first, phone, then name
   if(b.customer_name && b.customer_name !== 'Walk-in Customer'){
     const custs=JSON.parse(localStorage.getItem('sbp_customers')||'[]');
     let ci=-1;
@@ -791,22 +830,133 @@ function renderBillActions(b){
   const st=(b.status||'').toLowerCase();
   const isVoided=st==='voided';
   const isPaid=st==='paid';
+  const isPending=st==='pending';
+  const isCredit=st==='credit';
+  const isPartial=st==='partial';
   const btnStyle='font-size:11px;padding:7px 14px;border-radius:10px;cursor:pointer;font-weight:700;border:1px solid';
   let html='';
-  if(isPaid){
+
+  // ── Edit Bill — only for Pending (reopened) bills ──
+  if(isPending){
+    html+=`<button onclick="editBill('${b.id}')" style="${btnStyle};background:rgba(6,182,212,.1);border-color:rgba(6,182,212,.3);color:#06B6D4">✏️ Edit Bill</button>`;
+    html+=`<button onclick="voidBill('${b.id}')" style="${btnStyle};background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.25);color:var(--acc2)">🚫 Void Bill</button>`;
+    html+=`<button onclick="deleteBill('${b.id}')" style="${btnStyle};background:rgba(239,68,68,.06);border-color:rgba(239,68,68,.2);color:#ff6b6b">🗑️ Delete</button>`;
+  } else if(isPaid){
     html+=`<button onclick="reopenBill('${b.id}')" style="${btnStyle};background:rgba(245,166,35,.08);border-color:rgba(245,166,35,.25);color:var(--acc)">🔓 Reopen</button>`;
     html+=`<button onclick="voidBill('${b.id}')" style="${btnStyle};background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.25);color:var(--acc2)">🚫 Void Bill</button>`;
-  }else if(isVoided){
+  } else if(isVoided){
     html+=`<button onclick="reopenBill('${b.id}')" style="${btnStyle};background:rgba(245,166,35,.08);border-color:rgba(245,166,35,.25);color:var(--acc)">🔓 Reopen</button>`;
-  }else{
-    // Pending, Credit, Partial
+    html+=`<button onclick="deleteBill('${b.id}')" style="${btnStyle};background:rgba(239,68,68,.06);border-color:rgba(239,68,68,.2);color:#ff6b6b">🗑️ Delete</button>`;
+  } else {
+    // Credit / Partial
+    if(isCredit){
+      html+=`<button onclick="reopenBill('${b.id}')" style="${btnStyle};background:rgba(245,166,35,.08);border-color:rgba(245,166,35,.25);color:var(--acc)">🔓 Reopen & Reverse</button>`;
+    } else {
+      html+=`<button onclick="reopenBill('${b.id}')" style="${btnStyle};background:rgba(245,166,35,.08);border-color:rgba(245,166,35,.25);color:var(--acc)">🔓 Reopen</button>`;
+    }
     html+=`<button onclick="voidBill('${b.id}')" style="${btnStyle};background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.25);color:var(--acc2)">🚫 Void Bill</button>`;
   }
-  html+=`<button onclick="deleteBill('${b.id}')" style="${btnStyle};background:rgba(138,138,168,.06);border-color:rgba(138,138,168,.2);color:var(--t2)">🗑️ Delete</button>`;
+
+  const hasAudit = b.audit_log && Array.isArray(b.audit_log) && b.audit_log.length > 0;
+  html+=`<button onclick="showBillAuditTrail('${b.id}')" style="${btnStyle};background:${hasAudit?'rgba(139,92,246,.1)':'rgba(138,138,168,.06)'};border-color:${hasAudit?'rgba(139,92,246,.3)':'rgba(138,138,168,.2)'};color:${hasAudit?'#8B5CF6':'var(--t2)'}">📋 Audit${hasAudit?` (${b.audit_log.length})`:''}</button>`;
   el.innerHTML=html;
 }
 
-// ── Reopen Bill (PIN Protected) — FIX #11 reconstructed ──
+// ── Edit Bill — load into billing.html ──
+function editBill(billId){
+  requirePIN('edit_bill',function(){_doEditBill(billId)});
+}
+function _doEditBill(billId){
+  const b=_bills.find(x=>x.id===billId||String(x.id)===String(billId));
+  if(!b){toast('Bill not found','e');return;}
+  // Store full edit payload in localStorage
+  const editPayload={
+    id:b.id,invoice_no:b.invoice_no||b.invno||'',
+    invoice_date:b.invoice_date||b.invdate||'',
+    customer_name:b.customer_name||b.nm||'',
+    customer_phone:b.customer_phone||b.customer_wa||b.wa||'',
+    customer_gstin:b.customer_gstin||b.custGSTIN||'',
+    note:b.note||b.notes||'',
+    payment_mode:b.payment_mode||b.paymode||'Cash',
+    is_gst_invoice:b.is_gst_invoice||b.isGSTInvoice||false,
+    supply_type:b.supply_type||b.supplyType||'intra',
+    place_of_supply:b.place_of_supply||b.placeOfSupply||'',
+    discount:b.discount||0,discount_type:b.discount_type||'flat',
+    source:b.source||'',created_via:b.created_via||'',pos_mode:b.pos_mode||false,
+    bill_items:b.bill_items||b.items||[],
+    _edit_mode:true,_old_status:b.status||'Pending'
+  };
+  localStorage.setItem('sbp_edit_bill',JSON.stringify(editPayload));
+  logAudit('edit_bill_start',{bill_id:billId,invoice_no:b.invoice_no,customer:b.customer_name});
+  const idx=_bills.findIndex(x=>x.id===billId||String(x.id)===String(billId));
+  if(idx>=0){
+    if(!_bills[idx].audit_log) _bills[idx].audit_log=[];
+    _bills[idx].audit_log.unshift({action:'edit_started',ts:new Date().toISOString(),user:getPinUser(),note:'Bill opened for editing'});
+    localStorage.setItem('sbp_bills',JSON.stringify(_bills));
+  }
+  const isPOSBill=b.source==='pos'||b.created_via==='pos'||b.pos_mode===true;
+  window.location.href=(isPOSBill?'billing.html?mode=pos&edit_bill=':'billing.html?edit_bill=')+encodeURIComponent(billId);
+}
+
+// ── Audit Trail Viewer ──
+function showBillAuditTrail(billId){
+  const b=_bills.find(x=>x.id===billId||String(x.id)===String(billId));
+  if(!b){toast('Bill not found','e');return;}
+  const log=b.audit_log||[];
+
+  // Also pull global audit entries for this bill
+  const globalLog=JSON.parse(localStorage.getItem('sbp_audit_log')||'[]')
+    .filter(e=>e.details&&(e.details.bill_id===billId||String(e.details.bill_id)===String(billId)));
+
+  // Merge and deduplicate by timestamp
+  const allEntries=[...log,...globalLog.map(g=>({
+    action:g.action, ts:g.timestamp, user:g.user,
+    note:typeof g.details==='object'?JSON.stringify(g.details).replace(/[{}'"]/g,' ').trim():g.details
+  }))].sort((a,b)=>new Date(b.ts)-new Date(a.ts));
+
+  let modal=document.getElementById('audit-trail-modal');
+  if(!modal){
+    modal=document.createElement('div');
+    modal.id='audit-trail-modal';
+    modal.style.cssText='position:fixed;inset:0;z-index:1200;background:rgba(0,0,0,.8);display:flex;align-items:flex-end;justify-content:center';
+    document.body.appendChild(modal);
+  }
+
+  const rows=allEntries.length?allEntries.map(e=>{
+    const dt=new Date(e.ts);
+    const dtStr=dt.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'2-digit'})+' '+dt.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+    const actionColors={
+      reopen_bill:'#F5A623',void_bill:'#EF4444',void_item:'#EF4444',
+      delete_item:'#EF4444',delete_bill:'#EF4444',edit_bill_start:'#06B6D4',
+      edit_started:'#06B6D4',credit_ledger_reversal:'#10B981',settle_bill:'#10B981'
+    };
+    const col=actionColors[e.action]||'#8A8AA8';
+    const actionLabel=e.action.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+    return `<div style="padding:10px 0;border-bottom:1px solid var(--bord,#2A2A3A);display:flex;gap:10px;align-items:flex-start">
+      <div style="width:8px;height:8px;border-radius:50%;background:${col};margin-top:5px;flex-shrink:0"></div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:700;color:${col}">${actionLabel}</div>
+        ${e.note?`<div style="font-size:11px;color:var(--t2,#8A8AA8);margin-top:2px">${e.note}</div>`:''}
+        ${e.before||e.after?`<div style="font-size:10px;color:var(--t3,#4A4A60);margin-top:2px">${e.before?'Before: '+JSON.stringify(e.before):''} ${e.after?'→ After: '+JSON.stringify(e.after):''}</div>`:''}
+      </div>
+      <div style="font-size:10px;color:var(--t3,#4A4A60);flex-shrink:0;text-align:right">${dtStr}<br><span style="font-size:9px">${e.user||'Admin'}</span></div>
+    </div>`;
+  }).join(''):`<div style="text-align:center;padding:30px 20px;color:var(--t2,#8A8AA8);font-size:13px">📋 No audit entries yet for this bill</div>`;
+
+  modal.innerHTML=`
+    <div style="background:var(--surf,#13131C);border-radius:20px 20px 0 0;padding:20px;width:100%;max-width:560px;max-height:80vh;display:flex;flex-direction:column">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;flex-shrink:0">
+        <div style="font-family:var(--font-h,'Outfit'),sans-serif;font-size:16px;font-weight:800;color:var(--text,#F0EFF8)">📋 Audit Trail</div>
+        <div onclick="document.getElementById('audit-trail-modal').style.display='none'" style="width:32px;height:32px;border-radius:10px;background:var(--surf2,#1C1C28);border:1px solid var(--bord,#2A2A3A);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;color:var(--text,#F0EFF8)">✕</div>
+      </div>
+      <div style="font-size:11px;color:var(--t2,#8A8AA8);margin-bottom:14px;flex-shrink:0">${b.invoice_no} · ${b.customer_name}</div>
+      <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch">${rows}</div>
+    </div>`;
+  modal.style.display='flex';
+  modal.onclick=function(e){if(e.target===modal)modal.style.display='none';};
+}
+
+// ── Reopen Bill (PIN Protected) ──
 function reopenBill(billId){
   requirePIN('reopen_bill',function(){_doReopenBill(billId)});
 }
@@ -816,37 +966,9 @@ async function _doReopenBill(billId){
   const b=_bills[idx];
   const oldStatus=b.status;
   const isCreditBill = oldStatus==='Credit';
-  const billAmt = parseFloat(b.grand_total||0);
 
-  if(!confirm(isCreditBill
-    ? '⚠️ Reopen credit bill?\n\nCustomer ledger will be reversed (₹'+billAmt.toLocaleString('en-IN')+').\nBill will reopen for editing.'
-    : '⚠️ Reopen this bill?\n\nStatus will change to Pending and you can edit items.'))return;
-
-  // ── FIX #11a — Reverse customer ledger when reopening a credit bill ──
-  if(isCreditBill && b.customer_name && b.customer_name!=='Walk-in Customer'){
-    const custs=JSON.parse(localStorage.getItem('sbp_customers')||'[]');
-    // FIX #9 — match by ID first, then phone, then name
-    let ci = -1;
-    if(b.customer_id) ci = custs.findIndex(c => String(c.id)===String(b.customer_id));
-    if(ci<0 && b.customer_phone) {
-      const p = String(b.customer_phone).replace(/\D/g,'').slice(-10);
-      if(p) ci = custs.findIndex(c => String(c.whatsapp||c.phone||'').replace(/\D/g,'').slice(-10)===p);
-    }
-    if(ci<0) ci = custs.findIndex(c => c.name===b.customer_name);
-    if(ci>=0){
-      const oldBal=parseFloat(custs[ci].balance||0);
-      const newBal=Math.max(0, oldBal - billAmt);
-      custs[ci].balance=newBal;
-      localStorage.setItem('sbp_customers',JSON.stringify(custs));
-      try{logAudit('credit_ledger_reversal',{bill_id:billId,invoice_no:b.invoice_no,customer:b.customer_name,reversal_amount:billAmt,old_balance:oldBal,new_balance:newBal});}catch(e){}
-      if(_online&&_sb&&custs[ci].id&&!String(custs[ci].id).startsWith('local_')){
-        try{await _sb.from('customers').update({balance:newBal}).eq('id',custs[ci].id);}catch(e){console.warn(e);}
-      }
-      toast('📒 Ledger reversed: -₹'+billAmt.toLocaleString('en-IN')+' from '+b.customer_name,'i',3500);
-    }
-  }
-
-  // ── FIX #17 — Restore stock for items being reopened (so edit can deduct again cleanly) ──
+  // FIX #17 — Restore stock for items being reopened, so the editor's save
+  // can re-deduct cleanly without double counting.
   try {
     const products = JSON.parse(localStorage.getItem('sbp_products')||'[]');
     let changed=false;
@@ -864,34 +986,48 @@ async function _doReopenBill(billId){
       }
     }
     if(changed) localStorage.setItem('sbp_products',JSON.stringify(products));
-  } catch(e){ console.warn('Stock restoration failed:', e.message); }
+  } catch(e){ console.warn('Reopen stock restore failed:', e.message); }
+
+  // ── Credit bill: reverse customer ledger ──
+  if(isCreditBill){
+    const billAmt=parseFloat(b.grand_total||0);
+    const custName=b.customer_name||'';
+    const custs=JSON.parse(localStorage.getItem('sbp_customers')||'[]');
+    const ci=custs.findIndex(c=>c.name===custName||(c.phone&&c.phone===(b.customer_phone||'')));
+    if(ci>=0){
+      const oldBal=parseFloat(custs[ci].balance||0);
+      const newBal=Math.max(0,oldBal-billAmt);
+      custs[ci].balance=newBal;
+      localStorage.setItem('sbp_customers',JSON.stringify(custs));
+      try{logAudit('credit_ledger_reversal',{bill_id:billId,invoice_no:b.invoice_no,customer:custName,reversal_amount:billAmt,old_balance:oldBal,new_balance:newBal});}catch(e){}
+      if(_online&&_sb&&custs[ci].id){
+        try{await _sb.from('customers').update({balance:newBal}).eq('id',custs[ci].id);}catch(e){console.warn(e);}
+      }
+      toast(`📒 Ledger reversed: -₹${billAmt.toLocaleString('en-IN')} from ${custName}`,'i',3500);
+    }
+  }
 
   // ── Update bill status ──
   _bills[idx].status='Pending';
   _bills[idx].paid_amount=0;
-  _bills[idx].balance_due=billAmt;
+  _bills[idx].balance_due=parseFloat(b.grand_total||0);
   _bills[idx].reopened_at=new Date().toISOString();
   _bills[idx].reopened_by=getPinUser();
   if(!_bills[idx].audit_log) _bills[idx].audit_log=[];
-  _bills[idx].audit_log.unshift({
-    action:'reopen_bill',ts:new Date().toISOString(),user:getPinUser(),
-    before:{status:oldStatus},after:{status:'Pending'},
-    note:isCreditBill?'Credit bill reopened + ledger reversed + stock restored':'Bill reopened + stock restored'
-  });
+  _bills[idx].audit_log.unshift({action:'reopen_bill',ts:new Date().toISOString(),user:getPinUser(),before:{status:oldStatus},after:{status:'Pending'},note:isCreditBill?'Credit bill reopened + ledger reversed':'Bill reopened for editing'});
   localStorage.setItem('sbp_bills',JSON.stringify(_bills));
 
   if(_online&&_sb&&!String(billId).startsWith('local_')){
-    try{await _sb.from('bills').update({status:'Pending',paid_amount:0,balance_due:billAmt,reopened_at:_bills[idx].reopened_at}).eq('id',billId);}catch(e){console.warn(e);}
+    try{await _sb.from('bills').update({status:'Pending',paid_amount:0,balance_due:_bills[idx].balance_due,reopened_at:_bills[idx].reopened_at}).eq('id',billId);}catch(e){console.warn(e);}
   }
 
   try{logAudit('reopen_bill',{bill_id:billId,invoice_no:b.invoice_no,old_status:oldStatus,customer:b.customer_name,credit_reversed:isCreditBill});}catch(e){}
 
-  // ── Save bill data so billing.html can load in edit mode ──
+  // ── Save full bill data to localStorage so billing.html can load it ──
   const editPayload = {
     id: b.id,
     invoice_no: b.invoice_no || b.invno || '',
     invoice_date: b.invoice_date || b.invdate || '',
-    customer_id: b.customer_id || '',
     customer_name: b.customer_name || b.nm || '',
     customer_phone: b.customer_phone || b.customer_wa || b.wa || '',
     customer_gstin: b.customer_gstin || b.custGSTIN || '',
@@ -900,8 +1036,12 @@ async function _doReopenBill(billId){
     is_gst_invoice: b.is_gst_invoice || b.isGSTInvoice || false,
     supply_type: b.supply_type || b.supplyType || 'intra',
     place_of_supply: b.place_of_supply || b.placeOfSupply || '',
+    gst_no: b.gst_no || '',
     discount: b.discount || 0,
     discount_type: b.discount_type || 'flat',
+    source: b.source || '',
+    created_via: b.created_via || '',
+    pos_mode: b.pos_mode || false,
     bill_mode: b.bill_mode || (b.source==='pos'||b.created_via==='pos'||b.pos_mode===true ? 'pos' : 'manual'),
     bill_items: b.bill_items || b.items || [],
     _edit_mode: true,
@@ -911,18 +1051,22 @@ async function _doReopenBill(billId){
 
   closeModal('bill-preview-modal');
   toast('🔓 Bill reopened — opening editor...','s',2000);
+
+  // Auto-redirect to billing.html in edit mode (POS or Manual based on bill source)
   setTimeout(()=>{
-    const isPOSBill = editPayload.bill_mode==='pos';
-    window.location.href = (isPOSBill ? 'billing.html?mode=pos&edit_bill=' : 'billing.html?edit_bill=') + encodeURIComponent(billId);
+    const isPOSBill = b.bill_mode==='pos' || b.source==='pos' || b.created_via==='pos' || b.pos_mode===true;
+    // Use ?mode=pos (billing.html reads params.get('mode'))
+    const targetPage = isPOSBill ? 'billing.html?mode=pos&edit_bill=' : 'billing.html?edit_bill=';
+    window.location.href = targetPage + encodeURIComponent(billId);
   },800);
 }
 
-// ── Void Bill (PIN Protected) — FIX #16 stock restoration on void ──
+// ── Void Bill (PIN Protected) ──
 function voidBill(billId){
   requirePIN('void_bill',function(){_doVoidBill(billId)});
 }
 async function _doVoidBill(billId){
-  if(!confirm('⚠️ Void this entire bill?\n\nThis will mark it as CANCELLED.\nStock will be restored. Customer ledger (if credit) will be reversed.\nBill remains in records for audit purposes.'))return;
+  if(!confirm('⚠️ Void this entire bill?\n\nThis will mark it as CANCELLED.\nStock will be restored. Customer ledger (if credit) will be reversed.\nBill remains in records for audit.'))return;
   const idx=_bills.findIndex(x=>x.id===billId||String(x.id)===String(billId));
   if(idx<0)return;
   const b=_bills[idx];
@@ -948,9 +1092,9 @@ async function _doVoidBill(billId){
       }
     }
     if(changed) localStorage.setItem('sbp_products',JSON.stringify(products));
-  } catch(e){ console.warn('Stock restoration on void failed:', e.message); }
+  } catch(e){ console.warn('Void stock restore failed:', e.message); }
 
-  // FIX #11b — Reverse customer ledger if credit bill is being voided
+  // FIX #11b — Reverse customer ledger if credit was open
   if(wasCreditOpen && b.customer_name && b.customer_name!=='Walk-in Customer'){
     const due = parseFloat(b.balance_due||0);
     const custs=JSON.parse(localStorage.getItem('sbp_customers')||'[]');
@@ -966,7 +1110,7 @@ async function _doVoidBill(billId){
       custs[ci].balance=newBal;
       localStorage.setItem('sbp_customers',JSON.stringify(custs));
       if(_online&&_sb&&custs[ci].id&&!String(custs[ci].id).startsWith('local_')){
-        try{await _sb.from('customers').update({balance:newBal}).eq('id',custs[ci].id);}catch(e){console.warn(e);}
+        try{await _sb.from('customers').update({balance:newBal}).eq('id',custs[ci].id);}catch(e){}
       }
     }
   }
@@ -974,6 +1118,8 @@ async function _doVoidBill(billId){
   _bills[idx].status='Voided';
   _bills[idx].voided_at=new Date().toISOString();
   _bills[idx].voided_by=localStorage.getItem('sbp_role')||'Manager';
+
+  // Per-bill audit
   if(!_bills[idx].audit_log) _bills[idx].audit_log=[];
   _bills[idx].audit_log.unshift({
     action:'void_bill',ts:new Date().toISOString(),
@@ -982,11 +1128,12 @@ async function _doVoidBill(billId){
     after:{status:'Voided'},
     note:'Bill voided + stock restored' + (wasCreditOpen?' + ledger reversed':'')
   });
+
   localStorage.setItem('sbp_bills',JSON.stringify(_bills));
   if(_online&&!String(billId).startsWith('local_')){
     try{await _sb.from('bills').update({status:'Voided'}).eq('id',billId);}catch(e){console.warn(e);}
   }
-  logAudit('void_bill',{bill_id:billId,invoice_no:b.invoice_no,old_status:oldStatus,customer:b.customer_name,amount:oldGrand,credit_reversed:wasCreditOpen});
+  logAudit('void_bill',{bill_id:billId,invoice_no:_bills[idx].invoice_no,old_status:oldStatus,customer:_bills[idx].customer_name,amount:oldGrand,credit_reversed:wasCreditOpen});
   closeModal('bill-preview-modal');
   applyFilters();
   toast('🚫 Bill voided — stock restored','i');
@@ -1033,9 +1180,21 @@ async function _doVoidItem(billId,itemIdx){
   const itemGST=parseFloat(items[itemIdx].gst_amount||0);
   
   items[itemIdx].voided=true;
-  
+  items[itemIdx].voided_at=new Date().toISOString();
+  items[itemIdx].voided_by=getPinUser();
+
   // Recalculate bill totals excluding voided items
   recalcBillTotals(b);
+
+  // Per-bill audit
+  if(!b.audit_log) b.audit_log=[];
+  b.audit_log.unshift({
+    action:'void_item',ts:new Date().toISOString(),
+    user:getPinUser(),
+    before:{item_name:itemName,line_total:itemTotal,voided:false},
+    after:{voided:true},
+    note:`Item voided: ${itemName}`
+  });
   localStorage.setItem('sbp_bills',JSON.stringify(_bills));
   
   if(_online&&!String(billId).startsWith('local_')){
@@ -1116,7 +1275,7 @@ function logAudit(action,details){
     id:'aud_'+Date.now(),
     action,
     details,
-    user:localStorage.getItem('sbp_role')||'Admin',
+    user:getPinUser(),
     timestamp:new Date().toISOString(),
     shop_id:_shopId
   };
@@ -1171,16 +1330,30 @@ async function init(){
   if(_bl&&_bl.querySelector('.spinner'))_bl.innerHTML='';
   applyFilters();
 
-  // ── Handle URL params ──
+  // ── Handle URL params + sessionStorage backup ──
   const params = new URLSearchParams(window.location.search);
-  const billId = params.get('id');
+  const billId = params.get('id') || sessionStorage.getItem('sbp_open_bill');
+  sessionStorage.removeItem('sbp_open_bill');
   const filter = params.get('filter');
   if(filter) filterStatus(filter, document.querySelector(`.chip[onclick*="${filter}"]`)||document.querySelector('.chip'));
+
+  // ── Open bill detail with multiple retries ──
+  if(billId){
+    const tryOpen=()=>{
+      const b=_bills.find(x=>String(x.id)===String(billId));
+      if(b){openBillPreview(billId);return true;}
+      return false;
+    };
+    if(!tryOpen()){
+      setTimeout(tryOpen,150);
+      setTimeout(tryOpen,500);
+      setTimeout(tryOpen,1500);
+    }
+  }
 
   // ── Auth + cloud sync (non-blocking — page already shows content above) ──
   if(!_sb){
     // Supabase CDN failed — local-only mode, no auth check needed
-    if(billId){const b=_bills.find(x=>x.id===billId);if(b)openBillPreview(billId);}
     return;
   }
 
@@ -1208,7 +1381,9 @@ async function init(){
     console.warn('Auth check failed, local mode:',e);
   }
 
-  if(billId){const b=_bills.find(x=>x.id===billId);if(b)openBillPreview(billId);}
+  if(billId && !document.getElementById('bill-preview-modal')?.classList.contains('open')){
+    const b=_bills.find(x=>String(x.id)===String(billId));if(b)openBillPreview(billId);
+  }
 }
 
 init();
@@ -1225,6 +1400,7 @@ init();
     {ic:'📊',lb:'Reports',url:'reports.html'},
     {ic:'🛒',lb:'POS Admin',url:'pos-admin.html'},
     {ic:'💬',lb:'WhatsApp',url:'wa-center.html'},
+    {ic:'📢',lb:'Marketing',url:'marketing.html'},
     {ic:'💰',lb:'Cash Register',url:'cash-register.html'},
     {ic:'🚚',lb:'Suppliers',url:'supplier.html'},
     {ic:'🔄',lb:'Recurring',url:'recurring.html'},

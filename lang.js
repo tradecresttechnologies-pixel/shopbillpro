@@ -209,17 +209,15 @@ const SBP_TRANSLATIONS = {
   }
 };
 
-/* Apply language across the page — FIX #58/#60/#61 */
+/* Apply language across the page */
 function sbpApplyLang() {
   var lang = localStorage.getItem('sbp_lang') || 'en';
   document.documentElement.lang = lang;
 
-  if (lang !== 'hi') return; // English is default
-
+  if (lang !== 'hi') return;
   var dict = SBP_TRANSLATIONS.hi;
 
-  // FIX #58 — Pre-build sorted keys (longest first to avoid partial-match issues
-  // like "Pay" overwriting inside "Payment")
+  // FIX #59 — sort keys longest-first (avoid "Pay" matching inside "Payment")
   var keys = Object.keys(dict).sort(function(a,b){return b.length - a.length;});
 
   function applyTranslations(root){
@@ -229,10 +227,10 @@ function sbpApplyLang() {
         var text = node.nodeValue;
         if (!text || !text.trim()) return;
         var changed = false;
+        // FIX #58 — plain string replacement (no regex compile per node)
         for (var i=0; i<keys.length; i++) {
           var key = keys[i];
           if (text.indexOf(key) !== -1) {
-            // Use plain string replacement (avoid expensive regex per node)
             text = text.split(key).join(dict[key]);
             changed = true;
           }
@@ -256,11 +254,10 @@ function sbpApplyLang() {
     walkNode(root);
   }
 
-  // FIX #60 — Handle BOTH cases: script loaded before DOMContentLoaded AND after
+  // FIX #60 — handle BOTH cases: script loaded before AND after DOMContentLoaded
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function() { applyTranslations(document.body); });
   } else {
-    // DOM already parsed — apply immediately
     applyTranslations(document.body);
   }
 }

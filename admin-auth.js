@@ -3,18 +3,23 @@
    Secure admin access with master password + role-based checks
 ══════════════════════════════════════════════════════════ */
 
-// Hardening — store SHA-256 hash, not plain password.
-// Default hash is for 'SBP_ADMIN_2024_SECURE' — generate a new one for production:
+/* ══════════════════════════════════════════════════════════
+   ShopBill Pro Admin Control Panel — Authentication
+   Secure admin access with master password + role-based checks
+══════════════════════════════════════════════════════════ */
+
+// Master password is stored as SHA-256 hash, not plaintext.
+// To regenerate: open DevTools console, run:
 //   const enc = new TextEncoder().encode('YOUR_NEW_PASSWORD');
 //   crypto.subtle.digest('SHA-256', enc).then(b =>
 //     console.log(Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join(''))
 //   );
 const ADMIN_CONFIG = {
-  // SHA-256 of 'SBP_ADMIN_2024_SECURE' — change in production
+  // SHA-256 of 'SBP_ADMIN_2024_SECURE' — change in production!
   MASTER_PASSWORD_HASH: '68b9de762bdc872d5a7e8cd2b9d0f497aec0f53cefcb4caa8c1a8a6f63c7d8fc',
-  SESSION_TIMEOUT: 60 * 60 * 1000, // 1 hour
+  SESSION_TIMEOUT: 60 * 60 * 1000,
   MAX_LOGIN_ATTEMPTS: 5,
-  LOCKOUT_TIME: 15 * 60 * 1000, // 15 minutes
+  LOCKOUT_TIME: 15 * 60 * 1000,
 };
 
 async function _sha256Hex(text){
@@ -60,7 +65,7 @@ class AdminAuth {
       throw new Error('Too many login attempts. Try again later.');
     }
 
-    // Verify password against stored hash (constant-time-ish comparison)
+    // Verify password (constant-time compare against stored hash)
     let entered;
     try { entered = await _sha256Hex(password || ''); }
     catch(e) { throw new Error('Crypto API unavailable — use a modern browser'); }

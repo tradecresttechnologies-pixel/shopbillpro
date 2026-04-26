@@ -1,7 +1,8 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" translate="no" class="notranslate">
 <head>
 <meta charset="UTF-8">
+<meta name="google" content="notranslate">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#F5A623">
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png?v=2">
@@ -367,22 +368,13 @@ function setBilling(type){
 
 /* ══ Razorpay Key — Replace with your actual key ══ */
 // ════════════════════════════════════════════════════════════════
-// PAYMENT CONFIGURATION — UPDATE THESE BEFORE PUBLIC LAUNCH
+// PAYMENT CONFIGURATION — UPDATE THESE 3 VALUES BEFORE PUBLIC LAUNCH
 // ════════════════════════════════════════════════════════════════
-// Each value below MUST be replaced with real credentials.
-// The validator below will block payment flows until they are set.
 const SBP_PAY_CONFIG = {
-  RAZORPAY_KEY:  'rzp_test_YOUR_KEY_HERE',     // Get from dashboard.razorpay.com
-  RECEIVING_UPI: 'shopbillpro@paytm',          // Your actual receiving UPI ID
-  ADMIN_WA:      '919999999999'                // Your WhatsApp (with country code, no +)
+  RAZORPAY_KEY:  'rzp_test_YOUR_KEY_HERE',     // dashboard.razorpay.com → API Keys
+  RECEIVING_UPI: 'shopbillpro@paytm',          // your actual UPI ID
+  ADMIN_WA:      '919999999999'                // 10-digit + country code, no '+'
 };
-function _payConfigOk() {
-  const c = SBP_PAY_CONFIG;
-  return !c.RAZORPAY_KEY.includes('YOUR_KEY')
-      && c.RECEIVING_UPI && !/paytm$|@paytm$/.test(c.RECEIVING_UPI.toLowerCase().replace(/^.*@/, '@'+c.RECEIVING_UPI.split('@')[1]||''))
-      ? true
-      : (c.RAZORPAY_KEY.indexOf('YOUR_KEY') === -1 && c.RECEIVING_UPI !== 'shopbillpro@paytm' && c.ADMIN_WA !== '919999999999');
-}
 const RAZORPAY_KEY = SBP_PAY_CONFIG.RAZORPAY_KEY;
 
 function upgradePlan(plan) {
@@ -528,11 +520,9 @@ async function onRazorpaySuccess(response, plan, amount, planName, billingLabel)
   const shopId = localStorage.getItem('sbp_shop_id');
   const shop = JSON.parse(localStorage.getItem('sbp_shop') || '{}');
 
-  // FIX #46 — Razorpay client callback CANNOT be trusted. Razorpay payment_id
-  // returned to the browser can be spoofed. Real activation must happen via
-  // server-side webhook or admin-side signature verification using the shared
-  // razorpay secret. Until that pipeline exists, mark as pending_verification
-  // and let admin flip the plan after confirming payment in Razorpay dashboard.
+  // FIX #46 — Razorpay client callback CANNOT be trusted (spoofable). Real
+  // activation must come from server-side webhook signature verification, OR
+  // admin verification in Supabase. Until then, mark pending and let admin flip.
   let recorded = false;
   if (navigator.onLine && window._sb && shopId) {
     try {
@@ -543,7 +533,7 @@ async function onRazorpaySuccess(response, plan, amount, planName, billingLabel)
         plan: plan === 'pro' ? 'pro' : 'business',
         billing_cycle: (billingLabel || 'Monthly').toLowerCase(),
         amount: amount,
-        status: 'pending_verification',  // not 'active' until admin verifies
+        status: 'pending_verification',
         payment_method: 'razorpay',
         payment_ref: paymentId,
         razorpay_order_id: orderId,
@@ -554,17 +544,8 @@ async function onRazorpaySuccess(response, plan, amount, planName, billingLabel)
       recorded = true;
     } catch(e) { console.warn('Subscription record failed:', e.message); }
   }
-
-  // Local-only marker so user sees a pending state, NOT a feature unlock
-  shop.pending_upgrade = {
-    plan: plan === 'pro' ? 'pro' : 'business',
-    amount: amount,
-    submitted_at: new Date().toISOString(),
-    method: 'razorpay',
-    payment_ref: paymentId
-  };
+  shop.pending_upgrade = { plan: plan==='pro'?'pro':'business', amount, submitted_at:new Date().toISOString(), method:'razorpay', payment_ref:paymentId };
   localStorage.setItem('sbp_shop', JSON.stringify(shop));
-
   showUpgradePending(planName, amount, recorded);
 }
 
@@ -596,16 +577,13 @@ function showPaymentConfirmModal(plan, amount, planName) {
 
 async function confirmUPIPayment(plan, planName, amount) {
   document.getElementById('pay-confirm-modal')?.remove();
-  const shopId = localStorage.getItem('sbp_shop_id');
   const shop = JSON.parse(localStorage.getItem('sbp_shop') || '{}');
+  const shopId = localStorage.getItem('sbp_shop_id');
 
-  // FIX (bug #46): Do NOT optimistically upgrade plan client-side.
-  // User clicking "I Paid" without actually paying must NOT unlock features.
-  // Plan stays free until admin verifies the payment.
-  let recordSaved = false;
+  let recorded = false;
   if (navigator.onLine && window._sb && shopId) {
     try {
-      const txnRef = 'UPI-' + Date.now() + '-' + Math.random().toString(36).slice(2,8).toUpperCase();
+      const txnRef = 'UPI-'+Date.now()+'-'+Math.random().toString(36).slice(2,8).toUpperCase();
       await window._sb.from('subscriptions').insert({
         shop_id: shopId,
         plan: plan === 'pro' ? 'pro' : 'business',
@@ -616,26 +594,21 @@ async function confirmUPIPayment(plan, planName, amount) {
         payment_ref: txnRef,
         notes: 'Manual UPI payment — awaiting admin verification'
       });
-      recordSaved = true;
+      recorded = true;
     } catch(e) { console.warn('Subscription record failed:', e.message); }
   }
 
-  // Local mark only — pending state, NO plan change
-  shop.pending_upgrade = {
-    plan: plan === 'pro' ? 'pro' : 'business',
-    amount: amount,
-    submitted_at: new Date().toISOString(),
-    method: 'upi'
-  };
+  // FIX #46 — DO NOT optimistically upgrade plan. User clicking "I Paid" without
+  // actually paying must NOT unlock features. Admin must verify in Supabase.
+  shop.pending_upgrade = { plan: plan==='pro'?'pro':'business', amount, submitted_at:new Date().toISOString(), method:'upi' };
   localStorage.setItem('sbp_shop', JSON.stringify(shop));
 
-  showUpgradePending(planName, amount, recordSaved);
+  showUpgradePending(planName, amount, recorded);
 }
 
 // New: pending-state modal — replaces optimistic success
-function showUpgradePending(planName, amount, recordSaved) {
-  const old = document.getElementById('upgrade-pending-modal');
-  if (old) old.remove();
+function showUpgradePending(planName, amount, recorded) {
+  const old = document.getElementById('upgrade-pending-modal'); if (old) old.remove();
   const modal = document.createElement('div');
   modal.id = 'upgrade-pending-modal';
   modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
@@ -644,19 +617,16 @@ function showUpgradePending(planName, amount, recordSaved) {
   modal.innerHTML = '<div style="background:var(--surf,#13131C);border-radius:24px;width:100%;max-width:380px;padding:28px;text-align:center">'
     + '<div style="font-size:56px;margin-bottom:16px">⏳</div>'
     + '<div style="font-family:\'Outfit\',sans-serif;font-size:20px;font-weight:900;color:var(--text,#F0EFF8);margin-bottom:10px">'
-    + (hi ? 'Payment Verification में है' : 'Payment Under Verification') + '</div>'
+    + (hi?'Payment Verification में है':'Payment Under Verification') + '</div>'
     + '<div style="font-size:13px;color:var(--t2,#8A8AA8);margin-bottom:18px;line-height:1.6">'
     + (hi
-        ? '₹' + amount + ' का payment record हो गया।<br>हमारी team 2-4 ghante में verify करेगी।<br>Verify होने के बाद ' + planName + ' plan automatically activate हो जाएगा।'
-        : 'Your ₹' + amount + ' payment has been recorded.<br>Our team will verify within 2-4 hours.<br>' + planName + ' plan will auto-activate after verification.')
+       ? '₹'+amount+' का payment record हो गया।<br>हमारी team 2-4 ghante में verify करेगी।<br>Verify होने के बाद '+planName+' plan automatically activate हो जाएगा।'
+       : 'Your ₹'+amount+' payment has been recorded.<br>Our team will verify within 2-4 hours.<br>'+planName+' plan will auto-activate after verification.')
     + '</div>'
-    + (!recordSaved ? '<div style="background:rgba(245,166,35,.1);border:1px solid rgba(245,166,35,.3);border-radius:10px;padding:10px;margin-bottom:16px;font-size:11px;color:var(--acc,#F5A623);line-height:1.5">⚠️ '
-        + (hi ? 'Internet नहीं था — कृपया WhatsApp पर screenshot भेजें' : 'No internet — please WhatsApp us your payment screenshot')
-        + '</div>' : '')
-    + '<button onclick="document.getElementById(\'upgrade-pending-modal\').remove();window.location.href=\'dashboard.html\'" style="width:100%;padding:14px;border-radius:14px;background:linear-gradient(135deg,#F5A623,#FF8A00);border:none;color:#0A0E1A;font-family:\'Outfit\',sans-serif;font-size:14px;font-weight:800;cursor:pointer;margin-bottom:8px">'
-    + (hi ? 'समझ गया, Dashboard पर जाएं' : 'Got it, go to Dashboard') + '</button>'
-    + '<button onclick="payViaWhatsApp(\'' + (planName === 'Pro' ? 'pro' : 'biz') + '\',' + amount + ',\'' + planName + '\')" style="width:100%;padding:12px;border-radius:14px;background:rgba(37,211,102,.1);border:1px solid rgba(37,211,102,.3);color:#25D366;font-family:\'Outfit\',sans-serif;font-size:13px;font-weight:700;cursor:pointer">💬 '
-    + (hi ? 'WhatsApp पर screenshot भेजें' : 'Send screenshot via WhatsApp') + '</button>'
+    + (!recorded ? '<div style="background:rgba(245,166,35,.1);border:1px solid rgba(245,166,35,.3);border-radius:10px;padding:10px;margin-bottom:16px;font-size:11px;color:var(--acc,#F5A623)">⚠️ '
+       + (hi?'Internet नहीं था — कृपया WhatsApp पर screenshot भेजें':'No internet — please WhatsApp us your payment screenshot') + '</div>' : '')
+    + '<button onclick="document.getElementById(\'upgrade-pending-modal\').remove();window.location.href=\'dashboard.html\'" style="width:100%;padding:14px;border-radius:14px;background:linear-gradient(135deg,#F5A623,#FF8A00);border:none;color:#0A0E1A;font-family:\'Outfit\',sans-serif;font-size:14px;font-weight:800;cursor:pointer">'
+    + (hi?'समझ गया, Dashboard पर जाएं':'Got it, go to Dashboard') + '</button>'
     + '</div>';
   document.body.appendChild(modal);
 }

@@ -1,163 +1,103 @@
 # 🚀 ShopBill Pro — Audit Round Final Build
-**This is the ONLY package you need to deploy. Replace your entire repo with these files.**
+
+**This is the ONLY package you need. Replace your repo with these files.**
 
 ---
 
-## What changed?
+## What's in this build
 
-- **62 bugs** identified, **58 fixed** in code (audit round 1)
-- **Phase 1 UPI** added: WhatsApp QR-image send + Mark-as-Paid follow-up
-- **Reports professional upgrade**: GSTR-1, GSTR-3B, P&L, Payments tabs + period comparison
-- **Dead code removed**: deleted unused `shared/` folder and unused `db-local.js`
+- **62 bug fixes** (audit findings #1 through #62)
+- **Phase 1 UPI**: WhatsApp QR-image send + Mark-as-Paid follow-up
+- **Reports Pro**: GSTR-1, GSTR-3B, P&L, Payments tabs with CSV exports
+- **Cleanup**: Deleted unused `shared/` folder + dead `db-local.js` references
 
 ---
 
 ## ⚠️ DEPLOY IN THIS ORDER
 
-### Step 1 — Run the SQL patch (REQUIRED, do it FIRST)
+### Step 1 — Run SQL patch (REQUIRED, do FIRST)
 
-1. Open Supabase → SQL Editor → New Query
+1. Open Supabase Dashboard → SQL Editor → New Query
 2. Open `audit_round_db_patch.sql` from this package
-3. Copy entire contents → paste into SQL Editor → Run
-4. Verify no errors. This adds:
-   - `next_invoice_no()` RPC (atomic invoice counter, prevents duplicate invoice numbers across devices)
-   - `expire_lapsed_plans()` function (auto-downgrades expired paid users)
-   - `subscription_apply_to_shop` trigger (admin verifies subscription → plan auto-activates)
-   - Schema additions: `voided_at`, `audit_log`, `supply_type`, `plan_expires_at`, etc.
+3. Copy entire contents → paste → Run
+4. Verify no errors
 
-### Step 2 — Update payment configuration (REQUIRED before public launch)
+### Step 2 — Update payment config
 
-Open `subscription.html`, find this block near the top of the `<script>` section:
+Open `subscription.html`. Near top of `<script>` find:
 
 ```javascript
 const SBP_PAY_CONFIG = {
-  RAZORPAY_KEY:  'rzp_test_YOUR_KEY_HERE',     // ← Get from dashboard.razorpay.com
-  RECEIVING_UPI: 'shopbillpro@paytm',          // ← Your actual receiving UPI ID
-  ADMIN_WA:      '919999999999'                // ← Your WhatsApp (10-digit, no +)
+  RAZORPAY_KEY:  'rzp_test_YOUR_KEY_HERE',
+  RECEIVING_UPI: 'shopbillpro@paytm',
+  ADMIN_WA:      '919999999999'
 };
 ```
 
 Replace all 3 placeholder values. **Without this, payments will not work.**
 
-### Step 3 — Deploy the files
+### Step 3 — Deploy
 
-There are **two ways** depending on your preference:
-
-#### Option A — Replace everything (cleanest, recommended)
-
-1. Open GitHub Desktop
-2. In your `vinaykumars937/shopbillpro` repo folder, **delete all files except `.git/` and any deployment configs (`vercel.json`, `.gitignore` if present)**
-3. Copy ALL files from this package into the repo folder
-4. Commit message: `Audit round: 58 bug fixes + Phase 1 UPI + Pro Reports`
-5. Push to GitHub → Vercel auto-deploys
-
-#### Option B — Selective overwrite (riskier)
-
-If you want to keep some local changes, replace **only these modified files**:
-
-```
-admin-auth.js
-admin-db.js
-auth.js
-bill-templates.html
-billing.html
-bills.html
-cash-register.html
-customers.html
-dashboard.html
-db.js
-index.html
-lang.js
-marketing.html
-pos-admin.html
-recurring.html
-reports.html
-service-worker.js
-settings.html
-stock.html
-subscription.html
-supplier.html
-sync.js
-team.html
-ui.js
-wa-center.html
-```
-
-Files that are **NEW** (didn't exist before, must add):
-
-```
-audit_round_db_patch.sql
-AUDIT_CHANGELOG.md
-AUDIT_CHANGELOG_ROUND2.md
-README.md (this file)
-```
-
-Files **deleted** (must remove from your repo):
-
-```
-db-local.js              ← was dead code
-shared/ folder           ← was duplicate dead code
-```
+1. In your local repo, delete every file except `.git/` and any deployment configs
+2. Copy ALL files from this package into the repo
+3. Commit + push → Vercel auto-deploys
 
 ### Step 4 — Hard refresh
 
 Service worker version was bumped to `v1.3.0`. Existing PWA users may need:
-- **Mobile:** Long-press app icon → Uninstall → reinstall from app.shopbillpro.in
-- **Or:** Open Chrome DevTools → Application → Service Workers → Unregister → reload
+- Mobile: Long-press app → Uninstall → reinstall from app.shopbillpro.in
+- Or: DevTools → Application → Service Workers → Unregister → reload
 
 ### Step 5 — Verify
 
-Run through the checklists at the end of:
-- `AUDIT_CHANGELOG.md` (round 1 verification)
-- `AUDIT_CHANGELOG_ROUND2.md` (round 2 verification)
+- [ ] Today's Sales shows correct amount with credit bills present
+- [ ] Manual bill saves → stock decreases in Stock page
+- [ ] Cash bill → entry auto-appears in Cash Register
+- [ ] Void bill → stock restored, ledger reversed if credit
+- [ ] Reopen credit bill → ledger reverses, redirected to billing.html in edit mode
+- [ ] Reports → GSTR-1 tab shows B2B/B2C split → Export B2B CSV opens cleanly in Excel
+- [ ] Reports → P&L shows Net Sales / COGS / Net Profit
+- [ ] Settings has UPI ID saved → bill → 📲 WA → "Bill + UPI QR Image" option appears
+- [ ] Customers page → reminder bell → after WA opens → "Did they pay?" follow-up
+- [ ] Subscription page → "I Paid via UPI" → "Payment Under Verification" (NOT instant unlock)
+- [ ] Settings in Hindi mode loads without flash/blink
+- [ ] WhatsApp links don't have `9191...` doubled country code
 
 ---
 
-## File status reference
+## File structure
 
-### Files MODIFIED in this audit (25 total)
-admin-auth.js, admin-db.js, auth.js, bill-templates.html, billing.html, bills.html, cash-register.html, customers.html, dashboard.html, db.js, index.html, lang.js, marketing.html, pos-admin.html, recurring.html, reports.html, service-worker.js, settings.html, stock.html, subscription.html, supplier.html, sync.js, team.html, ui.js, wa-center.html
+### Modified (32 files)
+admin-auth.js · admin-db.js · auth.js · bill-templates.html · billing.html · bills.html · cash-register.html · customers.html · dashboard.html · db.js · index.html · lang.js · marketing.html · pos-admin.html · recurring.html · reports.html · service-worker.js · settings.html · stock.html · subscription.html · supplier.html · sync.js · team.html · ui.js · wa-center.html · supabase.js
 
-### Files UNCHANGED (kept as-is from your original)
-admin-analytics.html, admin-audit.html, admin-dashboard.html, admin-features.html, admin-login.html, admin-notifications.html, admin-revenue.html, admin-technical.html, admin-users.html, conversion.js, fix.css, manifest.json, scanner.js, shopbillpro_website.html, styles.css, supabase.js, upgrade-popup.js, icons/
+### Unchanged (stays as-is)
+admin-analytics.html · admin-audit.html · admin-dashboard.html · admin-features.html · admin-login.html · admin-notifications.html · admin-revenue.html · admin-technical.html · admin-users.html · conversion.js · fix.css · manifest.json · scanner.js · shopbillpro_website.html · styles.css · upgrade-popup.js · icons/
 
-### Files NEW (added by audit)
-audit_round_db_patch.sql, AUDIT_CHANGELOG.md, AUDIT_CHANGELOG_ROUND2.md, README.md
+### New
+audit_round_db_patch.sql · README.md · AUDIT_CHANGELOG.md
 
-### Files DELETED
-db-local.js (was dead code, not used anywhere)
-shared/ folder (was duplicate older copies, not used by any HTML page)
-
----
-
-## Why was there a `shared/` folder?
-
-Your original repo had a `shared/` folder with copies of `auth.js`, `db.js`, `sync.js`, `ui.js`, `db-local.js`, `styles.css`, `supabase.js`. **None of your HTML pages actually loaded from there** — they all pointed to root-level files. The `shared/` folder appears to have been an abandoned reorganization attempt. It's been removed since it would have caused confusion and possibly served stale code if Vercel routing changed.
+### Deleted from your repo
+- `db-local.js` — dead code (was 404'ing on every page)
+- `shared/` folder — unreferenced duplicates
 
 ---
 
-## Quick verification commands (after deploy)
+## Key fix summary
 
-In your browser console at `app.shopbillpro.in/dashboard.html`:
+**Money & Trust:** Closed revenue exploit (#46), centralized payment config (#43-45), plan expiry enforced (#49), admin password SHA-256 hashed.
 
-```javascript
-// Should NOT show "false" or undefined
-console.log('Today function works:', typeof sbpToday === 'function');
-console.log('Plan info works:', typeof _sbpPlanInfo === 'function');
-console.log('Plan today:', _sbpPlanInfo());
-```
+**Math:** Today's Sales = grand_total (#1, screenshot bug), voided excluded everywhere (#2/5/6), timezone fix across 13 files (#3), CGST/SGST/IGST split per supply_type (#4), post-discount taxable base (#7).
 
-In Supabase SQL Editor:
+**Stock & Ledger:** Manual stock deduction (#15), void/reopen restore stock (#16/17), customer match by ID/phone (#9/12), settle blocks Credit (#8), cash register auto-record (#10).
 
-```sql
--- Should return 1 row with prefix='INV' and a counter number
-SELECT * FROM next_invoice_no((SELECT id FROM shops LIMIT 1));
-```
+**Sync/SW/Admin:** Atomic invoice counter RPC (#23), service worker rewrite with all assets (#19/20), admin revenue uses grand_total (#54), business plan counted (#55), users-table fallback (#56).
+
+**UX:** Lang.js perf + late-load fix (#58/60/61) — fixes Hindi screen-blink, WA country code dup (#50), bulk send cap (#51/53), bill template via sessionStorage (#39), profit per unit display (#38), recurring "Generate All Due" no longer drops bills (#21).
+
+**Phase 1 UPI:** Bill+QR-image option in WA send modal, Mark-as-Paid follow-up after reminder.
+
+**Reports Pro:** GSTR-1 (B2B+B2C with GSTN-format exports), GSTR-3B summary, P&L statement (true profit using cost prices), Payments breakdown.
 
 ---
 
-## Need help?
-
-- See `AUDIT_CHANGELOG.md` for round 1 details (62 bugs)
-- See `AUDIT_CHANGELOG_ROUND2.md` for round 2 details (Phase 1 UPI + Pro Reports)
-- All bug numbers (#1, #2, etc.) are referenced in code comments where fixes were applied
+See `AUDIT_CHANGELOG.md` for full bug-by-bug breakdown.

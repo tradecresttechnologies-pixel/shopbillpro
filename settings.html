@@ -23,9 +23,10 @@
     <button onclick="closeModal('sync-modal')" style="width:100%;padding:12px;border-radius:12px;background:var(--surf2);border:1px solid var(--bord);color:var(--t2);font-size:14px;cursor:pointer">Close</button>
   </div>
 </div><!DOCTYPE html>
-<html lang="en">
+<html lang="en" translate="no" class="notranslate">
 <head>
 <meta charset="UTF-8">
+<meta name="google" content="notranslate">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#F5A623">
 <meta name="mobile-web-app-capable" content="yes">
@@ -37,14 +38,12 @@
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Noto+Sans:wght@300;400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
-// FIX #50 — Normalize Indian phone (strip leading 91/+91/0 to avoid 9191... duplicates)
-window.sbpWAUrl=function(phone,msg){var n=String(phone||'').replace(/\D/g,'');if(n.length>10)n=n.slice(-10);if(n.length<10)return null;return 'https://wa.me/91'+String(n).replace(/\D/g,'').slice(-10)+(msg?'?text='+encodeURIComponent(msg):'');};
-
 // FIX #3 — IST-aware date (UTC toISOString shifts -5:30 in India)
 function sbpToday(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function sbpYM(){return sbpToday().slice(0,7);}
 function sbpY(){return sbpToday().slice(0,4);}
 </script>
+
 
 
 <script src="lang.js"></script>
@@ -171,6 +170,9 @@ body{background:var(--bg);color:var(--text)}
 .toggle-track{position:absolute;cursor:pointer;inset:0;background:var(--surf3);border:1.5px solid var(--bord);border-radius:12px;transition:.28s}
 .toggle-track::after{content:'';position:absolute;width:16px;height:16px;border-radius:50%;background:#fff;top:2px;left:2px;transition:.28s}
 .toggle-sw input:checked+.toggle-track{background:var(--acc);border-color:var(--acc)}
+.printer-type-btn{border:2px solid var(--bord);border-radius:14px;padding:12px 8px;text-align:center;cursor:pointer;background:var(--surf2);transition:.18s ease}
+.printer-type-btn.on{border-color:var(--acc);background:rgba(245,166,35,.1)}
+.printer-type-btn:active{transform:scale(.95)}
 .toggle-sw input:checked+.toggle-track::after{transform:translateX(20px)}
 
 /* Forms */
@@ -371,6 +373,27 @@ html,body{height:100%;overflow:hidden}
       </div>
     </div>
 
+    <!-- Quick Access — Mobile shortcuts for Marketing, Plans, Team -->
+    <div style="padding:14px 14px 0">
+      <div style="font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">Quick Access</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:4px">
+        <div onclick="gatedGoTo('marketing.html','Marketing Center')" style="background:linear-gradient(135deg,rgba(139,92,246,.15),rgba(168,85,247,.1));border:1.5px solid rgba(139,92,246,.3);border-radius:14px;padding:14px 8px;text-align:center;cursor:pointer;position:relative">
+          <div style="position:absolute;top:6px;right:6px;font-size:8px;font-weight:800;background:linear-gradient(135deg,#F59E0B,#EF4444);color:#fff;border-radius:6px;padding:2px 5px;letter-spacing:.3px">BIZ</div>
+          <div style="font-size:24px;margin-bottom:5px">📢</div>
+          <div style="font-size:10px;font-weight:800;color:#8B5CF6">Marketing</div>
+        </div>
+        <div onclick="goTo('subscription.html')" style="background:linear-gradient(135deg,rgba(245,166,35,.15),rgba(255,138,0,.1));border:1.5px solid rgba(245,166,35,.3);border-radius:14px;padding:14px 8px;text-align:center;cursor:pointer">
+          <div style="font-size:24px;margin-bottom:5px">🚀</div>
+          <div style="font-size:10px;font-weight:800;color:var(--acc)">Plans</div>
+        </div>
+        <div onclick="gatedGoTo('team.html','Team & Users')" style="background:linear-gradient(135deg,rgba(6,182,212,.15),rgba(8,145,178,.1));border:1.5px solid rgba(6,182,212,.3);border-radius:14px;padding:14px 8px;text-align:center;cursor:pointer;position:relative">
+          <div style="position:absolute;top:6px;right:6px;font-size:8px;font-weight:800;background:linear-gradient(135deg,#F59E0B,#EF4444);color:#fff;border-radius:6px;padding:2px 5px;letter-spacing:.3px">BIZ</div>
+          <div style="font-size:24px;margin-bottom:5px">👥</div>
+          <div style="font-size:10px;font-weight:800;color:#06B6D4">Team</div>
+        </div>
+      </div>
+    </div>
+
     <!-- Shop Management -->
     <div style="padding-top:14px">
       <div class="menu-sec">
@@ -450,6 +473,83 @@ html,body{height:100%;overflow:hidden}
           <div class="mi-ic" style="background:rgba(251,146,60,.15)">🎨</div>
           <div class="mi-txt"><h4>Font & Display Style</h4><p>Number style, font size & family</p></div>
           <span class="mi-arr">›</span>
+        </div>
+      </div>
+
+      <!-- Printer Settings -->
+      <div class="menu-sec">
+        <div class="menu-sec-t">🖨️ Printer Settings</div>
+
+        <!-- Enable Printing toggle -->
+        <div class="menu-it" onclick="togglePrinterEnabled()">
+          <div class="mi-ic" style="background:rgba(6,182,212,.15)">🖨️</div>
+          <div class="mi-txt"><h4>Enable Printing</h4><p id="printer-enabled-lbl">Auto-print when saving bill</p></div>
+          <label class="toggle-sw" onclick="event.stopPropagation()">
+            <input type="checkbox" id="printer-enabled-chk" onchange="togglePrinterEnabled()">
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+
+        <!-- Printer Type Selection -->
+        <div id="printer-type-section" style="padding:12px 14px;display:none">
+          <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Select Printer Type</div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px" id="printer-type-grid">
+            <div class="printer-type-btn" data-type="58mm" onclick="setPrinterType('58mm',this)">
+              <div style="font-size:22px;margin-bottom:4px">🧾</div>
+              <div style="font-size:11px;font-weight:800;color:var(--text)">58mm</div>
+              <div style="font-size:9px;color:var(--t2);margin-top:2px">Thermal</div>
+            </div>
+            <div class="printer-type-btn" data-type="80mm" onclick="setPrinterType('80mm',this)">
+              <div style="font-size:22px;margin-bottom:4px">🧾</div>
+              <div style="font-size:11px;font-weight:800;color:var(--text)">80mm</div>
+              <div style="font-size:9px;color:var(--t2);margin-top:2px">Thermal</div>
+            </div>
+            <div class="printer-type-btn" data-type="a4" onclick="setPrinterType('a4',this)">
+              <div style="font-size:22px;margin-bottom:4px">📄</div>
+              <div style="font-size:11px;font-weight:800;color:var(--text)">A4</div>
+              <div style="font-size:9px;color:var(--t2);margin-top:2px">Standard</div>
+            </div>
+          </div>
+          <div style="margin-top:10px;font-size:11px;color:var(--t2);background:var(--surf2);border-radius:10px;padding:9px 12px;border:1px solid var(--bord)">
+            💡 <span id="printer-tip-text">Billing page will show only one Print button matching your printer type.</span>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- Auto-Send on Bill Save -->
+      <div class="menu-sec">
+        <div class="menu-sec-t">📲 Auto-Send on Bill Save</div>
+
+        <div class="menu-it" onclick="toggleAutoSend('wa')">
+          <div class="mi-ic" style="background:rgba(37,211,102,.15)">💬</div>
+          <div class="mi-txt"><h4>Auto-send WhatsApp</h4><p>Open WhatsApp with bill text after saving (POS &amp; Manual)</p></div>
+          <label class="toggle-sw" onclick="event.stopPropagation()">
+            <input type="checkbox" id="auto-wa-chk" onchange="toggleAutoSend('wa')">
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+
+        <div class="menu-it" onclick="toggleAutoSend('pdf')">
+          <div class="mi-ic" style="background:rgba(245,166,35,.15)">📎</div>
+          <div class="mi-txt"><h4>Auto-download PDF</h4><p>Generate &amp; download PDF bill on save (POS only)</p></div>
+          <label class="toggle-sw" onclick="event.stopPropagation()">
+            <input type="checkbox" id="auto-pdf-chk" onchange="toggleAutoSend('pdf')">
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+
+        <div class="menu-it" onclick="toggleAutoSend('print')">
+          <div class="mi-ic" style="background:rgba(6,182,212,.15)">🖨️</div>
+          <div class="mi-txt"><h4>Auto-print</h4><p>Send bill to printer immediately after save (POS only)</p></div>
+          <label class="toggle-sw" onclick="event.stopPropagation()">
+            <input type="checkbox" id="auto-print-chk" onchange="toggleAutoSend('print')">
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+
+        <div style="margin:0 14px 10px;font-size:11px;color:var(--t2);background:var(--surf2);border-radius:10px;padding:9px 12px;border:1px solid var(--bord)">
+          💡 Skipped automatically if customer has no phone number saved.
         </div>
       </div>
 
@@ -546,7 +646,7 @@ html,body{height:100%;overflow:hidden}
     <div class="ni" onclick="goTo('dashboard.html')"><span class="ni-ic">🏠</span><span class="ni-lb">Home</span></div>
     <div class="ni" onclick="goTo('bills.html')"><span class="ni-ic">🧾</span><span class="ni-lb">Bills</span></div>
     <div class="ni" onclick="goTo('billing.html')" style="align-items:center;justify-content:center"><div class="nav-fab">＋</div></div>
-    <div class="ni" onclick="goTo('customers.html')"><span class="ni-ic">👥</span><span class="ni-lb">Customers</span></div>
+    <div class="ni" onclick="goTo('marketing.html')"><span class="ni-ic">📢</span><span class="ni-lb">Marketing</span></div>
     <div class="ni on" onclick="goTo('settings.html')"><span class="ni-ic">☰</span><span class="ni-lb">More</span></div>
   </div>
 </div>
@@ -723,41 +823,8 @@ html,body{height:100%;overflow:hidden}
   </div>
 </div>
 
-<!-- Staff Modal -->
-<div class="overlay" id="staff-modal">
-  <div class="sheet">
-    <div class="handle"></div>
-    <div class="sheet-title">👥 Staff & Roles</div>
-    <div style="font-size:12px;color:var(--t2);margin-bottom:12px">Add staff members who can access your shop with their own login</div>
-    <div id="staff-list" style="margin-bottom:12px"></div>
-    <button class="btn-pri" onclick="openAddStaff()">＋ Add Staff Member</button>
-    <button class="btn-sec" onclick="closeModal('staff-modal')" style="margin-top:8px">Close</button>
-    <div style="height:8px"></div>
-  </div>
-</div>
+<!-- Staff Modal — REMOVED (consolidated into team.html). openStaffGated() now redirects to team.html -->
 
-<!-- Add Staff Modal -->
-<div class="overlay" id="add-staff-modal">
-  <div class="sheet">
-    <div class="handle"></div>
-    <div class="sheet-title">➕ Add Staff Member</div>
-    <div style="background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.2);border-radius:var(--rs);padding:10px;margin-bottom:12px;font-size:11px;color:var(--t2)">Staff will get their own login credentials linked to your shop.</div>
-    <div class="ff"><label>Full Name *</label><input type="text" id="stf-name" placeholder="Staff name" autocomplete="off"></div>
-    <div class="ff"><label>Email *</label><input type="text" id="stf-email" placeholder="staff@email.com" autocomplete="off"></div>
-    <div class="ff"><label>Phone / WhatsApp</label><input type="text" id="stf-phone" placeholder="Mobile number" autocomplete="off" inputmode="numeric"></div>
-    <div class="ff"><label>Password *</label><input type="password" id="stf-pass" placeholder="Min 6 characters" autocomplete="new-password"></div>
-    <div class="ff"><label>Role</label>
-      <select id="stf-role">
-        <option value="Staff">Staff — Bills only</option>
-        <option value="Manager">Manager — Bills + Customers + Reports</option>
-        <option value="Accountant">Accountant — View reports only</option>
-      </select>
-    </div>
-    <button class="btn-pri" onclick="addStaff()">✅ Add Staff</button>
-    <button class="btn-sec" onclick="closeModal('add-staff-modal');openModal('staff-modal')" style="margin-top:8px">Back</button>
-    <div style="height:8px"></div>
-  </div>
-</div>
 
 <div id="toast-container"></div>
 <input type="file" id="import-file" accept=".json" style="display:none" onchange="processImport(this)">
@@ -778,9 +845,117 @@ function _resetTimer(){clearTimeout(_actTimer);localStorage.setItem('sbp_last_ac
 ['click','touchstart','keypress','scroll'].forEach(e=>document.addEventListener(e,_resetTimer,{passive:true}));
 
 function goTo(p){window.location.href=p}
+
+// Gated navigation — Business plan only pages
+function gatedGoTo(page, featureName){
+  const shop=JSON.parse(localStorage.getItem('sbp_shop')||'{}');
+  const plan=shop.plan||'free';
+  if(plan==='enterprise'||plan==='business'){
+    goTo(page);
+  } else {
+    // Show upgrade modal
+    let modal=document.getElementById('biz-upgrade-modal');
+    if(!modal){
+      modal=document.createElement('div');
+      modal.id='biz-upgrade-modal';
+      modal.style.cssText='position:fixed;inset:0;z-index:1100;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;padding:20px';
+      document.body.appendChild(modal);
+    }
+    const isHindi=(localStorage.getItem('sbp_lang')||'en')==='hi';
+    modal.innerHTML=`
+      <div style="background:var(--surf,#1C1C28);border-radius:20px;padding:28px 24px;max-width:340px;width:100%;text-align:center">
+        <div style="font-size:44px;margin-bottom:12px">🔒</div>
+        <div style="font-family:'Outfit',sans-serif;font-size:18px;font-weight:800;margin-bottom:6px;color:var(--text,#F0EFF8)">${featureName}</div>
+        <div style="font-size:11px;font-weight:700;background:linear-gradient(135deg,#F59E0B,#EF4444);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:12px;letter-spacing:.5px">BUSINESS PLAN FEATURE</div>
+        <div style="font-size:13px;color:var(--t2,#8A8AA8);line-height:1.6;margin-bottom:20px">
+          ${isHindi
+            ?featureName+' sirf Business plan mein available hai. Apni dukaan ko next level pe le jaayein!'
+            :featureName+' is available in the Business plan. Take your shop to the next level!'}
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <button onclick="goTo('subscription.html')" style="padding:13px;border-radius:12px;background:linear-gradient(135deg,#F5A623,#FF8A00);border:none;color:#0A0E1A;font-family:'Outfit',sans-serif;font-size:14px;font-weight:800;cursor:pointer">
+            🚀 ${isHindi?'अपग्रेड करें — ₹199/month':'Upgrade to Business — ₹199/month'}
+          </button>
+          <button onclick="document.getElementById('biz-upgrade-modal').style.display='none'" style="padding:10px;border-radius:10px;border:1.5px solid var(--bord,#2A2A3A);background:transparent;color:var(--t2,#8A8AA8);font-family:'Outfit',sans-serif;font-size:12px;font-weight:700;cursor:pointer">
+            ${isHindi?'बाद में':'Maybe Later'}
+          </button>
+        </div>
+      </div>`;
+    modal.style.display='flex';
+    modal.onclick=function(e){if(e.target===modal)modal.style.display='none';};
+  }
+}
+
+// ══════════════════════════════════════════
+// PRINTER SETTINGS
+// ══════════════════════════════════════════
+function loadPrinterSettings(){
+  const enabled=localStorage.getItem('sbp_printer_enabled')==='true';
+  const type=localStorage.getItem('sbp_printer_type')||'a4';
+  const chk=document.getElementById('printer-enabled-chk');
+  const sec=document.getElementById('printer-type-section');
+  if(chk) chk.checked=enabled;
+  if(sec) sec.style.display=enabled?'block':'none';
+  updatePrinterLbl(enabled,type);
+  // Highlight selected type button
+  document.querySelectorAll('.printer-type-btn').forEach(btn=>{
+    btn.classList.toggle('on', btn.dataset.type===type);
+  });
+}
+
+function togglePrinterEnabled(){
+  const chk=document.getElementById('printer-enabled-chk');
+  const enabled=chk?chk.checked:(localStorage.getItem('sbp_printer_enabled')!=='true');
+  // If called from menu-it click (not directly from checkbox), flip
+  if(!chk) return;
+  localStorage.setItem('sbp_printer_enabled', enabled?'true':'false');
+  const sec=document.getElementById('printer-type-section');
+  if(sec) sec.style.display=enabled?'block':'none';
+  const type=localStorage.getItem('sbp_printer_type')||'a4';
+  updatePrinterLbl(enabled,type);
+  toast(enabled?'🖨️ Printing enabled':'🖨️ Printing disabled','s');
+}
+
+function setPrinterType(type, el){
+  localStorage.setItem('sbp_printer_type', type);
+  document.querySelectorAll('.printer-type-btn').forEach(b=>b.classList.remove('on'));
+  if(el) el.classList.add('on');
+  const enabled=localStorage.getItem('sbp_printer_enabled')==='true';
+  updatePrinterLbl(enabled, type);
+  const tips={
+    '58mm':'Billing page will show 🧾 58mm thermal print button only.',
+    '80mm':'Billing page will show 🧾 80mm thermal print button only.',
+    'a4':'Billing page will show 🖨️ A4 standard print button only.'
+  };
+  const tipEl=document.getElementById('printer-tip-text');
+  if(tipEl) tipEl.textContent=tips[type]||'';
+  toast('🖨️ Printer set to '+type.toUpperCase(),'s');
+}
+
+function updatePrinterLbl(enabled, type){
+  const lbl=document.getElementById('printer-enabled-lbl');
+  if(!lbl) return;
+  const typeNames={'58mm':'58mm Thermal','80mm':'80mm Thermal','a4':'A4 Standard'};
+  lbl.textContent=enabled?('Printer: '+(typeNames[type]||type)):'Tap to enable printing';
+}
+
+// ── Auto-Send on Bill Save preferences ──
+function toggleAutoSend(key){
+  const chk=document.getElementById('auto-'+key+'-chk');
+  if(!chk) return;
+  localStorage.setItem('sbp_auto_'+key, chk.checked?'1':'0');
+  const labels={wa:'WhatsApp auto-send',pdf:'PDF auto-download',print:'Auto-print'};
+  toast((chk.checked?'✅ ':'⛔ ')+labels[key]+(chk.checked?' enabled':' disabled'),'s');
+}
+function loadAutoSendSettings(){
+  ['wa','pdf','print'].forEach(k=>{
+    const chk=document.getElementById('auto-'+k+'-chk');
+    if(chk) chk.checked=localStorage.getItem('sbp_auto_'+k)==='1';
+  });
+}
 function toast(msg,type='',dur=3000){const c=document.getElementById('toast-container');const t=document.createElement('div');t.className='toast'+(type?' '+type:'');t.textContent=msg;c.appendChild(t);setTimeout(()=>{t.style.opacity='0';t.style.transition='.2s';setTimeout(()=>t.remove(),220);},dur)}
 function toggleTheme(){_theme=_theme==='dark'?'light':'dark';localStorage.setItem('sbp_theme',_theme);document.documentElement.setAttribute('data-theme',_theme==='light'?'light':'');document.getElementById('theme-btn').textContent=_theme==='light'?'🌙':'☀️';document.getElementById('theme-chk').checked=_theme==='light'}
-function openModal(id){const el=document.getElementById(id);if(id==='sync-modal')updateSyncStats();if(id==='staff-modal')renderStaff();el.classList.add('open');el.style.display='flex';el.addEventListener('click',e=>{if(e.target===el)closeModal(id);},{once:true})}
+function openModal(id){const el=document.getElementById(id);if(id==='sync-modal')updateSyncStats();el.classList.add('open');el.style.display='flex';el.addEventListener('click',e=>{if(e.target===el)closeModal(id);},{once:true})}
 function closeModal(id){const el=document.getElementById(id);el.classList.remove('open');el.style.display='none'}
 
 // ── Shop Settings ──
@@ -910,20 +1085,26 @@ function setFontSize(val){
   document.getElementById('font-size-lbl').textContent=val+'px';
   const p=document.getElementById('font-preview');if(p)p.style.fontSize=val+'px';
 }
-function applyFontSettings(){
+function applyFontSettings(silent){
   const fontMap={default:'inherit',mono:"'Courier New',monospace",rounded:"'DM Sans',sans-serif",sharp:"'Outfit',sans-serif"};
   let st=document.getElementById('sbp-font-override');
   if(!st){st=document.createElement('style');st.id='sbp-font-override';document.head.appendChild(st);}
   st.textContent=`.sc-val,.bdoc-inv-no,#s-grand,#s-sub,.cart-total-val{font-family:${fontMap[_curDigitStyle]}!important}body{font-size:${_curFontSize}px}`;
   localStorage.setItem('sbp_digit_style',_curDigitStyle);
   localStorage.setItem('sbp_font_size',_curFontSize.toString());
-  closeModal('font-modal');
-  toast('✅ Display style applied!','s');
+  if(!silent){
+    closeModal('font-modal');
+    toast('✅ Display style applied!','s');
+  }
 }
 function loadFontSettings(){
   const ds=localStorage.getItem('sbp_digit_style');
   const fs=localStorage.getItem('sbp_font_size');
-  if(ds||fs){_curDigitStyle=ds||'default';_curFontSize=parseInt(fs||'15');applyFontSettings();}
+  // The pre-body inline script already injected the <style> override.
+  // Just sync in-memory vars so the UI controls match — do NOT re-run applyFontSettings
+  // (re-injecting the same style forces a reflow and causes a visible blink/jank).
+  if(ds) _curDigitStyle=ds;
+  if(fs) _curFontSize=parseInt(fs);
   const rng=document.getElementById('font-size-range');if(rng)rng.value=_curFontSize;
   document.getElementById('font-size-lbl').textContent=_curFontSize+'px';
 }
@@ -1004,13 +1185,7 @@ function renderStaff(){
 }
 
 function openStaffGated(){
-  const plan=JSON.parse(localStorage.getItem('sbp_shop')||'{}').plan||'free';
-  if(plan!=='enterprise'){
-    toast('👥 Staff Management is a Business plan feature — upgrade to ₹199/month','i',4000);
-    setTimeout(()=>window.location.href='subscription.html',1500);
-    return;
-  }
-  openModal('staff-modal');
+  gatedGoTo('team.html','Staff & Roles');
 }
 
 function openAddStaff(){
@@ -1079,11 +1254,12 @@ async function init(){
   _shop=JSON.parse(localStorage.getItem('sbp_shop')||'{}');
   _resetTimer();
 
-  // Profile
+  // Profile — show LOGGED-IN user, not shop owner
   const meta=_user.user_metadata||{};
-  const name=meta.name||_shop.owner_name||'User';
-  const role=localStorage.getItem('sbp_role')||'Admin';
-  const roleIcons={Admin:'👑',Owner:'🏪',Staff:'👤',Manager:'🎯'};
+  const isStaff=localStorage.getItem('sbp_is_staff')==='1';
+  const name=meta.name||(isStaff?'Staff':_shop.owner_name)||'User';
+  const role=localStorage.getItem('sbp_role')||(isStaff?'Cashier':'Admin');
+  const roleIcons={Admin:'👑',Owner:'🏪',Manager:'🎯',Cashier:'💰',Viewer:'👁️',Staff:'👤'};
   document.getElementById('prof-pic').textContent=roleIcons[role]||'👤';
   document.getElementById('prof-nm').textContent=name;
   document.getElementById('prof-shop').textContent=_shop.name||'Your Shop';
@@ -1127,6 +1303,7 @@ init();
     {ic:'📊',lb:'Reports',      url:'reports.html'},
     {ic:'🛒',lb:'POS Admin',    url:'pos-admin.html'},
     {ic:'💬',lb:'WhatsApp',     url:'wa-center.html'},
+    {ic:'📢',lb:'Marketing',url:'marketing.html'},
     {ic:'💰',lb:'Cash Register',url:'cash-register.html'},
     {ic:'🚚',lb:'Suppliers',    url:'supplier.html'},
     {ic:'🔄',lb:'Recurring',    url:'recurring.html'},
@@ -1445,6 +1622,8 @@ function updateStorageBadge() {
   }
 }
 document.addEventListener('DOMContentLoaded', updateStorageBadge);
+document.addEventListener('DOMContentLoaded', loadPrinterSettings);
+document.addEventListener('DOMContentLoaded', loadAutoSendSettings);
 
 async function refreshShopPlan() {
   if (!navigator.onLine || !window._sb) return;

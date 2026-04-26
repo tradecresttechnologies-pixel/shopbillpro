@@ -1,7 +1,8 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" translate="no" class="notranslate">
 <head>
 <meta charset="UTF-8">
+<meta name="google" content="notranslate">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#F5A623">
 <meta name="mobile-web-app-capable" content="yes">
@@ -12,14 +13,12 @@
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Noto+Sans:wght@300;400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
-// FIX #50 — Normalize Indian phone (strip leading 91/+91/0 to avoid 9191... duplicates)
-window.sbpWAUrl=function(phone,msg){var n=String(phone||'').replace(/\D/g,'');if(n.length>10)n=n.slice(-10);if(n.length<10)return null;return 'https://wa.me/91'+String(n).replace(/\D/g,'').slice(-10)+(msg?'?text='+encodeURIComponent(msg):'');};
-
 // FIX #3 — IST-aware date (UTC toISOString shifts -5:30 in India)
 function sbpToday(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function sbpYM(){return sbpToday().slice(0,7);}
 function sbpY(){return sbpToday().slice(0,4);}
 </script>
+
 
 
 <script src="lang.js"></script>
@@ -202,7 +201,7 @@ html,body{height:100%;overflow:hidden}
     <div class="ni" onclick="goTo('dashboard.html')"><span class="ni-ic">🏠</span><span class="ni-lb"><span class="lang-en">Home</span><span class="lang-hi">होम</span></span></div>
     <div class="ni" onclick="goTo('bills.html')"><span class="ni-ic">🧾</span><span class="ni-lb"><span class="lang-en">Bills</span><span class="lang-hi">बिल</span></span></div>
     <div class="ni" onclick="goTo('billing.html')" style="align-items:center;justify-content:center"><div class="nav-fab">＋</div></div>
-    <div class="ni" onclick="goTo('customers.html')"><span class="ni-ic">👥</span><span class="ni-lb"><span class="lang-en">Customers</span><span class="lang-hi">ग्राहक</span></span></div>
+    <div class="ni" onclick="goTo('marketing.html')"><span class="ni-ic">📢</span><span class="ni-lb"><span class="lang-en">Marketing</span><span class="lang-hi">मार्केटिंग</span></span></div>
     <div class="ni on" onclick="goTo('settings.html')"><span class="ni-ic">☰</span><span class="ni-lb"><span class="lang-en">More</span><span class="lang-hi">अधिक</span></span></div>
   </div>
 </div>
@@ -451,23 +450,22 @@ async function confirmPaySupplier(){
   const amt=parseFloat(document.getElementById('pay-sup-amt').value)||0;
   if(!amt){toast('Enter payment amount','e');return}
   const s=_suppliers.find(x=>String(x.id)===String(_paySupId));if(!s)return;
-  // FIX #37 — Warn if paying more than balance (don't silently swallow)
   const curBal = parseFloat(s.balance||0);
+  // FIX #37 — warn on overpayment, allow advance
   if(amt > curBal){
-    if(!confirm('⚠️ Amount ₹'+amt+' is more than the outstanding balance ₹'+curBal+'.\n\nThis will leave you in advance/credit with this supplier. Continue?')) return;
+    if(!confirm('⚠️ Amount ₹'+amt+' is more than the outstanding ₹'+curBal+'.\n\nThis will leave you in advance/credit with this supplier. Continue?')) return;
   }
-  const payment={id:'py_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),amt,mode:document.getElementById('pay-sup-mode').value,date:document.getElementById('pay-sup-date').value||sbpToday(),note:document.getElementById('pay-sup-note').value};
+  const payment={id:'py_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),amt,mode:document.getElementById('pay-sup-mode').value,date:document.getElementById('pay-sup-date').value||todayISO(),note:document.getElementById('pay-sup-note').value};
   if(!s.payments)s.payments=[];
   s.payments.unshift(payment);
-  // FIX #37 — allow negative balance (advance) instead of clamping at 0
+  // FIX #37 — allow negative balance (advance) instead of clamping
   s.balance = curBal - amt;
   save();
 
-  // FIX #36 — sync to Supabase if online
+  // FIX #36 — Sync to Supabase
   if(navigator.onLine && window._sb && s.id && !String(s.id).startsWith('local_')){
-    try {
-      await window._sb.from('suppliers').update({balance: s.balance, payments: s.payments}).eq('id', s.id);
-    } catch(e){ console.warn('Supplier sync failed:', e.message); }
+    try { await window._sb.from('suppliers').update({balance: s.balance, payments: s.payments}).eq('id', s.id); }
+    catch(e){ console.warn('Supplier sync failed:', e.message); }
   }
 
   closeModal('pay-sup-modal');applySearch();
@@ -511,6 +509,7 @@ init();
     {ic:'📊',lb:'Reports',url:'reports.html'},
     {ic:'🛒',lb:'POS Admin',url:'pos-admin.html'},
     {ic:'💬',lb:'WhatsApp',url:'wa-center.html'},
+    {ic:'📢',lb:'Marketing',url:'marketing.html'},
     {ic:'💰',lb:'Cash Register',url:'cash-register.html'},
     {ic:'🚚',lb:'Suppliers',url:'supplier.html'},
     {ic:'🔄',lb:'Recurring',url:'recurring.html'},
