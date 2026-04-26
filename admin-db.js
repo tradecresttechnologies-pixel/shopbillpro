@@ -16,38 +16,53 @@ class AdminDB {
     if (!this.sb) return this.getMockMetrics();
 
     try {
-      const { data: users, error: userErr } = await this.sb
-        .from('users')
-        .select('id, created_at');
+      // FIX #56 — Try users table first, fall back to deriving from shops
+      // (Supabase auth.users isn't directly queryable from anon key; many setups
+      // don't mirror it to public.users)
+      let users = null;
+      try {
+        const r = await this.sb.from('users').select('id, created_at');
+        if(!r.error) users = r.data;
+      } catch(e) { /* table may not exist */ }
 
       const { data: shops, error: shopErr } = await this.sb
         .from('shops')
-        .select('id, plan, plan_expires_at, created_at');
+        .select('id, plan, plan_expires_at, created_at, owner_id');
 
       const { data: bills, error: billErr } = await this.sb
         .from('bills')
-        .select('id, total, created_at');
+        .select('id, grand_total, status, created_at');
 
-      if (userErr || shopErr || billErr) {
-        console.warn('Metrics fetch error:', userErr || shopErr || billErr);
+      if (shopErr || billErr) {
+        console.warn('Metrics fetch error:', shopErr || billErr);
         return this.getMockMetrics();
       }
 
-      const totalUsers = users?.length || 0;
-      const proUsers = shops?.filter(s => s.plan === 'pro' || s.plan === 'enterprise').length || 0;
+      // FIX #56 — If users query failed, derive unique users from shops.owner_id
+      let totalUsers;
+      if(users) totalUsers = users.length;
+      else totalUsers = new Set((shops||[]).map(s => s.owner_id).filter(Boolean)).size;
+      // FIX #55 — count business plan as paid (was excluded)
+      const proUsers = shops?.filter(s => s.plan === 'pro' || s.plan === 'business' || s.plan === 'enterprise').length || 0;
       const freeUsers = totalUsers - proUsers;
-      const totalBills = bills?.length || 0;
-      const totalRevenue = bills?.reduce((sum, b) => sum + (b.total || 0), 0) || 0;
+      // FIX #54 — schema field is grand_total, not total. Also exclude voided.
+      const liveBills = (bills||[]).filter(b => b.status !== 'Voided');
+      const totalBills = liveBills.length;
+      const totalRevenue = liveBills.reduce((sum, b) => sum + (parseFloat(b.grand_total)||0), 0);
 
       // Calculate growth (last 7 days vs previous 7 days)
       const now = Date.now();
       const week = 7 * 24 * 60 * 60 * 1000;
-      const recentBills = bills?.filter(b => Date.parse(b.created_at) > now - week).length || 0;
-      const prevBills = bills?.filter(b => {
+      const recentBills = liveBills.filter(b => Date.parse(b.created_at) > now - week).length || 0;
+      const prevBills = liveBills.filter(b => {
         const d = Date.parse(b.created_at);
         return d > now - 2 * week && d <= now - week;
       }).length || 0;
-      const billGrowth = prevBills === 0 ? 100 : ((recentBills - prevBills) / prevBills * 100).toFixed(1);
+      // FIX #57 — both periods 0 should mean 0% growth, not 100%
+      let billGrowth;
+      if(prevBills === 0 && recentBills === 0) billGrowth = 0;
+      else if(prevBills === 0) billGrowth = 100;
+      else billGrowth = ((recentBills - prevBills) / prevBills * 100).toFixed(1);
 
       return {
         totalUsers,

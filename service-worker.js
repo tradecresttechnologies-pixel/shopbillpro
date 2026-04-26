@@ -1,10 +1,10 @@
 /* ══════════════════════════════════════════════════════════════════
-   ShopBill Pro — Service Worker v1.0
+   ShopBill Pro — Service Worker v1.3.0
    TradeCrest Technologies Pvt. Ltd.
    Offline-first caching strategy
 ══════════════════════════════════════════════════════════════════ */
 
-const CACHE_NAME = 'shopbillpro-v1.2.0';
+const CACHE_NAME = 'shopbillpro-v1.3.0-' + '20260427';  // FIX #20 — bump on each release
 const OFFLINE_URL = '/index.html';
 
 const STATIC_ASSETS = [
@@ -23,6 +23,21 @@ const STATIC_ASSETS = [
   '/recurring.html',
   '/bill-templates.html',
   '/settings.html',
+  // FIX #19 — these were missing
+  '/marketing.html',
+  '/team.html',
+  '/subscription.html',
+  '/auth.js',
+  '/db.js',
+  '/db-local.js',
+  '/lang.js',
+  '/scanner.js',
+  '/sync.js',
+  '/ui.js',
+  '/upgrade-popup.js',
+  '/conversion.js',
+  '/styles.css',
+  '/fix.css',
   '/manifest.json',
   '/icons/icon-192x192.png',
   '/icons/icon-512x512.png',

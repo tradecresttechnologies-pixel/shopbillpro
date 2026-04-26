@@ -1,8 +1,7 @@
 <!DOCTYPE html>
-<html lang="en" translate="no" class="notranslate">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="google" content="notranslate">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#F5A623">
 <meta name="mobile-web-app-capable" content="yes">
@@ -12,7 +11,16 @@
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Noto+Sans:wght@300;400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="db-local.js"></script>
+<script>
+// FIX #50 — Normalize Indian phone (strip leading 91/+91/0 to avoid 9191... duplicates)
+window.sbpWAUrl=function(phone,msg){var n=String(phone||'').replace(/\D/g,'');if(n.length>10)n=n.slice(-10);if(n.length<10)return null;return 'https://wa.me/91'+String(n).replace(/\D/g,'').slice(-10)+(msg?'?text='+encodeURIComponent(msg):'');};
+
+// FIX #3 — IST-aware date (UTC toISOString shifts -5:30 in India)
+function sbpToday(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function sbpYM(){return sbpToday().slice(0,7);}
+function sbpY(){return sbpToday().slice(0,4);}
+</script>
+
 
 <script src="lang.js"></script>
 <script src="conversion.js"></script>
@@ -194,7 +202,7 @@ html,body{height:100%;overflow:hidden}
     <div class="ni" onclick="goTo('dashboard.html')"><span class="ni-ic">🏠</span><span class="ni-lb"><span class="lang-en">Home</span><span class="lang-hi">होम</span></span></div>
     <div class="ni" onclick="goTo('bills.html')"><span class="ni-ic">🧾</span><span class="ni-lb"><span class="lang-en">Bills</span><span class="lang-hi">बिल</span></span></div>
     <div class="ni" onclick="goTo('billing.html')" style="align-items:center;justify-content:center"><div class="nav-fab">＋</div></div>
-    <div class="ni" onclick="goTo('marketing.html')"><span class="ni-ic">📢</span><span class="ni-lb"><span class="lang-en">Marketing</span><span class="lang-hi">मार्केटिंग</span></span></div>
+    <div class="ni" onclick="goTo('customers.html')"><span class="ni-ic">👥</span><span class="ni-lb"><span class="lang-en">Customers</span><span class="lang-hi">ग्राहक</span></span></div>
     <div class="ni on" onclick="goTo('settings.html')"><span class="ni-ic">☰</span><span class="ni-lb"><span class="lang-en">More</span><span class="lang-hi">अधिक</span></span></div>
   </div>
 </div>
@@ -280,7 +288,7 @@ function toggleTheme(){_theme=_theme==='dark'?'light':'dark';localStorage.setIte
 function openModal(id){const el=document.getElementById(id);el.classList.add('open');el.style.display='flex';el.addEventListener('click',e=>{if(e.target===el)closeModal(id);},{once:true})}
 function closeModal(id){const el=document.getElementById(id);el.classList.remove('open');el.style.display='none'}
 function fINR(n){return '₹'+(parseFloat(n)||0).toLocaleString('en-IN',{maximumFractionDigits:0})}
-function todayISO(){return new Date().toISOString().split('T')[0]}
+function todayISO(){return sbpToday()}
 function initials(name=''){return name.split(' ').map(w=>w[0]||'').join('').substring(0,2).toUpperCase()||'??'}
 function avatarColor(s=''){const c=['#F5A623','#2563EB','#059669','#D97706','#DC2626','#0891B2','#E8940D','#65A30D'];let h=0;for(let i=0;i<s.length;i++)h=s.charCodeAt(i)+((h<<5)-h);return c[Math.abs(h)%c.length]}
 function fDate(d){if(!d)return '—';try{return new Date(d).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});}catch{return d}}
@@ -291,7 +299,7 @@ function renderSuppliers(list){
   const totalPayable=list.reduce((s,x)=>s+parseFloat(x.balance||0),0);
   document.getElementById('s-count').textContent=_suppliers.length;
   document.getElementById('s-payable').textContent=fINR(totalPayable);
-  const thisMonth=new Date().toISOString().substring(0,7);
+  const thisMonth=sbpYM();
   const paid=_suppliers.reduce((s,x)=>{const p=(x.payments||[]).filter(p=>p.date?.startsWith(thisMonth));return s+p.reduce((a,b)=>a+parseFloat(b.amt||0),0)},0);
   document.getElementById('s-paid-month').textContent=fINR(paid);
 
@@ -379,7 +387,7 @@ function openDetail(id){
   openModal('sup-detail-modal');
 }
 
-function openWA(ph,name){const num=(ph||'').replace(/\D/g,'');if(!num||num.length<10){toast('No WhatsApp number saved','e');return}const msg=`Hello *${name}*,\n\n_From ${JSON.parse(localStorage.getItem('sbp_shop')||'{}').name||'ShopBill Pro'}_`;window.open('https://wa.me/91'+num+'?text='+encodeURIComponent(msg),'_blank')}
+function openWA(ph,name){const num=(ph||'').replace(/\D/g,'');if(!num||num.length<10){toast('No WhatsApp number saved','e');return}const msg=`Hello *${name}*,\n\n_From ${JSON.parse(localStorage.getItem('sbp_shop')||'{}').name||'ShopBill Pro'}_`;window.open('https://wa.me/91'+String(num).replace(/\D/g,'').slice(-10)+'?text='+encodeURIComponent(msg),'_blank')}
 
 // ── Add/Edit ──
 function openAddSupplier(){
@@ -439,15 +447,30 @@ function openPaySupplier(id){
   openModal('pay-sup-modal');
 }
 
-function confirmPaySupplier(){
+async function confirmPaySupplier(){
   const amt=parseFloat(document.getElementById('pay-sup-amt').value)||0;
   if(!amt){toast('Enter payment amount','e');return}
   const s=_suppliers.find(x=>String(x.id)===String(_paySupId));if(!s)return;
-  const payment={id:'py_'+Date.now(),amt,mode:document.getElementById('pay-sup-mode').value,date:document.getElementById('pay-sup-date').value||todayISO(),note:document.getElementById('pay-sup-note').value};
+  // FIX #37 — Warn if paying more than balance (don't silently swallow)
+  const curBal = parseFloat(s.balance||0);
+  if(amt > curBal){
+    if(!confirm('⚠️ Amount ₹'+amt+' is more than the outstanding balance ₹'+curBal+'.\n\nThis will leave you in advance/credit with this supplier. Continue?')) return;
+  }
+  const payment={id:'py_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),amt,mode:document.getElementById('pay-sup-mode').value,date:document.getElementById('pay-sup-date').value||sbpToday(),note:document.getElementById('pay-sup-note').value};
   if(!s.payments)s.payments=[];
   s.payments.unshift(payment);
-  s.balance=Math.max(0,parseFloat(s.balance||0)-amt);
-  save();closeModal('pay-sup-modal');applySearch();
+  // FIX #37 — allow negative balance (advance) instead of clamping at 0
+  s.balance = curBal - amt;
+  save();
+
+  // FIX #36 — sync to Supabase if online
+  if(navigator.onLine && window._sb && s.id && !String(s.id).startsWith('local_')){
+    try {
+      await window._sb.from('suppliers').update({balance: s.balance, payments: s.payments}).eq('id', s.id);
+    } catch(e){ console.warn('Supplier sync failed:', e.message); }
+  }
+
+  closeModal('pay-sup-modal');applySearch();
   toast('✅ Payment of '+fINR(amt)+' recorded for '+s.name,'s');
 }
 
@@ -488,7 +511,6 @@ init();
     {ic:'📊',lb:'Reports',url:'reports.html'},
     {ic:'🛒',lb:'POS Admin',url:'pos-admin.html'},
     {ic:'💬',lb:'WhatsApp',url:'wa-center.html'},
-    {ic:'📢',lb:'Marketing',url:'marketing.html'},
     {ic:'💰',lb:'Cash Register',url:'cash-register.html'},
     {ic:'🚚',lb:'Suppliers',url:'supplier.html'},
     {ic:'🔄',lb:'Recurring',url:'recurring.html'},

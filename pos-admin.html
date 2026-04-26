@@ -1,8 +1,7 @@
 <!DOCTYPE html>
-<html lang="en" translate="no" class="notranslate">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="google" content="notranslate">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#F5A623">
 <meta name="mobile-web-app-capable" content="yes">
@@ -13,7 +12,7 @@
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Noto+Sans:wght@300;400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="db-local.js"></script>
+
 
 <script src="lang.js"></script>
 <script src="conversion.js"></script>
@@ -361,7 +360,7 @@ html,body{height:100%;overflow:hidden}
     <div class="ni" onclick="goTo('dashboard.html')"><span class="ni-ic">🏠</span><span class="ni-lb"><span class="lang-en">Home</span><span class="lang-hi">होम</span></span></div>
     <div class="ni" onclick="goTo('bills.html')"><span class="ni-ic">🧾</span><span class="ni-lb"><span class="lang-en">Bills</span><span class="lang-hi">बिल</span></span></div>
     <div class="ni" onclick="goTo('billing.html')" style="align-items:center;justify-content:center"><div class="nav-fab">＋</div></div>
-    <div class="ni" onclick="goTo('marketing.html')"><span class="ni-ic">📢</span><span class="ni-lb"><span class="lang-en">Marketing</span><span class="lang-hi">मार्केटिंग</span></span></div>
+    <div class="ni" onclick="goTo('customers.html')"><span class="ni-ic">👥</span><span class="ni-lb"><span class="lang-en">Customers</span><span class="lang-hi">ग्राहक</span></span></div>
     <div class="ni on" onclick="goTo('settings.html')"><span class="ni-ic">☰</span><span class="ni-lb"><span class="lang-en">More</span><span class="lang-hi">अधिक</span></span></div>
   </div>
 </div>
@@ -660,7 +659,10 @@ function renderProducts(list){
     const low=parseFloat(p.low_stock_alert||10);
     const stockClass=stock<=0?'out':stock<=low?'low':'ok';
     const stockLabel=stock<=0?'Out of Stock':stock<=low?'Low: '+stock:stock+' '+p.unit;
-    const margin=parseFloat(p.cost_price||0)>0?Math.round(((parseFloat(p.price)-parseFloat(p.cost_price))/parseFloat(p.price))*100):null;
+    // FIX #38 — Show profit per unit (₹) instead of confusing % — shopkeepers think in rupees
+    const cost=parseFloat(p.cost_price||0);
+    const sell=parseFloat(p.price||0);
+    const profitPerUnit = cost>0 ? (sell - cost) : null;
     return `<div class="prod-card" onclick="openEditProd('${p.id}')">
       <div class="prod-emoji">${(()=>{const ph=_getPhotoSrc(p);return ph?`<img src="${ph}" style="width:46px;height:46px;object-fit:cover;border-radius:12px;border:1.5px solid var(--bord)">`:p.emoji||'📦';})()}</div>
       <div class="prod-info">
@@ -670,7 +672,7 @@ function renderProducts(list){
       </div>
       <div class="prod-right">
         <div class="prod-price">${fINR(p.price)}</div>
-        ${p.cost_price>0?`<div style="font-size:10px;color:var(--t2);margin-top:1px">Cost: ${fINR(p.cost_price)}${margin!==null?' · '+margin+'% margin':''}</div>`:''}
+        ${p.cost_price>0?`<div style="font-size:10px;color:var(--t2);margin-top:1px">Cost: ${fINR(p.cost_price)}${profitPerUnit!==null?' · Profit: '+fINR(profitPerUnit)+'/unit':''}</div>`:''}
         <div class="prod-stock ${stockClass}">${stock<=0?'⛔':stock<=low?'⚠️':'✅'} ${stockLabel}</div>
         <div class="prod-actions" onclick="event.stopPropagation()">
           <button class="pa-btn edit" onclick="openEditProd('${p.id}')">✏️ Edit</button>
@@ -973,7 +975,6 @@ init();
     {ic:'📊',lb:'Reports',url:'reports.html'},
     {ic:'🛒',lb:'POS Admin',url:'pos-admin.html'},
     {ic:'💬',lb:'WhatsApp',url:'wa-center.html'},
-    {ic:'📢',lb:'Marketing',url:'marketing.html'},
     {ic:'💰',lb:'Cash Register',url:'cash-register.html'},
     {ic:'🚚',lb:'Suppliers',url:'supplier.html'},
     {ic:'🔄',lb:'Recurring',url:'recurring.html'},

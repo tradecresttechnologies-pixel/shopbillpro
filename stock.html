@@ -1,8 +1,7 @@
 <!DOCTYPE html>
-<html lang="en" translate="no" class="notranslate">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="google" content="notranslate">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#F5A623">
 <meta name="mobile-web-app-capable" content="yes">
@@ -13,7 +12,13 @@
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Noto+Sans:wght@300;400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="db-local.js"></script>
+<script>
+// FIX #3 — IST-aware date (UTC toISOString shifts -5:30 in India)
+function sbpToday(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function sbpYM(){return sbpToday().slice(0,7);}
+function sbpY(){return sbpToday().slice(0,4);}
+</script>
+
 
 <script src="lang.js"></script>
 <script src="conversion.js"></script>
@@ -400,7 +405,7 @@ html,body{height:100%;overflow:hidden}
     <div class="ni" onclick="goTo('dashboard.html')"><span class="ni-ic">🏠</span><span class="ni-lb"><span class="lang-en">Home</span><span class="lang-hi">होम</span></span></div>
     <div class="ni" onclick="goTo('bills.html')"><span class="ni-ic">🧾</span><span class="ni-lb"><span class="lang-en">Bills</span><span class="lang-hi">बिल</span></span></div>
     <div class="ni" onclick="goTo('billing.html')" style="align-items:center;justify-content:center"><div class="nav-fab">＋</div></div>
-    <div class="ni" onclick="goTo('marketing.html')"><span class="ni-ic">📢</span><span class="ni-lb"><span class="lang-en">Marketing</span><span class="lang-hi">मार्केटिंग</span></span></div>
+    <div class="ni" onclick="goTo('customers.html')"><span class="ni-ic">👥</span><span class="ni-lb"><span class="lang-en">Customers</span><span class="lang-hi">ग्राहक</span></span></div>
     <div class="ni on" onclick="goTo('settings.html')"><span class="ni-ic">☰</span><span class="ni-lb"><span class="lang-en">More</span><span class="lang-hi">अधिक</span></span></div>
   </div>
 </div>
@@ -515,7 +520,7 @@ function toggleTheme(){_theme=_theme==='dark'?'light':'dark';localStorage.setIte
 function openModal(id){const el=document.getElementById(id);el.classList.add('open');el.style.display='flex';el.addEventListener('click',e=>{if(e.target===el)closeModal(id);},{once:true})}
 function closeModal(id){const el=document.getElementById(id);el.classList.remove('open');el.style.display='none'}
 function fINR(n){return '₹'+(parseFloat(n)||0).toLocaleString('en-IN',{maximumFractionDigits:0})}
-function todayISO(){return new Date().toISOString().split('T')[0]}
+function todayISO(){return sbpToday()}
 
 // ── Render Stock ──
 function renderStock(list){
@@ -819,7 +824,6 @@ init();
     {ic:'📊',lb:'Reports',      url:'reports.html'},
     {ic:'🛒',lb:'POS Admin',    url:'pos-admin.html'},
     {ic:'💬',lb:'WhatsApp',     url:'wa-center.html'},
-    {ic:'📢',lb:'Marketing',url:'marketing.html'},
     {ic:'💰',lb:'Cash Register',url:'cash-register.html'},
     {ic:'🚚',lb:'Suppliers',    url:'supplier.html'},
     {ic:'🔄',lb:'Recurring',    url:'recurring.html'},
@@ -866,7 +870,7 @@ async function saveMovementToSupabase(move) {
       new_stock:    move.newStock,
       reason:       move.reason || '',
       note:         move.note || '',
-      move_date:    move.date || new Date().toISOString().split('T')[0]
+      move_date:    move.date || sbpToday()
     });
   } catch(e) { console.warn('Stock movement sync failed:', e.message); }
 }

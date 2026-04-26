@@ -1,8 +1,7 @@
 <!DOCTYPE html>
-<html lang="en" translate="no" class="notranslate">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="google" content="notranslate">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#F5A623">
 <meta name="mobile-web-app-capable" content="yes">
@@ -14,7 +13,7 @@
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Noto+Sans:wght@300;400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="db-local.js"></script>
+
 
 <script src="lang.js"></script>
 <script src="conversion.js"></script>
@@ -26,10 +25,18 @@ const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZ
 const _sb=supabase.createClient(SB_URL,SB_KEY,{auth:{autoRefreshToken:true,persistSession:true,detectSessionInUrl:false}});
 
 // ── Plan Helper ──
-function isPro(){
+// FIX #18, #48, #49 — unified plan check with expiry & name normalization
+function _sbpPlanInfo(){
   const s=JSON.parse(localStorage.getItem('sbp_shop')||'{}');
-  return s.plan==='pro'||s.plan==='enterprise';
+  let plan=(s.plan||'free').toLowerCase();
+  if(plan==='enterprise') plan='business'; // normalize old name
+  const exp=s.plan_expires_at;
+  if(exp && plan!=='free' && new Date(exp) < new Date()) plan='free'; // expired
+  return {plan, expired:!!(exp && new Date(exp) < new Date())};
 }
+function isPro(){const p=_sbpPlanInfo().plan;return p==='pro'||p==='business';}
+function isBiz(){return _sbpPlanInfo().plan==='business';}
+function isFree(){return _sbpPlanInfo().plan==='free';}
 
 // ── Font & Display settings ──
 (function applyGlobalFontSettings(){
@@ -653,7 +660,9 @@ html,body{height:100%;overflow:hidden}
     <div class="ni" onclick="goTo('billing.html')" style="align-items:center;justify-content:center">
       <div class="nav-fab">＋</div>
     </div>
-    <div class="ni" onclick="gatedGoTo('marketing.html','Marketing Center')" style="position:relative"><span class="ni-ic">📢</span><span class="ni-lb"><span class="lang-en">Marketing</span><span class="lang-hi">मार्केटिंग</span></span><span style="position:absolute;top:2px;right:8px;font-size:7px;font-weight:800;background:linear-gradient(135deg,#F59E0B,#EF4444);color:#fff;border-radius:4px;padding:1px 4px;letter-spacing:.3px">BIZ</span></div>
+    <div class="ni" onclick="goTo('customers.html')">
+      <span class="ni-ic">👥</span><span class="ni-lb"><span class="lang-en">Customers</span><span class="lang-hi">ग्राहक</span></span>
+    </div>
     <div class="ni" onclick="goTo('settings.html')">
       <span class="ni-ic">☰</span><span class="ni-lb"><span class="lang-en">More</span><span class="lang-hi">अधिक</span></span>
     </div>
@@ -721,25 +730,6 @@ function _updateOfflineBar() {
 
 // ══ Navigation ══
 function goTo(page) { window.location.href = page; }
-
-function gatedGoTo(page, featureName){
-  const shop=JSON.parse(localStorage.getItem('sbp_shop')||'{}');
-  const plan=shop.plan||'free';
-  if(plan==='enterprise'||plan==='business'){ goTo(page); return; }
-  const isHindi=(localStorage.getItem('sbp_lang')||'en')==='hi';
-  let modal=document.getElementById('biz-upgrade-modal');
-  if(!modal){ modal=document.createElement('div'); modal.id='biz-upgrade-modal'; modal.style.cssText='position:fixed;inset:0;z-index:1100;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;padding:20px'; document.body.appendChild(modal); }
-  modal.innerHTML=`<div style="background:var(--surf,#1C1C28);border-radius:20px;padding:28px 24px;max-width:340px;width:100%;text-align:center">
-    <div style="font-size:44px;margin-bottom:12px">🔒</div>
-    <div style="font-family:'Outfit',sans-serif;font-size:18px;font-weight:800;margin-bottom:6px;color:var(--text,#F0EFF8)">${featureName}</div>
-    <div style="font-size:11px;font-weight:700;background:linear-gradient(135deg,#F59E0B,#EF4444);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:12px;letter-spacing:.5px">BUSINESS PLAN FEATURE</div>
-    <div style="font-size:13px;color:var(--t2,#8A8AA8);line-height:1.6;margin-bottom:20px">${isHindi?featureName+' sirf Business plan mein available hai!':featureName+' is available in the Business plan!'}</div>
-    <button onclick="goTo('subscription.html')" style="width:100%;padding:13px;border-radius:12px;background:linear-gradient(135deg,#F5A623,#FF8A00);border:none;color:#0A0E1A;font-family:'Outfit',sans-serif;font-size:14px;font-weight:800;cursor:pointer;margin-bottom:8px">🚀 ${isHindi?'अपग्रेड करें — ₹199/mo':'Upgrade — ₹199/month'}</button>
-    <button onclick="document.getElementById('biz-upgrade-modal').style.display='none'" style="width:100%;padding:10px;border-radius:10px;border:1.5px solid var(--bord,#2A2A3A);background:transparent;color:var(--t2,#8A8AA8);font-size:12px;font-weight:700;cursor:pointer">${isHindi?'बाद में':'Maybe Later'}</button>
-  </div>`;
-  modal.style.display='flex';
-  modal.onclick=function(e){if(e.target===modal)modal.style.display='none';};
-}
 
 // ══ Toast ══
 function toast(msg, type = '', dur = 3000) {
@@ -857,6 +847,24 @@ function remindAll() {
 }
 
 // ══ Format Helpers ══
+// FIX #3 — IST-aware date. UTC toISOString shifts back 5:30hrs in India,
+// breaking "today" filters between 00:00 and 05:30 IST every day.
+function sbpTodayLocal(){
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const dd = String(d.getDate()).padStart(2,'0');
+  return y+'-'+m+'-'+dd;
+}
+function sbpDateLocal(d){
+  if(!d) return '';
+  const dt = (d instanceof Date) ? d : new Date(d);
+  if(isNaN(dt)) return '';
+  const y = dt.getFullYear();
+  const m = String(dt.getMonth()+1).padStart(2,'0');
+  const dd = String(dt.getDate()).padStart(2,'0');
+  return y+'-'+m+'-'+dd;
+}
 function fINR(n) {
   const v = parseFloat(n) || 0;
   return '₹' + v.toLocaleString('en-IN', { maximumFractionDigits: 0 });
@@ -923,41 +931,64 @@ async function loadDashboard() {
 
 // ══ Render Stats ══
 function renderStats(bills, custs) {
-  const today     = new Date().toISOString().split('T')[0];
+  // FIX #3 — Use IST-aware "today", not UTC
+  const today     = sbpTodayLocal();
   const thisMonth = today.substring(0, 7);
 
-  const todayBills = bills.filter(b => (b.invoice_date || b.created_at || '').startsWith(today));
-  // Exclude voided bills from all financial totals (still visible in lists, just not counted)
-  const isVoided   = b => (b.status||'').toLowerCase()==='voided';
-  const activeBills= bills.filter(b=>!isVoided(b));
-  const monthBills = activeBills.filter(b => (b.invoice_date || b.created_at || '').startsWith(thisMonth));
-  const overdue    = activeBills.filter(b => b.status === 'Overdue');
+  // FIX #2 — Exclude voided bills from ALL aggregates
+  const liveBills = bills.filter(b => b.status !== 'Voided');
+
+  const todayBills = liveBills.filter(b => (b.invoice_date || b.created_at || '').startsWith(today));
+  const monthBills = liveBills.filter(b => (b.invoice_date || b.created_at || '').startsWith(thisMonth));
+  const overdue    = liveBills.filter(b => b.status === 'Overdue');
   const dueBillSet = new Set(
-    activeBills.filter(b=>parseFloat(b.balance_due||0)>0 && b.customer_name && b.customer_name!=='Walk-in Customer')
+    liveBills.filter(b=>parseFloat(b.balance_due||0)>0 && b.customer_name && b.customer_name!=='Walk-in Customer')
          .map(b=>b.customer_name)
   );
   const dueCusts = {length: dueBillSet.size};
 
-  const todayBillsActive = todayBills.filter(b=>!isVoided(b));
-  const todaySales    = todayBillsActive.reduce((s, b) => s + parseFloat(b.paid_amount || 0), 0);
-  const outstanding   = activeBills.filter(b => {
+  // FIX #1 — Today's Sales = grand_total of bills invoiced today (turnover),
+  // NOT paid_amount. Credit bills are still sales.
+  const todaySales    = todayBills.reduce((s, b) => s + parseFloat(b.grand_total || 0), 0);
+  const todayCollected= todayBills.reduce((s, b) => s + parseFloat(b.paid_amount || 0), 0);
+  const outstanding   = liveBills.filter(b => {
     const nm = (b.customer_name||'').trim();
     return nm && nm !== 'Walk-in Customer' && parseFloat(b.balance_due||0) > 0;
   }).reduce((s, b) => s + parseFloat(b.balance_due || 0), 0);
-  const gstCollected  = monthBills.reduce((s, b) => s + parseFloat(b.gst_amount || 0), 0);
+
+  // FIX #4 — Split GST correctly: intra-state → CGST+SGST, inter-state → IGST
+  let monthCGST=0, monthSGST=0, monthIGST=0, gstCollected=0;
+  monthBills.forEach(b => {
+    const g = parseFloat(b.gst_amount || 0);
+    if(!g) return;
+    gstCollected += g;
+    const supplyType = (b.supply_type || b.supplyType || 'intra').toLowerCase();
+    if(supplyType === 'inter') {
+      monthIGST += g;
+    } else {
+      monthCGST += g/2;
+      monthSGST += g/2;
+    }
+  });
 
   document.getElementById('s-today').textContent = fINR(todaySales);
-  document.getElementById('s-today-sub').textContent = todayBillsActive.length + ' bill' + (todayBillsActive.length !== 1 ? 's' : '') + ' today';
+  const todaySubEl = document.getElementById('s-today-sub');
+  if(todaySubEl) todaySubEl.textContent = todayBills.length + ' bill' + (todayBills.length !== 1 ? 's' : '') + ' today' + (todayCollected < todaySales ? ' · ' + fINR(todayCollected) + ' collected' : '');
   document.getElementById('s-bills').textContent = monthBills.length;
-  document.getElementById('s-bills-sub').textContent = activeBills.length + ' all time';
+  document.getElementById('s-bills-sub').textContent = liveBills.length + ' all time';
   document.getElementById('s-outstanding').textContent = fINR(outstanding);
   document.getElementById('s-out-sub').textContent = dueCusts.length + ' client' + (dueCusts.length !== 1 ? 's' : '') + ' due';
   document.getElementById('s-gst').textContent = fINR(gstCollected);
 
-  // GST breakdown
+  // GST breakdown — show IGST separately if any interstate sales this month
   document.getElementById('gst-collected').textContent = fINR(gstCollected);
-  document.getElementById('gst-cgst').textContent = fINR(gstCollected / 2);
-  document.getElementById('gst-sgst').textContent = fINR(gstCollected / 2);
+  const cgstEl = document.getElementById('gst-cgst');
+  const sgstEl = document.getElementById('gst-sgst');
+  if(cgstEl) cgstEl.textContent = fINR(monthCGST);
+  if(sgstEl) sgstEl.textContent = fINR(monthSGST);
+  // If template has an IGST cell with id 'gst-igst', populate it too
+  const igstEl = document.getElementById('gst-igst');
+  if(igstEl) igstEl.textContent = fINR(monthIGST);
 
   // Alert strip
   if (overdue.length) {
@@ -994,8 +1025,7 @@ function renderRecentBills(bills) {
     const amt    = parseFloat(b.grand_total || 0);
     const paid   = parseFloat(b.paid_amount || 0);
     const bal    = parseFloat(b.balance_due || 0);
-    const voided = sc === 'voided';
-    return `<div class="bill-card ${sc}" onclick="sessionStorage.setItem('sbp_open_bill','${b.id}');goTo('bills.html?id=${b.id}')">
+    return `<div class="bill-card ${sc}" onclick="goTo('bills.html?id=${b.id}')">
       <div class="bc-top">
         <span class="bc-inv">${b.invoice_no || '—'}</span>
         <span class="bc-date">📅 ${fDate(b.invoice_date || b.created_at)}</span>
@@ -1004,8 +1034,8 @@ function renderRecentBills(bills) {
       <div class="bc-items">${items}</div>
       <div class="bc-bot">
         <div>
-          <div class="bc-amt" style="${voided?'text-decoration:line-through;color:var(--t2)':''}">${fINR(amt)}</div>
-          ${bal > 0 && !voided ? `<div style="font-size:10px;color:var(--acc2);margin-top:2px">Due: ${fINR(bal)}</div>` : ''}
+          <div class="bc-amt">${fINR(amt)}</div>
+          ${bal > 0 ? `<div style="font-size:10px;color:var(--acc2);margin-top:2px">Due: ${fINR(bal)}</div>` : ''}
         </div>
         <div class="bc-right">
           <span class="badge ${sc}">${b.status || 'Pending'}</span>
@@ -1063,8 +1093,7 @@ function setGreeting() {
   const h  = new Date().getHours();
   const g  = h < 12 ? 'Good Morning' : h < 17 ? 'Good Afternoon' : 'Good Evening';
   const em = h < 12 ? '🌅' : h < 17 ? '☀️' : '🌙';
-  // Always show the LOGGED-IN user's name (staff or owner), fall back to shop owner only if missing
-  const name = _user?.user_metadata?.name || _shop?.owner_name || 'there';
+  const name = _shop?.owner_name || _user?.user_metadata?.name || 'there';
   document.getElementById('greet-h').textContent = `${g}, ${name}! ${em}`;
   document.getElementById('greet-s').textContent = _shop?.name || 'Here\'s your shop overview';
 
@@ -1145,13 +1174,11 @@ init();
     {ic:'📦',lb:'Inventory',    url:'stock.html'},
     {ic:'📊',lb:'Reports',      url:'reports.html'},
     {ic:'🛒',lb:'POS Admin',    url:'pos-admin.html'},
-    {ic:'💬',lb:'WhatsApp',     url:'wa-center.html'},{ic:'📢',lb:'Marketing',     url:'marketing.html'},
+    {ic:'💬',lb:'WhatsApp',     url:'wa-center.html'},
     {ic:'💰',lb:'Cash Register',url:'cash-register.html'},
     {ic:'🚚',lb:'Suppliers',    url:'supplier.html'},
     {ic:'🔄',lb:'Recurring',    url:'recurring.html'},
     {ic:'🗂️',lb:'Bill Templates',url:'bill-templates.html'},
-    {ic:'👥',lb:'Team & Users',url:'team.html'},
-    {ic:'🚀',lb:'Plans & Pricing',url:'subscription.html'},,
     {ic:'⚙️',lb:'Settings',     url:'settings.html'},
   ];
   var sb=document.createElement('div');

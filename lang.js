@@ -209,48 +209,60 @@ const SBP_TRANSLATIONS = {
   }
 };
 
-/* Apply language across the page */
+/* Apply language across the page — FIX #58/#60/#61 */
 function sbpApplyLang() {
   var lang = localStorage.getItem('sbp_lang') || 'en';
   document.documentElement.lang = lang;
-  
-  if (lang !== 'hi') return; // English is default, no changes needed
-  
+
+  if (lang !== 'hi') return; // English is default
+
   var dict = SBP_TRANSLATIONS.hi;
-  
-  // Walk all text nodes and replace English with Hindi
-  function walkNode(node) {
-    if (node.nodeType === 3) { // Text node
-      var text = node.nodeValue;
-      if (!text || !text.trim()) return;
-      // Check each translation key
-      for (var key in dict) {
-        if (text.includes(key)) {
-          node.nodeValue = text.replace(new RegExp(key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), dict[key]);
-          text = node.nodeValue;
-        }
-      }
-    } else if (node.nodeType === 1) { // Element node
-      // Skip script, style, input placeholders handled separately
-      var tag = node.tagName;
-      if (tag === 'SCRIPT' || tag === 'STYLE') return;
-      // Handle placeholder attributes
-      if ((tag === 'INPUT' || tag === 'TEXTAREA') && node.placeholder) {
-        for (var k in dict) {
-          if (node.placeholder.includes(k)) {
-            node.placeholder = node.placeholder.replace(new RegExp(k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), dict[k]);
+
+  // FIX #58 — Pre-build sorted keys (longest first to avoid partial-match issues
+  // like "Pay" overwriting inside "Payment")
+  var keys = Object.keys(dict).sort(function(a,b){return b.length - a.length;});
+
+  function applyTranslations(root){
+    if(!root) return;
+    function walkNode(node) {
+      if (node.nodeType === 3) {
+        var text = node.nodeValue;
+        if (!text || !text.trim()) return;
+        var changed = false;
+        for (var i=0; i<keys.length; i++) {
+          var key = keys[i];
+          if (text.indexOf(key) !== -1) {
+            // Use plain string replacement (avoid expensive regex per node)
+            text = text.split(key).join(dict[key]);
+            changed = true;
           }
         }
-      }
-      for (var i = 0; i < node.childNodes.length; i++) {
-        walkNode(node.childNodes[i]);
+        if(changed) node.nodeValue = text;
+      } else if (node.nodeType === 1) {
+        var tag = node.tagName;
+        if (tag === 'SCRIPT' || tag === 'STYLE') return;
+        if ((tag === 'INPUT' || tag === 'TEXTAREA') && node.placeholder) {
+          var ph = node.placeholder;
+          for (var k=0; k<keys.length; k++) {
+            if (ph.indexOf(keys[k]) !== -1) ph = ph.split(keys[k]).join(dict[keys[k]]);
+          }
+          if(ph !== node.placeholder) node.placeholder = ph;
+        }
+        for (var c = 0; c < node.childNodes.length; c++) {
+          walkNode(node.childNodes[c]);
+        }
       }
     }
+    walkNode(root);
   }
-  
-  document.addEventListener('DOMContentLoaded', function() {
-    walkNode(document.body);
-  });
+
+  // FIX #60 — Handle BOTH cases: script loaded before DOMContentLoaded AND after
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() { applyTranslations(document.body); });
+  } else {
+    // DOM already parsed — apply immediately
+    applyTranslations(document.body);
+  }
 }
 
 // Run immediately
