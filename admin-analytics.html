@@ -2,310 +2,107 @@
 <html lang="en" translate="no" class="notranslate">
 <head>
   <meta charset="UTF-8">
-<meta name="google" content="notranslate">
+  <meta name="google" content="notranslate">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png?v=2">
-<link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180x180.png?v=2">
-<title>Analytics — Admin Dashboard</title>
+  <title>Analytics — Admin</title>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@3/dist/chart.min.js"></script>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-
-    body {
-      font-family: 'Outfit', sans-serif;
-      background: #0A0A12;
-      color: #F0EFF8;
-    }
-
-    .dashboard {
-      display: flex;
-      min-height: 100vh;
-    }
-
-    .sidebar {
-      width: 280px;
-      background: rgba(19, 19, 28, 0.8);
-      backdrop-filter: blur(10px);
-      border-right: 1px solid rgba(124, 58, 237, 0.2);
-      padding: 24px;
-      position: fixed;
-      height: 100vh;
-      overflow-y: auto;
-      left: 0;
-      top: 0;
-    }
-
-    .main-content {
-      flex: 1;
-      margin-left: 280px;
-      padding: 32px;
-    }
-
-    .nav-item {
-      padding: 12px 14px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 14px;
-      margin-bottom: 6px;
-      transition: all 0.2s;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .nav-item:hover {
-      background: rgba(124, 58, 237, 0.1);
-      color: #F5A623;
-    }
-
-    .nav-item.active {
-      background: rgba(124, 58, 237, 0.2);
-      color: #F5A623;
-      border-left: 3px solid #F5A623;
-      padding-left: 11px;
-    }
-
-    .header {
-      margin-bottom: 32px;
-    }
-
-    .header h1 {
-      font-size: 32px;
-      font-weight: 800;
-      background: linear-gradient(135deg, #F5A623, #FF8A00);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      margin-bottom: 8px;
-    }
-
-    .header p {
-      color: #8A8AA8;
-      font-size: 14px;
-    }
-
-    .metrics-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 16px;
-      margin-bottom: 32px;
-    }
-
-    .metric-card {
-      background: rgba(20, 18, 32, 0.5);
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(124, 58, 237, 0.2);
-      border-radius: 12px;
-      padding: 20px;
-    }
-
-    .metric-label {
-      font-size: 13px;
-      color: #8A8AA8;
-      margin-bottom: 8px;
-    }
-
-    .metric-value {
-      font-size: 24px;
-      font-weight: 700;
-      color: #F0EFF8;
-    }
-
-    .metric-subtext {
-      font-size: 12px;
-      color: #5E5A7A;
-      margin-top: 8px;
-    }
-
-    .chart-card {
-      background: rgba(20, 18, 32, 0.5);
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(124, 58, 237, 0.2);
-      border-radius: 12px;
-      padding: 24px;
-      margin-bottom: 24px;
-    }
-
-    .chart-title {
-      font-size: 16px;
-      font-weight: 700;
-      margin-bottom: 20px;
-    }
-
-    .chart-container {
-      position: relative;
-      height: 350px;
-    }
-
-    @media (max-width: 768px) {
-      .sidebar { position: static; width: 100%; height: auto; }
-      .main-content { margin-left: 0; }
-      .metrics-grid { grid-template-columns: 1fr; }
-    }
-
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 32px;
-    }
-
-    .logo-icon {
-      width: 40px;
-      height: 40px;
-      background: linear-gradient(135deg, #F5A623, #FF8A00);
-      border-radius: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 20px;
-    }
-
-    .logo-text {
-      font-size: 16px;
-      font-weight: 700;
-    }
-
-    .nav-section {
-      margin-bottom: 32px;
-    }
-
-    .nav-label {
-      font-size: 11px;
-      font-weight: 700;
-      color: #5E5A7A;
-      text-transform: uppercase;
-      margin-bottom: 12px;
-      letter-spacing: 0.5px;
-    }
-
-    .nav-divider {
-      height: 1px;
-      background: rgba(124, 58, 237, 0.1);
-      margin: 12px 0;
-    }
-
-    .nav-icon {
-      font-size: 16px;
-      min-width: 20px;
-    }
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Outfit',sans-serif;background:#0A0A12;color:#F0EFF8}
+    .layout{display:flex;min-height:100vh}
+    .sidebar{width:280px;background:rgba(19,19,28,.8);backdrop-filter:blur(10px);border-right:1px solid rgba(124,58,237,.2);padding:24px;position:fixed;height:100vh;overflow-y:auto;left:0;top:0}
+    .main{flex:1;margin-left:280px;padding:32px}
+    .logo{display:flex;align-items:center;gap:12px;margin-bottom:32px}
+    .logo-icon{width:40px;height:40px;background:linear-gradient(135deg,#F5A623,#FF8A00);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px}
+    .logo-text{font-size:18px;font-weight:700}
+    .nav-section{margin-bottom:24px}
+    .nav-label{font-size:11px;font-weight:600;color:#5A5A78;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+    .nav-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;cursor:pointer;color:#8A8AA8;font-size:14px;font-weight:500;transition:all .2s}
+    .nav-item:hover{background:rgba(124,58,237,.1);color:#F0EFF8}
+    .nav-item.active{background:rgba(245,166,35,.15);color:#F5A623}
+    .header{margin-bottom:24px}
+    .header h1{font-size:32px;font-weight:800;background:linear-gradient(135deg,#F5A623,#FF8A00);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:4px}
+    .header p{font-size:14px;color:#8A8AA8}
+    .funnel{background:rgba(20,18,32,.6);border:1px solid rgba(124,58,237,.2);border-radius:12px;padding:24px;margin-bottom:18px}
+    .funnel-title{font-size:14px;font-weight:700;margin-bottom:18px}
+    .step{margin-bottom:14px}
+    .step-row{display:flex;justify-content:space-between;font-size:14px;font-weight:600;margin-bottom:6px}
+    .step-bar{height:14px;background:rgba(124,58,237,.1);border-radius:7px;overflow:hidden;position:relative}
+    .step-fill{height:100%;border-radius:7px}
+    .step-stat{font-size:11px;color:#8A8AA8;margin-top:4px}
+    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+    .chart-card{background:rgba(20,18,32,.6);border:1px solid rgba(124,58,237,.2);border-radius:12px;padding:20px;margin-bottom:18px}
+    .chart-title{font-size:14px;font-weight:700;margin-bottom:14px}
+    .chart-h{height:280px;position:relative}
+    .table{width:100%;border-collapse:collapse}
+    .table th{background:rgba(124,58,237,.1);padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:#8A8AA8;font-weight:700}
+    .table td{padding:12px 14px;border-top:1px solid rgba(124,58,237,.1);font-size:13px}
+    .stat{background:rgba(20,18,32,.6);border:1px solid rgba(124,58,237,.2);border-radius:10px;padding:16px}
+    .stat-l{font-size:11px;color:#8A8AA8;text-transform:uppercase;font-weight:600;margin-bottom:6px}
+    .stat-v{font-size:24px;font-weight:800}
+    .stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:18px}
+    @media(max-width:900px){.sidebar{display:none}.main{margin-left:0;padding:18px}.grid-2{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
-  <div class="dashboard">
-    <!-- Sidebar -->
+  <div class="layout">
     <div class="sidebar">
       <div class="logo">
         <div class="logo-icon">🛡️</div>
         <div class="logo-text">Admin</div>
       </div>
-
       <div class="nav-section">
         <div class="nav-label">Main</div>
-        <div class="nav-item" data-page="dashboard">
-          <span class="nav-icon">📊</span>
-          <span>Dashboard</span>
-        </div>
-        <div class="nav-item active" data-page="analytics">
-          <span class="nav-icon">📈</span>
-          <span>Analytics</span>
-        </div>
-        <div class="nav-item" data-page="users">
-          <span class="nav-icon">👥</span>
-          <span>Users</span>
-        </div>
-        <div class="nav-item" data-page="revenue">
-          <span class="nav-icon">💰</span>
-          <span>Revenue</span>
-        </div>
+        <div class="nav-item" onclick="goTo('admin-dashboard.html')"><span>📊</span><span>Dashboard</span></div>
+        <div class="nav-item" onclick="goTo('admin-subscriptions.html')"><span>💳</span><span>Subscriptions</span></div>
+        <div class="nav-item" onclick="goTo('admin-users.html')"><span>👥</span><span>Users</span></div>
+        <div class="nav-item" onclick="goTo('admin-revenue.html')"><span>💰</span><span>Revenue</span></div>
+        <div class="nav-item active"><span>📈</span><span>Analytics</span></div>
       </div>
-
       <div class="nav-section">
-        <div class="nav-label">Management</div>
-        <div class="nav-item" data-page="features">
-          <span class="nav-icon">🚀</span>
-          <span>Feature Flags</span>
-        </div>
-        <div class="nav-item" data-page="technical">
-          <span class="nav-icon">⚙️</span>
-          <span>Technical Health</span>
-        </div>
+        <div class="nav-label">Configuration</div>
+        <div class="nav-item" onclick="goTo('admin-settings.html')"><span>⚙️</span><span>Settings</span></div>
+        <div class="nav-item" onclick="goTo('admin-features.html')"><span>🚀</span><span>Features</span></div>
+        <div class="nav-item" onclick="goTo('admin-technical.html')"><span>🛠️</span><span>Tech Health</span></div>
       </div>
-
-      <div class="nav-divider"></div>
-
       <div class="nav-section">
         <div class="nav-label">System</div>
-        <div class="nav-item" data-page="notifications">
-          <span class="nav-icon">🔔</span>
-          <span>Notifications</span>
-        </div>
-        <div class="nav-item" data-page="audit">
-          <span class="nav-icon">📋</span>
-          <span>Audit Logs</span>
-        </div>
+        <div class="nav-item" onclick="goTo('admin-notifications.html')"><span>🔔</span><span>Notifications</span></div>
+        <div class="nav-item" onclick="goTo('admin-audit.html')"><span>📋</span><span>Audit Logs</span></div>
       </div>
-
-      <div class="nav-divider" style="margin-top: auto; margin-bottom: 16px;"></div>
-
-      <div class="nav-item" id="logoutBtn">
-        <span class="nav-icon">🚪</span>
-        <span>Logout</span>
-      </div>
+      <div class="nav-item" id="logoutBtn"><span>🚪</span><span>Logout</span></div>
     </div>
 
-    <!-- Main Content -->
-    <div class="main-content">
+    <div class="main">
       <div class="header">
-        <h1>Usage Analytics</h1>
-        <p>Feature adoption, user behavior, and engagement metrics</p>
+        <h1>Analytics</h1>
+        <p>Signup funnel · Activation rate · Plan distribution · Growth trends</p>
       </div>
 
-      <!-- Key Metrics -->
-      <div class="metrics-grid">
-        <div class="metric-card">
-          <div class="metric-label">Bills Today</div>
-          <div class="metric-value" id="billsToday">—</div>
-          <div class="metric-subtext">24-hour period</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-label">Bills This Week</div>
-          <div class="metric-value" id="billsWeek">—</div>
-          <div class="metric-subtext">Last 7 days</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-label">Bills This Month</div>
-          <div class="metric-value" id="billsMonth">—</div>
-          <div class="metric-subtext">Last 30 days</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-label">Avg Bills/Day</div>
-          <div class="metric-value" id="avgBillsPerDay">—</div>
-          <div class="metric-subtext">30-day average</div>
-        </div>
+      <div class="stats-row" id="kpis"></div>
+
+      <div class="funnel">
+        <div class="funnel-title">🎯 Signup → Activation → Conversion Funnel</div>
+        <div id="funnel"></div>
       </div>
 
-      <!-- Charts -->
-      <div class="chart-card">
-        <div class="chart-title">📊 Daily Bills (30 days)</div>
-        <div class="chart-container">
-          <canvas id="billsChart"></canvas>
+      <div class="grid-2">
+        <div class="chart-card">
+          <div class="chart-title">📅 Signups (Last 30 Days)</div>
+          <div class="chart-h"><canvas id="signupChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">💎 Plan Distribution</div>
+          <div class="chart-h"><canvas id="planChart"></canvas></div>
         </div>
       </div>
 
       <div class="chart-card">
-        <div class="chart-title">📈 Feature Adoption</div>
-        <div class="chart-container">
-          <canvas id="adoptionChart"></canvas>
-        </div>
-      </div>
-
-      <div class="chart-card">
-        <div class="chart-title">👥 User Engagement</div>
-        <div class="chart-container">
-          <canvas id="engagementChart"></canvas>
-        </div>
+        <div class="chart-title">📊 Activity Distribution (Bills per Shop)</div>
+        <div id="activityDist"></div>
       </div>
     </div>
   </div>
@@ -313,145 +110,117 @@
   <script src="admin-auth.js"></script>
   <script src="admin-db.js"></script>
   <script>
-    if (!requireAdminAuth()) throw new Error('Not authenticated');
-
     const auth = AdminAuth.getInstance();
+    if (!auth.isAuthenticated) { window.location.href = 'admin-login.html'; }
     const db = AdminDB.getInstance();
 
-    // Navigation
-    document.querySelectorAll('.nav-item').forEach(item => {
-      item.addEventListener('click', () => {
-        const page = item.getAttribute('data-page');
-        if (page && page !== 'analytics') {
-          window.location.href = `admin-${page}.html`;
+    function goTo(url){ window.location.href = url; }
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      if(confirm('Logout?')){ auth.logout(); window.location.href='admin-login.html'; }
+    });
+
+    let _signupChart = null, _planChart = null;
+
+    async function load(){
+      const m = await db.getMetrics();
+      const shops = await db.listShops({ limit: 1000 });
+
+      // KPIs
+      const totalShops = m.total_shops || 0;
+      const activated = shops.filter(s => (parseFloat(s.bill_count)||0) > 0).length;
+      const activationRate = totalShops > 0 ? Math.round((activated/totalShops)*100) : 0;
+      const paidShops = (m.pro_shops||0) + (m.business_shops||0);
+      const conversionRate = totalShops > 0 ? Math.round((paidShops/totalShops)*100) : 0;
+      const activeOfPaid = m.active_paid || 0;
+
+      document.getElementById('kpis').innerHTML = `
+        <div class="stat"><div class="stat-l">🏪 Total Signups</div><div class="stat-v">${totalShops}</div></div>
+        <div class="stat"><div class="stat-l">✅ Activated</div><div class="stat-v">${activated} <span style="font-size:14px;color:#8A8AA8">(${activationRate}%)</span></div></div>
+        <div class="stat"><div class="stat-l">💎 Paid Subscribers</div><div class="stat-v" style="color:#F5A623">${paidShops}</div></div>
+        <div class="stat"><div class="stat-l">📊 Conversion Rate</div><div class="stat-v" style="color:#10B981">${conversionRate}%</div></div>
+        <div class="stat"><div class="stat-l">⭐ Active Paid</div><div class="stat-v">${activeOfPaid}</div></div>
+        <div class="stat"><div class="stat-l">📈 Today Signups</div><div class="stat-v">${m.today_signups||0}</div></div>
+      `;
+
+      // Funnel
+      const funnel = [
+        { label:'1. Signed Up', count: totalShops, color:'#6366F1', pct:100 },
+        { label:'2. Created First Bill', count: activated, color:'#F5A623', pct: totalShops>0?Math.round((activated/totalShops)*100):0 },
+        { label:'3. Upgraded to Paid', count: paidShops, color:'#10B981', pct: totalShops>0?Math.round((paidShops/totalShops)*100):0 },
+        { label:'4. Active Paid (not expired)', count: activeOfPaid, color:'#7C3AED', pct: totalShops>0?Math.round((activeOfPaid/totalShops)*100):0 }
+      ];
+      document.getElementById('funnel').innerHTML = funnel.map((f, i) => {
+        const dropFromPrev = i>0 ? funnel[i-1].count - f.count : 0;
+        return `<div class="step">
+          <div class="step-row"><span>${f.label}</span><span>${f.count} <span style="color:#8A8AA8;font-size:12px">(${f.pct}%)</span></span></div>
+          <div class="step-bar"><div class="step-fill" style="width:${Math.max(2,f.pct)}%;background:${f.color}"></div></div>
+          ${i>0 ? `<div class="step-stat">↓ ${dropFromPrev} drop-off from previous step</div>` : ''}
+        </div>`;
+      }).join('');
+
+      // Signup trend
+      const signupBuckets = {};
+      const cutoff = Date.now() - 30*86400000;
+      shops.forEach(s => {
+        const ts = new Date(s.created_at).getTime();
+        if(ts < cutoff) return;
+        const d = new Date(ts).toISOString().slice(0,10);
+        signupBuckets[d] = (signupBuckets[d]||0) + 1;
+      });
+      const days = [];
+      for(let i=29; i>=0; i--){
+        const d = new Date(Date.now() - i*86400000).toISOString().slice(0,10);
+        days.push({ d, c: signupBuckets[d]||0 });
+      }
+      const ctx = document.getElementById('signupChart');
+      if(_signupChart) _signupChart.destroy();
+      _signupChart = new Chart(ctx, {
+        type:'line',
+        data:{
+          labels: days.map(d => d.d.slice(5)),
+          datasets:[{label:'Signups', data:days.map(d=>d.c), borderColor:'#F5A623', backgroundColor:'rgba(245,166,35,.15)', tension:.3, fill:true}]
+        },
+        options:{
+          responsive:true, maintainAspectRatio:false,
+          plugins:{legend:{display:false}},
+          scales:{
+            x:{ticks:{color:'#8A8AA8'},grid:{color:'rgba(255,255,255,.05)'}},
+            y:{beginAtZero:true,ticks:{color:'#8A8AA8',precision:0},grid:{color:'rgba(255,255,255,.05)'}}
+          }
         }
       });
-    });
 
-    // Logout
-    document.getElementById('logoutBtn').addEventListener('click', () => {
-      if (confirm('Logout?')) {
-        auth.logout();
-        window.location.href = 'admin-login.html';
-      }
-    });
+      // Plan distribution
+      const pCtx = document.getElementById('planChart');
+      if(_planChart) _planChart.destroy();
+      _planChart = new Chart(pCtx, {
+        type:'doughnut',
+        data:{
+          labels:['Free','Pro','Business'],
+          datasets:[{data:[m.free_shops||0, m.pro_shops||0, m.business_shops||0],
+            backgroundColor:['#6B7280','#F5A623','#7C3AED'], borderWidth:0}]
+        },
+        options:{responsive:true, maintainAspectRatio:false,
+          plugins:{legend:{position:'bottom',labels:{color:'#F0EFF8',padding:12}}}}
+      });
 
-    // Load analytics
-    async function loadAnalytics() {
-      const usage = await db.getUsageMetrics();
-      
-      document.getElementById('billsToday').textContent = usage.billsToday.toLocaleString();
-      document.getElementById('billsWeek').textContent = usage.billsWeek.toLocaleString();
-      document.getElementById('billsMonth').textContent = usage.billsMonth.toLocaleString();
-      document.getElementById('avgBillsPerDay').textContent = Number(usage.avgBillsPerDay).toFixed(0);
-
-      renderCharts(usage);
+      // Activity distribution
+      const buckets = { 'No bills':0, '1-9':0, '10-49':0, '50-199':0, '200+':0 };
+      shops.forEach(s => {
+        const c = parseFloat(s.bill_count)||0;
+        if(c === 0) buckets['No bills']++;
+        else if(c < 10) buckets['1-9']++;
+        else if(c < 50) buckets['10-49']++;
+        else if(c < 200) buckets['50-199']++;
+        else buckets['200+']++;
+      });
+      document.getElementById('activityDist').innerHTML = '<table class="table"><thead><tr><th>Bills/Month Range</th><th>Shops</th><th>%</th></tr></thead><tbody>'
+        + Object.entries(buckets).map(([k,v]) => `<tr><td>${k}</td><td><strong>${v}</strong></td><td>${totalShops>0?Math.round((v/totalShops)*100):0}%</td></tr>`).join('')
+        + '</tbody></table>';
     }
 
-    function renderCharts(usage) {
-      // Bills chart
-      const days = Array.from({ length: 30 }, (_, i) => {
-        const d = new Date();
-        d.setDate(d.getDate() - 29 + i);
-        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      });
-
-      const billsData = Array.from({ length: 30 }, () => 
-        Math.floor(Math.random() * 400) + 100
-      );
-
-      const billsCtx = document.getElementById('billsChart').getContext('2d');
-      new Chart(billsCtx, {
-        type: 'area',
-        data: {
-          labels: days,
-          datasets: [{
-            label: 'Bills Created',
-            data: billsData,
-            borderColor: '#F5A623',
-            backgroundColor: 'rgba(124, 58, 237, 0.2)',
-            borderWidth: 2,
-            fill: true,
-            tension: 0.4,
-          }],
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
-          scales: {
-            y: {
-              beginAtZero: true,
-              grid: { color: 'rgba(124, 58, 237, 0.1)' },
-              ticks: { color: '#8A8AA8' },
-            },
-            x: {
-              grid: { color: 'rgba(124, 58, 237, 0.1)' },
-              ticks: { color: '#8A8AA8', maxRotation: 45 },
-            },
-          },
-        },
-      });
-
-      // Feature adoption
-      const adoptionCtx = document.getElementById('adoptionChart').getContext('2d');
-      new Chart(adoptionCtx, {
-        type: 'bar',
-        data: {
-          labels: ['Billing', 'Inventory', 'Customers', 'Reports', 'Settings', 'POS'],
-          datasets: [{
-            label: 'Adoption %',
-            data: [95, 78, 82, 65, 71, 48],
-            backgroundColor: ['#F5A623', '#FF8A00', '#10B981', '#3B82F6', '#F59E0B', '#EF4444'],
-          }],
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
-          scales: {
-            y: { max: 100, grid: { color: 'rgba(124, 58, 237, 0.1)' }, ticks: { color: '#8A8AA8' } },
-            x: { grid: { display: false }, ticks: { color: '#8A8AA8' } },
-          },
-        },
-      });
-
-      // Engagement
-      const engagementCtx = document.getElementById('engagementChart').getContext('2d');
-      new Chart(engagementCtx, {
-        type: 'line',
-        data: {
-          labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-          datasets: [
-            {
-              label: 'Daily Active Users',
-              data: [750, 820, 790, 850, 920, 680, 620],
-              borderColor: '#F5A623',
-              backgroundColor: 'rgba(124, 58, 237, 0.1)',
-              tension: 0.4,
-            },
-            {
-              label: 'Session Duration (min)',
-              data: [18, 22, 19, 25, 28, 15, 12],
-              borderColor: '#10B981',
-              backgroundColor: 'rgba(16, 185, 129, 0.1)',
-              tension: 0.4,
-            },
-          ],
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { labels: { color: '#8A8AA8' } } },
-          scales: {
-            y: { grid: { color: 'rgba(124, 58, 237, 0.1)' }, ticks: { color: '#8A8AA8' } },
-            x: { grid: { color: 'rgba(124, 58, 237, 0.1)' }, ticks: { color: '#8A8AA8' } },
-          },
-        },
-      });
-    }
-
-    loadAnalytics();
+    load();
+    setInterval(load, 60000);
   </script>
 </body>
 </html>

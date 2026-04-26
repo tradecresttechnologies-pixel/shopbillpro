@@ -1,103 +1,168 @@
-# 🚀 ShopBill Pro — Audit Round Final Build
+# 🚀 ShopBill Pro — Full Build with SaaS Admin Panel
 
-**This is the ONLY package you need. Replace your repo with these files.**
+**Replace your repo with these files. Run BOTH SQL migrations.**
 
 ---
 
 ## What's in this build
 
-- **62 bug fixes** (audit findings #1 through #62)
-- **Phase 1 UPI**: WhatsApp QR-image send + Mark-as-Paid follow-up
-- **Reports Pro**: GSTR-1, GSTR-3B, P&L, Payments tabs with CSV exports
-- **Cleanup**: Deleted unused `shared/` folder + dead `db-local.js` references
+- All previous audit fixes (62 bugs, Phase 1 UPI, Reports Pro)
+- **NEW: Full SaaS admin panel with Razorpay automation**
+  - Encrypted settings (paste Razorpay creds in admin UI)
+  - Razorpay webhook → auto-activates plans (zero manual SQL)
+  - Subscription approval queue with one-click approve/reject
+  - User management (search, plan change, suspend)
+  - Real metrics (MRR, ARR, conversion, churn)
+  - Revenue charts + recent payments
+  - Signup funnel + activation rate
 
 ---
 
-## ⚠️ DEPLOY IN THIS ORDER
+## ⚠️ DEPLOY ORDER — DO NOT SKIP STEPS
 
-### Step 1 — Run SQL patch (REQUIRED, do FIRST)
+### Step 1 — Run BOTH SQL files in Supabase SQL Editor
 
-1. Open Supabase Dashboard → SQL Editor → New Query
-2. Open `audit_round_db_patch.sql` from this package
-3. Copy entire contents → paste → Run
-4. Verify no errors
+**1a. First time only (if not done):** `audit_round_db_patch.sql`
+**1b. New:** `admin_panel_full.sql`
 
-### Step 2 — Update payment config
+Both are idempotent (safe to re-run).
 
-Open `subscription.html`. Near top of `<script>` find:
+### Step 2 — Set the encryption key (one-time, critical)
 
-```javascript
-const SBP_PAY_CONFIG = {
-  RAZORPAY_KEY:  'rzp_test_YOUR_KEY_HERE',
-  RECEIVING_UPI: 'shopbillpro@paytm',
-  ADMIN_WA:      '919999999999'
-};
+In Supabase SQL Editor:
+
+```sql
+ALTER DATABASE postgres SET app.encryption_key = 'replace-with-your-32-character-random-string';
 ```
 
-Replace all 3 placeholder values. **Without this, payments will not work.**
+Then **restart the database**: Supabase Dashboard → Settings → Database → Restart.
 
-### Step 3 — Deploy
+This key encrypts the Razorpay Key Secret. **Without it, secret storage will fail.**
+**Save the key somewhere safe** — if you lose it, all stored secrets become unreadable.
 
-1. In your local repo, delete every file except `.git/` and any deployment configs
-2. Copy ALL files from this package into the repo
-3. Commit + push → Vercel auto-deploys
+### Step 3 — Set the admin master password
 
-### Step 4 — Hard refresh
+In Supabase SQL Editor (replace with your chosen password):
 
-Service worker version was bumped to `v1.3.0`. Existing PWA users may need:
-- Mobile: Long-press app → Uninstall → reinstall from app.shopbillpro.in
-- Or: DevTools → Application → Service Workers → Unregister → reload
+```sql
+SELECT admin_set_master_token('YOUR_NEW_ADMIN_PASSWORD_HERE');
+```
 
-### Step 5 — Verify
+This becomes the password for `admin-login.html`. Until you run this, the default `SBP_ADMIN_2024_SECURE` still works as a fallback.
 
-- [ ] Today's Sales shows correct amount with credit bills present
-- [ ] Manual bill saves → stock decreases in Stock page
-- [ ] Cash bill → entry auto-appears in Cash Register
-- [ ] Void bill → stock restored, ledger reversed if credit
-- [ ] Reopen credit bill → ledger reverses, redirected to billing.html in edit mode
-- [ ] Reports → GSTR-1 tab shows B2B/B2C split → Export B2B CSV opens cleanly in Excel
-- [ ] Reports → P&L shows Net Sales / COGS / Net Profit
-- [ ] Settings has UPI ID saved → bill → 📲 WA → "Bill + UPI QR Image" option appears
-- [ ] Customers page → reminder bell → after WA opens → "Did they pay?" follow-up
-- [ ] Subscription page → "I Paid via UPI" → "Payment Under Verification" (NOT instant unlock)
-- [ ] Settings in Hindi mode loads without flash/blink
-- [ ] WhatsApp links don't have `9191...` doubled country code
+### Step 4 — Push files to GitHub
+
+Replace your repo's contents with this package, commit, push. Vercel auto-deploys.
+
+### Step 5 — Log into admin panel
+
+Open: `https://app.shopbillpro.in/admin-login.html`
+
+Enter your master password from Step 3.
+
+### Step 6 — Configure Razorpay in admin
+
+Admin panel → **Settings** → fill:
+- **Razorpay Mode**: test (start here) or live
+- **Razorpay Key ID**: from dashboard.razorpay.com → API Keys
+- **Razorpay Key Secret**: same place (stored encrypted, never exposed to client)
+- **UPI Receiving ID**: your UPI for direct payments
+- **Admin WhatsApp**: 10-digit + country code (no `+`)
+- **Plan prices**: leave default ₹99/₹199 or change
+
+Click **Save All Changes**.
+
+### Step 7 — Deploy Razorpay webhook
+
+This is what auto-activates subscriptions when payments complete. See `supabase/functions/razorpay-webhook/README.md` for full instructions.
+
+Quick version:
+```bash
+# 1. Install Supabase CLI (one-time)
+npm i -g supabase
+
+# 2. Link project
+supabase login
+supabase link --project-ref jfqeirfrkjdkqqixivru
+
+# 3. Set webhook secret (any long random string)
+supabase secrets set RAZORPAY_WEBHOOK_SECRET="paste-a-long-random-string-here"
+
+# 4. Deploy
+supabase functions deploy razorpay-webhook --no-verify-jwt
+```
+
+Then in **Razorpay Dashboard → Settings → Webhooks → Add**:
+- URL: `https://jfqeirfrkjdkqqixivru.supabase.co/functions/v1/razorpay-webhook`
+- Secret: same string as step 3 above
+- Events: `payment.captured` (minimum)
+
+### Step 8 — Test
+
+1. Sign up a new test shop in your app (use Razorpay test card `4111 1111 1111 1111`)
+2. Try to upgrade to Pro
+3. Complete the test payment
+4. Within seconds, the user's plan should flip to Pro automatically (no SQL needed)
+5. Check Admin Panel → Subscriptions → should show as Active
 
 ---
 
-## File structure
+## File map
 
-### Modified (32 files)
+### Modified (audit fixes)
 admin-auth.js · admin-db.js · auth.js · bill-templates.html · billing.html · bills.html · cash-register.html · customers.html · dashboard.html · db.js · index.html · lang.js · marketing.html · pos-admin.html · recurring.html · reports.html · service-worker.js · settings.html · stock.html · subscription.html · supplier.html · sync.js · team.html · ui.js · wa-center.html · supabase.js
 
-### Unchanged (stays as-is)
-admin-analytics.html · admin-audit.html · admin-dashboard.html · admin-features.html · admin-login.html · admin-notifications.html · admin-revenue.html · admin-technical.html · admin-users.html · conversion.js · fix.css · manifest.json · scanner.js · shopbillpro_website.html · styles.css · upgrade-popup.js · icons/
+### Modified (admin panel)
+admin-dashboard.html · admin-users.html · admin-revenue.html · admin-analytics.html
 
-### New
-audit_round_db_patch.sql · README.md · AUDIT_CHANGELOG.md
+### NEW admin pages
+admin-subscriptions.html · admin-settings.html
 
-### Deleted from your repo
-- `db-local.js` — dead code (was 404'ing on every page)
-- `shared/` folder — unreferenced duplicates
-
----
-
-## Key fix summary
-
-**Money & Trust:** Closed revenue exploit (#46), centralized payment config (#43-45), plan expiry enforced (#49), admin password SHA-256 hashed.
-
-**Math:** Today's Sales = grand_total (#1, screenshot bug), voided excluded everywhere (#2/5/6), timezone fix across 13 files (#3), CGST/SGST/IGST split per supply_type (#4), post-discount taxable base (#7).
-
-**Stock & Ledger:** Manual stock deduction (#15), void/reopen restore stock (#16/17), customer match by ID/phone (#9/12), settle blocks Credit (#8), cash register auto-record (#10).
-
-**Sync/SW/Admin:** Atomic invoice counter RPC (#23), service worker rewrite with all assets (#19/20), admin revenue uses grand_total (#54), business plan counted (#55), users-table fallback (#56).
-
-**UX:** Lang.js perf + late-load fix (#58/60/61) — fixes Hindi screen-blink, WA country code dup (#50), bulk send cap (#51/53), bill template via sessionStorage (#39), profit per unit display (#38), recurring "Generate All Due" no longer drops bills (#21).
-
-**Phase 1 UPI:** Bill+QR-image option in WA send modal, Mark-as-Paid follow-up after reminder.
-
-**Reports Pro:** GSTR-1 (B2B+B2C with GSTN-format exports), GSTR-3B summary, P&L statement (true profit using cost prices), Payments breakdown.
+### NEW infrastructure
+audit_round_db_patch.sql · admin_panel_full.sql · supabase/functions/razorpay-webhook/index.ts · supabase/functions/razorpay-webhook/README.md
 
 ---
 
-See `AUDIT_CHANGELOG.md` for full bug-by-bug breakdown.
+## Daily workflow (after setup)
+
+**Morning routine** — open `admin-dashboard.html`:
+- See MRR, today's revenue, pending verifications, recent activity
+- Pending count > 0 in nav badge means manual UPI payments to review
+
+**Subscription review** — `admin-subscriptions.html`:
+- Pending tab: review each, click ✅ Approve or ❌ Reject
+- Razorpay payments auto-activate (no review needed)
+
+**User support** — `admin-users.html`:
+- Search by name/email/phone
+- Click "Plan" to upgrade/downgrade/extend
+- Click "Suspend" to lock out a user
+
+**Revenue tracking** — `admin-revenue.html`:
+- Stacked bar chart: Pro vs Business by day
+- Top paying shops
+- All recent payments with status
+
+**Analytics** — `admin-analytics.html`:
+- Signup funnel: Signup → First Bill → Paid → Active
+- Drop-off at each step
+- 30-day signup chart
+
+---
+
+## Security notes
+
+- **Encryption key**: stored as Postgres database parameter, only readable via SQL. Anyone with full DB access can read encrypted secrets — same risk as any SQL backend.
+- **Admin token**: SHA-256 hashed in `admin_settings.admin_token_hash`. Brute-force protected by lockout in `admin-auth.js` (5 attempts → 15 min lockout).
+- **Webhook signature**: HMAC-SHA256 verified by Edge Function before reaching Postgres. Failed signatures still logged in `webhook_events` but never activate subscriptions.
+- **Client never sees the Razorpay Key Secret** — it stays in Postgres, encrypted, only used by the webhook function (which has Service Role access).
+
+---
+
+## What still uses manual SQL?
+
+After this build, **only one thing**: the initial encryption key setup (Step 2 above) and the master password bootstrap (Step 3). After that, everything else flows through the admin UI.
+
+---
+
+See `AUDIT_CHANGELOG.md` for the full bug-by-bug history.

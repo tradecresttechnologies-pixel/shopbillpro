@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en" translate="no" class="notranslate">
+<head>
+  <meta charset="UTF-8">
+  <meta name="google" content="notranslate">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png?v=2">
+  <title>Subscriptions — Admin</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Outfit',sans-serif;background:#0A0A12;color:#F0EFF8}
+    .layout{display:flex;min-height:100vh}
+    .sidebar{width:280px;background:rgba(19,19,28,.8);backdrop-filter:blur(10px);border-right:1px solid rgba(124,58,237,.2);padding:24px;position:fixed;height:100vh;overflow-y:auto;left:0;top:0}
+    .main{flex:1;margin-left:280px;padding:32px}
+    .logo{display:flex;align-items:center;gap:12px;margin-bottom:32px}
+    .logo-icon{width:40px;height:40px;background:linear-gradient(135deg,#F5A623,#FF8A00);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px}
+    .logo-text{font-size:18px;font-weight:700}
+    .nav-section{margin-bottom:24px}
+    .nav-label{font-size:11px;font-weight:600;color:#5A5A78;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+    .nav-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;cursor:pointer;color:#8A8AA8;font-size:14px;font-weight:500;transition:all .2s}
+    .nav-item:hover{background:rgba(124,58,237,.1);color:#F0EFF8}
+    .nav-item.active{background:rgba(245,166,35,.15);color:#F5A623}
+    .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:32px;flex-wrap:wrap;gap:16px}
+    .header h1{font-size:32px;font-weight:800;background:linear-gradient(135deg,#F5A623,#FF8A00);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:4px}
+    .header p{font-size:14px;color:#8A8AA8}
+    .filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
+    .filter-btn{padding:8px 16px;background:rgba(124,58,237,.1);border:1px solid rgba(124,58,237,.3);border-radius:8px;color:#8A8AA8;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s}
+    .filter-btn:hover{background:rgba(124,58,237,.2)}
+    .filter-btn.active{background:linear-gradient(135deg,#F5A623,#FF8A00);color:#0A0E1A;border-color:transparent}
+    .badge-count{margin-left:6px;background:#EF4444;color:#fff;font-size:10px;padding:1px 6px;border-radius:8px;font-weight:700}
+    .stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:24px}
+    .stat-card{background:rgba(20,18,32,.6);border:1px solid rgba(124,58,237,.2);border-radius:10px;padding:16px}
+    .stat-label{font-size:11px;color:#8A8AA8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+    .stat-val{font-size:24px;font-weight:800;color:#F0EFF8}
+    .stat-sub{font-size:11px;color:#8A8AA8;margin-top:4px}
+    .sub-card{background:rgba(20,18,32,.6);border:1px solid rgba(124,58,237,.2);border-radius:12px;padding:18px;margin-bottom:12px}
+    .sub-card.pending{border-color:#F59E0B;background:rgba(245,158,11,.05)}
+    .sub-card.active{border-color:#10B981;background:rgba(16,185,129,.04)}
+    .sub-card.rejected{border-color:#EF4444;background:rgba(239,68,68,.04)}
+    .sub-row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
+    .sub-info{flex:1;min-width:240px}
+    .sub-shop{font-size:16px;font-weight:700;margin-bottom:4px}
+    .sub-meta{font-size:12px;color:#8A8AA8;line-height:1.6}
+    .sub-amount{font-size:22px;font-weight:800;color:#F5A623;text-align:right}
+    .pill{display:inline-block;padding:3px 10px;border-radius:12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+    .pill.pending{background:rgba(245,158,11,.2);color:#F59E0B}
+    .pill.active{background:rgba(16,185,129,.2);color:#10B981}
+    .pill.rejected{background:rgba(239,68,68,.2);color:#EF4444}
+    .pill.refunded{background:rgba(107,114,128,.2);color:#9CA3AF}
+    .actions{display:flex;gap:8px;margin-top:12px}
+    .btn{padding:9px 16px;border-radius:8px;border:none;cursor:pointer;font-family:inherit;font-size:13px;font-weight:700}
+    .btn-approve{background:linear-gradient(135deg,#10B981,#059669);color:#fff}
+    .btn-reject{background:rgba(239,68,68,.15);color:#EF4444;border:1px solid rgba(239,68,68,.3)}
+    .btn-secondary{background:rgba(124,58,237,.1);color:#F0EFF8;border:1px solid rgba(124,58,237,.3)}
+    .empty{text-align:center;padding:48px;color:#8A8AA8;background:rgba(20,18,32,.4);border-radius:10px}
+    .toast{position:fixed;bottom:24px;right:24px;background:rgba(20,18,32,.95);border:1px solid #F5A623;color:#fff;padding:14px 20px;border-radius:10px;font-weight:600;z-index:9999;max-width:400px}
+    @media(max-width:900px){.sidebar{display:none}.main{margin-left:0;padding:18px}}
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <div class="sidebar">
+      <div class="logo">
+        <div class="logo-icon">🛡️</div>
+        <div class="logo-text">Admin</div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">Main</div>
+        <div class="nav-item" onclick="goTo('admin-dashboard.html')"><span>📊</span><span>Dashboard</span></div>
+        <div class="nav-item active"><span>💳</span><span>Subscriptions</span></div>
+        <div class="nav-item" onclick="goTo('admin-users.html')"><span>👥</span><span>Users</span></div>
+        <div class="nav-item" onclick="goTo('admin-revenue.html')"><span>💰</span><span>Revenue</span></div>
+        <div class="nav-item" onclick="goTo('admin-analytics.html')"><span>📈</span><span>Analytics</span></div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">Configuration</div>
+        <div class="nav-item" onclick="goTo('admin-settings.html')"><span>⚙️</span><span>Settings</span></div>
+        <div class="nav-item" onclick="goTo('admin-features.html')"><span>🚀</span><span>Features</span></div>
+        <div class="nav-item" onclick="goTo('admin-technical.html')"><span>🛠️</span><span>Tech Health</span></div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">System</div>
+        <div class="nav-item" onclick="goTo('admin-notifications.html')"><span>🔔</span><span>Notifications</span></div>
+        <div class="nav-item" onclick="goTo('admin-audit.html')"><span>📋</span><span>Audit Logs</span></div>
+      </div>
+      <div class="nav-item" id="logoutBtn"><span>🚪</span><span>Logout</span></div>
+    </div>
+
+    <div class="main">
+      <div class="header">
+        <div>
+          <h1>Subscriptions</h1>
+          <p>Approve pending payments, view history</p>
+        </div>
+        <button class="btn btn-secondary" onclick="loadSubscriptions()">🔄 Refresh</button>
+      </div>
+
+      <div class="stats-row" id="statsRow"></div>
+
+      <div class="filters" id="filters">
+        <div class="filter-btn active" data-status="pending_verification">⏳ Pending<span class="badge-count" id="pendingBadge"></span></div>
+        <div class="filter-btn" data-status="active">✅ Active</div>
+        <div class="filter-btn" data-status="rejected">❌ Rejected</div>
+        <div class="filter-btn" data-status="refunded">↩️ Refunded</div>
+        <div class="filter-btn" data-status="all">All</div>
+      </div>
+
+      <div id="subsList"></div>
+    </div>
+  </div>
+
+  <script src="admin-auth.js"></script>
+  <script src="admin-db.js"></script>
+  <script>
+    const auth = AdminAuth.getInstance();
+    if (!auth.isAuthenticated) { window.location.href = 'admin-login.html'; }
+    const db = AdminDB.getInstance();
+    let _curStatus = (new URLSearchParams(location.search).get('filter')) || 'pending_verification';
+
+    function goTo(url){ window.location.href = url; }
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      if(confirm('Logout?')){ auth.logout(); window.location.href='admin-login.html'; }
+    });
+
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+        btn.classList.add('active');
+        _curStatus = btn.getAttribute('data-status');
+        loadSubscriptions();
+      });
+    });
+    // Set initial active button
+    document.querySelectorAll('.filter-btn').forEach(b => {
+      if (b.getAttribute('data-status') === _curStatus) {
+        document.querySelectorAll('.filter-btn').forEach(x=>x.classList.remove('active'));
+        b.classList.add('active');
+      }
+    });
+
+    function fmt(n){return '₹'+(parseFloat(n||0)).toLocaleString('en-IN',{maximumFractionDigits:0});}
+    function fmtDate(d){return new Date(d).toLocaleString('en-IN', {dateStyle:'medium', timeStyle:'short'});}
+
+    function toast(msg, isErr=false){
+      const t = document.createElement('div');
+      t.className = 'toast';
+      t.style.borderColor = isErr ? '#EF4444' : '#10B981';
+      t.textContent = msg;
+      document.body.appendChild(t);
+      setTimeout(() => t.remove(), 4000);
+    }
+
+    async function loadSubscriptions(){
+      const list = document.getElementById('subsList');
+      list.innerHTML = '<div class="empty">Loading…</div>';
+
+      // Stats
+      const m = await db.getMetrics();
+      document.getElementById('statsRow').innerHTML = `
+        <div class="stat-card"><div class="stat-label">⏳ Pending Verification</div><div class="stat-val" style="color:#F59E0B">${m.pending_subscriptions||0}</div><div class="stat-sub">Need review</div></div>
+        <div class="stat-card"><div class="stat-label">💰 MRR</div><div class="stat-val" style="color:#10B981">${fmt(m.mrr||0)}</div><div class="stat-sub">Monthly recurring</div></div>
+        <div class="stat-card"><div class="stat-label">📅 Month Revenue</div><div class="stat-val">${fmt(m.month_revenue||0)}</div><div class="stat-sub">This month</div></div>
+        <div class="stat-card"><div class="stat-label">⭐ Active Paid</div><div class="stat-val">${m.active_paid||0}</div><div class="stat-sub">Conversion: ${m.conversion_rate||0}%</div></div>
+      `;
+      const pendingBadge = document.getElementById('pendingBadge');
+      if(m.pending_subscriptions > 0){ pendingBadge.textContent = m.pending_subscriptions; pendingBadge.style.display = 'inline-block'; }
+      else { pendingBadge.style.display = 'none'; }
+
+      // List
+      const subs = await db.listSubscriptions({ status: _curStatus, limit: 200 });
+      if(!subs.length){
+        list.innerHTML = '<div class="empty">No subscriptions in this status.</div>';
+        return;
+      }
+      list.innerHTML = subs.map(s => {
+        const cls = ['pending_verification','active','rejected','refunded'].includes(s.status) ? s.status.replace('_verification','') : 'pending';
+        const pillCls = s.status === 'pending_verification' ? 'pending' : (s.status === 'active' ? 'active' : (s.status === 'rejected' ? 'rejected' : 'refunded'));
+        const planLbl = s.plan === 'business' || s.plan === 'enterprise' ? '🏭 Business' : (s.plan === 'pro' ? '💎 Pro' : s.plan);
+        return `<div class="sub-card ${cls}">
+          <div class="sub-row">
+            <div class="sub-info">
+              <div class="sub-shop">${s.shop_name || '—'} <span class="pill ${pillCls}">${s.status.replace('_',' ')}</span></div>
+              <div class="sub-meta">
+                Owner: <strong>${s.owner_name||'—'}</strong> ·
+                Plan: <strong>${planLbl}</strong> ·
+                Cycle: ${s.billing_cycle||'monthly'}<br>
+                Method: <strong>${(s.payment_method||'unknown').toUpperCase()}</strong> ·
+                Ref: <code style="font-size:11px">${s.payment_ref||'(none)'}</code><br>
+                Created: ${fmtDate(s.created_at)} ${s.expires_at ? '· Expires: ' + fmtDate(s.expires_at) : ''}
+                ${s.notes ? '<br>Notes: <em>'+s.notes+'</em>' : ''}
+              </div>
+            </div>
+            <div class="sub-amount">${fmt(s.amount||0)}</div>
+          </div>
+          ${s.status === 'pending_verification' ? `
+            <div class="actions">
+              <button class="btn btn-approve" onclick="approveOne('${s.id}', '${(s.shop_name||'').replace(/'/g,"\\'")}')">✅ Approve & Activate</button>
+              <button class="btn btn-reject" onclick="rejectOne('${s.id}', '${(s.shop_name||'').replace(/'/g,"\\'")}')">❌ Reject</button>
+              <button class="btn btn-secondary" onclick="copyRef('${s.payment_ref||''}')">📋 Copy Ref</button>
+            </div>` : ''}
+        </div>`;
+      }).join('');
+    }
+
+    async function approveOne(id, shopName){
+      const note = prompt('Approval note (optional):', 'Verified payment in Razorpay/UPI dashboard');
+      if(note === null) return;
+      try {
+        await db.approveSubscription(id, note || '');
+        toast('✅ Approved · '+shopName+' is now Pro/Business');
+        loadSubscriptions();
+      } catch(e) { toast('❌ '+e.message, true); }
+    }
+
+    async function rejectOne(id, shopName){
+      const reason = prompt('Why are you rejecting? This is logged.');
+      if(!reason) return;
+      try {
+        await db.rejectSubscription(id, reason);
+        toast('Rejected: '+shopName);
+        loadSubscriptions();
+      } catch(e) { toast('❌ '+e.message, true); }
+    }
+
+    function copyRef(ref){
+      if(!ref){ toast('No reference to copy', true); return; }
+      navigator.clipboard.writeText(ref);
+      toast('📋 Copied: '+ref);
+    }
+
+    loadSubscriptions();
+    setInterval(loadSubscriptions, 30000);
+  </script>
+</body>
+</html>

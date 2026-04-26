@@ -65,18 +65,36 @@ class AdminAuth {
       throw new Error('Too many login attempts. Try again later.');
     }
 
-    // Verify password (constant-time compare against stored hash)
+    // STEP 1 — local hash check (fallback / bootstrap mode)
     let entered;
     try { entered = await _sha256Hex(password || ''); }
     catch(e) { throw new Error('Crypto API unavailable — use a modern browser'); }
-    let mismatch = entered.length !== ADMIN_CONFIG.MASTER_PASSWORD_HASH.length ? 1 : 0;
+    let localOk = entered.length === ADMIN_CONFIG.MASTER_PASSWORD_HASH.length;
+    let mismatch = 0;
     for (let i = 0; i < entered.length; i++) {
       mismatch |= entered.charCodeAt(i) ^ ADMIN_CONFIG.MASTER_PASSWORD_HASH.charCodeAt(i);
     }
-    if (mismatch !== 0) {
+    if (mismatch !== 0) localOk = false;
+
+    // STEP 2 — Supabase verification (if SQL migration was run, this becomes source of truth)
+    let serverOk = false;
+    try {
+      if (typeof supabase !== 'undefined') {
+        const SB_URL = 'https://jfqeirfrkjdkqqixivru.supabase.co';
+        const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmcWVpcmZya2pka3FxaXhpdnJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzNzQ4MzgsImV4cCI6MjA4OTk1MDgzOH0.akd4E0nil8ypLR4WOykkeYIL8g4uuNU6XdSVh_Y1utk';
+        const sb = supabase.createClient(SB_URL, SB_KEY);
+        const { data, error } = await sb.rpc('admin_verify_token', { p_token: password });
+        if (!error && data === true) serverOk = true;
+      }
+    } catch(e) { console.warn('Server verify failed (offline?):', e.message); }
+
+    if (!localOk && !serverOk) {
       this.recordFailedAttempt();
       throw new Error('Invalid password');
     }
+
+    // Stash the password (used as token by RPCs). Stays in sessionStorage only.
+    sessionStorage.setItem('sbp_admin_token', password);
 
     // Clear failed attempts
     localStorage.removeItem('sbp_admin_failed_attempts');
@@ -137,6 +155,7 @@ class AdminAuth {
     this.sessionExpiry = null;
     this.adminEmail = null;
     sessionStorage.removeItem('sbp_admin_session');
+    sessionStorage.removeItem('sbp_admin_token');
     if (this.sessionTimer) clearTimeout(this.sessionTimer);
     this.logAction('admin_logout', {});
   }

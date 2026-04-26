@@ -368,14 +368,52 @@ function setBilling(type){
 
 /* ══ Razorpay Key — Replace with your actual key ══ */
 // ════════════════════════════════════════════════════════════════
-// PAYMENT CONFIGURATION — UPDATE THESE 3 VALUES BEFORE PUBLIC LAUNCH
+// PAYMENT CONFIGURATION — Loaded dynamically from admin_settings table
+// Set these values in Admin Panel → Settings (admin-settings.html).
+// Until set in admin panel, fallbacks below are used.
 // ════════════════════════════════════════════════════════════════
 const SBP_PAY_CONFIG = {
-  RAZORPAY_KEY:  'rzp_test_YOUR_KEY_HERE',     // dashboard.razorpay.com → API Keys
-  RECEIVING_UPI: 'shopbillpro@paytm',          // your actual UPI ID
-  ADMIN_WA:      '919999999999'                // 10-digit + country code, no '+'
+  RAZORPAY_KEY:  'rzp_test_YOUR_KEY_HERE',  // overridden by admin_settings.razorpay_key_id
+  RECEIVING_UPI: 'shopbillpro@paytm',       // overridden by admin_settings.upi_receiving_id
+  ADMIN_WA:      '919999999999'             // overridden by admin_settings.admin_whatsapp
 };
-const RAZORPAY_KEY = SBP_PAY_CONFIG.RAZORPAY_KEY;
+
+// Async loader that hydrates the config from admin_settings on page load.
+// Calls public.get_admin_setting() which returns NON-SECRET values to anyone.
+// The Razorpay Key ID is non-secret (it's safe to expose); the Key Secret is
+// never sent to client, only used server-side by the webhook Edge Function.
+async function _loadAdminPaymentConfig(){
+  if(!window._sb) return;
+  try {
+    const keys = ['razorpay_key_id','upi_receiving_id','admin_whatsapp','razorpay_mode',
+                  'plan_pro_monthly','plan_pro_yearly','plan_business_monthly','plan_business_yearly'];
+    const results = await Promise.all(keys.map(k =>
+      window._sb.rpc('get_admin_setting', { p_key: k }).then(r => ({k, v: r.data}))
+    ));
+    const map = {};
+    results.forEach(r => { if(r.v) map[r.k] = r.v; });
+    if(map.razorpay_key_id) SBP_PAY_CONFIG.RAZORPAY_KEY = map.razorpay_key_id;
+    if(map.upi_receiving_id) SBP_PAY_CONFIG.RECEIVING_UPI = map.upi_receiving_id;
+    if(map.admin_whatsapp) SBP_PAY_CONFIG.ADMIN_WA = map.admin_whatsapp;
+    SBP_PAY_CONFIG._loaded = true;
+    SBP_PAY_CONFIG._mode = map.razorpay_mode || 'test';
+    SBP_PAY_CONFIG._prices = {
+      pro_monthly: parseFloat(map.plan_pro_monthly) || 99,
+      pro_yearly: parseFloat(map.plan_pro_yearly) || 999,
+      business_monthly: parseFloat(map.plan_business_monthly) || 199,
+      business_yearly: parseFloat(map.plan_business_yearly) || 1999
+    };
+    // Re-render plan UI if function exists
+    if(typeof renderPlanPrices === 'function') try{renderPlanPrices();}catch(e){}
+  } catch(e){ console.warn('Could not load admin pay config (fallback to defaults):', e.message); }
+}
+// Trigger after Supabase client is ready
+if(typeof window !== 'undefined'){
+  if(window._sb) _loadAdminPaymentConfig();
+  else window.addEventListener('DOMContentLoaded', () => setTimeout(_loadAdminPaymentConfig, 200));
+}
+const RAZORPAY_KEY = SBP_PAY_CONFIG.RAZORPAY_KEY; // legacy alias
+function getRazorpayKey(){ return SBP_PAY_CONFIG.RAZORPAY_KEY; }
 
 function upgradePlan(plan) {
   const shop = JSON.parse(localStorage.getItem('sbp_shop') || '{}');
@@ -439,15 +477,15 @@ function payWithRazorpay(plan, amount, planName, billingLabel) {
   const lang = localStorage.getItem('sbp_lang') || 'en';
   const hi = lang === 'hi';
 
-  if (RAZORPAY_KEY.includes('YOUR_KEY')) {
-    toast('⚠️ Razorpay key not configured yet', 'e', 4000);
+  if (getRazorpayKey().includes('YOUR_KEY') || !getRazorpayKey()) {
+    toast('⚠️ Razorpay key not configured yet — admin should set it in Admin Panel → Settings', 'e', 5000);
     // Fallback to UPI
     payWithDirectUPI(plan, amount, planName);
     return;
   }
 
   const options = {
-    key: RAZORPAY_KEY,
+    key: getRazorpayKey(),
     amount: amount * 100, // paise
     currency: 'INR',
     name: 'ShopBill Pro',

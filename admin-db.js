@@ -1,370 +1,143 @@
-/* ══════════════════════════════════════════════════════════
-   ShopBill Pro Admin Control Panel — Database Layer
-   Analytics, user metrics, revenue tracking, health monitoring
-══════════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════════
+   ShopBill Pro Admin — Data Layer (Real Supabase RPCs)
+══════════════════════════════════════════════════════════════════ */
 
 class AdminDB {
   constructor() {
-    this.sb = window._sb; // Supabase instance from main app
-    if (!this.sb) {
-      console.warn('Supabase not initialized. Some features will be limited.');
-    }
+    if (AdminDB.instance) return AdminDB.instance;
+    const SB_URL = 'https://jfqeirfrkjdkqqixivru.supabase.co';
+    const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmcWVpcmZya2pka3FxaXhpdnJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzNzQ4MzgsImV4cCI6MjA4OTk1MDgzOH0.akd4E0nil8ypLR4WOykkeYIL8g4uuNU6XdSVh_Y1utk';
+    this.sb = (typeof supabase !== 'undefined') ? supabase.createClient(SB_URL, SB_KEY) : null;
+    AdminDB.instance = this;
   }
+  static getInstance() { return AdminDB.instance || new AdminDB(); }
 
-  // ══ USER METRICS ══
-  async getOverallMetrics() {
-    if (!this.sb) return this.getMockMetrics();
+  _token() { return sessionStorage.getItem('sbp_admin_token') || ''; }
 
+  async getMetrics() {
+    if (!this.sb) return this._mock();
     try {
-      // FIX #56 — try users table; fall back to deriving from shops if missing
-      let users = null;
-      try {
-        const r = await this.sb.from('users').select('id, created_at');
-        if(!r.error) users = r.data;
-      } catch(e) { /* table may not exist */ }
-
-      const { data: shops, error: shopErr } = await this.sb
-        .from('shops')
-        .select('id, plan, plan_expires_at, created_at, owner_id');
-
-      // FIX #54 — schema field is grand_total, not total. Also need status to filter voided.
-      const { data: bills, error: billErr } = await this.sb
-        .from('bills')
-        .select('id, grand_total, status, created_at');
-
-      if (shopErr || billErr) {
-        console.warn('Metrics fetch error:', shopErr || billErr);
-        return this.getMockMetrics();
-      }
-
-      // FIX #56 — derive user count from shops if users table unavailable
-      let totalUsers;
-      if(users) totalUsers = users.length;
-      else totalUsers = new Set((shops||[]).map(s => s.owner_id).filter(Boolean)).size;
-
-      // FIX #55 — count business plan as paid (was excluded)
-      const proUsers = shops?.filter(s => s.plan === 'pro' || s.plan === 'business' || s.plan === 'enterprise').length || 0;
-      const freeUsers = totalUsers - proUsers;
-
-      // FIX #54 — exclude voided bills from revenue
-      const liveBills = (bills||[]).filter(b => b.status !== 'Voided');
-      const totalBills = liveBills.length;
-      const totalRevenue = liveBills.reduce((sum, b) => sum + (parseFloat(b.grand_total)||0), 0);
-
-      const now = Date.now();
-      const week = 7 * 24 * 60 * 60 * 1000;
-      const recentBills = liveBills.filter(b => Date.parse(b.created_at) > now - week).length || 0;
-      const prevBills = liveBills.filter(b => {
-        const d = Date.parse(b.created_at);
-        return d > now - 2 * week && d <= now - week;
-      }).length || 0;
-      // FIX #57 — both 0 = 0% growth, not 100%
-      let billGrowth;
-      if(prevBills === 0 && recentBills === 0) billGrowth = 0;
-      else if(prevBills === 0) billGrowth = 100;
-      else billGrowth = ((recentBills - prevBills) / prevBills * 100).toFixed(1);
-
-      return {
-        totalUsers,
-        proUsers,
-        freeUsers,
-        conversionRate: totalUsers > 0 ? ((proUsers / totalUsers) * 100).toFixed(1) : 0,
-        totalBills,
-        totalRevenue,
-        avgBillValue: totalBills > 0 ? (totalRevenue / totalBills).toFixed(2) : 0,
-        billGrowth: parseFloat(billGrowth),
-        activeUsers: Math.round(totalUsers * 0.7), // Estimate: 70% are active
-        churnRate: ((freeUsers * 0.15) / proUsers * 100).toFixed(1), // Estimate
-      };
-    } catch (e) {
-      console.error('Error fetching overall metrics:', e);
-      return this.getMockMetrics();
-    }
-  }
-
-  getMockMetrics() {
-    // Return ZERO/empty data instead of demo data
-    // This forces real data from Supabase or shows nothing
-    return {
-      totalUsers: 0,
-      proUsers: 0,
-      freeUsers: 0,
-      conversionRate: 0,
-      totalBills: 0,
-      totalRevenue: 0,
-      avgBillValue: 0,
-      billGrowth: 0,
-      activeUsers: 0,
-      churnRate: 0,
-    };
-  }
-
-  // ══ USER MANAGEMENT ══
-  async getUsers(limit = 100, offset = 0) {
-    if (!this.sb) return [];
-
-    try {
-      const { data, error } = await this.sb
-        .from('users')
-        .select(`
-          id, email, created_at,
-          shops(id, name, plan, plan_expires_at)
-        `)
-        .range(offset, offset + limit - 1)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      return data || [];
-    } catch (e) {
-      console.error('Error fetching users:', e);
-      return [];
-    }
-  }
-
-  async getUserDetail(userId) {
-    if (!this.sb) return null;
-
-    try {
-      const { data, error } = await this.sb
-        .from('users')
-        .select(`
-          id, email, created_at,
-          shops(
-            id, name, plan, plan_expires_at, owner_name, phone, email, gstin,
-            bills(id, created_at, total),
-            customers(id),
-            products(id)
-          )
-        `)
-        .eq('id', userId)
-        .single();
-
-      if (error) throw error;
-
-      // Calculate user stats
-      if (data && data.shops && data.shops.length > 0) {
-        const shop = data.shops[0];
-        const stats = {
-          ...data,
-          shop,
-          totalBills: shop.bills?.length || 0,
-          totalCustomers: shop.customers?.length || 0,
-          totalProducts: shop.products?.length || 0,
-          avgBillValue: shop.bills?.length > 0 
-            ? (shop.bills.reduce((sum, b) => sum + b.total, 0) / shop.bills.length).toFixed(2)
-            : 0,
-          lastActivity: shop.bills?.[0]?.created_at || data.created_at,
-        };
-        return stats;
-      }
-
+      const { data, error } = await this.sb.rpc('admin_metrics', { p_admin_token: this._token() });
+      if (error) { console.warn('Metrics RPC error:', error); return this._mock(); }
       return data;
-    } catch (e) {
-      console.error('Error fetching user detail:', e);
-      return null;
-    }
+    } catch (e) { console.warn(e); return this._mock(); }
   }
 
-  async disableUser(userId) {
-    if (!this.sb) return false;
-
+  async listShops({ search='', plan='all', limit=100, offset=0 } = {}) {
+    if (!this.sb) return [];
     try {
-      // In Supabase, you'd typically update a status field or use auth functions
-      AdminAuth.getInstance().logAction('user_disabled', { userId });
-      return true;
-    } catch (e) {
-      console.error('Error disabling user:', e);
-      return false;
-    }
+      const { data, error } = await this.sb.rpc('admin_list_shops', {
+        p_admin_token: this._token(), p_search: search, p_plan_filter: plan, p_limit: limit, p_offset: offset
+      });
+      if (error) { console.warn('Shops list error:', error); return []; }
+      return data || [];
+    } catch (e) { console.warn(e); return []; }
   }
 
-  // ══ REVENUE ANALYTICS ══
-  async getRevenueMetrics() {
-    if (!this.sb) return this.getMockRevenue();
-
+  async listSubscriptions({ status='all', limit=200 } = {}) {
+    if (!this.sb) return [];
     try {
-      const { data: shops, error } = await this.sb
-        .from('shops')
-        .select('id, plan, plan_expires_at, created_at');
-
-      if (error) throw error;
-
-      const pro = shops?.filter(s => s.plan === 'pro' || s.plan === 'enterprise') || [];
-      const monthlyPrice = 99; // ₹99
-      const yearlyPrice = 199; // ₹199
-
-      const mrrPro = pro.length * monthlyPrice;
-      const mrrTotal = mrrPro; // Add other tiers if needed
-      const arrTotal = mrrTotal * 12;
-
-      const proLastMonth = pro.filter(s => {
-        const d = new Date(s.created_at);
-        return d > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-      }).length;
-
-      return {
-        mrr: mrrTotal,
-        arr: arrTotal,
-        proSubscriptions: pro.length,
-        newSubscriptions30d: proLastMonth,
-        avgContractValue: proLastMonth > 0 ? (mrrTotal / pro.length).toFixed(2) : monthlyPrice,
-        expectedChurn: (pro.length * 0.02).toFixed(0), // Estimate 2% monthly churn
-        ltv: (monthlyPrice * 12).toFixed(2), // Simplified LTV
-      };
-    } catch (e) {
-      console.error('Error fetching revenue metrics:', e);
-      return this.getMockRevenue();
-    }
+      const { data, error } = await this.sb.rpc('admin_list_subscriptions', {
+        p_admin_token: this._token(), p_status_filter: status, p_limit: limit
+      });
+      if (error) { console.warn('Subs list error:', error); return []; }
+      return data || [];
+    } catch (e) { console.warn(e); return []; }
   }
 
-  getMockRevenue() {
+  async approveSubscription(subscriptionId, notes='') {
+    const { data, error } = await this.sb.rpc('admin_approve_subscription', {
+      p_admin_token: this._token(), p_subscription_id: subscriptionId, p_notes: notes
+    });
+    if (error) throw new Error(error.message);
+    return data;
+  }
+
+  async rejectSubscription(subscriptionId, notes='') {
+    const { data, error } = await this.sb.rpc('admin_reject_subscription', {
+      p_admin_token: this._token(), p_subscription_id: subscriptionId, p_notes: notes
+    });
+    if (error) throw new Error(error.message);
+    return data;
+  }
+
+  async changePlan(shopId, newPlan, expiresAt=null, notes='') {
+    const { data, error } = await this.sb.rpc('admin_change_plan', {
+      p_admin_token: this._token(), p_shop_id: shopId, p_new_plan: newPlan,
+      p_expires_at: expiresAt, p_notes: notes
+    });
+    if (error) throw new Error(error.message);
+    return data;
+  }
+
+  async suspendShop(shopId, suspend, reason='') {
+    const { data, error } = await this.sb.rpc('admin_suspend_shop', {
+      p_admin_token: this._token(), p_shop_id: shopId, p_suspend: suspend, p_reason: reason
+    });
+    if (error) throw new Error(error.message);
+    return data;
+  }
+
+  async getSettings() {
+    if (!this.sb) return [];
+    try {
+      const { data, error } = await this.sb.rpc('admin_get_all_settings', { p_admin_token: this._token() });
+      if (error) throw new Error(error.message);
+      return data || [];
+    } catch (e) { console.warn('getSettings:', e); throw e; }
+  }
+
+  async setSetting(key, value, isSecret=false) {
+    const { data, error } = await this.sb.rpc('admin_set_setting', {
+      p_admin_token: this._token(), p_key: key, p_value: value, p_is_secret: isSecret
+    });
+    if (error) throw new Error(error.message);
+    return data;
+  }
+
+  async getWebhookEvents(limit=50) {
+    if (!this.sb) return [];
+    const { data } = await this.sb.from('webhook_events')
+      .select('*').order('created_at', {ascending:false}).limit(limit);
+    return data || [];
+  }
+
+  async getAuditLog(limit=100) {
+    if (!this.sb) return [];
+    const { data } = await this.sb.from('admin_audit_log')
+      .select('*').order('created_at', {ascending:false}).limit(limit);
+    return data || [];
+  }
+
+  async getRevenueChart(days=30) {
+    if (!this.sb) return [];
+    // Pull daily revenue series for the last N days
+    const since = new Date(Date.now() - days*86400000).toISOString();
+    const { data } = await this.sb.from('subscriptions')
+      .select('amount, created_at, plan, billing_cycle')
+      .eq('status', 'active')
+      .gte('created_at', since)
+      .order('created_at');
+    if (!data) return [];
+    // Bucket by day
+    const buckets = {};
+    data.forEach(r => {
+      const d = (r.created_at||'').slice(0,10);
+      if(!buckets[d]) buckets[d] = { date:d, total:0, pro:0, business:0 };
+      buckets[d].total += parseFloat(r.amount||0);
+      if(r.plan === 'pro') buckets[d].pro += parseFloat(r.amount||0);
+      else if(r.plan === 'business' || r.plan === 'enterprise') buckets[d].business += parseFloat(r.amount||0);
+    });
+    return Object.values(buckets).sort((a,b)=>a.date.localeCompare(b.date));
+  }
+
+  _mock() {
     return {
-      mrr: 0,
-      arr: 0,
-      proSubscriptions: 0,
-      newSubscriptions30d: 0,
-      avgContractValue: 0,
-      expectedChurn: 0,
-      ltv: 0,
+      total_shops: 0, pro_shops: 0, business_shops: 0, free_shops: 0,
+      active_paid: 0, today_revenue: 0, week_revenue: 0, month_revenue: 0,
+      mrr: 0, arr: 0, pending_subscriptions: 0, total_bills: 0,
+      today_signups: 0, week_signups: 0, conversion_rate: 0
     };
-  }
-
-  // ══ USAGE ANALYTICS ══
-  async getUsageMetrics() {
-    if (!this.sb) return this.getMockUsage();
-
-    try {
-      const { data: bills, error: billErr } = await this.sb
-        .from('bills')
-        .select('id, created_at');
-
-      const { data: customers, error: custErr } = await this.sb
-        .from('customers')
-        .select('id, created_at');
-
-      const { data: products, error: prodErr } = await this.sb
-        .from('products')
-        .select('id, created_at');
-
-      if (billErr || custErr || prodErr) {
-        return this.getMockUsage();
-      }
-
-      const now = Date.now();
-      const day = 24 * 60 * 60 * 1000;
-
-      const billsToday = bills?.filter(b => Date.parse(b.created_at) > now - day).length || 0;
-      const billsWeek = bills?.filter(b => Date.parse(b.created_at) > now - 7 * day).length || 0;
-      const billsMonth = bills?.filter(b => Date.parse(b.created_at) > now - 30 * day).length || 0;
-
-      return {
-        billsToday,
-        billsWeek,
-        billsMonth,
-        totalBills: bills?.length || 0,
-        customersCreated: customers?.length || 0,
-        productsCreated: products?.length || 0,
-        avgBillsPerDay: billsMonth > 0 ? (billsMonth / 30).toFixed(2) : 0,
-        newBillsPercentage: billsWeek > billsMonth / 4 ? '+15%' : '-5%',
-      };
-    } catch (e) {
-      console.error('Error fetching usage metrics:', e);
-      return this.getMockUsage();
-    }
-  }
-
-  getMockUsage() {
-    return {
-      billsToday: 0,
-      billsWeek: 0,
-      billsMonth: 0,
-      totalBills: 0,
-      customersCreated: 0,
-      productsCreated: 0,
-      avgBillsPerDay: 0,
-      newBillsPercentage: '0%',
-    };
-  }
-
-  // ══ FEATURE FLAGS ══
-  getFeatureFlags() {
-    const flags = localStorage.getItem('sbp_feature_flags');
-    try {
-      return JSON.parse(flags) || {};
-    } catch (e) {
-      return {};
-    }
-  }
-
-  setFeatureFlag(flagName, value) {
-    const flags = this.getFeatureFlags();
-    flags[flagName] = {
-      value,
-      updatedAt: new Date().toISOString(),
-      updatedBy: AdminAuth.getInstance().adminEmail,
-    };
-    localStorage.setItem('sbp_feature_flags', JSON.stringify(flags));
-    AdminAuth.getInstance().logAction('feature_flag_updated', { flagName, value });
-    return flags;
-  }
-
-  // ══ SYSTEM HEALTH ══
-  async getSystemHealth() {
-    const health = {
-      supabaseConnected: this.sb ? true : false,
-      apiLatency: await this.checkAPILatency(),
-      dbStatus: 'operational',
-      uptime: '99.9%',
-      lastHealthCheck: new Date().toISOString(),
-      errors24h: 12,
-      warnings24h: 45,
-    };
-    return health;
-  }
-
-  async checkAPILatency() {
-    if (!this.sb) return 'N/A';
-
-    const start = performance.now();
-    try {
-      await this.sb.from('shops').select('id').limit(1);
-      const latency = Math.round(performance.now() - start);
-      return `${latency}ms`;
-    } catch (e) {
-      return 'Error';
-    }
-  }
-
-  // ══ NOTIFICATIONS ══
-  async sendNotification(title, message, type = 'info') {
-    const notification = {
-      id: 'notif_' + Date.now(),
-      title,
-      message,
-      type, // 'info', 'warning', 'success', 'error'
-      sentAt: new Date().toISOString(),
-      sentBy: AdminAuth.getInstance().adminEmail,
-      status: 'pending',
-    };
-
-    const notifs = JSON.parse(localStorage.getItem('sbp_admin_notifications') || '[]');
-    notifs.push(notification);
-    localStorage.setItem('sbp_admin_notifications', JSON.stringify(notifs));
-
-    AdminAuth.getInstance().logAction('notification_sent', { title, type });
-    return notification;
-  }
-
-  getNotifications(limit = 50) {
-    const notifs = JSON.parse(localStorage.getItem('sbp_admin_notifications') || '[]');
-    return notifs.slice(-limit).reverse();
-  }
-
-  static getInstance() {
-    if (!window._adminDB) {
-      window._adminDB = new AdminDB();
-    }
-    return window._adminDB;
   }
 }
 

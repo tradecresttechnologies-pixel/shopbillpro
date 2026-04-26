@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en" translate="no" class="notranslate">
+<head>
+  <meta charset="UTF-8">
+  <meta name="google" content="notranslate">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png?v=2">
+  <title>Settings — Admin</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Outfit',sans-serif;background:#0A0A12;color:#F0EFF8}
+    .layout{display:flex;min-height:100vh}
+    .sidebar{width:280px;background:rgba(19,19,28,.8);backdrop-filter:blur(10px);border-right:1px solid rgba(124,58,237,.2);padding:24px;position:fixed;height:100vh;overflow-y:auto;left:0;top:0}
+    .main{flex:1;margin-left:280px;padding:32px;max-width:900px}
+    .logo{display:flex;align-items:center;gap:12px;margin-bottom:32px}
+    .logo-icon{width:40px;height:40px;background:linear-gradient(135deg,#F5A623,#FF8A00);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px}
+    .logo-text{font-size:18px;font-weight:700}
+    .nav-section{margin-bottom:24px}
+    .nav-label{font-size:11px;font-weight:600;color:#5A5A78;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+    .nav-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;cursor:pointer;color:#8A8AA8;font-size:14px;font-weight:500;transition:all .2s}
+    .nav-item:hover{background:rgba(124,58,237,.1);color:#F0EFF8}
+    .nav-item.active{background:rgba(245,166,35,.15);color:#F5A623}
+    .header h1{font-size:32px;font-weight:800;background:linear-gradient(135deg,#F5A623,#FF8A00);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:4px}
+    .header p{font-size:14px;color:#8A8AA8;margin-bottom:32px}
+    .section{background:rgba(20,18,32,.6);border:1px solid rgba(124,58,237,.2);border-radius:12px;padding:24px;margin-bottom:20px}
+    .section h2{font-size:18px;font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:10px}
+    .section .desc{font-size:13px;color:#8A8AA8;margin-bottom:18px}
+    .field{margin-bottom:16px}
+    .field label{display:block;font-size:13px;font-weight:600;color:#F0EFF8;margin-bottom:6px}
+    .field .hint{font-size:11px;color:#8A8AA8;margin-top:4px}
+    .field input{width:100%;padding:12px 14px;background:rgba(10,14,20,.6);border:1px solid rgba(124,58,237,.3);border-radius:8px;color:#F0EFF8;font-family:inherit;font-size:14px}
+    .field input:focus{outline:none;border-color:#F5A623}
+    .field-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    .secret-input{display:flex;gap:8px}
+    .secret-input input{flex:1}
+    .toggle-vis{padding:0 14px;background:rgba(124,58,237,.1);border:1px solid rgba(124,58,237,.3);border-radius:8px;color:#F0EFF8;cursor:pointer;font-size:16px}
+    .save-bar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:16px;background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.3);border-radius:10px;margin-bottom:20px;position:sticky;top:0;z-index:10;backdrop-filter:blur(10px)}
+    .save-status{font-size:13px;color:#8A8AA8}
+    .btn{padding:11px 24px;border-radius:8px;border:none;cursor:pointer;font-family:inherit;font-size:14px;font-weight:700}
+    .btn-primary{background:linear-gradient(135deg,#F5A623,#FF8A00);color:#0A0E1A}
+    .btn-secondary{background:rgba(124,58,237,.1);color:#F0EFF8;border:1px solid rgba(124,58,237,.3)}
+    .btn:disabled{opacity:.5;cursor:not-allowed}
+    .pill{display:inline-block;padding:3px 10px;border-radius:12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+    .pill.test{background:rgba(245,158,11,.2);color:#F59E0B}
+    .pill.live{background:rgba(16,185,129,.2);color:#10B981}
+    .danger{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);color:#EF4444;padding:14px;border-radius:10px;font-size:13px;margin-top:14px}
+    .info{background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.3);color:#818CF8;padding:14px;border-radius:10px;font-size:13px;margin-top:10px}
+    .toast{position:fixed;bottom:24px;right:24px;background:rgba(20,18,32,.95);border:1px solid #10B981;color:#fff;padding:14px 20px;border-radius:10px;font-weight:600;z-index:9999;max-width:400px}
+    .webhook-url{background:rgba(10,14,20,.6);border:1px solid rgba(124,58,237,.3);border-radius:8px;padding:12px 14px;font-family:monospace;font-size:12px;word-break:break-all;color:#F0EFF8;margin-top:8px}
+    @media(max-width:900px){.sidebar{display:none}.main{margin-left:0;padding:18px}.field-row{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <div class="sidebar">
+      <div class="logo">
+        <div class="logo-icon">🛡️</div>
+        <div class="logo-text">Admin</div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">Main</div>
+        <div class="nav-item" onclick="goTo('admin-dashboard.html')"><span>📊</span><span>Dashboard</span></div>
+        <div class="nav-item" onclick="goTo('admin-subscriptions.html')"><span>💳</span><span>Subscriptions</span></div>
+        <div class="nav-item" onclick="goTo('admin-users.html')"><span>👥</span><span>Users</span></div>
+        <div class="nav-item" onclick="goTo('admin-revenue.html')"><span>💰</span><span>Revenue</span></div>
+        <div class="nav-item" onclick="goTo('admin-analytics.html')"><span>📈</span><span>Analytics</span></div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">Configuration</div>
+        <div class="nav-item active"><span>⚙️</span><span>Settings</span></div>
+        <div class="nav-item" onclick="goTo('admin-features.html')"><span>🚀</span><span>Features</span></div>
+        <div class="nav-item" onclick="goTo('admin-technical.html')"><span>🛠️</span><span>Tech Health</span></div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">System</div>
+        <div class="nav-item" onclick="goTo('admin-notifications.html')"><span>🔔</span><span>Notifications</span></div>
+        <div class="nav-item" onclick="goTo('admin-audit.html')"><span>📋</span><span>Audit Logs</span></div>
+      </div>
+      <div class="nav-item" id="logoutBtn"><span>🚪</span><span>Logout</span></div>
+    </div>
+
+    <div class="main">
+      <div class="header">
+        <h1>Settings</h1>
+        <p>Configure payment gateways, plan prices, contact details. <span style="color:#F59E0B">Changes apply instantly to all users.</span></p>
+      </div>
+
+      <div class="save-bar">
+        <div class="save-status" id="saveStatus">All values are saved automatically when you click Save.</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-secondary" onclick="loadSettings()">🔄 Reload</button>
+          <button class="btn btn-primary" id="saveBtn" onclick="saveAll()">💾 Save All Changes</button>
+        </div>
+      </div>
+
+      <!-- Razorpay -->
+      <div class="section">
+        <h2>💳 Razorpay <span class="pill" id="rzpModePill">test</span></h2>
+        <div class="desc">Get keys from <a href="https://dashboard.razorpay.com/app/keys" target="_blank" style="color:#F5A623">dashboard.razorpay.com → API Keys</a></div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Mode</label>
+            <select id="razorpay_mode" style="width:100%;padding:12px 14px;background:rgba(10,14,20,.6);border:1px solid rgba(124,58,237,.3);border-radius:8px;color:#F0EFF8;font-size:14px">
+              <option value="test">Test Mode</option>
+              <option value="live">Live Mode (real payments)</option>
+            </select>
+            <div class="hint">Live mode requires KYC. Make sure key prefix matches the mode.</div>
+          </div>
+          <div class="field">
+            <label>Razorpay Key ID</label>
+            <input id="razorpay_key_id" placeholder="rzp_test_… or rzp_live_…" autocomplete="off">
+            <div class="hint">Public key — safe to expose in client.</div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Razorpay Key Secret 🔒</label>
+          <div class="secret-input">
+            <input type="password" id="razorpay_key_secret" placeholder="leave blank to keep current — paste new value to update" autocomplete="off">
+            <button class="toggle-vis" onclick="togglePass('razorpay_key_secret')">👁</button>
+          </div>
+          <div class="hint">Secret key — stored encrypted in Supabase, never sent to client. Used for webhook signature verification.</div>
+        </div>
+
+        <div class="field">
+          <label>Webhook Secret (optional)</label>
+          <div class="secret-input">
+            <input type="password" id="razorpay_webhook_secret" placeholder="leave blank to use Key Secret" autocomplete="off">
+            <button class="toggle-vis" onclick="togglePass('razorpay_webhook_secret')">👁</button>
+          </div>
+          <div class="hint">Custom webhook secret if you set one in Razorpay dashboard. Otherwise the Edge Function uses its own env-var.</div>
+        </div>
+
+        <div class="info">
+          <strong>Webhook URL (paste this in Razorpay dashboard → Webhooks):</strong>
+          <div class="webhook-url" id="webhookUrl">https://jfqeirfrkjdkqqixivru.supabase.co/functions/v1/razorpay-webhook</div>
+          Subscribe to event: <code>payment.captured</code>
+        </div>
+      </div>
+
+      <!-- UPI -->
+      <div class="section">
+        <h2>📲 Direct UPI</h2>
+        <div class="desc">Receive UPI payments without going through Razorpay. Requires manual approval in the Subscriptions tab.</div>
+        <div class="field">
+          <label>UPI Receiving ID</label>
+          <input id="upi_receiving_id" placeholder="yourname@okhdfcbank">
+          <div class="hint">Customers see this in the Pay-via-UPI flow. Must be a valid UPI ID you can receive payments at.</div>
+        </div>
+      </div>
+
+      <!-- Admin contact -->
+      <div class="section">
+        <h2>📞 Admin Contact</h2>
+        <div class="field">
+          <label>Admin WhatsApp Number</label>
+          <input id="admin_whatsapp" placeholder="919876543210 (10 digits + country code, no +)">
+          <div class="hint">Used as the destination for "Send screenshot" buttons in the upgrade flow.</div>
+        </div>
+      </div>
+
+      <!-- Plan prices -->
+      <div class="section">
+        <h2>💎 Plan Prices</h2>
+        <div class="desc">Customers see these on the upgrade page. Update without redeploying.</div>
+        <div class="field-row">
+          <div class="field">
+            <label>Pro — Monthly (₹)</label>
+            <input type="number" id="plan_pro_monthly" min="0" step="1">
+          </div>
+          <div class="field">
+            <label>Pro — Yearly (₹)</label>
+            <input type="number" id="plan_pro_yearly" min="0" step="1">
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Business — Monthly (₹)</label>
+            <input type="number" id="plan_business_monthly" min="0" step="1">
+          </div>
+          <div class="field">
+            <label>Business — Yearly (₹)</label>
+            <input type="number" id="plan_business_yearly" min="0" step="1">
+          </div>
+        </div>
+      </div>
+
+      <!-- Free plan limits -->
+      <div class="section">
+        <h2>⚡ Free Plan Limits</h2>
+        <div class="field">
+          <label>Bills allowed per month</label>
+          <input type="number" id="free_bills_per_month" min="0" step="1">
+          <div class="hint">999999 = unlimited (current default for India launch).</div>
+        </div>
+      </div>
+
+      <!-- Master password -->
+      <div class="section">
+        <h2>🔑 Change Admin Password</h2>
+        <div class="desc">Change the master password used for admin login. <strong style="color:#EF4444">Make sure you remember it — there's no recovery.</strong></div>
+        <div class="field">
+          <label>New Password (min 8 chars)</label>
+          <input type="password" id="new_admin_password" placeholder="leave blank if not changing">
+        </div>
+        <div class="field">
+          <label>Confirm New Password</label>
+          <input type="password" id="confirm_admin_password" placeholder="re-type new password">
+        </div>
+        <button class="btn btn-secondary" onclick="changePassword()">🔄 Change Password</button>
+        <div class="danger">After changing the password, you'll need to log in again with the new one.</div>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;margin-bottom:40px">
+        <button class="btn btn-primary" onclick="saveAll()" style="padding:14px 32px;font-size:15px">💾 Save All Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="admin-auth.js"></script>
+  <script src="admin-db.js"></script>
+  <script>
+    const auth = AdminAuth.getInstance();
+    if (!auth.isAuthenticated) { window.location.href = 'admin-login.html'; }
+    const db = AdminDB.getInstance();
+
+    function goTo(url){ window.location.href = url; }
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      if(confirm('Logout?')){ auth.logout(); window.location.href='admin-login.html'; }
+    });
+
+    function togglePass(id){
+      const el = document.getElementById(id);
+      el.type = el.type === 'password' ? 'text' : 'password';
+    }
+
+    function toast(msg, isErr=false){
+      const t = document.createElement('div');
+      t.className = 'toast';
+      t.style.borderColor = isErr ? '#EF4444' : '#10B981';
+      t.textContent = msg;
+      document.body.appendChild(t);
+      setTimeout(() => t.remove(), 4000);
+    }
+
+    // Track which secret fields user has changed (so we know to save them)
+    const _secretChanged = {};
+    ['razorpay_key_secret','razorpay_webhook_secret'].forEach(id => {
+      document.getElementById(id).addEventListener('input', () => { _secretChanged[id] = true; });
+    });
+
+    document.getElementById('razorpay_mode').addEventListener('change', () => {
+      const mode = document.getElementById('razorpay_mode').value;
+      const pill = document.getElementById('rzpModePill');
+      pill.textContent = mode;
+      pill.className = 'pill ' + mode;
+    });
+
+    async function loadSettings(){
+      try {
+        const settings = await db.getSettings();
+        const map = {};
+        settings.forEach(s => { map[s.key] = s.value; });
+
+        // Populate non-secret fields (secrets show empty — admin must re-paste to change)
+        document.getElementById('razorpay_mode').value = map.razorpay_mode || 'test';
+        document.getElementById('razorpay_key_id').value = map.razorpay_key_id || '';
+        document.getElementById('upi_receiving_id').value = map.upi_receiving_id || '';
+        document.getElementById('admin_whatsapp').value = map.admin_whatsapp || '';
+        document.getElementById('plan_pro_monthly').value = map.plan_pro_monthly || '99';
+        document.getElementById('plan_pro_yearly').value = map.plan_pro_yearly || '999';
+        document.getElementById('plan_business_monthly').value = map.plan_business_monthly || '199';
+        document.getElementById('plan_business_yearly').value = map.plan_business_yearly || '1999';
+        document.getElementById('free_bills_per_month').value = map.free_bills_per_month || '999999';
+
+        // Show that secret IS set (without revealing value)
+        if(map.razorpay_key_secret) document.getElementById('razorpay_key_secret').placeholder = '•••••••• (saved — paste new value to change)';
+        if(map.razorpay_webhook_secret) document.getElementById('razorpay_webhook_secret').placeholder = '•••••••• (saved — paste new value to change)';
+
+        // Update mode pill
+        const mode = map.razorpay_mode || 'test';
+        const pill = document.getElementById('rzpModePill');
+        pill.textContent = mode;
+        pill.className = 'pill ' + mode;
+
+        document.getElementById('saveStatus').textContent = '✅ Settings loaded · Last update: ' + new Date().toLocaleTimeString();
+      } catch(e) {
+        document.getElementById('saveStatus').innerHTML = '<span style="color:#EF4444">❌ Could not load: '+e.message+' — check that admin_panel_full.sql has been run.</span>';
+      }
+    }
+
+    async function saveAll(){
+      const btn = document.getElementById('saveBtn');
+      btn.disabled = true;
+      btn.textContent = '⏳ Saving…';
+
+      const plain = {
+        razorpay_mode: document.getElementById('razorpay_mode').value,
+        razorpay_key_id: document.getElementById('razorpay_key_id').value.trim(),
+        upi_receiving_id: document.getElementById('upi_receiving_id').value.trim(),
+        admin_whatsapp: document.getElementById('admin_whatsapp').value.replace(/\D/g,''),
+        plan_pro_monthly: document.getElementById('plan_pro_monthly').value,
+        plan_pro_yearly: document.getElementById('plan_pro_yearly').value,
+        plan_business_monthly: document.getElementById('plan_business_monthly').value,
+        plan_business_yearly: document.getElementById('plan_business_yearly').value,
+        free_bills_per_month: document.getElementById('free_bills_per_month').value
+      };
+
+      try {
+        for(const [k,v] of Object.entries(plain)){
+          await db.setSetting(k, v, false);
+        }
+        // Secrets — only save if user changed them
+        if(_secretChanged.razorpay_key_secret){
+          const v = document.getElementById('razorpay_key_secret').value;
+          if(v) await db.setSetting('razorpay_key_secret', v, true);
+          _secretChanged.razorpay_key_secret = false;
+          document.getElementById('razorpay_key_secret').value = '';
+        }
+        if(_secretChanged.razorpay_webhook_secret){
+          const v = document.getElementById('razorpay_webhook_secret').value;
+          if(v) await db.setSetting('razorpay_webhook_secret', v, true);
+          _secretChanged.razorpay_webhook_secret = false;
+          document.getElementById('razorpay_webhook_secret').value = '';
+        }
+        toast('✅ All settings saved');
+        loadSettings();
+      } catch(e) {
+        toast('❌ '+e.message, true);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '💾 Save All Changes';
+      }
+    }
+
+    async function changePassword(){
+      const np = document.getElementById('new_admin_password').value;
+      const cp = document.getElementById('confirm_admin_password').value;
+      if(!np || np.length < 8){ toast('Password must be at least 8 characters', true); return; }
+      if(np !== cp){ toast('Passwords do not match', true); return; }
+      if(!confirm('Change admin password? You will be logged out and need to use the new one.')) return;
+      try {
+        const oldToken = sessionStorage.getItem('sbp_admin_token') || '';
+        const SB_URL = 'https://jfqeirfrkjdkqqixivru.supabase.co';
+        const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmcWVpcmZya2pka3FxaXhpdnJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzNzQ4MzgsImV4cCI6MjA4OTk1MDgzOH0.akd4E0nil8ypLR4WOykkeYIL8g4uuNU6XdSVh_Y1utk';
+        const sb = supabase.createClient(SB_URL, SB_KEY);
+        const { error } = await sb.rpc('admin_set_master_token', { p_new_token: np, p_old_token: oldToken });
+        if(error) throw new Error(error.message);
+        toast('✅ Password changed — log in with the new one');
+        setTimeout(() => { auth.logout(); window.location.href = 'admin-login.html'; }, 1500);
+      } catch(e) { toast('❌ '+e.message, true); }
+    }
+
+    loadSettings();
+  </script>
+</body>
+</html>

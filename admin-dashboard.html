@@ -361,9 +361,10 @@
           <span class="nav-icon">📊</span>
           <span>Dashboard</span>
         </div>
-        <div class="nav-item" data-page="analytics">
-          <span class="nav-icon">📈</span>
-          <span>Analytics</span>
+        <div class="nav-item" data-page="subscriptions">
+          <span class="nav-icon">💳</span>
+          <span>Subscriptions</span>
+          <span id="pendingBadge" style="margin-left:auto;background:#EF4444;color:#fff;font-size:10px;padding:2px 7px;border-radius:10px;font-weight:700;display:none"></span>
         </div>
         <div class="nav-item" data-page="users">
           <span class="nav-icon">👥</span>
@@ -373,16 +374,24 @@
           <span class="nav-icon">💰</span>
           <span>Revenue</span>
         </div>
+        <div class="nav-item" data-page="analytics">
+          <span class="nav-icon">📈</span>
+          <span>Analytics</span>
+        </div>
       </div>
 
       <div class="nav-section">
-        <div class="nav-label">Management</div>
+        <div class="nav-label">Configuration</div>
+        <div class="nav-item" data-page="settings">
+          <span class="nav-icon">⚙️</span>
+          <span>Settings</span>
+        </div>
         <div class="nav-item" data-page="features">
           <span class="nav-icon">🚀</span>
           <span>Feature Flags</span>
         </div>
         <div class="nav-item" data-page="technical">
-          <span class="nav-icon">⚙️</span>
+          <span class="nav-icon">🛠️</span>
           <span>Technical Health</span>
         </div>
       </div>
@@ -511,163 +520,126 @@
 
     // ══ LOAD DASHBOARD ══
     async function loadDashboard() {
-      const metrics = await db.getOverallMetrics();
+      const metrics = await db.getMetrics();
       window._lastMetrics = metrics;
 
       renderKPICards(metrics);
-      renderCharts(metrics);
-      renderActivityTable();
+      // Show pending-verification badge in nav
+      const badge = document.getElementById('pendingBadge');
+      if(badge){
+        if(metrics.pending_subscriptions > 0){
+          badge.textContent = metrics.pending_subscriptions;
+          badge.style.display = 'inline-block';
+        } else { badge.style.display = 'none'; }
+      }
+      // Render real revenue chart
+      try {
+        const series = await db.getRevenueChart(30);
+        renderRevenueChart(series);
+        renderPlanChart(metrics);
+        document.getElementById('chartsContainer').style.display = 'grid';
+      } catch(e){ console.warn(e); }
+      // Render audit log
+      try { await renderRecentActivity(); } catch(e){}
     }
 
     function renderKPICards(metrics) {
       const container = document.getElementById('kpiContainer');
+      const fmt = n => '₹' + (parseFloat(n||0)).toLocaleString('en-IN', {maximumFractionDigits:0});
+      const fmtL = n => {
+        const v = parseFloat(n||0);
+        if(v >= 100000) return '₹' + (v/100000).toFixed(2) + 'L';
+        if(v >= 1000) return '₹' + (v/1000).toFixed(1) + 'K';
+        return fmt(v);
+      };
       const kpis = [
-        {
-          label: 'Total Users',
-          value: metrics.totalUsers.toLocaleString(),
-          change: '+12.5%',
-          icon: '👥',
-        },
-        {
-          label: 'Pro Subscribers',
-          value: metrics.proUsers,
-          change: `${metrics.conversionRate}% conversion`,
-          icon: '⭐',
-          positive: true,
-        },
-        {
-          label: 'Total Revenue',
-          value: `₹${(metrics.totalRevenue / 100000).toFixed(2)}L`,
-          change: '+₹18,500 (MoM)',
-          icon: '💰',
-          positive: true,
-        },
-        {
-          label: 'Bills Generated',
-          value: metrics.totalBills.toLocaleString(),
-          change: `+${metrics.billGrowth}% (WoW)`,
-          icon: '📄',
-          positive: metrics.billGrowth >= 0,
-        },
-        {
-          label: 'Avg Bill Value',
-          value: `₹${metrics.avgBillValue}`,
-          change: 'Stable',
-          icon: '💵',
-        },
-        {
-          label: 'Churn Rate',
-          value: `${metrics.churnRate}%`,
-          change: 'Monthly churn',
-          icon: '📉',
-        },
+        {label:'MRR (Monthly Recurring Revenue)', value: fmtL(metrics.mrr||0), change: 'ARR: ' + fmtL(metrics.arr||0), icon:'💎', positive:true},
+        {label:'Active Paid Users', value: (metrics.active_paid||0).toLocaleString(), change: (metrics.conversion_rate||0)+'% conversion', icon:'⭐', positive:true},
+        {label:'Today Revenue', value: fmt(metrics.today_revenue||0), change: 'Week: ' + fmt(metrics.week_revenue||0), icon:'💰', positive:metrics.today_revenue>0},
+        {label:'Month Revenue', value: fmt(metrics.month_revenue||0), change: 'Active subs: ' + (metrics.active_paid||0), icon:'📅', positive:true},
+        {label:'Total Shops', value: (metrics.total_shops||0).toLocaleString(), change:'Today: +'+(metrics.today_signups||0)+' · Week: +'+(metrics.week_signups||0), icon:'🏪'},
+        {label:'Pending Verifications', value: (metrics.pending_subscriptions||0), change: metrics.pending_subscriptions>0?'⚠ Action needed':'✓ All clear', icon:'⏳', positive: (metrics.pending_subscriptions||0)===0},
+        {label:'Pro Plan', value: (metrics.pro_shops||0), change: 'of ' + (metrics.total_shops||0)+' total', icon:'💎'},
+        {label:'Business Plan', value: (metrics.business_shops||0), change: 'of ' + (metrics.total_shops||0)+' total', icon:'🏭'},
+        {label:'Free Plan', value: (metrics.free_shops||0), change: 'Convertible pool', icon:'⚡'},
+        {label:'Total Bills', value: (metrics.total_bills||0).toLocaleString(), change:'Excludes voided', icon:'📄'}
       ];
 
       container.innerHTML = kpis.map(kpi => `
-        <div class="kpi-card">
+        <div class="kpi-card" style="cursor:${kpi.label.includes('Pending')?'pointer':'default'}" ${kpi.label.includes('Pending')?'onclick="window.location.href=\'admin-subscriptions.html?filter=pending_verification\'"':''}>
           <div style="font-size: 28px; margin-bottom: 8px;">${kpi.icon}</div>
           <div class="kpi-label">${kpi.label}</div>
           <div class="kpi-value">${kpi.value}</div>
-          <div class="kpi-change ${kpi.positive ? 'positive' : 'negative'}">
+          <div class="kpi-change ${kpi.positive ? 'positive' : ''}">
             ${kpi.change}
           </div>
         </div>
       `).join('');
     }
 
-    function renderCharts(metrics) {
-      const container = document.getElementById('chartsContainer');
-      container.style.display = 'grid';
-
-      // Simulate chart data
-      const days = Array.from({ length: 30 }, (_, i) => {
-        const d = new Date();
-        d.setDate(d.getDate() - 29 + i);
-        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      });
-
-      const billsData = Array.from({ length: 30 }, () => 
-        Math.floor(Math.random() * 400) + 100
-      );
-
-      // Bills chart
-      const billsCtx = document.getElementById('billsChart').getContext('2d');
-      if (billsChart) billsChart.destroy();
-      billsChart = new Chart(billsCtx, {
-        type: 'line',
-        data: {
-          labels: days,
-          datasets: [{
-            label: 'Bills Created',
-            data: billsData,
-            borderColor: '#F5A623',
-            backgroundColor: 'rgba(124, 58, 237, 0.1)',
-            borderWidth: 2,
-            fill: true,
-            tension: 0.4,
-          }],
+    function renderRevenueChart(series){
+      const ctx = document.getElementById('billsChart');
+      if(!ctx) return;
+      if(billsChart) billsChart.destroy();
+      billsChart = new Chart(ctx, {
+        type:'line',
+        data:{
+          labels: series.map(s => s.date.slice(5)),  // MM-DD
+          datasets:[
+            {label:'Pro', data:series.map(s=>s.pro), borderColor:'#F5A623', backgroundColor:'rgba(245,166,35,.15)', tension:.3, fill:true},
+            {label:'Business', data:series.map(s=>s.business), borderColor:'#7C3AED', backgroundColor:'rgba(124,58,237,.15)', tension:.3, fill:true}
+          ]
         },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { display: false },
-          },
-          scales: {
-            y: {
-              beginAtZero: true,
-              grid: { color: 'rgba(124, 58, 237, 0.1)' },
-              ticks: { color: '#8A8AA8' },
-            },
-            x: {
-              grid: { color: 'rgba(124, 58, 237, 0.1)' },
-              ticks: { color: '#8A8AA8', maxRotation: 45 },
-            },
-          },
-        },
-      });
-
-      // Plan distribution chart
-      const planCtx = document.getElementById('planChart').getContext('2d');
-      if (planChart) planChart.destroy();
-      planChart = new Chart(planCtx, {
-        type: 'doughnut',
-        data: {
-          labels: ['Free', 'Pro', 'Enterprise'],
-          datasets: [{
-            data: [metrics.freeUsers, metrics.proUsers, Math.floor(metrics.proUsers * 0.1)],
-            backgroundColor: ['#F5A623', '#10B981', '#FF8A00'],
-            borderColor: 'rgba(20, 18, 32, 0.5)',
-            borderWidth: 2,
-          }],
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: {
-              labels: { color: '#8A8AA8' },
-            },
-          },
-        },
+        options:{
+          responsive:true, maintainAspectRatio:false,
+          plugins:{legend:{labels:{color:'#8A8AA8'}}},
+          scales:{
+            x:{ticks:{color:'#8A8AA8'},grid:{color:'rgba(255,255,255,.05)'}},
+            y:{ticks:{color:'#8A8AA8'},grid:{color:'rgba(255,255,255,.05)'}}
+          }
+        }
       });
     }
 
-    function renderActivityTable() {
-      const logs = auth.getAuditLogs(10);
+    function renderPlanChart(m){
+      const ctx = document.getElementById('planChart');
+      if(!ctx) return;
+      if(planChart) planChart.destroy();
+      planChart = new Chart(ctx, {
+        type:'doughnut',
+        data:{
+          labels:['Free','Pro','Business'],
+          datasets:[{data:[m.free_shops||0, m.pro_shops||0, m.business_shops||0],
+            backgroundColor:['#6B7280','#F5A623','#7C3AED'], borderWidth:0}]
+        },
+        options:{
+          responsive:true, maintainAspectRatio:false,
+          plugins:{legend:{position:'bottom', labels:{color:'#F0EFF8',padding:12}}}
+        }
+      });
+    }
+
+    async function renderRecentActivity(){
+      const log = await db.getAuditLog(20);
       const tbody = document.getElementById('activityTableBody');
-      
-      tbody.innerHTML = logs.map(log => `
-        <tr>
-          <td>${new Date(log.timestamp).toLocaleString()}</td>
-          <td><strong>${log.action}</strong></td>
-          <td>${log.email || 'System'}</td>
-          <td>${JSON.stringify(log.details).substring(0, 50)}...</td>
-        </tr>
-      `).join('');
-
-      document.getElementById('activityTableContainer').style.display = 'block';
+      const container = document.getElementById('activityTableContainer');
+      if(!tbody || !container) return;
+      if(!log.length){
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:30px;color:#8A8AA8">No admin actions yet</td></tr>';
+      } else {
+        tbody.innerHTML = log.map(e => `
+          <tr>
+            <td style="font-size:12px;color:#8A8AA8">${new Date(e.created_at).toLocaleString('en-IN')}</td>
+            <td style="font-weight:600">${e.action}</td>
+            <td style="color:#8A8AA8;font-size:12px">${e.target_type||'-'} ${e.target_id?'<code style="font-size:11px">'+String(e.target_id).slice(0,8)+'</code>':''}</td>
+            <td style="font-size:12px;color:#8A8AA8">${e.notes||''}</td>
+          </tr>
+        `).join('');
+      }
+      container.style.display = 'block';
     }
+
+    function renderActivityTable() { /* legacy — replaced by renderRecentActivity */ }
 
     // Load on page load
     loadDashboard();

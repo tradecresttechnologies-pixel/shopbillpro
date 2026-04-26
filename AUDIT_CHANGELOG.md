@@ -205,3 +205,49 @@ Generated against the latest `shopbillpro` zip uploaded April 26, 2026 (commit `
 Print buttons now on every report tab (GSTR-1, GSTR-3B, P&L, Payments, Insights, Forecast, Items). Topbar gets a 🖨️ icon next to the 📤 export icon — works for the currently active tab.
 
 **Files changed in this round:** `reports.html` (extensive)
+
+---
+
+## Round 4 — Full SaaS Admin Panel (Apr 26)
+
+### Goal
+Replace the manual SQL workflow with a complete admin UI: paste Razorpay credentials in admin panel → automatic plan activation via webhook → zero touch operation.
+
+### New SQL — `admin_panel_full.sql`
+- `admin_settings` table — encrypted credential storage via pgcrypto
+- `webhook_events` table — every Razorpay webhook logged
+- `admin_audit_log` table — every admin action audited
+- `admin_verify_token`, `admin_set_master_token` — token-based admin auth
+- `admin_get_all_settings`, `admin_set_setting` — Razorpay/UPI config
+- `get_admin_setting` — public RPC for client to read non-secret values
+- `admin_approve_subscription`, `admin_reject_subscription` — one-click approval
+- `admin_change_plan`, `admin_suspend_shop` — user management
+- `admin_metrics` — real MRR/ARR/conversion (no more mock data)
+- `admin_list_shops`, `admin_list_subscriptions` — search + filter
+- `process_razorpay_webhook` — webhook handler (called by Edge Function)
+
+### New Razorpay webhook — `supabase/functions/razorpay-webhook/`
+- HMAC-SHA256 signature verification
+- Auto-activates subscription on `payment.captured`
+- Plays nicely with existing `subscription_apply_to_shop` trigger (auto-flips shop's plan)
+- Failed signatures logged but never activate
+
+### Admin UI — full rewrite
+- **`admin-dashboard.html`**: real MRR/ARR/conversion KPIs, pending-verification badge, real revenue trend chart, real plan donut, recent admin actions
+- **`admin-subscriptions.html`** (NEW): pending queue with one-click approve/reject, status filters, full subscription history
+- **`admin-settings.html`** (NEW): paste Razorpay key/secret/webhook secret, UPI ID, admin WhatsApp, plan prices, change master password — all in one form
+- **`admin-users.html`**: search by name/owner/email/phone, plan filter, plan-change modal, suspend/unsuspend
+- **`admin-revenue.html`**: stacked bar (Pro vs Business by day), top paying shops, recent payments table
+- **`admin-analytics.html`**: 4-step signup funnel with drop-off visualization, 30-day signup line chart, plan distribution donut, activity distribution by bill volume
+- **`admin-db.js`**: rewritten to use real RPCs (deleted all mock data fallbacks except offline)
+- **`admin-auth.js`**: dual verification (local hash + Supabase RPC), token cached in sessionStorage for RPC calls
+
+### Client integration
+- **`subscription.html`**: Razorpay key ID, UPI receiving ID, admin WhatsApp, and plan prices now loaded dynamically from `admin_settings` via public `get_admin_setting()` RPC. Falls back to hardcoded defaults if Supabase unreachable.
+- The Razorpay Key Secret stays in Postgres (encrypted), used only by webhook Edge Function. Client never sees it.
+
+### Operational impact
+**Before:** Customer pays → manual SQL `UPDATE subscriptions SET status='active'` → wait until you check Razorpay dashboard daily.
+**After:** Customer pays → Razorpay POSTs webhook → Edge Function verifies signature → Postgres trigger flips plan → user sees Pro features within seconds. **Zero manual ops.**
+
+Manual flow only kicks in for direct UPI payments (clicking "I Paid via UPI"), which appear in the pending queue with one-click approval.
