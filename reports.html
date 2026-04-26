@@ -1339,8 +1339,17 @@ async function init(){
   // STEP 3: Cloud sync if Pro
   if(isPro()&&navigator.onLine&&_shopId){
     try{
-      const{data:bd}=await _sb.from('bills').select('*').eq('shop_id',_shopId).order('created_at',{ascending:false}).limit(500);
-      if(bd&&bd.length){_bills=bd;localStorage.setItem('sbp_bills',JSON.stringify(_bills));renderTab(_curTab);}
+      const{data:bd}=await _sb.from('bills').select('*, bill_items(*)').eq('shop_id',_shopId).order('created_at',{ascending:false}).limit(500);
+      if(bd&&bd.length){
+        // FIX — Merge with local bills (preserve local-only ones not yet synced) and dedupe
+        const localBills = JSON.parse(localStorage.getItem('sbp_bills')||'[]');
+        const sbIds = new Set(bd.map(b => String(b.id)));
+        const merged = bd.slice();
+        localBills.forEach(lb => { if(!sbIds.has(String(lb.id))) merged.unshift(lb); });
+        _bills = merged;
+        localStorage.setItem('sbp_bills',JSON.stringify(_bills));
+        renderTab(_curTab);
+      }
     }catch(e){}
   }
 }

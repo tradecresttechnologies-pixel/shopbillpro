@@ -251,3 +251,39 @@ Replace the manual SQL workflow with a complete admin UI: paste Razorpay credent
 **After:** Customer pays → Razorpay POSTs webhook → Edge Function verifies signature → Postgres trigger flips plan → user sees Pro features within seconds. **Zero manual ops.**
 
 Manual flow only kicks in for direct UPI payments (clicking "I Paid via UPI"), which appear in the pending queue with one-click approval.
+
+---
+
+## Round 5 — One-line fix that solves 3 reported issues (Apr 26 evening)
+
+### Root cause
+`reports.html` was fetching bills from Supabase with `select('*')` — which returns ONLY the `bills` table columns, not the joined `bill_items` rows. So even though local cache had `bill_items` arrays, every cloud sync wiped them out by overwriting `_bills` and `localStorage.sbp_bills` with item-less rows.
+
+This explained **all three** reported issues:
+
+1. **Items report empty** — `_billItems(b)` returned `[]` for every bill → no items to count
+2. **P&L COGS = ₹0** — same: no items meant no product lookup → no cost prices applied
+3. **Forecast stock-reorder showing "all adequate"** — same: no items meant `itemSales` map stayed empty → no products had calculated daily sales rate → none triggered reorder threshold
+
+### Fix
+`reports.html` line 1342:
+- Before: `_sb.from('bills').select('*')...`
+- After: `_sb.from('bills').select('*, bill_items(*)')...`
+- Plus: merge with local-only bills (don't drop unsynced ones), then save merged set to localStorage
+
+This matches the queries already in `dashboard.html` (`*, bill_items(*)`), `bills.html` (`*,bill_items(item_name,qty,rate,gst_rate,line_total,gst_amount)`), `customers.html` (`*,bill_items(item_name)`).
+
+### Why P&L still shows COGS=₹0 specifically
+Even with bill_items now loaded, COGS only computes when each item's product (matched by `product_id` or `item_name`) has a `cost_price > 0` set in Stock. If items still show ₹0:
+- Open **Stock** page → click each product → make sure `Cost Price` is filled in (not Selling Price)
+- Save
+- Re-open P&L → COGS will now appear
+
+### Forecast next-month value vs period selector
+The "FORECAST — NEXT MONTH" amount is intentionally a 3-month-trend prediction and does NOT change with the period selector — it always predicts next month's revenue. The period selector controls only:
+- **Stock Reorder days-left calculation** (more days in window = smoother daily-rate estimate)
+- **Customer Churn detection window** (X days inactive = at risk)
+
+A banner now shows the active period at the top of the forecast tab to avoid confusion.
+
+**File changed:** `reports.html` (one block — query + merge logic)
