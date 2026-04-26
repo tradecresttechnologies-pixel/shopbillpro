@@ -168,3 +168,40 @@ Generated against the latest `shopbillpro` zip uploaded April 26, 2026 (commit `
 **Fix:** `reports.html` — Added unified `_sbpPlanInfo()` / `isPro()` / `isBiz()` helpers. Removed local shadowing consts in `renderInsights()` and `renderForecast()` so they use the global helpers.
 
 **Files changed:** `dashboard.html`, `reports.html`, `settings.html`
+
+---
+
+## Post-deploy fixes — Round 2 (April 26, screenshots after first deploy)
+
+### Issue 1 — Forecast tab didn't respond to period selector
+**Root cause:** `renderForecast()` used hardcoded `30 days` cutoff regardless of which period was selected (Today/Week/Month/Quarter/Year/All).
+**Fix:** `reports.html` — Forecast now scales daily-rate calculation by selected period (today=1d, week=7d, month=30d, quarter=90d, year=365d). Stock reorder thresholds and churn detection both use the same dynamic window. Period banner shown at top so user sees context.
+
+### Issue 2 — P&L showing COGS = ₹0 despite cost prices set in inventory
+**Root cause:** `renderProfitLoss()` and `exportProfitLoss()` only matched products by `it.product_id`/`it.productId` and `it.item_name`/`it.nm`. But local-format bill items use `productId` (camelCase) AND there were edge cases where lookup map missed matches due to whitespace/case in keys.
+**Fix:** `reports.html` — Added unified item field accessors (`_itName`, `_itQty`, `_itProductId`, `_itLineTotal`, `_billItems`) that handle BOTH local format (`{nm,q,r,productId,tot}`) and Supabase format (`{item_name,qty,rate,product_id,line_total}`). P&L now correctly looks up cost prices.
+**Also:** Added explicit warning when COGS=₹0 with units sold ("Profit shown is INFLATED — add cost prices in Stock"). Shows COGS coverage % so user knows how many units matched.
+
+### Issue 3 — Items report showing "No item data for this period"
+**Root cause:** Same field-name mismatch as Issue 2. `renderTopItems()` only read `it.item_name`/`it.line_total`/`it.qty` (Supabase format) so any locally-saved bill (which uses `it.nm`/`it.tot`/`it.q`) had its items dropped.
+**Fix:** `reports.html` — Now uses unified `_itName` / `_itQty` / `_itLineTotal` helpers. Falls back to `qty × rate` if line_total is 0. Items report now works for ALL bills regardless of save source.
+
+### Issue 4 — Insights report missing data, Payment Pattern empty
+**Root cause:** `renderInsights()` read `b.items` / `it.nm` only (local format) and pulled overdue from customer table (`c.balance`), missing Supabase-format bills entirely. Category Performance read `it.amount`/`it.lineTotal` (neither field exists).
+**Fix:** `reports.html` — Insights rewritten to use unified item helpers. Added:
+- **Payment Mode breakdown** with progress bars (Cash/UPI/Card/Bank/Cheque/Credit/Other) — was completely missing
+- **Top Customers (this period)** — new section
+- Period-aware Rush Hour calculation
+- Category Performance now uses product map → product.category instead of per-item field
+
+### Issue 5 — Reports need proper print/export format
+**Fix:** `reports.html` — Added `_printReport(title)` helper that opens a clean print-styled view of any report tab in a new window with:
+- Shop name + GSTIN header
+- Period label + generation timestamp
+- Print-optimized CSS (page-break-inside avoid, hidden buttons in print mode)
+- Built-in "🖨️ Print / Save as PDF" button
+- Footer with branding
+
+Print buttons now on every report tab (GSTR-1, GSTR-3B, P&L, Payments, Insights, Forecast, Items). Topbar gets a 🖨️ icon next to the 📤 export icon — works for the currently active tab.
+
+**Files changed in this round:** `reports.html` (extensive)

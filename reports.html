@@ -231,7 +231,8 @@ html[lang="hi"] .lang-en{display:none!important}
     </div>
     <div class="tb-r">
       <div class="ic-btn" onclick="toggleTheme()" id="theme-btn">☀️</div>
-      <div class="ic-btn" onclick="exportReport()" title="Export">📤</div>
+      <div class="ic-btn" onclick="_printReport(({dayclose:'Day Close',sales:'Sales Report',daily:'Daily Report',gst:'GST Summary',gstr1:'GSTR-1',gstr3b:'GSTR-3B',pl:'P&L Statement',payments:'Payments',customers:'Top Customers',items:'Top Items',voids:'Voids',insights:'Smart Insights',forecast:'Forecast'})[_curTab]||'Report')" title="Print">🖨️</div>
+      <div class="ic-btn" onclick="exportReport()" title="Export CSV">📤</div>
     </div>
   </div>
 
@@ -895,11 +896,14 @@ function renderTopItems(){
   const bills=_filterByPeriod(_bills).filter(b=>(b.status||'').toLowerCase()!=='voided');
   const map={};
   bills.forEach(b=>{
-    (b.bill_items||[]).forEach(it=>{
-      const nm=it.item_name||'Unknown';
+    _billItems(b).forEach(it=>{
+      const nm = _itName(it) || 'Unknown';
       if(!map[nm])map[nm]={name:nm,qty:0,revenue:0,count:0};
-      map[nm].qty+=parseFloat(it.qty||0);
-      map[nm].revenue+=parseFloat(it.line_total||0);
+      map[nm].qty += _itQty(it);
+      // line_total fallback: rate × qty if neither line_total nor tot present
+      let rev = _itLineTotal(it);
+      if(!rev) rev = _itQty(it) * _itRate(it);
+      map[nm].revenue += rev;
       map[nm].count++;
     });
   });
@@ -920,8 +924,30 @@ function renderTopItems(){
         </div>`).join('')
       :'<div style="text-align:center;padding:40px;color:var(--t2);font-size:13px">No item data for this period.<br>Make sure bill items are saved.</div>'}
     </div>
+    ${sorted.length?'<div style="display:flex;gap:8px;padding:14px"><button class="btn-pri" style="flex:1" onclick="exportTopItems()">📤 Export CSV</button><button class="btn-pri" style="flex:1;background:linear-gradient(135deg,#6366F1,#4F46E5)" onclick="_printReport(\'Top Selling Items\')">🖨️ Print</button></div>':''}
     <div class="spacer"></div>
   </div>`;
+}
+
+function exportTopItems(){
+  const bills=_filterByPeriod(_bills).filter(b=>(b.status||'').toLowerCase()!=='voided');
+  const map={};
+  bills.forEach(b=>{
+    _billItems(b).forEach(it=>{
+      const nm = _itName(it) || 'Unknown';
+      if(!map[nm])map[nm]={name:nm,qty:0,revenue:0,count:0};
+      map[nm].qty += _itQty(it);
+      let rev = _itLineTotal(it);
+      if(!rev) rev = _itQty(it) * _itRate(it);
+      map[nm].revenue += rev;
+      map[nm].count++;
+    });
+  });
+  const sorted=Object.values(map).sort((a,b)=>b.revenue-a.revenue);
+  const rows = [['Rank','Item','Qty Sold','Bill Count','Revenue']];
+  sorted.forEach((it,i) => rows.push([i+1, it.name, it.qty, it.count, it.revenue.toFixed(2)]));
+  _csvDownload('Top_Items_'+_curPeriod+'.csv', rows);
+  toast('📤 Items exported','s');
 }
 
 function exportReport(){
@@ -946,6 +972,62 @@ function _csvEsc(v){
 function _csvDownload(filename, rows){
   const blob=new Blob(['\ufeff'+rows.map(r=>r.map(_csvEsc).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;a.click();
+}
+
+// FIX — Unified bill-item field accessor (bills have BOTH local & cloud field names mixed)
+// Local format: {nm, q, r, rate, tot, lineGST, productId}
+// Cloud format: {item_name, qty, rate, gst_rate, line_total, gst_amount, product_id}
+function _itName(it){ return it.item_name || it.nm || it.name || ''; }
+function _itQty(it){ return parseFloat(it.qty || it.q || 0); }
+function _itRate(it){ return parseFloat(it.rate || it.r || 0); }
+function _itGSTRate(it){ return parseFloat(it.gst_rate || it.rate || it.g || 0); }
+function _itGSTAmt(it){ return parseFloat(it.gst_amount || it.lineGST || 0); }
+function _itLineTotal(it){ return parseFloat(it.line_total || it.tot || it.lineAmt || 0); }
+function _itProductId(it){ return it.product_id || it.productId || ''; }
+
+// FIX — All bill_items getter (handles both keys + items in pos-mode)
+function _billItems(b){ return b.bill_items || b.items || []; }
+
+// FIX — Print helper for any report tab — opens new window with the current report HTML
+function _printReport(title){
+  const html = document.getElementById('report-content').innerHTML;
+  const shop = JSON.parse(localStorage.getItem('sbp_shop')||'{}');
+  const periodLabel = ({today:'Today',week:'This Week',month:'This Month',quarter:'Quarter',year:'This Year',all:'All Time',custom:'Custom Range'})[_curPeriod]||'Period';
+  const w = window.open('','_blank','width=900,height=700');
+  if(!w){toast('⚠️ Pop-up blocked — allow pop-ups to print','e',5000);return;}
+  w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>'+title+' — '+(shop.name||'ShopBill Pro')+'</title>'
+    + '<style>'
+    + '* { box-sizing:border-box; }'
+    + 'body { font-family: -apple-system,Segoe UI,Roboto,Arial,sans-serif; padding: 28px; color:#111; max-width:900px; margin:0 auto; line-height:1.5; }'
+    + 'h1 { font-size: 22px; margin-bottom:4px; color:#F5A623; }'
+    + '.meta { font-size:12px; color:#666; margin-bottom:18px; padding-bottom:12px; border-bottom:2px solid #F5A623; }'
+    + '.scard, .sec { background:#FAFAFA; border:1px solid #E5E5E5; border-radius:8px; padding:14px; margin-bottom:12px; page-break-inside:avoid; }'
+    + '.sec-t { font-weight:700; font-size:14px; margin-bottom:8px; color:#333; border-bottom:1px solid #DDD; padding-bottom:6px; }'
+    + '.stats-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px; }'
+    + '.sc-lbl { font-size:11px; color:#666; text-transform:uppercase; letter-spacing:.5px; font-weight:700; margin-bottom:4px; }'
+    + '.sc-val { font-size:20px; font-weight:900; color:#111; }'
+    + '.sc-val.g { color:#0A8043; } .sc-val.p { color:#6366F1; } .sc-val.a { color:#F5A623; } .sc-val.r { color:#DC2626; }'
+    + '.sc-sub { font-size:11px; color:#666; margin-top:2px; }'
+    + 'button { display:none; }'
+    + '.spacer { display:none; }'
+    + 'table { width:100%; border-collapse:collapse; }'
+    + 'td, th { padding:6px 10px; border-bottom:1px solid #EEE; text-align:left; font-size:13px; }'
+    + 'th { background:#F5F5F5; font-weight:700; }'
+    + '.rank-item { display:flex; padding:8px 0; border-bottom:1px solid #EEE; align-items:center; gap:10px; }'
+    + '.rank-num { width:28px; height:28px; background:#F5A623; color:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:13px; }'
+    + '.rank-nm { font-weight:600; font-size:13px; }'
+    + '.rank-sub { font-size:11px; color:#666; }'
+    + '.rank-val { font-weight:800; color:#0A8043; margin-left:auto; }'
+    + '.print-btn { display:block !important; margin:0 auto 16px; padding:12px 30px; background:#F5A623; color:#fff; border:none; border-radius:8px; font-weight:700; cursor:pointer; font-size:14px; }'
+    + '@media print { .print-btn { display:none !important; } body { padding:12px; } }'
+    + '</style></head><body>'
+    + '<h1>'+(shop.name||'ShopBill Pro')+'</h1>'
+    + '<div class="meta">'+title+' · <strong>'+periodLabel+'</strong> · Generated: '+new Date().toLocaleString('en-IN')+(shop.gstin?' · GSTIN: '+shop.gstin:'')+'</div>'
+    + '<button class="print-btn" onclick="window.print()">🖨️ Print / Save as PDF</button>'
+    + html
+    + '<div style="margin-top:24px;font-size:10px;color:#999;text-align:center;border-top:1px solid #EEE;padding-top:10px">Powered by ShopBill Pro · TradeCrest Technologies</div>'
+    + '</body></html>');
+  w.document.close();
 }
 
 // ─── GSTR-1: Outward supplies ─────────────────────────
@@ -992,8 +1074,8 @@ function renderGSTR1(){
     + '<div style="background:var(--surf2);padding:10px;border-radius:8px"><div style="font-size:10px;color:var(--t2)">CGST + SGST</div><div style="font-weight:800;font-size:14px">'+fINR(b2cSum.cgst+b2cSum.sgst)+'</div></div>'
     + '<div style="background:var(--surf2);padding:10px;border-radius:8px"><div style="font-size:10px;color:var(--t2)">IGST</div><div style="font-weight:800;font-size:14px">'+fINR(b2cSum.igst)+'</div></div>'
     + '</div></div>'
-    + '<button class="btn-pri" onclick="exportGSTR1B2B()">📤 Export B2B Section (CSV)</button>'
-    + '<button class="btn-pri" onclick="exportGSTR1B2C()" style="background:linear-gradient(135deg,#06B6D4,#0891B2)">📤 Export B2C Summary (CSV)</button>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button class="btn-pri" onclick="exportGSTR1B2B()">📤 Export B2B (CSV)</button><button class="btn-pri" onclick="exportGSTR1B2C()" style="background:linear-gradient(135deg,#06B6D4,#0891B2)">📤 Export B2C (CSV)</button></div>'
+    + '<button class="btn-pri" onclick="_printReport(\'GSTR-1 — Outward Supplies\')" style="background:linear-gradient(135deg,#6366F1,#4F46E5)">🖨️ Print GSTR-1</button>'
     + '<div style="font-size:11px;color:var(--t2);text-align:center;padding:10px">💡 Use these CSVs as a base for filing on the GST portal or with your CA.</div>'
     + '<div class="spacer"></div></div>';
 }
@@ -1066,7 +1148,7 @@ function renderGSTR3B(){
     + '</div></div>'
     + '<div class="sec"><div class="sec-t">3.1 (c) Other outward supplies (Nil rated, exempted)</div>'
     + '<div style="padding:14px"><div style="background:var(--surf2);padding:12px;border-radius:10px"><div style="font-size:10px;color:var(--t2)">Nil-rated / Exempt Taxable Value</div><div style="font-weight:900;font-size:20px">'+fINR(exemptTaxable)+'</div></div></div></div>'
-    + '<button class="btn-pri" onclick="exportGSTR3B()">📤 Export GSTR-3B Summary (CSV)</button>'
+    + '<div style="display:flex;gap:8px"><button class="btn-pri" style="flex:1" onclick="exportGSTR3B()">📤 Export CSV</button><button class="btn-pri" style="flex:1;background:linear-gradient(135deg,#6366F1,#4F46E5)" onclick="_printReport(\'GSTR-3B — Tax Summary\')">🖨️ Print</button></div>'
     + '<div style="font-size:11px;color:var(--t2);text-align:center;padding:10px">💡 GSTR-3B is filed by 20th of the following month.</div>'
     + '<div class="spacer"></div></div>';
 }
@@ -1104,17 +1186,22 @@ function renderProfitLoss(){
   const productMap={};
   products.forEach(p => { productMap[String(p.id)] = p; productMap[(p.name||'').toLowerCase().trim()] = p; });
 
-  let grossSales=0, gstCollected=0, totalDiscount=0, cogs=0, missingCost=0, totalUnits=0;
+  let grossSales=0, gstCollected=0, totalDiscount=0, cogs=0, missingCost=0, totalUnits=0, matchedUnits=0;
   bills.forEach(b => {
     grossSales += parseFloat(b.grand_total||0);
     gstCollected += parseFloat(b.gst_amount||0);
     totalDiscount += parseFloat(b.discount||0) + parseFloat(b.item_discount||0);
-    (b.bill_items || b.items || []).forEach(it => {
-      const qty = parseFloat(it.qty || it.q || 0);
+    _billItems(b).forEach(it => {
+      const qty = _itQty(it);
+      if(qty <= 0) return;
       totalUnits += qty;
-      const prod = productMap[String(it.product_id || it.productId || '')] || productMap[(it.item_name || it.nm || '').toLowerCase().trim()];
-      if(prod && parseFloat(prod.cost_price||0) > 0) cogs += qty * parseFloat(prod.cost_price);
-      else missingCost += qty;
+      const prod = productMap[String(_itProductId(it))] || productMap[_itName(it).toLowerCase().trim()];
+      if(prod && parseFloat(prod.cost_price||0) > 0){
+        cogs += qty * parseFloat(prod.cost_price);
+        matchedUnits += qty;
+      } else {
+        missingCost += qty;
+      }
     });
   });
   const netSales = grossSales - gstCollected;
@@ -1122,6 +1209,7 @@ function renderProfitLoss(){
   const totalExpenses = expenses.reduce((s,e)=>s+parseFloat(e.amount||0),0);
   const netProfit = grossProfit - totalExpenses;
   const grossMarginPct = netSales > 0 ? Math.round((grossProfit / netSales) * 100) : 0;
+  const cogsCoveragePct = totalUnits > 0 ? Math.round((matchedUnits/totalUnits)*100) : 0;
 
   const el=document.getElementById('report-content');
   el.innerHTML = '<div style="padding:14px;display:flex;flex-direction:column;gap:12px">'
@@ -1141,8 +1229,12 @@ function renderProfitLoss(){
     + '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bord);color:var(--t2);font-size:13px"><span>(−) Operating expenses</span><span>'+fINR(totalExpenses)+'</span></div>'
     + '<div style="display:flex;justify-content:space-between;padding:12px 0;font-weight:900;font-size:16px;background:rgba(245,166,35,.05);margin:0 -14px;padding:12px 14px"><span>Net Profit</span><span style="color:'+(netProfit>=0?'var(--acc3)':'var(--acc2)')+'">'+fINR(netProfit)+'</span></div>'
     + '</div></div>'
-    + (missingCost > 0 ? '<div style="background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.25);border-radius:10px;padding:12px;font-size:12px;color:var(--acc)">⚠️ '+missingCost+' units sold had no cost price set. Add cost prices in Stock to get accurate COGS.</div>' : '')
-    + '<button class="btn-pri" onclick="exportProfitLoss()">📤 Export P&L (CSV)</button>'
+    + (missingCost > 0
+       ? '<div style="background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.25);border-radius:10px;padding:12px;font-size:12px;color:var(--acc)">⚠️ COGS coverage: <strong>'+cogsCoveragePct+'%</strong> ('+matchedUnits+' of '+totalUnits+' units matched). '+missingCost+' units sold had no cost price set in Stock — add them for accurate profit.</div>'
+       : (cogs === 0 && totalUnits > 0
+          ? '<div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);border-radius:10px;padding:12px;font-size:12px;color:var(--acc2)">⚠️ <strong>COGS = ₹0</strong>: No matching products found in Stock. Profit shown is INFLATED — add cost prices in Stock → Edit product → Cost price.</div>'
+          : ''))
+    + '<div style="display:flex;gap:8px"><button class="btn-pri" style="flex:1" onclick="exportProfitLoss()">📤 Export CSV</button><button class="btn-pri" style="flex:1;background:linear-gradient(135deg,#6366F1,#4F46E5)" onclick="_printReport(\'Profit & Loss Statement\')">🖨️ Print</button></div>'
     + '<div class="spacer"></div></div>';
 }
 
@@ -1156,9 +1248,9 @@ function exportProfitLoss(){
     grossSales += parseFloat(b.grand_total||0);
     gstCollected += parseFloat(b.gst_amount||0);
     totalDiscount += parseFloat(b.discount||0) + parseFloat(b.item_discount||0);
-    (b.bill_items || b.items || []).forEach(it => {
-      const qty = parseFloat(it.qty || it.q || 0);
-      const prod = productMap[String(it.product_id || it.productId || '')] || productMap[(it.item_name || it.nm || '').toLowerCase().trim()];
+    _billItems(b).forEach(it => {
+      const qty = _itQty(it);
+      const prod = productMap[String(_itProductId(it))] || productMap[_itName(it).toLowerCase().trim()];
       if(prod && parseFloat(prod.cost_price||0) > 0) cogs += qty * parseFloat(prod.cost_price);
     });
   });
@@ -1209,7 +1301,7 @@ function renderPayments(){
   const el=document.getElementById('report-content');
   el.innerHTML = '<div style="padding:14px"><div class="sec"><div class="sec-t">💳 Payment Mode Breakdown</div>'
     + '<div style="padding:14px">' + (rowsHtml || '<div style="text-align:center;padding:20px;color:var(--t2)">No payments in this period</div>') + '</div></div>'
-    + '<button class="btn-pri" onclick="exportPayments()" style="margin-top:14px">📤 Export Payments (CSV)</button>'
+    + '<div style="display:flex;gap:8px;margin-top:14px"><button class="btn-pri" style="flex:1" onclick="exportPayments()">📤 Export CSV</button><button class="btn-pri" style="flex:1;background:linear-gradient(135deg,#6366F1,#4F46E5)" onclick="_printReport(\'Payments Breakdown\')">🖨️ Print</button></div>'
     + '<div class="spacer"></div></div>';
 }
 
@@ -1306,33 +1398,124 @@ function renderInsights(){
     wrap.innerHTML='<div style="text-align:center;padding:48px 20px"><div style="font-size:44px;margin-bottom:12px">🧠</div><div style="font-family:var(--font-h);font-size:17px;font-weight:800;margin-bottom:8px">Smart Insights</div><div style="font-size:13px;color:var(--t2);margin-bottom:20px;line-height:1.6">Rush hours, dead stock alerts,<br>payment patterns & more</div><button onclick="window.location.href=\'subscription.html\'" style="padding:13px 28px;border-radius:12px;background:linear-gradient(135deg,#F5A623,#FF8A00);border:none;color:#0A0E1A;font-family:var(--font-h);font-size:14px;font-weight:700;cursor:pointer">🚀 Upgrade to Pro — ₹99/month</button></div>';
     return;
   }
-  const bills=JSON.parse(localStorage.getItem('sbp_bills')||'[]');
+  // FIX — Insights now respects period selector
+  const periodBills = _filterByPeriod(_bills).filter(b=>(b.status||'').toLowerCase()!=='voided');
+  const allBills = JSON.parse(localStorage.getItem('sbp_bills')||'[]').filter(b=>(b.status||'').toLowerCase()!=='voided');
   const products=JSON.parse(localStorage.getItem('sbp_products')||'[]');
   const customers=JSON.parse(localStorage.getItem('sbp_customers')||'[]');
-  // Rush hour
-  const hourCounts={};
-  bills.forEach(b=>{const h=new Date(b.created_at||b.invoice_date||Date.now()).getHours();hourCounts[h]=(hourCounts[h]||0)+1;});
-  const peakHour=Object.entries(hourCounts).sort((a,b)=>b[1]-a[1])[0];
-  const peakLabel=peakHour?peakHour[0]+':00–'+(parseInt(peakHour[0])+1)+':00':'N/A';
-  // Dead stock
-  const cutoff=new Date();cutoff.setDate(cutoff.getDate()-30);
-  const recentItems=new Set();
-  bills.filter(b=>new Date(b.created_at||b.invoice_date)>cutoff).forEach(b=>{(b.items||[]).forEach(it=>recentItems.add((it.nm||it.name||'').toLowerCase()));});
-  const deadItems=products.filter(p=>parseFloat(p.stock_qty||0)>0&&!recentItems.has((p.name||'').toLowerCase())).slice(0,5);
-  // Overdue
-  const overdueCount=customers.filter(c=>parseFloat(c.balance||0)>0).length;
-  const totalDue=customers.reduce((s,c)=>s+parseFloat(c.balance||0),0);
-  // Category revenue
-  const catRev={};
-  bills.forEach(b=>{(b.items||[]).forEach(it=>{const cat=it.category||'General';catRev[cat]=(catRev[cat]||0)+parseFloat(it.amount||it.lineTotal||0);});});
-  const topCats=Object.entries(catRev).sort((a,b)=>b[1]-a[1]).slice(0,4);
 
-  wrap.innerHTML='<div style="padding:16px;display:flex;flex-direction:column;gap:14px">'
-    +'<div style="background:var(--surf2);border:1px solid var(--bord);border-radius:16px;padding:16px"><div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><span style="font-size:22px">⏰</span><div style="font-family:var(--font-h);font-size:14px;font-weight:800">Rush Hour</div><span style="font-size:10px;background:rgba(245,166,35,.12);color:var(--acc);border-radius:8px;padding:2px 8px;font-weight:700">INSIGHT</span></div><div style="font-size:24px;font-weight:900;font-family:var(--font-h);color:var(--acc);margin-bottom:4px">'+peakLabel+'</div><div style="font-size:12px;color:var(--t2)">Your busiest billing hour — be fully stocked &amp; staffed</div></div>'
-    +'<div style="background:var(--surf2);border:1px solid var(--bord);border-radius:16px;padding:16px"><div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><span style="font-size:22px">📦</span><div style="font-family:var(--font-h);font-size:14px;font-weight:800">Dead Stock Alert</div><span style="font-size:10px;background:rgba(239,68,68,.12);color:var(--acc2);border-radius:8px;padding:2px 8px;font-weight:700">'+deadItems.length+' ITEMS</span></div>'+(deadItems.length===0?'<div style="font-size:13px;color:var(--acc3)">✅ All products sold recently!</div>':deadItems.map(p=>'<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bord);font-size:13px"><span>'+(p.emoji||'📦')+' '+p.name+'</span><span style="color:var(--acc2)">Stock: '+p.stock_qty+'</span></div>').join('')+(deadItems.length>0?'<div style="font-size:11px;color:var(--t3);margin-top:8px">No sales in 30+ days — consider discounting</div>':''))+'</div>'
-    +'<div style="background:var(--surf2);border:1px solid var(--bord);border-radius:16px;padding:16px"><div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><span style="font-size:22px">💰</span><div style="font-family:var(--font-h);font-size:14px;font-weight:800">Payment Pattern</div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div style="background:var(--surf3);border-radius:10px;padding:12px;text-align:center"><div style="font-size:22px;font-weight:900;font-family:var(--font-h);color:var(--acc2)">'+overdueCount+'</div><div style="font-size:11px;color:var(--t2)">Customers with dues</div></div><div style="background:var(--surf3);border-radius:10px;padding:12px;text-align:center"><div style="font-size:22px;font-weight:900;font-family:var(--font-h);color:var(--acc2)">'+fINR(totalDue)+'</div><div style="font-size:11px;color:var(--t2)">Total outstanding</div></div></div>'+(overdueCount>0?'<button onclick="window.location.href=\'customers.html\'" style="width:100%;margin-top:12px;padding:10px;border-radius:10px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);color:var(--acc2);font-family:var(--font-h);font-size:13px;font-weight:700;cursor:pointer">📲 Send Payment Reminders</button>':'')+'</div>'
-    +(topCats.length>0?'<div style="background:var(--surf2);border:1px solid var(--bord);border-radius:16px;padding:16px"><div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><span style="font-size:22px">📊</span><div style="font-family:var(--font-h);font-size:14px;font-weight:800">Category Performance</div></div>'+topCats.map(([cat,rev])=>{const pct=Math.round((rev/topCats[0][1])*100);return '<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span style="font-weight:600">'+cat+'</span><span style="color:var(--acc)">'+fINR(rev)+'</span></div><div style="height:6px;background:var(--surf3);border-radius:4px"><div style="height:6px;width:'+pct+'%;background:linear-gradient(90deg,#F5A623,#FF8A00);border-radius:4px"></div></div></div>';}).join('')+'</div>':'')
-    +'</div>';
+  // Rush hour — based on period selection
+  const hourCounts={};
+  periodBills.forEach(b=>{
+    const ts = b.created_at || b.invoice_date;
+    if(!ts) return;
+    const h = new Date(ts).getHours();
+    hourCounts[h] = (hourCounts[h]||0) + 1;
+  });
+  const peakHour = Object.entries(hourCounts).sort((a,b)=>b[1]-a[1])[0];
+  const peakLabel = peakHour ? peakHour[0]+':00–'+(parseInt(peakHour[0])+1)+':00' : 'N/A';
+  const peakCount = peakHour ? peakHour[1] : 0;
+
+  // Dead stock — items with stock but no sales in last 30 days (always uses 30-day window regardless of period)
+  const cutoff=new Date(); cutoff.setDate(cutoff.getDate()-30);
+  const recentItemNames = new Set();
+  allBills.filter(b => new Date(b.created_at||b.invoice_date||0) > cutoff).forEach(b => {
+    _billItems(b).forEach(it => {
+      const nm = _itName(it).toLowerCase().trim();
+      if(nm) recentItemNames.add(nm);
+    });
+  });
+  const deadItems = products.filter(p => parseFloat(p.stock_qty||0) > 0 && !recentItemNames.has((p.name||'').toLowerCase().trim())).slice(0,5);
+
+  // Payment pattern — for the selected period
+  const overdueCustomers = new Set();
+  let totalDue = 0;
+  periodBills.forEach(b => {
+    const due = parseFloat(b.balance_due||0);
+    if(due > 0 && b.customer_name && b.customer_name !== 'Walk-in Customer'){
+      overdueCustomers.add(b.customer_name);
+      totalDue += due;
+    }
+  });
+  const overdueCount = overdueCustomers.size;
+
+  // Payment mode breakdown — for the selected period
+  const pmMap = {Cash:0, UPI:0, Card:0, Bank:0, Cheque:0, Credit:0, Other:0};
+  periodBills.forEach(b => {
+    const pm = (b.payment_mode || 'Cash').trim();
+    const key = ['Cash','UPI','Card','Bank','Cheque','Credit'].find(k => pm.toLowerCase().includes(k.toLowerCase())) || 'Other';
+    const amt = key === 'Credit' ? parseFloat(b.grand_total||0) : parseFloat(b.paid_amount||0);
+    pmMap[key] += amt;
+  });
+  const pmTotal = Object.values(pmMap).reduce((s,v)=>s+v,0);
+
+  // Category revenue — for the selected period using product map
+  const productMap = {};
+  products.forEach(p => { productMap[String(p.id)] = p; productMap[(p.name||'').toLowerCase().trim()] = p; });
+  const catRev={};
+  periodBills.forEach(b => {
+    _billItems(b).forEach(it => {
+      const prod = productMap[String(_itProductId(it))] || productMap[_itName(it).toLowerCase().trim()];
+      const cat = (prod && prod.category) || 'General';
+      const lineRev = _itLineTotal(it) || (_itQty(it) * _itRate(it));
+      catRev[cat] = (catRev[cat]||0) + lineRev;
+    });
+  });
+  const topCats = Object.entries(catRev).sort((a,b)=>b[1]-a[1]).slice(0,5);
+
+  // Top customers — for the selected period
+  const custRev = {};
+  periodBills.forEach(b => {
+    const nm = (b.customer_name||'').trim();
+    if(!nm || nm === 'Walk-in Customer') return;
+    custRev[nm] = (custRev[nm]||0) + parseFloat(b.grand_total||0);
+  });
+  const topCusts = Object.entries(custRev).sort((a,b)=>b[1]-a[1]).slice(0,5);
+
+  // ── Render ──
+  wrap.innerHTML = '<div style="padding:16px;display:flex;flex-direction:column;gap:14px">'
+    // Rush Hour
+    + '<div style="background:var(--surf2);border:1px solid var(--bord);border-radius:16px;padding:16px"><div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><span style="font-size:22px">⏰</span><div style="font-family:var(--font-h);font-size:14px;font-weight:800">Rush Hour</div><span style="font-size:10px;background:rgba(245,166,35,.12);color:var(--acc);border-radius:8px;padding:2px 8px;font-weight:700">INSIGHT</span></div>'
+    + '<div style="font-size:24px;font-weight:900;font-family:var(--font-h);color:var(--acc);margin-bottom:4px">'+peakLabel+'</div>'
+    + '<div style="font-size:12px;color:var(--t2)">'+(peakCount>0?'Your busiest hour — '+peakCount+' bill'+(peakCount!==1?'s':''):'Not enough data')+'</div></div>'
+
+    // Dead Stock
+    + '<div style="background:var(--surf2);border:1px solid var(--bord);border-radius:16px;padding:16px"><div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><span style="font-size:22px">📦</span><div style="font-family:var(--font-h);font-size:14px;font-weight:800">Dead Stock Alert</div><span style="font-size:10px;background:rgba(239,68,68,.12);color:var(--acc2);border-radius:8px;padding:2px 8px;font-weight:700">'+deadItems.length+' ITEMS</span></div>'
+    + (deadItems.length===0
+       ? '<div style="font-size:13px;color:var(--acc3)">✅ All products sold recently!</div>'
+       : deadItems.map(p => '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bord);font-size:13px"><span>'+(p.emoji||'📦')+' '+p.name+'</span><span style="color:var(--acc2)">Stock: '+p.stock_qty+'</span></div>').join('') + '<div style="font-size:11px;color:var(--t3);margin-top:8px">No sales in 30+ days — consider discounting</div>')
+    + '</div>'
+
+    // Payment Pattern (with payment-mode breakdown)
+    + '<div style="background:var(--surf2);border:1px solid var(--bord);border-radius:16px;padding:16px"><div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><span style="font-size:22px">💰</span><div style="font-family:var(--font-h);font-size:14px;font-weight:800">Payment Pattern</div></div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px"><div style="background:var(--surf3);border-radius:10px;padding:12px;text-align:center"><div style="font-size:22px;font-weight:900;font-family:var(--font-h);color:'+(overdueCount>0?'var(--acc2)':'var(--acc3)')+'">'+overdueCount+'</div><div style="font-size:11px;color:var(--t2)">Customers with dues</div></div><div style="background:var(--surf3);border-radius:10px;padding:12px;text-align:center"><div style="font-size:22px;font-weight:900;font-family:var(--font-h);color:'+(totalDue>0?'var(--acc2)':'var(--acc3)')+'">'+fINR(totalDue)+'</div><div style="font-size:11px;color:var(--t2)">Total outstanding</div></div></div>'
+    + (pmTotal > 0
+       ? '<div style="font-size:11px;color:var(--t2);text-transform:uppercase;font-weight:700;letter-spacing:.5px;margin-bottom:8px">Payment Modes (this period)</div>'
+       + Object.keys(pmMap).filter(k=>pmMap[k]>0).map(k=>{
+           const pct = Math.round((pmMap[k]/pmTotal)*100);
+           const icons = {Cash:'💵', UPI:'📲', Card:'💳', Bank:'🏦', Cheque:'📑', Credit:'📒', Other:'💰'};
+           return '<div style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span>'+icons[k]+' '+k+'</span><span style="color:var(--acc);font-weight:700">'+fINR(pmMap[k])+' ('+pct+'%)</span></div><div style="height:5px;background:var(--surf3);border-radius:3px"><div style="height:5px;width:'+pct+'%;background:linear-gradient(90deg,var(--acc),var(--acc3));border-radius:3px"></div></div></div>';
+         }).join('')
+       : '<div style="font-size:12px;color:var(--t2);text-align:center;padding:12px">No payments in this period</div>')
+    + (overdueCount>0?'<button onclick="window.location.href=\'customers.html\'" style="width:100%;margin-top:12px;padding:10px;border-radius:10px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);color:var(--acc2);font-family:var(--font-h);font-size:13px;font-weight:700;cursor:pointer">📲 Send Payment Reminders</button>':'')
+    + '</div>'
+
+    // Category Performance
+    + (topCats.length > 0
+       ? '<div style="background:var(--surf2);border:1px solid var(--bord);border-radius:16px;padding:16px"><div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><span style="font-size:22px">📊</span><div style="font-family:var(--font-h);font-size:14px;font-weight:800">Category Performance</div></div>'
+       + topCats.map(([cat,rev])=>{const pct = Math.round((rev/topCats[0][1])*100); return '<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span style="font-weight:600">'+cat+'</span><span style="color:var(--acc)">'+fINR(rev)+'</span></div><div style="height:6px;background:var(--surf3);border-radius:4px"><div style="height:6px;width:'+pct+'%;background:linear-gradient(90deg,#F5A623,#FF8A00);border-radius:4px"></div></div></div>';}).join('')
+       + '</div>'
+       : '')
+
+    // Top Customers
+    + (topCusts.length > 0
+       ? '<div style="background:var(--surf2);border:1px solid var(--bord);border-radius:16px;padding:16px"><div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><span style="font-size:22px">⭐</span><div style="font-family:var(--font-h);font-size:14px;font-weight:800">Top Customers (this period)</div></div>'
+       + topCusts.map(([nm,rev],i)=>'<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bord);font-size:13px"><span><span style="color:var(--acc);font-weight:700;margin-right:6px">#'+(i+1)+'</span>'+nm+'</span><span style="color:var(--acc3);font-weight:700">'+fINR(rev)+'</span></div>').join('')
+       + '</div>'
+       : '')
+
+    + '<button class="btn-pri" onclick="_printReport(\'Smart Insights\')" style="background:linear-gradient(135deg,#6366F1,#4F46E5);margin-top:8px">🖨️ Print / Export Insights</button>'
+    + '</div>';
 }
 
 /* ══ Forecasting — Level 3 (Business) ══ */
@@ -1342,41 +1525,87 @@ function renderForecast(){
     wrap.innerHTML='<div style="text-align:center;padding:48px 20px"><div style="font-size:44px;margin-bottom:12px">🔮</div><div style="font-family:var(--font-h);font-size:17px;font-weight:800;margin-bottom:8px">Advanced Forecasting</div><div style="font-size:13px;color:var(--t2);margin-bottom:20px;line-height:1.6">Stock reorder alerts, revenue predictions,<br>customer churn — Business plan</div><button onclick="window.location.href=\'subscription.html\'" style="padding:13px 28px;border-radius:12px;background:linear-gradient(135deg,#F59E0B,#EF4444);border:none;color:#fff;font-family:var(--font-h);font-size:14px;font-weight:700;cursor:pointer">🏭 Upgrade to Business — ₹199/month</button></div>';
     return;
   }
-  const bills=JSON.parse(localStorage.getItem('sbp_bills')||'[]');
-  const products=JSON.parse(localStorage.getItem('sbp_products')||'[]');
-  const customers=JSON.parse(localStorage.getItem('sbp_customers')||'[]');
-  const now=new Date();
-  // Revenue trend
+  const allBills = JSON.parse(localStorage.getItem('sbp_bills')||'[]').filter(b=>(b.status||'').toLowerCase()!=='voided');
+  const periodBills = _filterByPeriod(_bills).filter(b=>(b.status||'').toLowerCase()!=='voided');
+  const products = JSON.parse(localStorage.getItem('sbp_products')||'[]');
+  const customers = JSON.parse(localStorage.getItem('sbp_customers')||'[]');
+  const now = new Date();
+
+  // Revenue trend — always show last 3 months (gives forecasting context regardless of period selector)
   const months=[];
-  for(let i=2;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);const ym=sbpFmt(d).slice(0,7);const rev=bills.filter(b=>(b.invoice_date||b.created_at||'').startsWith(ym)).reduce((s,b)=>s+parseFloat(b.grand_total||b.amount||0),0);months.push({ym,rev,label:d.toLocaleDateString('en-IN',{month:'short'})});}
+  for(let i=2;i>=0;i--){
+    const d=new Date(now.getFullYear(),now.getMonth()-i,1);
+    const ym=sbpFmt(d).slice(0,7);
+    const rev=allBills.filter(b=>(b.invoice_date||b.created_at||'').startsWith(ym)).reduce((s,b)=>s+parseFloat(b.grand_total||b.amount||0),0);
+    months.push({ym,rev,label:d.toLocaleDateString('en-IN',{month:'short'})});
+  }
   const trend=months.length>=2?months[months.length-1].rev-months[months.length-2].rev:0;
   const forecast=Math.max(0,months[months.length-1].rev+trend);
-  // Stock reorder — read bill_items + item_name (correct schema)
-  const itemSales={};const cutoff30=new Date();cutoff30.setDate(cutoff30.getDate()-30);
-  bills.filter(b=>new Date(b.created_at||b.invoice_date)>cutoff30).forEach(b=>{
-    const its=b.bill_items||b.items||[];
-    its.forEach(it=>{
-      const nm=(it.item_name||it.nm||it.name||'').toLowerCase();
-      if(nm)itemSales[nm]=(itemSales[nm]||0)+parseFloat(it.qty||it.q||1);
+
+  // Stock reorder alerts — use period sales for daily-rate calc, fall back to all-time if too short
+  // Compute days in selected period for accurate daily rate
+  let daysInWindow = 30;
+  let salesWindow = periodBills;
+  if(_curPeriod === 'today') daysInWindow = 1;
+  else if(_curPeriod === 'week') daysInWindow = 7;
+  else if(_curPeriod === 'month') daysInWindow = 30;
+  else if(_curPeriod === 'quarter') daysInWindow = 90;
+  else if(_curPeriod === 'year') daysInWindow = 365;
+  else if(_curPeriod === 'all'){
+    daysInWindow = 30; salesWindow = allBills.filter(b => new Date(b.created_at||b.invoice_date||0) > new Date(Date.now()-30*86400000));
+  }
+
+  const itemSales={};
+  salesWindow.forEach(b => {
+    _billItems(b).forEach(it => {
+      const nm = _itName(it).toLowerCase().trim();
+      if(nm) itemSales[nm] = (itemSales[nm]||0) + _itQty(it);
     });
   });
-  const reorderAlerts=products.filter(p=>{const daily=(itemSales[(p.name||'').toLowerCase()]||0)/30;if(daily<=0||!p.stock_qty)return false;p._daysLeft=Math.round(p.stock_qty/daily);p._daily=daily;return p._daysLeft<=10&&p._daysLeft>=0;}).sort((a,b)=>a._daysLeft-b._daysLeft).slice(0,5);
-  // Churn — read from correct field (customer_name, not cust_name)
-  const activeCustomers=new Set();
-  bills.filter(b=>new Date(b.created_at||b.invoice_date)>cutoff30).forEach(b=>{
-    const nm=(b.customer_name||b.cust_name||b.custName||'').trim();
-    if(nm)activeCustomers.add(nm);
+  const reorderAlerts = products.filter(p => {
+    const daily = (itemSales[(p.name||'').toLowerCase().trim()] || 0) / daysInWindow;
+    if(daily <= 0) return false;
+    p._daysLeft = Math.round((parseFloat(p.stock_qty)||0) / daily);
+    p._daily = daily;
+    return p._daysLeft <= 14 && p._daysLeft >= 0;
+  }).sort((a,b)=>a._daysLeft-b._daysLeft).slice(0,8);
+
+  // Churn risk — based on period
+  const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - daysInWindow);
+  const activeCustomers = new Set();
+  allBills.filter(b => new Date(b.created_at||b.invoice_date||0) > cutoff).forEach(b => {
+    const nm = (b.customer_name||b.cust_name||b.custName||'').trim();
+    if(nm) activeCustomers.add(nm);
   });
-  const churnList=customers.filter(c=>c.name&&!activeCustomers.has(c.name)&&c.name!=='Walk-in Customer').slice(0,5);
+  const churnList = customers.filter(c => c.name && c.name!=='Walk-in Customer' && !activeCustomers.has(c.name)).slice(0,8);
+
+  const periodLbl = ({today:'Today',week:'This Week',month:'This Month',quarter:'Quarter',year:'This Year',all:'All Time',custom:'Custom Range'})[_curPeriod]||'Period';
 
   wrap.innerHTML='<div style="padding:16px;display:flex;flex-direction:column;gap:14px">'
-    // Revenue forecast
-    +'<div style="background:var(--surf2);border:1px solid var(--bord);border-radius:16px;padding:16px"><div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><span style="font-size:22px">📈</span><div style="font-family:var(--font-h);font-size:14px;font-weight:800">Revenue Forecast</div><span style="font-size:10px;background:rgba(245,158,11,.12);color:#F59E0B;border-radius:8px;padding:2px 8px;font-weight:700">THIS MONTH</span></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px">'+months.map(m=>'<div style="background:var(--surf3);border-radius:10px;padding:10px;text-align:center"><div style="font-size:11px;color:var(--t2);margin-bottom:4px">'+m.label+'</div><div style="font-size:14px;font-weight:800;color:var(--text)">'+fINR(m.rev)+'</div></div>').join('')+'</div><div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:10px;padding:12px;text-align:center"><div style="font-size:11px;color:#F59E0B;font-weight:700;margin-bottom:4px">FORECAST — THIS MONTH</div><div style="font-size:28px;font-weight:900;font-family:var(--font-h);color:#F59E0B">'+fINR(forecast)+'</div><div style="font-size:11px;color:var(--t2);margin-top:2px">'+(trend>=0?'📈 Trending up':'📉 Trending down')+' vs last month</div></div></div>'
+    + '<div style="background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);border-radius:10px;padding:10px;font-size:11px;color:var(--t2)">📅 Period: <strong style="color:var(--text)">'+periodLbl+'</strong> — daily sales rate based on '+daysInWindow+' days</div>'
+
+    // Revenue forecast (always 3-month context)
+    + '<div style="background:var(--surf2);border:1px solid var(--bord);border-radius:16px;padding:16px"><div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><span style="font-size:22px">📈</span><div style="font-family:var(--font-h);font-size:14px;font-weight:800">Revenue Forecast</div><span style="font-size:10px;background:rgba(245,158,11,.12);color:#F59E0B;border-radius:8px;padding:2px 8px;font-weight:700">3-MONTH TREND</span></div>'
+    + '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px">' + months.map(m => '<div style="background:var(--surf3);border-radius:10px;padding:10px;text-align:center"><div style="font-size:11px;color:var(--t2);margin-bottom:4px">'+m.label+'</div><div style="font-size:14px;font-weight:800;color:var(--text)">'+fINR(m.rev)+'</div></div>').join('') + '</div>'
+    + '<div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:10px;padding:12px;text-align:center"><div style="font-size:11px;color:#F59E0B;font-weight:700;margin-bottom:4px">FORECAST — NEXT MONTH</div><div style="font-size:28px;font-weight:900;font-family:var(--font-h);color:#F59E0B">'+fINR(forecast)+'</div><div style="font-size:11px;color:var(--t2);margin-top:2px">'+(trend>=0?'📈 Trending up':'📉 Trending down')+' vs last month</div></div></div>'
+
     // Reorder alerts
-    +'<div style="background:var(--surf2);border:1px solid var(--bord);border-radius:16px;padding:16px"><div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><span style="font-size:22px">📦</span><div style="font-family:var(--font-h);font-size:14px;font-weight:800">Stock Reorder Alerts</div>'+(reorderAlerts.length>0?'<span style="font-size:10px;background:rgba(239,68,68,.12);color:var(--acc2);border-radius:8px;padding:2px 8px;font-weight:700">'+reorderAlerts.length+' URGENT</span>':'')+'</div>'+(reorderAlerts.length===0?'<div style="font-size:13px;color:var(--acc3)">✅ All products have adequate stock</div>':reorderAlerts.map(p=>'<div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:'+(p._daysLeft<=3?'rgba(239,68,68,.08)':'rgba(245,158,11,.06)')+';border-radius:10px;margin-bottom:8px;border:1px solid '+(p._daysLeft<=3?'rgba(239,68,68,.2)':'rgba(245,158,11,.15)')+'"><div><div style="font-size:13px;font-weight:700">'+(p.emoji||'📦')+' '+p.name+'</div><div style="font-size:11px;color:var(--t2)">Stock: '+p.stock_qty+' · '+p._daily.toFixed(1)+'/day</div></div><div style="text-align:right"><div style="font-size:16px;font-weight:900;color:'+(p._daysLeft<=3?'var(--acc2)':'#F59E0B')+'">'+p._daysLeft+'d</div><div style="font-size:10px;color:var(--t2)">left</div></div></div>').join(''))+'</div>'
+    + '<div style="background:var(--surf2);border:1px solid var(--bord);border-radius:16px;padding:16px"><div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><span style="font-size:22px">📦</span><div style="font-family:var(--font-h);font-size:14px;font-weight:800">Stock Reorder Alerts</div>'+(reorderAlerts.length>0?'<span style="font-size:10px;background:rgba(239,68,68,.12);color:var(--acc2);border-radius:8px;padding:2px 8px;font-weight:700">'+reorderAlerts.length+' URGENT</span>':'')+'</div>'
+    + (reorderAlerts.length===0
+       ? '<div style="font-size:13px;color:var(--acc3)">✅ All products have adequate stock for current sales rate</div>'
+       : reorderAlerts.map(p => '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:'+(p._daysLeft<=3?'rgba(239,68,68,.08)':p._daysLeft<=7?'rgba(245,158,11,.06)':'rgba(99,102,241,.05)')+';border-radius:10px;margin-bottom:8px;border:1px solid '+(p._daysLeft<=3?'rgba(239,68,68,.2)':p._daysLeft<=7?'rgba(245,158,11,.15)':'rgba(99,102,241,.15)')+'"><div><div style="font-size:13px;font-weight:700">'+(p.emoji||'📦')+' '+p.name+'</div><div style="font-size:11px;color:var(--t2)">Stock: '+p.stock_qty+' · Selling '+p._daily.toFixed(1)+'/day</div></div><div style="text-align:right"><div style="font-size:16px;font-weight:900;color:'+(p._daysLeft<=3?'var(--acc2)':p._daysLeft<=7?'#F59E0B':'#6366F1')+'">'+p._daysLeft+'d</div><div style="font-size:10px;color:var(--t2)">left</div></div></div>').join(''))
+    + '</div>'
+
     // Churn risk
-    +'<div style="background:var(--surf2);border:1px solid var(--bord);border-radius:16px;padding:16px"><div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><span style="font-size:22px">👥</span><div style="font-family:var(--font-h);font-size:14px;font-weight:800">Customer Churn Risk</div>'+(churnList.length>0?'<span style="font-size:10px;background:rgba(239,68,68,.12);color:var(--acc2);border-radius:8px;padding:2px 8px;font-weight:700">'+churnList.length+' AT RISK</span>':'')+'</div>'+(churnList.length===0?'<div style="font-size:13px;color:var(--acc3)">✅ All customers visited in 30 days</div>':churnList.map(c=>'<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--bord);font-size:13px"><span style="font-weight:600">'+c.name+'</span><span style="color:var(--acc2);font-size:11px">Not seen 30+ days</span></div>').join(''))+(churnList.length>0?'<button onclick="window.location.href=\'wa-center.html\'" style="width:100%;margin-top:12px;padding:10px;border-radius:10px;background:rgba(37,211,102,.08);border:1px solid rgba(37,211,102,.2);color:var(--acc3);font-family:var(--font-h);font-size:13px;font-weight:700;cursor:pointer">📲 Send Win-Back WhatsApp</button>':'')+'</div>'
-    +'</div>';
+    + '<div style="background:var(--surf2);border:1px solid var(--bord);border-radius:16px;padding:16px"><div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><span style="font-size:22px">👥</span><div style="font-family:var(--font-h);font-size:14px;font-weight:800">Customer Churn Risk</div>'+(churnList.length>0?'<span style="font-size:10px;background:rgba(239,68,68,.12);color:var(--acc2);border-radius:8px;padding:2px 8px;font-weight:700">'+churnList.length+' AT RISK</span>':'')+'</div>'
+    + (churnList.length===0
+       ? '<div style="font-size:13px;color:var(--acc3)">✅ All customers visited in last '+daysInWindow+' days</div>'
+       : churnList.map(c => '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--bord);font-size:13px"><span style="font-weight:600">'+c.name+'</span><span style="color:var(--acc2);font-size:11px">Not seen '+daysInWindow+'+ days</span></div>').join(''))
+    + (churnList.length>0?'<button onclick="window.location.href=\'wa-center.html\'" style="width:100%;margin-top:12px;padding:10px;border-radius:10px;background:rgba(37,211,102,.08);border:1px solid rgba(37,211,102,.2);color:var(--acc3);font-family:var(--font-h);font-size:13px;font-weight:700;cursor:pointer">📲 Send Win-Back WhatsApp</button>':'')
+    + '</div>'
+
+    + '<button class="btn-pri" onclick="_printReport(\'Forecast Report\')" style="background:linear-gradient(135deg,#6366F1,#4F46E5);margin-top:8px">🖨️ Print / Export Forecast</button>'
+    + '</div>';
 }
 
 // ══════════════════════════════════════════
