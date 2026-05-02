@@ -25,6 +25,16 @@
 </div><!DOCTYPE html>
 <html lang="en" translate="no" class="notranslate">
 <head>
+<script>
+// FIX — Pre-paint theme application (eliminates dark→light flash)
+(function(){
+  try {
+    var t = localStorage.getItem('sbp_theme');
+    if (t === 'light') document.documentElement.setAttribute('data-theme','light');
+  } catch(e) {}
+})();
+</script>
+
 <meta charset="UTF-8">
 <meta name="google" content="notranslate">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -442,7 +452,7 @@ html,body{height:100%;overflow:hidden}
     <div class="prof-hd">
       <div class="prof-pic" id="prof-pic">👑</div>
       <div>
-        <div class="prof-nm" id="prof-nm">Loading...</div>
+        <div class="prof-nm" id="prof-nm"></div>
         <div class="prof-shop" id="prof-shop">ShopBill Pro · TradeCrest Technologies</div>
         <div class="prof-badge" id="prof-badge">👑 Admin</div>
       </div>
@@ -909,6 +919,27 @@ html,body{height:100%;overflow:hidden}
 
 let _shop=null,_shopId=null,_user=null;
 let _theme=localStorage.getItem('sbp_theme')||'dark';
+// FIX — Pre-paint profile fields from localStorage so user doesn't see "Loading..." flash
+(function() {
+  try {
+    const shop = JSON.parse(localStorage.getItem('sbp_shop') || '{}');
+    const isStaff = localStorage.getItem('sbp_is_staff') === '1';
+    const role = localStorage.getItem('sbp_role') || (isStaff ? 'Cashier' : 'Admin');
+    const name = (shop.owner_name) || localStorage.getItem('sbp_user_name') || 'User';
+    const roleIcons = {Admin:'👑',Owner:'🏪',Manager:'🎯',Cashier:'💰',Viewer:'👁️',Staff:'👤'};
+    function _applyProfile(){
+      const pn = document.getElementById('prof-nm'); if(pn && !pn.textContent.trim()) pn.textContent = name;
+      const ps = document.getElementById('prof-shop'); if(ps && !ps.textContent.trim()) ps.textContent = shop.name || 'Your Shop';
+      const pp = document.getElementById('prof-pic'); if(pp && !pp.textContent.trim()) pp.textContent = roleIcons[role] || '👤';
+      const pb = document.getElementById('prof-badge'); if(pb && !pb.textContent.trim()) pb.textContent = (roleIcons[role]||'👤')+' '+role;
+    }
+    if(document.readyState === 'loading'){
+      document.addEventListener('DOMContentLoaded', _applyProfile);
+    } else {
+      _applyProfile();
+    }
+  } catch(e) {}
+})();
 let _lang=localStorage.getItem('sbp_lang')||'en';
 let _sessionTimeout=parseInt(localStorage.getItem('sbp_session_timeout')||'30');
 let _digitStyle=localStorage.getItem('sbp_digit_style')||'default';

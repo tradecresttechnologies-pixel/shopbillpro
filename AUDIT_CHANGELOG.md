@@ -287,3 +287,33 @@ The "FORECAST — NEXT MONTH" amount is intentionally a 3-month-trend prediction
 A banner now shows the active period at the top of the forecast tab to avoid confusion.
 
 **File changed:** `reports.html` (one block — query + merge logic)
+
+---
+
+## Round 6 — Screen blink on Settings & More (Apr 26)
+
+### Two visible issues
+1. Page first paints in dark mode, then JS reads `localStorage.sbp_theme === 'light'` and flips → visible dark→light flash
+2. User profile shows "Loading..." literal text until `init()` finishes Supabase session check → text content swap
+
+### Root cause
+- The `data-theme` attribute on `<html>` was being set inside `init()` (async), which runs AFTER first paint
+- Profile name placeholder ("Loading...") was the static HTML default, only overwritten after session loads
+
+### Fix
+**Pre-paint inline script in `<head>`** — runs synchronously before any paint:
+```html
+<script>
+(function(){
+  try {
+    var t = localStorage.getItem('sbp_theme');
+    if (t === 'light') document.documentElement.setAttribute('data-theme','light');
+  } catch(e) {}
+})();
+</script>
+```
+Injected into all 18 user-facing HTML files. Now the first paint already has the right theme.
+
+**Profile pre-population** in settings.html — reads `sbp_shop.owner_name`, role, etc. from localStorage immediately, populating the elements before `init()` runs. Replaced static "Loading..." HTML default with empty string.
+
+**Files changed:** All 18 HTML files (theme), settings.html (profile)
