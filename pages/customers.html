@@ -291,8 +291,6 @@ html,body{height:100%;overflow:hidden}
   <div id="offline-bar">📶 Offline — data saved locally</div>
 
   <!-- Topbar -->
-  <div id="sbpBetaBanner"></div>
-
   <div class="topbar">
     <div class="tb-l">
       <div class="back-btn" onclick="goTo('dashboard.html')">←</div>
@@ -1616,8 +1614,12 @@ async function refreshShopPlan() {
 
 /* ══ Staff Activity Tracking (Business Plan) ══ */
 function logActivity(action, detail) {
-  const plan = (JSON.parse(localStorage.getItem('sbp_shop')||'{}')).plan||'free';
-  if(plan !== 'enterprise') return;
+  // BATCH 1B-E: normalize plan name + recognize beta as full Business
+  const shop = JSON.parse(localStorage.getItem('sbp_shop')||'{}');
+  let plan = (shop.plan || 'free').toLowerCase();
+  if(plan === 'enterprise') plan = 'business';
+  const isActiveBeta = shop.is_beta_signup === true && shop.plan_expires_at && new Date(shop.plan_expires_at) > new Date();
+  if(plan !== 'business' && !isActiveBeta) return;
   const log = JSON.parse(localStorage.getItem('sbp_activity_log')||'[]');
   const entry = {
     id: Date.now(),
@@ -1633,6 +1635,5 @@ function logActivity(action, detail) {
 }
 window.logActivity = logActivity;
 </script>
-<script src="lib/beta-banner.js"></script>
 </body>
 </html>
