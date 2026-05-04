@@ -76,9 +76,18 @@ window._sb = _sb;
 
 /* ── Plan Helper ── */
 function isPro() {
+  // BATCH 1B-E: recognize business + active beta as Pro-equivalent (full features)
   const shop = JSON.parse(localStorage.getItem('sbp_shop') || '{}');
+  // Active beta signup (within active window or grace) = full features
+  if(shop.is_beta_signup === true){
+    const now = new Date();
+    const expires = shop.plan_expires_at ? new Date(shop.plan_expires_at) : null;
+    const grace   = shop.beta_grace_until ? new Date(shop.beta_grace_until) : null;
+    if(expires && expires > now) return true;
+    if(grace && grace > now) return true;
+  }
   const plan = shop.plan || 'free';
-  return plan === 'pro' || plan === 'enterprise';
+  return plan === 'pro' || plan === 'enterprise' || plan === 'business';
 }
 window.isPro = isPro;
 

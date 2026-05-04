@@ -128,7 +128,7 @@ html,body{height:100%;overflow:hidden}
       <div style="font-size:44px;margin-bottom:12px">👥</div>
       <div style="font-family:var(--font-h);font-size:17px;font-weight:800;margin-bottom:8px">Multi-User Access</div>
       <div style="font-size:13px;color:var(--t2);margin-bottom:20px;line-height:1.6">Add cashiers, managers and viewers<br>to your shop. Business plan feature.</div>
-      <button onclick="window.location.href='subscription.html'" style="padding:13px 28px;border-radius:12px;background:linear-gradient(135deg,#F59E0B,#EF4444);border:none;color:#fff;font-family:var(--font-h);font-size:14px;font-weight:700;cursor:pointer">🏭 Upgrade to Business — ₹499/month</button>
+      <button onclick="window.location.href='subscription.html'" style="padding:13px 28px;border-radius:12px;background:linear-gradient(135deg,#F59E0B,#EF4444);border:none;color:#fff;font-family:var(--font-h);font-size:14px;font-weight:700;cursor:pointer">🏭 Upgrade to Business — ₹199/month</button>
     </div>
 
     <!-- Main content (Business users only) -->
@@ -426,13 +426,19 @@ function removeUser(id){
 }
 
 async function init(){
-  const plan=JSON.parse(localStorage.getItem('sbp_shop')||'{}').plan||'free';
-  if(plan!=='enterprise'){
+  // BATCH 1B-E: normalize legacy 'enterprise' → 'business'; recognize beta signups
+  const shop = JSON.parse(localStorage.getItem('sbp_shop')||'{}');
+  let plan = (shop.plan || 'free').toLowerCase();
+  if(plan === 'enterprise') plan = 'business';
+  // Active beta = full Business features
+  const isActiveBeta = shop.is_beta_signup === true && shop.plan_expires_at && new Date(shop.plan_expires_at) > new Date();
+  const hasBusinessAccess = plan === 'business' || isActiveBeta;
+  if(!hasBusinessAccess){
     document.getElementById('biz-gate').style.display='block';
     document.getElementById('biz-content').style.display='none';
     return;
   }
-  // Show content for enterprise users
+  // Show content for Business / active-beta users
   document.getElementById('biz-gate').style.display='none';
   document.getElementById('biz-content').style.display='block';
   // Always clear form fields on load to prevent browser autofill leaking credentials

@@ -3,9 +3,11 @@
    TradeCrest Technologies Pvt. Ltd.
    Offline-first caching strategy
 
-   v1.5.3 changes (Batch 1B-E — May 2026):
-   - Refresh cache for conversion.js + upgrade-popup.js (beta-aware isPro)
-   - Refresh cache for subscription.html (beta status panel + CTA logic)
+   v1.5.3 changes (Batch 1B-E combined — May 2026):
+   - Beta-aware upsell suppression: conversion.js + upgrade-popup.js
+   - subscription.html: beta status panel + CTA logic
+   - 6 plan-name normalization fixes for stale 'enterprise' checks:
+     team.html, customers.html, dashboard.html, pos-admin.html, stock.html, supabase.js
    - All caching behavior identical to v1.5.2
 ══════════════════════════════════════════════════════════════════ */
 
