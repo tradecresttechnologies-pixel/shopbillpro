@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en" translate="no" class="notranslate">
+<head>
+<script>
+// FIX — Pre-paint theme application (eliminates dark→light flash)
+(function(){
+  try {
+    var t = localStorage.getItem('sbp_theme');
+    if (t === 'light') document.documentElement.setAttribute('data-theme','light');
+  } catch(e) {}
+})();
+</script>
+
+<meta charset="UTF-8">
+<meta name="google" content="notranslate">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#F5A623">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png?v=2">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180x180.png?v=2">
+<title>ShopBill Pro — Plans & Pricing</title>
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Noto+Sans:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+<script src="lang.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:'Noto Sans','Noto Sans Devanagari',sans-serif;-webkit-font-smoothing:antialiased;}
+:root{--acc:#F5A623;--acc2:#EF4444;--acc3:#10B981;--amber:#F59E0B;--bg:#0A0A12;--surf:#13131C;--surf2:#1C1C28;--surf3:#252534;--bord:#2A2A3A;--text:#F0EFF8;--t2:#8A8AA8;--t3:#4A4A60;--font-h:'Outfit',sans-serif;--rs:12px;--rs2:18px;--tr:.18s ease}
+[data-theme="light"]{--bg:#F0EEFF;--surf:#FFF;--surf2:#F5F2FF;--surf3:#EDE9FF;--bord:#DDD8F5;--text:#0F0E18;--t2:#5E5A7A;--t3:#A09CC0}
+body{background:var(--bg);color:var(--text);overflow-y:auto}
+#app{max-width:100%;min-height:100dvh;display:flex;flex-direction:column}
+@media(min-width:1024px){#app{margin-left:220px;max-width:calc(100vw - 220px)}}
+
+/* Topbar */
+.topbar{display:flex;align-items:center;gap:12px;padding:13px 16px;background:var(--surf);border-bottom:1px solid var(--bord);flex-shrink:0;position:sticky;top:0;z-index:50}
+.back-btn{width:34px;height:34px;border-radius:10px;background:var(--surf2);border:1px solid var(--bord);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:var(--t2);flex-shrink:0;text-decoration:none}
+.tb-title{font-family:var(--font-h);font-size:16px;font-weight:800;flex:1}
+
+/* Hero */
+.hero{text-align:center;padding:36px 20px 28px;background:linear-gradient(180deg,rgba(245,166,35,.08) 0%,transparent 100%);border-bottom:1px solid var(--bord)}
+.hero-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(245,166,35,.12);border:1px solid rgba(245,166,35,.25);border-radius:20px;padding:5px 14px;font-size:11px;font-weight:700;color:var(--acc);margin-bottom:14px;letter-spacing:.3px}
+.hero-title{font-family:var(--font-h);font-size:28px;font-weight:900;line-height:1.2;margin-bottom:10px}
+.hero-title span{background:linear-gradient(135deg,#FF8A00,#F5A623);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero-sub{font-size:14px;color:var(--t2);line-height:1.7;max-width:360px;margin:0 auto 20px}
+.billing-toggle{display:inline-flex;background:var(--surf2);border-radius:10px;padding:3px;gap:3px}
+.bill-opt{padding:7px 16px;border-radius:8px;border:none;background:transparent;color:var(--t2);font-family:var(--font-h);font-size:12px;font-weight:700;cursor:pointer;transition:var(--tr)}
+.bill-opt.on{background:var(--acc);color:#fff;box-shadow:0 2px 10px rgba(245,166,35,.4)}
+.save-badge{display:inline-block;background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.3);border-radius:20px;padding:2px 8px;font-size:10px;font-weight:700;color:var(--acc3);margin-left:6px}
+
+/* Plans */
+.plans-wrap{padding:20px 16px;display:flex;flex-direction:column;gap:16px;max-width:480px;margin:0 auto;width:100%}
+@media(min-width:768px){.plans-wrap{flex-direction:row;align-items:flex-start;max-width:900px;padding:28px 24px;gap:20px}}
+@media(min-width:1024px){.plans-wrap{max-width:820px}}
+
+.plan-card{background:var(--surf);border:1.5px solid var(--bord);border-radius:20px;overflow:hidden;flex:1;transition:var(--tr);position:relative}
+.plan-card.popular{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc),0 8px 40px rgba(245,166,35,.2)}
+.plan-card.enterprise{border-color:rgba(245,158,11,.4);box-shadow:0 8px 40px rgba(245,158,11,.08)}
+
+.popular-tag{position:absolute;top:16px;right:16px;background:linear-gradient(135deg,#F5A623,#FF8A00);color:#fff;font-family:var(--font-h);font-size:10px;font-weight:800;border-radius:20px;padding:4px 12px;letter-spacing:.5px;text-transform:uppercase}
+
+.plan-header{padding:22px 20px 18px}
+.plan-icon{font-size:32px;margin-bottom:10px}
+.plan-name{font-family:var(--font-h);font-size:20px;font-weight:900;margin-bottom:4px}
+.plan-desc{font-size:12px;color:var(--t2);line-height:1.5}
+.plan-price{margin:14px 0 4px;display:flex;align-items:baseline;gap:4px}
+.plan-price .amount{font-family:var(--font-h);font-size:38px;font-weight:900;color:var(--text)}
+.plan-price .per{font-size:13px;color:var(--t2);font-weight:500}
+.plan-price.free .amount{font-size:32px;color:var(--acc3)}
+.plan-price.pro .amount{background:linear-gradient(135deg,#FF8A00,#F5A623);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.plan-price.biz .amount{background:linear-gradient(135deg,#F59E0B,#EF4444);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.plan-per-day{font-size:11px;color:var(--t3);margin-bottom:16px}
+
+.plan-cta{display:block;width:calc(100% - 40px);margin:0 20px 20px;padding:13px;border-radius:12px;font-family:var(--font-h);font-size:14px;font-weight:700;cursor:pointer;text-align:center;border:none;transition:var(--tr);letter-spacing:.2px}
+.plan-cta.current{background:var(--surf3);color:var(--t2);border:1.5px solid var(--bord);cursor:default}
+.plan-cta.upgrade-pro{background:linear-gradient(135deg,#F5A623,#FF8A00);color:#fff;box-shadow:0 4px 20px rgba(245,166,35,.4)}
+.plan-cta.upgrade-pro:active{transform:scale(.97)}
+.plan-cta.upgrade-biz{background:linear-gradient(135deg,#F59E0B,#EF4444);color:#fff;box-shadow:0 4px 20px rgba(245,158,11,.3)}
+.plan-cta.upgrade-biz:active{transform:scale(.97)}
+
+.plan-divider{height:1px;background:var(--bord);margin:0 20px}
+.plan-features{padding:18px 20px}
+.feat-title{font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px}
+.feat-item{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;font-size:13px}
+.feat-ic{font-size:14px;flex-shrink:0;margin-top:1px}
+.feat-text{color:var(--text);line-height:1.4}
+.feat-sub{font-size:11px;color:var(--t2);display:block;margin-top:1px}
+.feat-item.locked .feat-text{color:var(--t3)}
+.feat-item.locked .feat-ic{opacity:.4}
+
+/* Comparison table */
+.compare-wrap{padding:0 16px 32px;max-width:480px;margin:0 auto;width:100%}
+@media(min-width:768px){.compare-wrap{max-width:900px;padding:0 24px 40px}}
+.compare-title{font-family:var(--font-h);font-size:18px;font-weight:800;text-align:center;margin-bottom:20px;color:var(--text)}
+.compare-table{width:100%;border-collapse:collapse;background:var(--surf);border-radius:16px;overflow:hidden;border:1px solid var(--bord)}
+.compare-table th{background:var(--surf2);padding:12px 14px;font-family:var(--font-h);font-size:12px;font-weight:700;color:var(--t2);text-align:center;border-bottom:1px solid var(--bord)}
+.compare-table th:first-child{text-align:left}
+.compare-table td{padding:11px 14px;font-size:12px;border-bottom:1px solid var(--bord);text-align:center;color:var(--t2)}
+.compare-table td:first-child{text-align:left;font-weight:600;color:var(--text)}
+.compare-table tr:last-child td{border-bottom:none}
+.compare-table tr:hover td{background:rgba(245,166,35,.03)}
+.c-yes{color:#10B981;font-size:16px}
+.c-no{color:var(--t3);font-size:14px}
+.c-pro{color:var(--acc);font-weight:700;font-size:11px}
+
+/* FAQ */
+.faq-wrap{padding:0 16px 32px;max-width:480px;margin:0 auto;width:100%}
+@media(min-width:768px){.faq-wrap{max-width:600px;padding:0 24px 40px}}
+.faq-title{font-family:var(--font-h);font-size:18px;font-weight:800;text-align:center;margin-bottom:16px}
+.faq-item{background:var(--surf);border:1px solid var(--bord);border-radius:12px;margin-bottom:8px;overflow:hidden}
+.faq-q{padding:14px 16px;font-size:13px;font-weight:700;cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none}
+.faq-q::after{content:'﹀';font-size:16px;color:var(--t2);transition:var(--tr)}
+.faq-item.open .faq-q::after{transform:rotate(180deg)}
+.faq-a{padding:0 16px;font-size:12px;color:var(--t2);line-height:1.7;max-height:0;overflow:hidden;transition:.3s ease}
+.faq-item.open .faq-a{max-height:200px;padding-bottom:14px}
+
+/* Toast */
+#toast-container{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:8px;z-index:9999;pointer-events:none}
+.toast{background:var(--surf3);color:var(--text);padding:10px 18px;border-radius:20px;font-size:13px;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.45);border:1px solid var(--bord);white-space:nowrap;max-width:calc(100vw - 40px);animation:toastIn .22s ease}
+.toast.s{background:rgba(16,185,129,.15);border-color:rgba(16,185,129,.3);color:#6EE7B7}
+.toast.e{background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.3);color:#FCA5A5}
+@keyframes toastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* Bottom nav */
+.bnav{display:flex;align-items:stretch;background:var(--surf);border-top:1px solid var(--bord);flex-shrink:0;padding-bottom:env(safe-area-inset-bottom,0px);z-index:100;position:sticky;bottom:0}
+@media(min-width:1024px){.bnav{display:none}}
+.ni{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 4px;cursor:pointer;text-decoration:none;color:var(--t2);gap:3px;min-height:56px}
+.ni-ic{font-size:20px}
+.ni-lb{font-size:10px;font-weight:600}
+.nav-fab{width:44px;height:44px;background:linear-gradient(135deg,var(--acc),#FF8A00);border-radius:14px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:24px;box-shadow:0 4px 14px rgba(245,166,35,.5)}
+
+/* Sidebar */
+#dsb{position:fixed;left:0;top:0;bottom:0;width:220px;background:var(--surf);border-right:1px solid var(--bord);display:flex;flex-direction:column;z-index:200;overflow-y:auto}
+.dsb-logo{display:flex;align-items:center;gap:10px;padding:18px 16px 12px;border-bottom:1px solid var(--bord)}
+.dsb-brand{font-family:var(--font-h);font-size:15px;font-weight:800;color:var(--acc)}
+.dsb-nav{flex:1;padding:8px;display:flex;flex-direction:column;gap:2px}
+.dsb-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;cursor:pointer;text-decoration:none;color:var(--t2);font-size:13px;font-weight:600;transition:.15s ease;white-space:nowrap;border:none;background:none;width:100%}
+.dsb-item:hover{background:var(--surf2);color:var(--text)}
+.dsb-item.active{background:rgba(245,166,35,.12);color:var(--acc)}
+.dsb-item.fab-sb{background:linear-gradient(135deg,#F5A623,#FF8A00);color:#fff;margin:4px 0 8px;font-weight:700}
+.dsb-ic{font-size:17px;width:22px;text-align:center;flex-shrink:0}
+.dsb-footer{padding:8px;border-top:1px solid var(--bord)}
+.dsb-ver{font-size:10px;color:var(--t3);text-align:center;padding:6px 0 2px}
+@media(max-width:1023px){#dsb{display:none!important}}
+
+
+@media(max-width:1023px){
+    #app{height:100dvh!important;display:flex!important;flex-direction:column!important;overflow:hidden!important}
+  .bnav{position:fixed!important;bottom:0!important;left:0!important;right:0!important;z-index:100!important}
+  .sb{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+}
+
+
+
+
+
+
+/* ══ PWA SCROLL SYSTEM ══ */
+html,body{height:100%;overflow:hidden}
+#app{height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+.sb{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:0;overscroll-behavior:contain}
+.bnav{flex-shrink:0}
+@media(min-width:1024px){
+  #app{margin-left:220px!important;max-width:calc(100vw - 220px)!important;width:calc(100vw - 220px)!important}
+  .bnav{display:none!important}
+}
+</style>
+<link rel="stylesheet" href="fix.css">
+</head>
+<body>
+<script>(function(){var ds=localStorage.getItem("sbp_digit_style")||"default";var fs=parseInt(localStorage.getItem("sbp_font_size")||"15");var fm={default:"inherit",mono:"Courier New,monospace",rounded:"DM Sans,sans-serif",sharp:"Outfit,sans-serif"};var st=document.getElementById("sbp-font-override");if(!st){st=document.createElement("style");st.id="sbp-font-override";document.head.appendChild(st);}st.textContent="body{font-size:"+fs+"px}.sc-val,.cm-val,.bc-amt,.cust-bal-val,.cms-val,.cart-total-val,.pos-item-price,.tot-row span:last-child,.gst-row span,.stat-val,.stat-num,.report-val,.bill-total,.bdoc-inv-no,.bc-inv,.lv{font-family:"+fm[ds]+"!important}";})();</script>
+<div id="app">
+  <!-- Topbar -->
+  <div id="sbpBetaBanner"></div>
+
+  <div class="topbar">
+    <a class="back-btn" onclick="history.back()">←</a>
+    <div class="tb-title">🚀 Plans & Pricing</div>
+    <div id="theme-btn" onclick="toggleTheme()" style="width:34px;height:34px;border-radius:10px;background:var(--surf2);border:1px solid var(--bord);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px">☀️</div>
+  </div>
+
+  <div class="sb">
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-badge">🏆 Trusted by Indian Shop Owners</div>
+    <div class="hero-title">Choose Your<br><span>Business Plan</span></div>
+    <div class="hero-sub" id="hero-sub">Start free. Upgrade when you're ready. No hidden charges.</div>
+    <div class="billing-toggle">
+      <button class="bill-opt on" id="bill-monthly" onclick="setBilling('monthly')">Monthly</button>
+      <button class="bill-opt" id="bill-yearly" onclick="setBilling('yearly')">Yearly <span class="save-badge">Save 20%</span></button>
+    </div>
+  </div>
+
+  <!-- Plan Cards -->
+  <div class="plans-wrap">
+
+    <!-- FREE -->
+    <div class="plan-card" id="card-free">
+      <div class="plan-header">
+        <div class="plan-icon">⚡</div>
+        <div class="plan-name">Free</div>
+        <div class="plan-desc">Full billing features, local storage only. Perfect to get started.</div>
+        <div class="plan-price free"><span class="amount">₹0</span><span class="per">/month</span></div>
+        <div class="plan-per-day">Always free · No credit card needed</div>
+      </div>
+      <button class="plan-cta current" id="free-cta">✅ Your Current Plan</button>
+      <div class="plan-divider"></div>
+      <div class="plan-features">
+        <div class="feat-title">What's Included</div>
+        <div class="feat-item"><span class="feat-ic">🧾</span><div><span class="feat-text">Unlimited GST Bills</span><span class="feat-sub">Manual + POS mode</span></div></div>
+        <div class="feat-item"><span class="feat-ic">📦</span><div><span class="feat-text">Inventory Management</span><span class="feat-sub">Products, stock, categories</span></div></div>
+        <div class="feat-item"><span class="feat-ic">👥</span><div><span class="feat-text">Customer CRM</span><span class="feat-sub">Profiles, ledger, history</span></div></div>
+        <div class="feat-item"><span class="feat-ic">💬</span><div><span class="feat-text">WhatsApp Bill Sharing</span><span class="feat-sub">Send bills via WhatsApp</span></div></div>
+        <div class="feat-item"><span class="feat-ic">📱</span><div><span class="feat-text">Local Storage Only</span><span class="feat-sub">Data saved on this device</span></div></div>
+        <div class="feat-item locked"><span class="feat-ic">☁️</span><div><span class="feat-text">No Cloud Backup</span><span class="feat-sub">Upgrade for cloud sync</span></div></div>
+        <div class="feat-item locked"><span class="feat-ic">📊</span><div><span class="feat-text">Basic Reports Only</span><span class="feat-sub">Smart insights need Pro</span></div></div>
+      </div>
+    </div>
+
+    <!-- PRO -->
+    <div class="plan-card popular" id="card-pro">
+      <div class="popular-tag">⭐ MOST POPULAR</div>
+      <div class="plan-header">
+        <div class="plan-icon">💎</div>
+        <div class="plan-name">Pro</div>
+        <div class="plan-desc">Cloud backup, smart insights, and no watermarks. Grow your business.</div>
+        <div class="plan-price pro">
+          <span class="amount" id="pro-price">₹99</span>
+          <span class="per">/month</span>
+        </div>
+        <div class="plan-per-day" id="pro-per-day">Just ₹3/day · Less than a cup of chai ☕</div>
+      </div>
+      <button class="plan-cta upgrade-pro" id="pro-cta" onclick="upgradePlan('pro')">🚀 Upgrade to Pro</button>
+      <div class="plan-divider"></div>
+      <div class="plan-features">
+        <div class="feat-title">Everything in Free, Plus</div>
+        <div class="feat-item"><span class="feat-ic">☁️</span><div><span class="feat-text">Cloud Backup & Sync</span><span class="feat-sub">Access from any device, never lose data</span></div></div>
+        <div class="feat-item"><span class="feat-ic">🔒</span><div><span class="feat-text">Business Data Security</span><span class="feat-sub">Encrypted cloud storage</span></div></div>
+        <div class="feat-item"><span class="feat-ic">📊</span><div><span class="feat-text">Smart Insights (Level 2)</span><span class="feat-sub">Rush hours, dead stock, payment patterns</span></div></div>
+        <div class="feat-item"><span class="feat-ic">🧾</span><div><span class="feat-text">No Watermark on Bills</span><span class="feat-sub">Professional invoices with your branding</span></div></div>
+        <div class="feat-item"><span class="feat-ic">📲</span><div><span class="feat-text">WhatsApp Payment Reminders</span><span class="feat-sub">Auto-remind customers with 1 tap</span></div></div>
+        <div class="feat-item"><span class="feat-ic">📋</span><div><span class="feat-text">Advanced GST Reports</span><span class="feat-sub">Export ready for CA/accountant</span></div></div>
+        <div class="feat-item"><span class="feat-ic">💬</span><div><span class="feat-text">Priority WhatsApp Support</span><span class="feat-sub">Get help within 24 hours</span></div></div>
+      </div>
+    </div>
+
+    <!-- BUSINESS -->
+    <div class="plan-card enterprise" id="card-biz">
+      <div class="plan-header">
+        <div class="plan-icon">🏭</div>
+        <div class="plan-name">Business</div>
+        <div class="plan-desc">Multi-user, advanced insights, and team management for growing shops.</div>
+        <div class="plan-price biz">
+          <span class="amount" id="biz-price">₹199</span>
+          <span class="per">/month</span>
+        </div>
+        <div class="plan-per-day" id="biz-per-day">₹7/day · Best for shops with staff</div>
+      </div>
+      <button class="plan-cta upgrade-biz" id="biz-cta" onclick="upgradePlan('biz')">🏭 Upgrade to Business</button>
+      <div class="plan-divider"></div>
+      <div class="plan-features">
+        <div class="feat-title">Everything in Pro, Plus</div>
+        <div class="feat-item"><span class="feat-ic">👥</span><div><span class="feat-text">Multi-User Access</span><span class="feat-sub">Add cashiers, managers with roles</span></div></div>
+        <div class="feat-item"><span class="feat-ic">🧠</span><div><span class="feat-text">Advanced Insights (Level 3)</span><span class="feat-sub">Stock forecasts, revenue predictions, churn alerts</span></div></div>
+        <div class="feat-item"><span class="feat-ic">📦</span><div><span class="feat-text">Stock Forecast & Reorder Alerts</span><span class="feat-sub">"Sugar will run out in 4 days"</span></div></div>
+        <div class="feat-item"><span class="feat-ic">👁</span><div><span class="feat-text">Staff Activity Tracking</span><span class="feat-sub">See who did what, when</span></div></div>
+        <div class="feat-item"><span class="feat-ic">📈</span><div><span class="feat-text">Revenue Forecasting</span><span class="feat-sub">Predict monthly sales trends</span></div></div>
+        <div class="feat-item"><span class="feat-ic">🔔</span><div><span class="feat-text">Customer Churn Alerts</span><span class="feat-sub">Know which customers stopped coming</span></div></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Comparison Table -->
+  <div class="compare-wrap">
+    <div class="compare-title">Full Feature Comparison</div>
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th>Feature</th>
+          <th>Free</th>
+          <th style="color:var(--acc)">Pro ₹99</th>
+          <th style="color:#F59E0B">Biz ₹199</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>GST Billing (Manual + POS)</td><td><span class="c-yes">✓</span></td><td><span class="c-yes">✓</span></td><td><span class="c-yes">✓</span></td></tr>
+        <tr><td>Inventory & Stock</td><td><span class="c-yes">✓</span></td><td><span class="c-yes">✓</span></td><td><span class="c-yes">✓</span></td></tr>
+        <tr><td>Customer CRM</td><td><span class="c-yes">✓</span></td><td><span class="c-yes">✓</span></td><td><span class="c-yes">✓</span></td></tr>
+        <tr><td>WhatsApp Bill Sharing</td><td><span class="c-yes">✓</span></td><td><span class="c-yes">✓</span></td><td><span class="c-yes">✓</span></td></tr>
+        <tr><td>Barcode Scanner</td><td><span class="c-yes">✓</span></td><td><span class="c-yes">✓</span></td><td><span class="c-yes">✓</span></td></tr>
+        <tr><td>Offline Mode</td><td><span class="c-yes">✓</span></td><td><span class="c-yes">✓</span></td><td><span class="c-yes">✓</span></td></tr>
+        <tr><td>Cloud Backup</td><td><span class="c-no">–</span></td><td><span class="c-yes">✓</span></td><td><span class="c-yes">✓</span></td></tr>
+        <tr><td>No Watermark on Bills</td><td><span class="c-no">–</span></td><td><span class="c-yes">✓</span></td><td><span class="c-yes">✓</span></td></tr>
+        <tr><td>Smart Insights (Level 2)</td><td><span class="c-no">–</span></td><td><span class="c-yes">✓</span></td><td><span class="c-yes">✓</span></td></tr>
+        <tr><td>Advanced GST Reports</td><td><span class="c-no">–</span></td><td><span class="c-yes">✓</span></td><td><span class="c-yes">✓</span></td></tr>
+        <tr><td>WhatsApp Payment Reminders</td><td><span class="c-no">–</span></td><td><span class="c-yes">✓</span></td><td><span class="c-yes">✓</span></td></tr>
+        <tr><td>Multi-User & Staff Roles</td><td><span class="c-no">–</span></td><td><span class="c-no">–</span></td><td><span class="c-yes">✓</span></td></tr>
+        <tr><td>Advanced Insights (Level 3)</td><td><span class="c-no">–</span></td><td><span class="c-no">–</span></td><td><span class="c-yes">✓</span></td></tr>
+        <tr><td>Stock Forecast & Reorder</td><td><span class="c-no">–</span></td><td><span class="c-no">–</span></td><td><span class="c-yes">✓</span></td></tr>
+        <tr><td>Customer Churn Alerts</td><td><span class="c-no">–</span></td><td><span class="c-no">–</span></td><td><span class="c-yes">✓</span></td></tr>
+        <tr><td>Priority Support</td><td><span class="c-no">–</span></td><td><span class="c-pro">24hr</span></td><td><span class="c-pro">Priority</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- FAQ -->
+  <div class="faq-wrap">
+    <div class="faq-title">Frequently Asked Questions</div>
+    <div class="faq-item" onclick="this.classList.toggle('open')">
+      <div class="faq-q">Can I cancel anytime?</div>
+      <div class="faq-a">Yes, cancel anytime. No long-term commitment. Your data stays safe even if you cancel — you just move back to the Free plan.</div>
+    </div>
+    <div class="faq-item" onclick="this.classList.toggle('open')">
+      <div class="faq-q">What happens to my data if I don't upgrade?</div>
+      <div class="faq-a">Your data stays safely stored on your device with the Free plan. You won't lose anything. Upgrading adds cloud backup so your data is also secured online.</div>
+    </div>
+    <div class="faq-item" onclick="this.classList.toggle('open')">
+      <div class="faq-q">Is ₹99/month for one device or all devices?</div>
+      <div class="faq-a">Pro plan covers your shop across all devices. Login from phone, tablet, or desktop — your data stays synced everywhere.</div>
+    </div>
+    <div class="faq-item" onclick="this.classList.toggle('open')">
+      <div class="faq-q">How do I pay? Is UPI accepted?</div>
+      <div class="faq-a">Yes! We accept UPI, debit card, credit card, and net banking. Payment is simple and done in under 1 minute.</div>
+    </div>
+    <div class="faq-item" onclick="this.classList.toggle('open')">
+      <div class="faq-q">क्या Hindi में support मिलेगी? (Is Hindi support available?)</div>
+      <div class="faq-a">हाँ! ShopBill Pro पूरी तरह Hindi और English दोनों में काम करता है। Settings में जाकर भाषा बदलें।</div>
+    </div>
+  </div>
+
+  </div><!-- /sb -->
+  <!-- Bottom nav -->
+  <div style="height:72px;flex-shrink:0"></div>
+  <div class="bnav">
+    <a class="ni" href="dashboard.html"><span class="ni-ic">🏠</span><span class="ni-lb">Home</span></a>
+    <a class="ni" href="bills.html"><span class="ni-ic">🧾</span><span class="ni-lb">Bills</span></a>
+    <a class="ni" href="billing.html"><div class="nav-fab">＋</div></a>
+    <a class="ni" href="customers.html"><span class="ni-ic">👥</span><span class="ni-lb">Customers</span></a>
+    <a class="ni" href="settings.html"><span class="ni-ic">⚙️</span><span class="ni-lb">Settings</span></a>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script>
+const SB_URL='https://jfqeirfrkjdkqqixivru.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmcWVpcmZya2pka3FxaXhpdnJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzNzQ4MzgsImV4cCI6MjA4OTk1MDgzOH0.akd4E0nil8ypLR4WOykkeYIL8g4uuNU6XdSVh_Y1utk';
+const _sb=supabase.createClient(SB_URL,SB_KEY,{auth:{autoRefreshToken:true,persistSession:true,detectSessionInUrl:false}});
+window._sb=_sb;
+
+let _billing='monthly';
+let _theme=localStorage.getItem('sbp_theme')||'dark';
+if(_theme==='light'){document.documentElement.setAttribute('data-theme','light');document.getElementById('theme-btn').textContent='🌙'}
+
+function toggleTheme(){_theme=_theme==='dark'?'light':'dark';localStorage.setItem('sbp_theme',_theme);document.documentElement.setAttribute('data-theme',_theme==='light'?'light':'');document.getElementById('theme-btn').textContent=_theme==='light'?'🌙':'☀️'}
+
+function toast(msg,type='',dur=3000){const c=document.getElementById('toast-container');const t=document.createElement('div');t.className='toast'+(type?' '+type:'');t.textContent=msg;c.appendChild(t);setTimeout(()=>{t.style.opacity='0';t.style.transition='.2s';setTimeout(()=>t.remove(),220)},dur)}
+
+function setBilling(type){
+  _billing=type;
+  document.getElementById('bill-monthly').classList.toggle('on',type==='monthly');
+  document.getElementById('bill-yearly').classList.toggle('on',type==='yearly');
+  const proM=99,proY=Math.round(99*12*0.8/12);
+  const bizM=199,bizY=Math.round(199*12*0.8/12);
+  if(type==='yearly'){
+    document.getElementById('pro-price').textContent='₹'+proY;
+    document.getElementById('pro-per-day').textContent='₹'+Math.round(proY/30)+'/day · Billed ₹'+(proY*12)+'/year';
+    document.getElementById('biz-price').textContent='₹'+bizY;
+    document.getElementById('biz-per-day').textContent='₹'+Math.round(bizY/30)+'/day · Billed ₹'+(bizY*12)+'/year';
+  }else{
+    document.getElementById('pro-price').textContent='₹99';
+    document.getElementById('pro-per-day').textContent='Just ₹3/day · Less than a cup of chai ☕';
+    document.getElementById('biz-price').textContent='₹199';
+    document.getElementById('biz-per-day').textContent='₹7/day · Best for shops with staff';
+  }
+}
+
+
+/* ══ Razorpay Key — Replace with your actual key ══ */
+// ════════════════════════════════════════════════════════════════
+// PAYMENT CONFIGURATION — Loaded dynamically from admin_settings table
+// Set these values in Admin Panel → Settings (admin-settings.html).
+// Until set in admin panel, fallbacks below are used.
+// ════════════════════════════════════════════════════════════════
+const SBP_PAY_CONFIG = {
+  RAZORPAY_KEY:  'rzp_test_YOUR_KEY_HERE',  // overridden by admin_settings.razorpay_key_id
+  RECEIVING_UPI: 'shopbillpro@paytm',       // overridden by admin_settings.upi_receiving_id
+  ADMIN_WA:      '919999999999'             // overridden by admin_settings.admin_whatsapp
+};
+
+// Async loader that hydrates the config from admin_settings on page load.
+// Calls public.get_admin_setting() which returns NON-SECRET values to anyone.
+// The Razorpay Key ID is non-secret (it's safe to expose); the Key Secret is
+// never sent to client, only used server-side by the webhook Edge Function.
+async function _loadAdminPaymentConfig(){
+  if(!window._sb) return;
+  try {
+    const keys = ['razorpay_key_id','upi_receiving_id','admin_whatsapp','razorpay_mode',
+                  'plan_pro_monthly','plan_pro_yearly','plan_business_monthly','plan_business_yearly'];
+    const results = await Promise.all(keys.map(k =>
+      window._sb.rpc('get_admin_setting', { p_key: k }).then(r => ({k, v: r.data}))
+    ));
+    const map = {};
+    results.forEach(r => { if(r.v) map[r.k] = r.v; });
+    if(map.razorpay_key_id) SBP_PAY_CONFIG.RAZORPAY_KEY = map.razorpay_key_id;
+    if(map.upi_receiving_id) SBP_PAY_CONFIG.RECEIVING_UPI = map.upi_receiving_id;
+    if(map.admin_whatsapp) SBP_PAY_CONFIG.ADMIN_WA = map.admin_whatsapp;
+    SBP_PAY_CONFIG._loaded = true;
+    SBP_PAY_CONFIG._mode = map.razorpay_mode || 'test';
+    SBP_PAY_CONFIG._prices = {
+      pro_monthly: parseFloat(map.plan_pro_monthly) || 99,
+      pro_yearly: parseFloat(map.plan_pro_yearly) || 999,
+      business_monthly: parseFloat(map.plan_business_monthly) || 199,
+      business_yearly: parseFloat(map.plan_business_yearly) || 1999
+    };
+    // Re-render plan UI if function exists
+    if(typeof renderPlanPrices === 'function') try{renderPlanPrices();}catch(e){}
+  } catch(e){ console.warn('Could not load admin pay config (fallback to defaults):', e.message); }
+}
+// Trigger after Supabase client is ready
+if(typeof window !== 'undefined'){
+  if(window._sb) _loadAdminPaymentConfig();
+  else window.addEventListener('DOMContentLoaded', () => setTimeout(_loadAdminPaymentConfig, 200));
+}
+const RAZORPAY_KEY = SBP_PAY_CONFIG.RAZORPAY_KEY; // legacy alias
+function getRazorpayKey(){ return SBP_PAY_CONFIG.RAZORPAY_KEY; }
+
+function upgradePlan(plan) {
+  const shop = JSON.parse(localStorage.getItem('sbp_shop') || '{}');
+  const lang = localStorage.getItem('sbp_lang') || 'en';
+  const hi = lang === 'hi';
+  const isYearly = _billing === 'yearly';
+  const monthlyAmount = plan === 'pro' ? 99 : 199;
+  const amount = isYearly ? Math.round(monthlyAmount * 12 * 0.8) : monthlyAmount;
+  const planName = plan === 'pro' ? 'Pro' : 'Business';
+  const billingLabel = isYearly ? 'Yearly' : 'Monthly';
+
+  // Show payment options modal
+  showPaymentOptionsModal(plan, amount, planName, billingLabel, shop, hi);
+}
+
+function showPaymentOptionsModal(plan, amount, planName, billingLabel, shop, hi) {
+  // Remove old modal if exists
+  const old = document.getElementById('pay-options-modal');
+  if (old) old.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'pay-options-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:9999;display:flex;align-items:flex-end;justify-content:center';
+  modal.innerHTML = `
+    <div style="background:var(--surf,#13131C);border-radius:24px 24px 0 0;width:100%;max-width:480px;padding:24px;padding-bottom:calc(24px + env(safe-area-inset-bottom))">
+      <div style="text-align:center;margin-bottom:20px">
+        <div style="font-size:32px;margin-bottom:8px">${plan==='pro'?'💎':'🏭'}</div>
+        <div style="font-family:'Outfit',sans-serif;font-size:18px;font-weight:900;color:var(--text,#F0EFF8)">${planName} Plan — ₹${amount}</div>
+        <div style="font-size:12px;color:var(--t2,#8A8AA8);margin-top:4px">${billingLabel} · Cancel anytime</div>
+      </div>
+
+      <!-- Option 1: Razorpay -->
+      <button onclick="payWithRazorpay('${plan}',${amount},'${planName}','${billingLabel}')" 
+        style="width:100%;padding:16px;border-radius:14px;background:linear-gradient(135deg,#528FF0,#3D6FCA);border:none;color:#fff;font-family:'Outfit',sans-serif;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:10px">
+        💳 Pay with Card / UPI / NetBanking
+      </button>
+
+      <!-- Option 2: Direct UPI -->
+      <button onclick="payWithDirectUPI('${plan}',${amount},'${planName}')"
+        style="width:100%;padding:16px;border-radius:14px;background:linear-gradient(135deg,#F5A623,#FF8A00);border:none;color:#0A0E1A;font-family:'Outfit',sans-serif;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:10px">
+        📲 Pay via UPI App (GPay/PhonePe/Paytm)
+      </button>
+
+      <!-- Option 3: WhatsApp -->
+      <button onclick="payViaWhatsApp('${plan}',${amount},'${planName}')"
+        style="width:100%;padding:14px;border-radius:14px;background:rgba(37,211,102,.12);border:1px solid rgba(37,211,102,.2);color:#25D366;font-family:'Outfit',sans-serif;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:16px">
+        💬 Pay & Confirm via WhatsApp
+      </button>
+
+      <button onclick="document.getElementById('pay-options-modal').remove()"
+        style="width:100%;padding:12px;border-radius:14px;background:transparent;border:none;color:var(--t2,#8A8AA8);font-size:13px;cursor:pointer">
+        Cancel
+      </button>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+function payWithRazorpay(plan, amount, planName, billingLabel) {
+  document.getElementById('pay-options-modal')?.remove();
+  const shop = JSON.parse(localStorage.getItem('sbp_shop') || '{}');
+  const lang = localStorage.getItem('sbp_lang') || 'en';
+  const hi = lang === 'hi';
+
+  if (getRazorpayKey().includes('YOUR_KEY') || !getRazorpayKey()) {
+    toast('⚠️ Razorpay key not configured yet — admin should set it in Admin Panel → Settings', 'e', 5000);
+    // Fallback to UPI
+    payWithDirectUPI(plan, amount, planName);
+    return;
+  }
+
+  const options = {
+    key: getRazorpayKey(),
+    amount: amount * 100, // paise
+    currency: 'INR',
+    name: 'ShopBill Pro',
+    description: planName + ' Plan — ' + billingLabel,
+    image: 'https://app.shopbillpro.in/icons/icon-192.png',
+    prefill: {
+      name: shop.owner_name || '',
+      email: shop.email || '',
+      contact: shop.phone || ''
+    },
+    notes: {
+      shop_id: localStorage.getItem('sbp_shop_id') || '',
+      plan: plan,
+      billing: billingLabel
+    },
+    theme: { color: '#F5A623' },
+    handler: function(response) {
+      onRazorpaySuccess(response, plan, amount, planName, billingLabel);
+    },
+    modal: {
+      ondismiss: function() {
+        toast(hi ? 'भुगतान रद्द किया' : 'Payment cancelled', 'i');
+      }
+    }
+  };
+
+  try {
+    const rzp = new Razorpay(options);
+    rzp.on('payment.failed', function(response) {
+      toast('❌ Payment failed: ' + response.error.description, 'e', 5000);
+    });
+    rzp.open();
+  } catch(e) {
+    toast('❌ Razorpay error: ' + e.message, 'e');
+    payWithDirectUPI(plan, amount, planName);
+  }
+}
+
+function payWithDirectUPI(plan, amount, planName) {
+  document.getElementById('pay-options-modal')?.remove();
+  const shopbillUPI = SBP_PAY_CONFIG.RECEIVING_UPI;
+  const note = encodeURIComponent('ShopBill ' + planName + ' Plan');
+  const upiLink = `upi://pay?pa=${shopbillUPI}&pn=ShopBill+Pro&am=${amount}&cu=INR&tn=${note}`;
+  window.location.href = upiLink;
+
+  // Show confirmation after 2s (UPI app opens)
+  setTimeout(() => showPaymentConfirmModal(plan, amount, planName), 2500);
+}
+
+function payViaWhatsApp(plan, amount, planName) {
+  document.getElementById('pay-options-modal')?.remove();
+  const shop = JSON.parse(localStorage.getItem('sbp_shop') || '{}');
+  const adminWA = SBP_PAY_CONFIG.ADMIN_WA;
+  const msg = encodeURIComponent(
+    '🚀 *Upgrade Request*\n\n' +
+    '🏪 Shop: ' + (shop.name || '') + '\n' +
+    '📧 Email: ' + (shop.email || '') + '\n' +
+    '💎 Plan: ShopBill ' + planName + '\n' +
+    '💰 Amount: ₹' + amount + '\n\n' +
+    'Please send payment details. I want to upgrade!'
+  );
+  window.open('https://wa.me/' + adminWA + '?text=' + msg, '_blank');
+  toast('💬 WhatsApp opened — send the message to upgrade', 'i', 5000);
+}
+
+async function onRazorpaySuccess(response, plan, amount, planName, billingLabel) {
+  const paymentId = response.razorpay_payment_id;
+  const orderId = response.razorpay_order_id || '';
+  const signature = response.razorpay_signature || '';
+  const shopId = localStorage.getItem('sbp_shop_id');
+  const shop = JSON.parse(localStorage.getItem('sbp_shop') || '{}');
+
+  // FIX #46 — Razorpay client callback CANNOT be trusted (spoofable). Real
+  // activation must come from server-side webhook signature verification, OR
+  // admin verification in Supabase. Until then, mark pending and let admin flip.
+  let recorded = false;
+  if (navigator.onLine && window._sb && shopId) {
+    try {
+      const expires = new Date();
+      expires.setMonth(expires.getMonth() + (billingLabel === 'Yearly' ? 12 : 1));
+      await window._sb.from('subscriptions').insert({
+        shop_id: shopId,
+        plan: plan === 'pro' ? 'pro' : 'business',
+        billing_cycle: (billingLabel || 'Monthly').toLowerCase(),
+        amount: amount,
+        status: 'pending_verification',
+        payment_method: 'razorpay',
+        payment_ref: paymentId,
+        razorpay_order_id: orderId,
+        razorpay_signature: signature,
+        expires_at: expires.toISOString(),
+        notes: 'Razorpay client callback — awaiting webhook/admin verification'
+      });
+      recorded = true;
+    } catch(e) { console.warn('Subscription record failed:', e.message); }
+  }
+  shop.pending_upgrade = { plan: plan==='pro'?'pro':'business', amount, submitted_at:new Date().toISOString(), method:'razorpay', payment_ref:paymentId };
+  localStorage.setItem('sbp_shop', JSON.stringify(shop));
+  showUpgradePending(planName, amount, recorded);
+}
+
+function showPaymentConfirmModal(plan, amount, planName) {
+  const old = document.getElementById('pay-confirm-modal');
+  if (old) old.remove();
+  const modal = document.createElement('div');
+  modal.id = 'pay-confirm-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.innerHTML = `
+    <div style="background:var(--surf,#13131C);border-radius:24px;width:100%;max-width:380px;padding:24px;text-align:center">
+      <div style="font-size:44px;margin-bottom:12px">💳</div>
+      <div style="font-family:'Outfit',sans-serif;font-size:18px;font-weight:800;margin-bottom:8px;color:var(--text,#F0EFF8)">Did you complete the payment?</div>
+      <div style="font-size:13px;color:var(--t2,#8A8AA8);margin-bottom:20px;line-height:1.6">
+        ₹${amount} to ShopBill Pro UPI<br>
+        Your plan will activate after verification.
+      </div>
+      <button onclick="confirmUPIPayment('${plan}','${planName}',${amount})" 
+        style="width:100%;padding:14px;border-radius:14px;background:linear-gradient(135deg,#10B981,#059669);border:none;color:#fff;font-family:'Outfit',sans-serif;font-size:15px;font-weight:800;cursor:pointer;margin-bottom:10px">
+        ✅ Yes, I Paid ₹${amount}
+      </button>
+      <button onclick="document.getElementById('pay-confirm-modal').remove()"
+        style="width:100%;padding:12px;border-radius:14px;background:transparent;border:none;color:var(--t2,#8A8AA8);font-size:13px;cursor:pointer">
+        Not yet, go back
+      </button>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+async function confirmUPIPayment(plan, planName, amount) {
+  document.getElementById('pay-confirm-modal')?.remove();
+  const shop = JSON.parse(localStorage.getItem('sbp_shop') || '{}');
+  const shopId = localStorage.getItem('sbp_shop_id');
+
+  let recorded = false;
+  if (navigator.onLine && window._sb && shopId) {
+    try {
+      const txnRef = 'UPI-'+Date.now()+'-'+Math.random().toString(36).slice(2,8).toUpperCase();
+      await window._sb.from('subscriptions').insert({
+        shop_id: shopId,
+        plan: plan === 'pro' ? 'pro' : 'business',
+        billing_cycle: _billing,
+        amount: amount,
+        status: 'pending_verification',
+        payment_method: 'upi',
+        payment_ref: txnRef,
+        notes: 'Manual UPI payment — awaiting admin verification'
+      });
+      recorded = true;
+    } catch(e) { console.warn('Subscription record failed:', e.message); }
+  }
+
+  // FIX #46 — DO NOT optimistically upgrade plan. User clicking "I Paid" without
+  // actually paying must NOT unlock features. Admin must verify in Supabase.
+  shop.pending_upgrade = { plan: plan==='pro'?'pro':'business', amount, submitted_at:new Date().toISOString(), method:'upi' };
+  localStorage.setItem('sbp_shop', JSON.stringify(shop));
+
+  showUpgradePending(planName, amount, recorded);
+}
+
+// New: pending-state modal — replaces optimistic success
+function showUpgradePending(planName, amount, recorded) {
+  const old = document.getElementById('upgrade-pending-modal'); if (old) old.remove();
+  const modal = document.createElement('div');
+  modal.id = 'upgrade-pending-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+  const lang = localStorage.getItem('sbp_lang') || 'en';
+  const hi = lang === 'hi';
+  modal.innerHTML = '<div style="background:var(--surf,#13131C);border-radius:24px;width:100%;max-width:380px;padding:28px;text-align:center">'
+    + '<div style="font-size:56px;margin-bottom:16px">⏳</div>'
+    + '<div style="font-family:\'Outfit\',sans-serif;font-size:20px;font-weight:900;color:var(--text,#F0EFF8);margin-bottom:10px">'
+    + (hi?'Payment Verification में है':'Payment Under Verification') + '</div>'
+    + '<div style="font-size:13px;color:var(--t2,#8A8AA8);margin-bottom:18px;line-height:1.6">'
+    + (hi
+       ? '₹'+amount+' का payment record हो गया।<br>हमारी team 2-4 ghante में verify करेगी।<br>Verify होने के बाद '+planName+' plan automatically activate हो जाएगा।'
+       : 'Your ₹'+amount+' payment has been recorded.<br>Our team will verify within 2-4 hours.<br>'+planName+' plan will auto-activate after verification.')
+    + '</div>'
+    + (!recorded ? '<div style="background:rgba(245,166,35,.1);border:1px solid rgba(245,166,35,.3);border-radius:10px;padding:10px;margin-bottom:16px;font-size:11px;color:var(--acc,#F5A623)">⚠️ '
+       + (hi?'Internet नहीं था — कृपया WhatsApp पर screenshot भेजें':'No internet — please WhatsApp us your payment screenshot') + '</div>' : '')
+    + '<button onclick="document.getElementById(\'upgrade-pending-modal\').remove();window.location.href=\'dashboard.html\'" style="width:100%;padding:14px;border-radius:14px;background:linear-gradient(135deg,#F5A623,#FF8A00);border:none;color:#0A0E1A;font-family:\'Outfit\',sans-serif;font-size:14px;font-weight:800;cursor:pointer">'
+    + (hi?'समझ गया, Dashboard पर जाएं':'Got it, go to Dashboard') + '</button>'
+    + '</div>';
+  document.body.appendChild(modal);
+}
+
+function showUpgradeSuccess(planName, paymentId, amount) {
+  const old = document.getElementById('upgrade-success-modal');
+  if (old) old.remove();
+  const modal = document.createElement('div');
+  modal.id = 'upgrade-success-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.innerHTML = `
+    <div style="background:var(--surf,#13131C);border-radius:24px;width:100%;max-width:380px;padding:28px;text-align:center">
+      <div style="font-size:56px;margin-bottom:16px">🎉</div>
+      <div style="font-family:'Outfit',sans-serif;font-size:22px;font-weight:900;background:linear-gradient(135deg,#FF8A00,#F5A623);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:8px">Welcome to ${planName}!</div>
+      <div style="font-size:13px;color:var(--t2,#8A8AA8);margin-bottom:24px;line-height:1.6">
+        Your ${planName} plan is now active 🚀<br>
+        ${paymentId !== 'UPI-PENDING' ? 'Payment ID: ' + paymentId.slice(0,20) + '...' : '⏳ Pending admin verification (2-4 hrs)'}
+      </div>
+      <div style="background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.2);border-radius:14px;padding:14px;margin-bottom:20px;text-align:left">
+        <div style="font-size:11px;font-weight:700;color:var(--acc,#F5A623);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">Now Unlocked</div>
+        ${planName==='Pro'
+          ? '<div style="font-size:12px;color:var(--text,#F0EFF8);line-height:1.8">☁️ Cloud backup & sync<br>🧠 Smart Insights Level 2<br>🧾 No watermark on bills<br>📊 Advanced GST reports</div>'
+          : '<div style="font-size:12px;color:var(--text,#F0EFF8);line-height:1.8">👥 Multi-user & staff roles<br>🔮 Revenue forecasting<br>📦 Stock reorder alerts<br>👥 Customer churn alerts</div>'
+        }
+      </div>
+      <button onclick="window.location.href='dashboard.html'" 
+        style="width:100%;padding:14px;border-radius:14px;background:linear-gradient(135deg,#F5A623,#FF8A00);border:none;color:#0A0E1A;font-family:'Outfit',sans-serif;font-size:15px;font-weight:700;cursor:pointer">
+        🚀 Go to Dashboard
+      </button>
+    </div>`;
+  document.body.appendChild(modal);
+  updatePlanUI();
+}
+
+// Update CTAs based on current plan
+function updatePlanUI(){
+  const shop=JSON.parse(localStorage.getItem('sbp_shop')||'{}');
+  const plan=shop.plan||'free';
+  if(plan==='pro'){
+    document.getElementById('pro-cta').textContent='✅ Current Plan';
+    document.getElementById('pro-cta').className='plan-cta current';
+    document.getElementById('biz-cta').textContent='⬆️ Upgrade to Business';
+    document.getElementById('free-cta').textContent='⬇️ Downgrade';
+  } else if(plan==='enterprise'||plan==='biz'){
+    document.getElementById('biz-cta').textContent='✅ Current Plan';
+    document.getElementById('biz-cta').className='plan-cta current';
+    document.getElementById('pro-cta').textContent='⬇️ Downgrade to Pro';
+    document.getElementById('free-cta').textContent='⬇️ Downgrade';
+  }
+}
+
+// Sidebar
+(function(){
+  if(window.innerWidth<1024)return;
+  var page=window.location.pathname.split('/').pop()||'dashboard.html';
+  var nav=[
+    {ic:'🏠',lb:'Dashboard',url:'dashboard.html'},
+    {ic:'🧾',lb:'New Bill',url:'billing.html',fab:true},
+    {ic:'📋',lb:'Bills',url:'bills.html'},
+    {ic:'👥',lb:'Customers',url:'customers.html'},
+    {ic:'📦',lb:'Inventory',url:'stock.html'},
+    {ic:'📊',lb:'Reports',url:'reports.html'},
+    {ic:'🛒',lb:'POS Admin',url:'pos-admin.html'},
+    {ic:'💬',lb:'WhatsApp',url:'wa-center.html'},
+    {ic:'💰',lb:'Cash Register',url:'cash-register.html'},
+    {ic:'🚚',lb:'Suppliers',url:'supplier.html'},
+    {ic:'🔄',lb:'Recurring',url:'recurring.html'},
+    {ic:'🗂️',lb:'Templates',url:'bill-templates.html'},
+    {ic:'👥',lb:'Team & Users',url:'team.html'},
+    {ic:'🚀',lb:'Plans',url:'subscription.html'},
+    {ic:'⚙️',lb:'Settings',url:'settings.html'},
+  ];
+  var sb=document.createElement('div');sb.id='dsb';
+  sb.innerHTML='<div class="dsb-logo"><svg width="22" height="24" viewBox="0 0 56 62" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M28 2L4 14V32C4 46 28 60 28 60C28 60 52 46 52 32V14L28 2Z" fill="url(#sg1)"/><rect x="18" y="18" width="20" height="26" rx="2" fill="#0A0E1A" fill-opacity=".6"/><rect x="18" y="18" width="20" height="26" rx="2" stroke="#fff" stroke-width="1.5" fill="none"/><line x1="22" y1="24" x2="34" y2="24" stroke="#F5A623" stroke-width="1.5" stroke-linecap="round"/><line x1="22" y1="28" x2="30" y2="28" stroke="rgba(255,255,255,.4)" stroke-width="1" stroke-linecap="round"/><line x1="22" y1="31" x2="32" y2="31" stroke="rgba(255,255,255,.4)" stroke-width="1" stroke-linecap="round"/><line x1="22" y1="34" x2="28" y2="34" stroke="rgba(255,255,255,.4)" stroke-width="1" stroke-linecap="round"/><circle cx="32" cy="37" r="5" fill="#F5A623"/><polyline points="30,37 31.5,38.5 34.5,35.5" fill="none" stroke="#0A0E1A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><defs><linearGradient id="sg1" x1="4" y1="2" x2="52" y2="60" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#F5A623"/><stop offset="100%" stop-color="#FF6B35"/></linearGradient></defs></svg><span class="dsb-brand">ShopBill Pro</span></div><div class="dsb-nav">'+nav.map(function(n){var c='dsb-item'+(page===n.url?' active':'')+(n.fab?' fab-sb':'');return '<a class="'+c+'" href="'+n.url+'"><span class="dsb-ic">'+n.ic+'</span><span>'+n.lb+'</span></a>';}).join('')+'</div><div class="dsb-footer"><button class="dsb-item" id="dsb-logout"><span class="dsb-ic">🚪</span><span>Logout</span></button><div class="dsb-ver">ShopBill Pro v1.0</div></div>';
+  document.body.prepend(sb);
+  document.getElementById('dsb-logout').addEventListener('click',function(){_sb.auth.signOut().then(function(){window.location.href='index.html';});});
+})();
+
+document.addEventListener('DOMContentLoaded',updatePlanUI);
+</script>
+<script src="lib/beta-banner.js"></script>
+</body>
+</html>

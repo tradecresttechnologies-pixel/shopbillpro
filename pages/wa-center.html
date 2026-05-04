@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="en" translate="no" class="notranslate">
+<head>
+<script>
+// FIX — Pre-paint theme application (eliminates dark→light flash)
+(function(){
+  try {
+    var t = localStorage.getItem('sbp_theme');
+    if (t === 'light') document.documentElement.setAttribute('data-theme','light');
+  } catch(e) {}
+})();
+</script>
+
+<meta charset="UTF-8">
+<meta name="google" content="notranslate">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#F5A623">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png?v=2">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180x180.png?v=2">
+<title>ShopBill Pro — WhatsApp Center</title>
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Noto+Sans:wght@300;400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+// FIX #3 — IST-aware date (UTC toISOString shifts -5:30 in India)
+function sbpFmt(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function sbpToday(){return sbpFmt(new Date());}
+function sbpYM(){return sbpToday().slice(0,7);}
+function sbpY(){return sbpToday().slice(0,4);}
+</script>
+
+
+
+<script src="lang.js"></script>
+<script src="conversion.js"></script>
+
+
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:'Noto Sans','Noto Sans Devanagari',sans-serif;-webkit-font-smoothing:antialiased;}
+:root{--acc:#F5A623;--acc2:#EF4444;--acc3:#10B981;--wa:#25D366;--wa2:#128C7E;--bg:#0A0A12;--surf:#13131C;--surf2:#1C1C28;--surf3:#252534;--bord:#2A2A3A;--text:#F0EFF8;--t2:#8A8AA8;--t3:#4A4A60;--font-h:'Outfit',sans-serif;--rs:12px;--rs2:18px;--tr:.18s ease;--safe-top:env(safe-area-inset-top,0px);--safe-bottom:env(safe-area-inset-bottom,0px)}
+[data-theme="light"]{--bg:#F0EEFF;--surf:#FFF;--surf2:#F5F2FF;--surf3:#EDE9FF;--bord:#DDD8F5;--text:#0F0E18;--t2:#5E5A7A;--t3:#A09CC0}
+body{background:var(--bg);color:var(--text)}
+#app{display:flex;flex-direction:column;height:100dvh;overflow:hidden}
+.sb{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;padding-top:calc(10px + var(--safe-top));background:var(--surf);border-bottom:1px solid var(--bord);flex-shrink:0;min-height:54px}
+.tb-l{display:flex;align-items:center;gap:10px;flex:1}.tb-r{display:flex;align-items:center;gap:7px}
+.tb-title{font-family:var(--font-h);font-size:17px;font-weight:800}
+.back-btn{width:34px;height:34px;border-radius:10px;background:var(--surf2);border:1px solid var(--bord);display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer;transition:var(--tr)}
+.back-btn:active{transform:scale(.93)}
+.ic-btn{width:34px;height:34px;border-radius:10px;background:var(--surf2);border:1px solid var(--bord);display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;transition:var(--tr)}
+.ic-btn:active{transform:scale(.93)}
+
+/* Sub tabs */
+.sub-tabs{display:flex;background:var(--surf);border-bottom:1px solid var(--bord);flex-shrink:0}
+.sub-tab{flex:1;padding:11px;text-align:center;cursor:pointer;font-family:var(--font-h);font-size:12px;font-weight:700;color:var(--t2);border-bottom:2.5px solid transparent;transition:var(--tr)}
+.sub-tab.on{color:var(--wa);border-bottom-color:var(--wa)}
+.sub-tab:active{background:var(--surf2)}
+
+/* Template Cards */
+.tpl-card{background:var(--surf);border:1px solid var(--bord);border-radius:var(--rs2);padding:14px;margin:0 14px 10px;transition:var(--tr)}
+.tpl-card:active{background:var(--surf2)}
+.tpl-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.tpl-title{font-family:var(--font-h);font-size:14px;font-weight:800}
+.tpl-tag{font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(37,211,102,.1);color:var(--wa);border:1px solid rgba(37,211,102,.2)}
+.tpl-preview{background:var(--surf2);border-radius:var(--rs);padding:11px;font-size:12px;color:var(--t2);line-height:1.7;margin-bottom:11px;border:1px solid var(--bord);white-space:pre-wrap;word-break:break-word;max-height:100px;overflow:hidden;position:relative}
+.tpl-preview::after{content:'';position:absolute;bottom:0;left:0;right:0;height:28px;background:linear-gradient(transparent,var(--surf2))}
+.tpl-actions{display:flex;gap:7px}
+.ta-btn{flex:1;padding:9px 6px;border-radius:var(--rs);font-family:var(--font-h);font-size:11px;font-weight:700;cursor:pointer;text-align:center;border:1.5px solid;transition:var(--tr)}
+.ta-btn:active{transform:scale(.95)}
+.ta-btn.send{background:rgba(37,211,102,.1);border-color:rgba(37,211,102,.3);color:var(--wa)}
+.ta-btn.edit{background:rgba(245,166,35,.1);border-color:rgba(245,166,35,.3);color:var(--acc)}
+.ta-btn.bulk{background:rgba(6,182,212,.1);border-color:rgba(6,182,212,.3);color:#06B6D4}
+
+/* Bulk send */
+.cust-pick-item{display:flex;align-items:center;gap:11px;padding:11px;border-radius:var(--rs);margin-bottom:6px;cursor:pointer;transition:var(--tr);background:var(--surf2);border:1.5px solid var(--bord)}
+.cust-pick-item.on{border-color:var(--wa);background:rgba(37,211,102,.06)}
+.cust-pick-item:active{transform:scale(.99)}
+.cp-av{width:38px;height:38px;border-radius:11px;color:#fff;font-family:var(--font-h);font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.cp-nm{font-family:var(--font-h);font-size:13px;font-weight:700}
+.cp-info{font-size:11px;color:var(--t2);margin-top:2px}
+.cp-check{width:22px;height:22px;border-radius:6px;border:2px solid var(--bord);display:flex;align-items:center;justify-content:center;margin-left:auto;font-size:13px;flex-shrink:0;transition:var(--tr)}
+.cust-pick-item.on .cp-check{background:var(--wa);border-color:var(--wa);color:#fff}
+
+/* Send Quick */
+.ff{margin-bottom:12px}
+.ff label{display:block;font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.ff input,.ff select,.ff textarea{width:100%;background:var(--surf2);border:1.5px solid var(--bord);border-radius:var(--rs);padding:11px 13px;color:var(--text);font-size:14px;outline:none;transition:var(--tr);appearance:none;font-family:'Noto Sans',sans-serif}
+.ff input:focus,.ff select:focus,.ff textarea:focus{border-color:var(--wa);background:var(--surf);box-shadow:0 0 0 3px rgba(37,211,102,.12)}
+.ff input::placeholder,.ff textarea::placeholder{color:var(--t3)}
+.ff textarea{resize:none;line-height:1.6}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+/* Buttons */
+.btn-wa{width:100%;padding:14px;border-radius:var(--rs);background:linear-gradient(135deg,var(--wa),var(--wa2));border:none;color:#fff;font-family:var(--font-h);font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(37,211,102,.4);display:flex;align-items:center;justify-content:center;gap:8px;transition:.2s}
+.btn-wa:active{transform:scale(.97)}
+.btn-wa:disabled{opacity:.65;cursor:not-allowed;transform:none}
+.btn-pri{width:100%;padding:14px;border-radius:var(--rs);background:linear-gradient(135deg,var(--acc),#FF8A00);border:none;color:#0A0E1A;font-family:var(--font-h);font-size:15px;font-weight:700;cursor:pointer;transition:.2s;box-shadow:0 4px 16px rgba(245,166,35,.4);display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-pri:active{transform:scale(.97)}
+.btn-sec{width:100%;padding:12px;border-radius:var(--rs);background:var(--surf2);border:1.5px solid var(--bord);color:var(--text);font-family:var(--font-h);font-size:14px;font-weight:700;cursor:pointer}
+.btn-row{display:grid;gap:8px}.btn-row.col2{grid-template-columns:1fr 1fr}
+
+/* Overlays */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:500;display:none;align-items:flex-end;backdrop-filter:blur(4px)}
+.overlay.open{display:flex;animation:fadeIn .18s ease}
+.sheet{width:100%;max-height:92dvh;background:var(--surf);border-radius:var(--rs2) var(--rs2) 0 0;padding:16px 16px calc(16px + var(--safe-bottom));overflow-y:auto;animation:slideUp .28s cubic-bezier(.4,0,.2,1)}
+.handle{width:36px;height:4px;border-radius:2px;background:var(--surf3);margin:0 auto 16px}
+.sheet-title{font-family:var(--font-h);font-size:18px;font-weight:800;margin-bottom:14px}
+
+/* WA Preview bubble */
+.wa-bubble{background:#1F2C34;border-radius:12px;padding:14px;margin:10px 0;font-size:13px;color:#E9EDEF;line-height:1.7;white-space:pre-wrap;word-break:break-word;border:1px solid #2A3942;font-family:'Noto Sans',sans-serif}
+.wa-bubble strong{color:#00A884}
+
+/* Bottom Nav */
+.bnav{display:flex;align-items:stretch;background:var(--surf);border-top:1px solid var(--bord);flex-shrink:0;padding-bottom:var(--safe-bottom);z-index:100}
+.ni{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 4px;gap:3px;cursor:pointer;transition:var(--tr);position:relative;min-height:56px;user-select:none}
+.ni-ic{font-size:20px;line-height:1}.ni-lb{font-size:10px;color:var(--t2);font-weight:600;white-space:nowrap}
+.ni.on .ni-lb{color:var(--acc)}
+.ni.on::after{content:'';position:absolute;top:0;left:20%;right:20%;height:2.5px;border-radius:0 0 4px 4px;background:var(--acc)}
+.ni:active{background:var(--surf2)}
+.nav-fab{width:48px;height:48px;border-radius:16px;background:linear-gradient(135deg,var(--acc),#FF8A00);color:#0A0E1A;font-size:22px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(245,166,35,.5);margin-bottom:4px}
+
+#toast-container{position:fixed;bottom:calc(72px + var(--safe-bottom));left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none}
+.toast{background:var(--surf3);color:var(--text);padding:10px 18px;border-radius:20px;font-size:13px;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.45);border:1px solid var(--bord);white-space:nowrap;max-width:calc(100vw - 40px);animation:toastIn .22s ease}
+.toast.s{background:rgba(37,211,102,.15);border-color:rgba(37,211,102,.3);color:var(--wa)}
+.toast.e{background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.3);color:var(--acc2)}
+.toast.i{background:rgba(245,166,35,.15);border-color:rgba(245,166,35,.3);color:#FF8A00}
+
+.empty-state{text-align:center;padding:40px 20px}
+.spacer{height:80px}
+
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+@keyframes toastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@media(min-width:640px){#app{max-width:480px;margin:0 auto;box-shadow:0 0 80px rgba(0,0,0,.6)}}
+
+/* ══ Desktop Sidebar ══ */
+#dsb{position:fixed;left:0;top:0;bottom:0;width:220px;background:var(--surf);border-right:1px solid var(--bord);display:flex;flex-direction:column;z-index:200;overflow-y:auto}
+.dsb-logo{display:flex;align-items:center;gap:10px;padding:18px 16px 12px;border-bottom:1px solid var(--bord)}
+.dsb-brand{font-family:var(--font-h);font-size:15px;font-weight:800;color:var(--acc)}
+.dsb-nav{flex:1;padding:8px;display:flex;flex-direction:column;gap:2px;overflow-y:auto}
+.dsb-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;cursor:pointer;text-decoration:none;color:var(--t2);font-size:13px;font-weight:600;transition:.15s ease;white-space:nowrap;border:none;background:none;width:100%}
+.dsb-item:hover{background:var(--surf2);color:var(--text)}
+.dsb-item.active{background:rgba(245,166,35,.12);color:var(--acc)}
+.dsb-item.fab-sb{background:linear-gradient(135deg,#F5A623,#FF8A00);color:#fff;margin:4px 0 8px;font-weight:700}
+.dsb-ic{font-size:17px;width:22px;text-align:center;flex-shrink:0}
+.dsb-footer{padding:8px;border-top:1px solid var(--bord)}
+.dsb-ver{font-size:10px;color:var(--t3);text-align:center;padding:6px 0 2px}
+@media(max-width:1023px){#dsb{display:none!important}}
+@media(min-width:640px) and (max-width:1023px){#app{max-width:600px;margin:0 auto}}
+@media(min-width:1024px){body{overflow:hidden}}}
+
+/* ══ Language ══ */
+.lang-hi{display:none!important}
+.lang-en{display:inline!important}
+html[lang="hi"] .lang-hi{display:inline!important}
+html[lang="hi"] .lang-en{display:none!important}
+
+
+
+@media(max-width:1023px){
+    #app{height:100dvh!important;display:flex!important;flex-direction:column!important;overflow:hidden!important}
+  .bnav{position:fixed!important;bottom:0!important;left:0!important;right:0!important;z-index:100!important}
+  .sb{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+}
+
+
+
+
+
+
+/* ══ PWA SCROLL SYSTEM ══ */
+html,body{height:100%;overflow:hidden}
+#app{height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+.sb{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:0;overscroll-behavior:contain}
+.bnav{flex-shrink:0}
+@media(min-width:1024px){
+  #app{margin-left:220px!important;max-width:calc(100vw - 220px)!important;width:calc(100vw - 220px)!important}
+  .bnav{display:none!important}
+}
+</style>
+<link rel="stylesheet" href="fix.css">
+</head>
+<body>
+<script>(function(){var ds=localStorage.getItem("sbp_digit_style")||"default";var fs=parseInt(localStorage.getItem("sbp_font_size")||"15");var fm={default:"inherit",mono:"Courier New,monospace",rounded:"DM Sans,sans-serif",sharp:"Outfit,sans-serif"};var st=document.getElementById("sbp-font-override");if(!st){st=document.createElement("style");st.id="sbp-font-override";document.head.appendChild(st);}st.textContent="body{font-size:"+fs+"px}.sc-val,.cm-val,.bc-amt,.cust-bal-val,.cms-val,.cart-total-val,.pos-item-price,.tot-row span:last-child,.gst-row span,.stat-val,.stat-num,.report-val,.bill-total,.bdoc-inv-no,.bc-inv,.lv{font-family:"+fm[ds]+"!important}";})();</script>
+<div id="app">
+  <div id="sbpBetaBanner"></div>
+
+  <div class="topbar">
+    <div class="tb-l">
+      <div class="back-btn" onclick="goTo('settings.html')">←</div>
+      <div class="tb-title">📲 WhatsApp Center</div>
+    </div>
+    <div class="tb-r">
+      <div class="ic-btn" onclick="toggleTheme()" id="theme-btn">☀️</div>
+    </div>
+  </div>
+
+  <div class="sub-tabs">
+    <div class="sub-tab on" id="tab-templates" onclick="showTab('templates')">📋 Templates</div>
+    <div class="sub-tab"    id="tab-quick"     onclick="showTab('quick')">⚡ Quick Send</div>
+    <div class="sub-tab"    id="tab-bulk"      onclick="showTab('bulk')">📢 Bulk Send</div>
+  </div>
+
+  <!-- ══ TEMPLATES TAB ══ -->
+  <div id="view-templates" class="sb">
+    <div style="padding:12px 14px 4px;display:flex;align-items:center;justify-content:space-between">
+      <div style="font-size:12px;color:var(--t2)">Tap <strong style="color:var(--text)"><span class="lang-en">Send</span><span class="lang-hi">भेजें</span></strong> to open any template in WhatsApp</div>
+      <div onclick="openModal('add-tpl-modal')" style="font-size:12px;color:var(--acc);font-weight:700;cursor:pointer">＋ New</div>
+    </div>
+    <div id="tpl-list" style="padding-top:8px"></div>
+    <div class="spacer"></div>
+  </div>
+
+  <!-- ══ QUICK SEND TAB ══ -->
+  <div id="view-quick" class="sb" style="display:none;padding:14px">
+    <div style="font-size:12px;color:var(--t2);margin-bottom:14px">Send a one-time custom WhatsApp message to any number</div>
+    <div class="ff"><label>Phone / WhatsApp Number *</label><input type="tel" id="qs-num" placeholder="10-digit number" maxlength="10" inputmode="tel"></div>
+    <div class="ff"><label>Or pick a customer</label>
+      <select id="qs-cust-pick" onchange="fillQSFromCustomer(this.value)">
+        <option value="">— Choose a customer —</option>
+      </select>
+    </div>
+    <div class="ff"><label>Message *</label><textarea id="qs-msg" rows="8" placeholder="Type your message here..."></textarea></div>
+    <div style="margin-bottom:10px">
+      <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Insert Quick Variable</div>
+      <div style="display:flex;gap:7px;flex-wrap:wrap" id="var-chips"></div>
+    </div>
+    <div class="wa-bubble" id="qs-preview">Message preview will appear here as you type...</div>
+    <div style="margin-top:12px">
+      <button class="btn-wa" onclick="sendQuick()">📲 Send via WhatsApp</button>
+    </div>
+    <div class="spacer"></div>
+  </div>
+
+  <!-- ══ BULK SEND TAB ══ -->
+  <div id="view-bulk" class="sb" style="display:none">
+    <div style="padding:12px 14px">
+      <div style="background:rgba(37,211,102,.06);border:1px solid rgba(37,211,102,.15);border-radius:var(--rs);padding:11px;margin-bottom:14px;font-size:12px;color:var(--t2);line-height:1.6">
+        📢 <strong style="color:var(--wa)">Bulk Send</strong> — Opens WhatsApp one by one for each selected customer. You tap Send in WhatsApp for each.
+      </div>
+
+      <!-- Filter -->
+      <div class="ff"><label>Filter Customers</label>
+        <select id="bulk-filter" onchange="loadBulkCustomers(this.value)">
+          <option value="all">All Customers</option>
+          <option value="outstanding">⚠️ Outstanding Balance</option>
+          <option value="overdue">🚨 Overdue Bills</option>
+          <option value="vip">⭐ VIP Customers</option>
+          <option value="no-bill-30">😴 No Bill in 30 Days</option>
+        </select>
+      </div>
+
+      <!-- Template Pick -->
+      <div class="ff"><label>Message Template</label>
+        <select id="bulk-tpl-pick" onchange="updateBulkPreview()">
+          <option value="">— Select a template —</option>
+        </select>
+      </div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="font-family:var(--font-h);font-size:13px;font-weight:800">Select Customers</div>
+        <div style="display:flex;gap:10px">
+          <span onclick="selectAllBulk()" style="font-size:12px;color:var(--wa);font-weight:700;cursor:pointer">Select All</span>
+          <span onclick="clearBulkSel()" style="font-size:12px;color:var(--acc2);font-weight:700;cursor:pointer">Clear</span>
+        </div>
+      </div>
+      <div id="bulk-cust-list" style="max-height:40vh;overflow-y:auto;margin-bottom:14px"></div>
+      <div id="bulk-sel-count" style="font-size:12px;color:var(--t2);margin-bottom:10px;text-align:center">0 customers selected</div>
+      <button class="btn-wa" id="bulk-send-btn" onclick="startBulkSend()">📢 Start Bulk Send (0)</button>
+    </div>
+    <div class="spacer"></div>
+  </div>
+
+  <div class="bnav">
+    <div class="ni" onclick="goTo('dashboard.html')"><span class="ni-ic">🏠</span><span class="ni-lb"><span class="lang-en">Home</span><span class="lang-hi">होम</span></span></div>
+    <div class="ni" onclick="goTo('bills.html')"><span class="ni-ic">🧾</span><span class="ni-lb"><span class="lang-en">Bills</span><span class="lang-hi">बिल</span></span></div>
+    <div class="ni" onclick="goTo('billing.html')" style="align-items:center;justify-content:center"><div class="nav-fab">＋</div></div>
+    <div class="ni" onclick="goTo('marketing.html')"><span class="ni-ic">📢</span><span class="ni-lb"><span class="lang-en">Marketing</span><span class="lang-hi">मार्केटिंग</span></span></div>
+    <div class="ni on" onclick="goTo('settings.html')"><span class="ni-ic">☰</span><span class="ni-lb"><span class="lang-en">More</span><span class="lang-hi">अधिक</span></span></div>
+  </div>
+</div>
+
+<!-- SEND TEMPLATE MODAL -->
+<div class="overlay" id="send-tpl-modal">
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="sheet-title" id="send-tpl-title">📲 Send Message</div>
+    <div class="ff"><label>Send To (WhatsApp Number)</label><input type="tel" id="send-tpl-num" placeholder="10-digit" maxlength="10" inputmode="tel"></div>
+    <div class="ff"><label>Or pick customer</label>
+      <select id="send-tpl-cust" onchange="fillTplSendFromCust(this.value)">
+        <option value="">— Choose customer —</option>
+      </select>
+    </div>
+    <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Message Preview</div>
+    <div class="wa-bubble" id="send-tpl-preview"></div>
+    <div style="margin-top:14px">
+      <button class="btn-wa" onclick="confirmSendTpl()">📲 Open in WhatsApp</button>
+    </div>
+    <button class="btn-sec" onclick="closeModal('send-tpl-modal')" style="margin-top:8px">Cancel</button>
+    <div style="height:8px"></div>
+  </div>
+</div>
+
+<!-- ADD / EDIT TEMPLATE MODAL -->
+<div class="overlay" id="add-tpl-modal">
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="sheet-title" id="add-tpl-title">➕ New Message Template</div>
+    <div class="ff"><label>Template Name *</label><input type="text" id="tpl-name-inp" placeholder="e.g. Payment Reminder"></div>
+    <div class="ff"><label>Category</label>
+      <select id="tpl-cat-inp">
+        <option>Payment Reminder</option><option>Bill Sent</option><option>Thank You</option>
+        <option>Festival Greeting</option><option>Promotion</option><option>Overdue Alert</option>
+        <option>General</option>
+      </select>
+    </div>
+    <div class="ff">
+      <label>Message Body *</label>
+      <div style="font-size:10px;color:var(--t3);margin-bottom:6px">Variables: {name} {shop} {amount} {invoice} {date} {upi} {balance}</div>
+      <textarea id="tpl-body-inp" rows="10" placeholder="Dear {name},&#10;&#10;This is a message from {shop}..."></textarea>
+    </div>
+    <div style="font-size:11px;font-weight:700;color:var(--t2);margin-bottom:8px">Live Preview</div>
+    <div class="wa-bubble" id="tpl-body-preview" style="margin-bottom:14px">Preview will appear here...</div>
+    <input type="hidden" id="tpl-edit-idx" value="-1">
+    <button class="btn-pri" onclick="saveTemplate()">✅ Save Template</button>
+    <button class="btn-sec" onclick="closeModal('add-tpl-modal')" style="margin-top:8px">Cancel</button>
+    <div style="height:8px"></div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script>
+const SB_URL='https://jfqeirfrkjdkqqixivru.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmcWVpcmZya2pka3FxaXhpdnJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzNzQ4MzgsImV4cCI6MjA4OTk1MDgzOH0.akd4E0nil8ypLR4WOykkeYIL8g4uuNU6XdSVh_Y1utk';
+const _sb=supabase.createClient(SB_URL,SB_KEY);
+
+let _theme=localStorage.getItem('sbp_theme')||'dark';
+let _shop=JSON.parse(localStorage.getItem('sbp_shop')||'{}');
+let _custs=JSON.parse(localStorage.getItem('sbp_customers')||'[]');
+let _bills=JSON.parse(localStorage.getItem('sbp_bills')||'[]');
+let _selTplIdx=-1,_selTplMsg='';
+let _bulkSelected=new Set();
+
+const SESSION_TIMEOUT=parseInt(localStorage.getItem('sbp_session_timeout')||'30');
+let _actTimer;
+function _resetTimer(){clearTimeout(_actTimer);localStorage.setItem('sbp_last_activity',Date.now().toString());_actTimer=setTimeout(async()=>{await _sb.auth.signOut();window.location.href='index.html';},SESSION_TIMEOUT*60*1000)}
+['click','touchstart','keypress','scroll'].forEach(e=>document.addEventListener(e,_resetTimer,{passive:true}));
+
+// ── Default Templates ──
+// Bilingual templates - auto-selected based on app language
+function getBilingualTemplates() {
+  const hi = (localStorage.getItem('sbp_lang')||'en') === 'hi';
+  return hi ? DEFAULT_TEMPLATES_HI : DEFAULT_TEMPLATES_EN;
+}
+
+const DEFAULT_TEMPLATES_EN=[
+  {name:'Payment Reminder',cat:'Payment Reminder',body:`Dear {name},
+
+This is a friendly reminder from *{shop}* regarding your outstanding payment.
+
+📋 Amount Due: *₹{balance}*
+📅 Please pay at your earliest convenience.
+💳 UPI ID: {upi}
+
+Thank you for your business! 🙏
+_ShopBill Pro_`},
+  {name:'Bill Sent',cat:'Bill Sent',body:`Dear {name},
+
+Your invoice from *{shop}* is ready.
+
+📋 Invoice No: *{invoice}*
+📅 Date: {date}
+💰 Amount: *₹{amount}*
+💳 Pay via UPI: {upi}
+
+Thank you! 🙏
+_ShopBill Pro_`},
+  {name:'Payment Received',cat:'Payment Received',body:`Dear {name},
+
+✅ We have received your payment of *₹{amount}* for *{shop}*.
+
+🧾 Invoice: {invoice}
+📅 Date: {date}
+
+Thank you for the prompt payment! 🙏
+_ShopBill Pro_`},
+  {name:'Overdue Alert',cat:'Overdue Alert',body:`Dear {name},
+
+⚠️ Urgent reminder from *{shop}*.
+
+Your payment of *₹{balance}* is now OVERDUE.
+
+Please pay immediately to avoid disruption.
+💳 UPI: {upi}
+
+{shop} Team 🙏`},
+  {name:'Order Confirmation',cat:'Order',body:`Dear {name},
+
+✅ Your order has been confirmed at *{shop}*!
+
+📦 Order Details: {invoice}
+💰 Total Amount: *₹{amount}*
+📅 Date: {date}
+
+We will notify you when ready. Thank you! 🙏
+_ShopBill Pro_`},
+  {name:'Credit Reminder',cat:'Credit',body:`Dear {name},
+
+A quick reminder from *{shop}*.
+
+💳 You have an outstanding credit of *₹{balance}*.
+
+Kindly settle when convenient.
+UPI: {upi}
+
+Thank you! 🙏
+_ShopBill Pro_`},
+  {name:'Festival Greeting',cat:'Greeting',body:`Dear {name},
+
+🎉 Warm wishes from *{shop}*!
+
+Wishing you and your family joy, health and prosperity this festive season! 🪔
+
+With gratitude,
+{shop} Team 🙏`},
+  {name:'New Offer',cat:'Promotion',body:`Dear {name},
+
+🎉 Special offer from *{shop}*!
+
+We have exciting new products and deals for you.
+
+Visit us or contact us to know more!
+
+{shop} Team 🙏`},
+];
+
+const DEFAULT_TEMPLATES_HI=[
+  {name:'पेमेंट रिमाइंडर',cat:'Payment Reminder',body:`प्रिय {name},
+
+*{shop}* की ओर से आपका बकाया भुगतान याद दिलाना चाहते हैं।
+
+📋 बकाया राशि: *₹{balance}*
+📅 कृपया जल्द से जल्द भुगतान करें।
+💳 UPI ID: {upi}
+
+आपके व्यापार के लिए धन्यवाद! 🙏
+_ShopBill Pro_`},
+  {name:'बिल भेजा गया',cat:'Bill Sent',body:`प्रिय {name},
+
+*{shop}* का आपका बिल तैयार है।
+
+📋 बिल नंबर: *{invoice}*
+📅 तारीख: {date}
+💰 राशि: *₹{amount}*
+💳 UPI से भुगतान करें: {upi}
+
+धन्यवाद! 🙏
+_ShopBill Pro_`},
+  {name:'पेमेंट मिला',cat:'Payment Received',body:`प्रिय {name},
+
+✅ *{shop}* को आपका ₹{amount} का भुगतान मिल गया।
+
+🧾 बिल: {invoice}
+📅 तारीख: {date}
+
+समय पर भुगतान के लिए आपका बहुत धन्यवाद! 🙏
+_ShopBill Pro_`},
+  {name:'बकाया अलर्ट',cat:'Overdue Alert',body:`प्रिय {name},
+
+⚠️ *{shop}* की ओर से जरूरी सूचना।
+
+आपका *₹{balance}* का भुगतान अब बकाया हो गया है।
+
+कृपया तुरंत भुगतान करें।
+💳 UPI: {upi}
+
+{shop} टीम 🙏`},
+  {name:'ऑर्डर कन्फर्म',cat:'Order',body:`प्रिय {name},
+
+✅ *{shop}* में आपका ऑर्डर कन्फर्म हो गया!
+
+📦 ऑर्डर: {invoice}
+💰 कुल राशि: *₹{amount}*
+📅 तारीख: {date}
+
+तैयार होने पर हम आपको सूचित करेंगे। धन्यवाद! 🙏
+_ShopBill Pro_`},
+  {name:'उधार याद दिलाना',cat:'Credit',body:`प्रिय {name},
+
+*{shop}* की ओर से एक याद दिलाना।
+
+💳 आपका *₹{balance}* उधार बकाया है।
+
+जब सुविधा हो तब चुका दें।
+UPI: {upi}
+
+धन्यवाद! 🙏
+_ShopBill Pro_`},
+  {name:'त्योहार शुभकामनाएं',cat:'Greeting',body:`प्रिय {name},
+
+🎉 *{shop}* की ओर से हार्दिक शुभकामनाएं!
+
+आपको और आपके परिवार को त्योहार की ढेर सारी शुभकामनाएं! 🪔
+
+हमारे साथ जुड़े रहने के लिए आभार,
+{shop} टीम 🙏`},
+  {name:'नया ऑफर',cat:'Promotion',body:`प्रिय {name},
+
+🎉 *{shop}* की तरफ से खास ऑफर!
+
+हमारे पास नए प्रोडक्ट और शानदार डील्स आई हैं।
+
+आज ही आएं या हमसे संपर्क करें!
+
+{shop} टीम 🙏`},
+];
+
+const DEFAULT_TEMPLATES = DEFAULT_TEMPLATES_EN;
+
+function getTemplates(){
+  // Always return bilingual templates based on current language
+  return getBilingualTemplates();
+}
+function saveTemplates(tpls){localStorage.setItem('sbp_wa_templates',JSON.stringify(tpls))}
+
+// ── Utils ──
+function goTo(p){window.location.href=p}
+function toast(msg,type='',dur=3000){const c=document.getElementById('toast-container');const t=document.createElement('div');t.className='toast'+(type?' '+type:'');t.textContent=msg;c.appendChild(t);setTimeout(()=>{t.style.opacity='0';t.style.transition='.2s';setTimeout(()=>t.remove(),220);},dur)}
+function toggleTheme(){_theme=_theme==='dark'?'light':'dark';localStorage.setItem('sbp_theme',_theme);document.documentElement.setAttribute('data-theme',_theme==='light'?'light':'');document.getElementById('theme-btn').textContent=_theme==='light'?'🌙':'☀️'}
+function openModal(id){const el=document.getElementById(id);el.classList.add('open');el.style.display='flex';el.addEventListener('click',e=>{if(e.target===el)closeModal(id);},{once:true})}
+function closeModal(id){const el=document.getElementById(id);el.classList.remove('open');el.style.display='none'}
+function fINR(n){return '₹'+(parseFloat(n)||0).toLocaleString('en-IN',{maximumFractionDigits:0})}
+function todayISO(){return sbpToday()}
+function initials(name=''){return name.split(' ').map(w=>w[0]||'').join('').substring(0,2).toUpperCase()||'??'}
+function avatarColor(s=''){const c=['#F5A623','#2563EB','#059669','#D97706','#DC2626','#0891B2','#E8940D','#65A30D'];let h=0;for(let i=0;i<s.length;i++)h=s.charCodeAt(i)+((h<<5)-h);return c[Math.abs(h)%c.length]}
+
+function fillVars(msg,cust){
+  const shop=_shop;
+  const bills=cust?_bills.filter(b=>b.customer_name===cust.name||b.customer_id===cust.id):[];
+  const lastBill=bills[0]||{};
+  return msg
+    .replace(/\{name\}/g,cust?.name||'Valued Customer')
+    .replace(/\{shop\}/g,shop.name||'Our Shop')
+    .replace(/\{amount\}/g,fINR(lastBill.grand_total||0))
+    .replace(/\{invoice\}/g,lastBill.invoice_no||'—')
+    .replace(/\{date\}/g,lastBill.invoice_date||todayISO())
+    .replace(/\{upi\}/g,shop.upi||'—')
+    .replace(/\{balance\}/g,fINR(cust?.balance||lastBill.balance_due||0))
+    .replace(/\{phone\}/g,cust?.whatsapp||cust?.phone||'—');
+}
+
+// ── Tab Switching ──
+function showTab(tab){
+  ['templates','quick','bulk'].forEach(t=>{
+    document.getElementById('tab-'+t).classList.toggle('on',t===tab);
+    document.getElementById('view-'+t).style.display=t===tab?'block':'none';
+  });
+  if(tab==='bulk')loadBulkCustomers('all');
+}
+
+// ── Templates Tab ──
+function renderTemplates(){
+  const tpls=getTemplates();
+  const el=document.getElementById('tpl-list');
+  el.innerHTML=tpls.map((t,i)=>`
+    <div class="tpl-card">
+      <div class="tpl-header">
+        <div class="tpl-title">${t.name}</div>
+        <span class="tpl-tag">${t.cat}</span>
+      </div>
+      <div class="tpl-preview">${t.body.replace(/\*/g,'').replace(/_{1,2}/g,'')}</div>
+      <div class="tpl-actions">
+        <div class="ta-btn send" onclick="openSendTpl(${i})">📲 Send</div>
+        <div class="ta-btn bulk" onclick="openBulkWithTpl(${i})">📢 Bulk</div>
+        <div class="ta-btn edit" onclick="openEditTpl(${i})">✏️ Edit</div>
+        ${i>=DEFAULT_TEMPLATES.length?`<div class="ta-btn" style="background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.3);color:var(--acc2)" onclick="deleteTpl(${i})">🗑️</div>`:''}
+      </div>
+    </div>`).join('');
+  // Also populate bulk & send template selects
+  const opts=tpls.map((t,i)=>`<option value="${i}">${t.name}</option>`).join('');
+  document.getElementById('bulk-tpl-pick').innerHTML='<option value="">— Select a template —</option>'+opts;
+}
+
+function openSendTpl(idx){
+  const tpls=getTemplates();
+  _selTplIdx=idx;_selTplMsg=tpls[idx].body;
+  document.getElementById('send-tpl-title').textContent='📲 '+tpls[idx].name;
+  document.getElementById('send-tpl-num').value='';
+  document.getElementById('send-tpl-preview').innerHTML=_selTplMsg.replace(/\*([^*]+)\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');
+  fillCustSelects();
+  openModal('send-tpl-modal');
+}
+
+function fillTplSendFromCust(val){
+  if(!val)return;
+  const c=_custs.find(x=>x.id===val||String(x.id)===val);
+  if(c){
+    document.getElementById('send-tpl-num').value=(c.whatsapp||c.phone||c.mobile||'').replace(/\D/g,'').slice(-10);
+    const filled=fillVars(_selTplMsg,c);
+    document.getElementById('send-tpl-preview').innerHTML=filled.replace(/\*([^*]+)\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');
+  }
+}
+
+function confirmSendTpl(){
+  const num=(document.getElementById('send-tpl-num').value||'').replace(/\D/g,'');
+  if(!num||num.length<10){toast('Enter a valid WhatsApp number','e');return}
+  const custId=document.getElementById('send-tpl-cust').value;
+  const cust=_custs.find(c=>c.id===custId||String(c.id)===custId);
+  const msg=fillVars(_selTplMsg,cust);
+  window.open('https://wa.me/91'+String(num).replace(/\D/g,'').slice(-10)+'?text='+encodeURIComponent(msg),'_blank');
+  closeModal('send-tpl-modal');
+  toast('📲 Opening WhatsApp...','s');
+}
+
+function openEditTpl(idx){
+  const tpls=getTemplates();const t=tpls[idx];
+  document.getElementById('add-tpl-title').textContent='✏️ Edit Template';
+  document.getElementById('tpl-name-inp').value=t.name;
+  document.getElementById('tpl-cat-inp').value=t.cat;
+  document.getElementById('tpl-body-inp').value=t.body;
+  document.getElementById('tpl-edit-idx').value=idx;
+  updateTplPreview();
+  openModal('add-tpl-modal');
+}
+
+function deleteTpl(idx){
+  if(!confirm('Delete this template?'))return;
+  const tpls=getTemplates();tpls.splice(idx,1);saveTemplates(tpls);renderTemplates();toast('🗑️ Template deleted','i');
+}
+
+function saveTemplate(){
+  const name=document.getElementById('tpl-name-inp').value.trim();
+  const body=document.getElementById('tpl-body-inp').value.trim();
+  if(!name||!body){toast('Name and message required','e');return}
+  const tpls=getTemplates();
+  const editIdx=parseInt(document.getElementById('tpl-edit-idx').value);
+  const t={name,cat:document.getElementById('tpl-cat-inp').value,body};
+  if(editIdx>=0&&editIdx<tpls.length){tpls[editIdx]=t;toast('✅ Template updated','s');}
+  else{tpls.push(t);toast('✅ Template saved','s');}
+  saveTemplates(tpls);renderTemplates();closeModal('add-tpl-modal');
+}
+
+function updateTplPreview(){
+  const body=document.getElementById('tpl-body-inp').value;
+  const preview=fillVars(body,_custs[0]);
+  document.getElementById('tpl-body-preview').innerHTML=preview.replace(/\*([^*]+)\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');
+}
+document.addEventListener('DOMContentLoaded',()=>{
+  const inp=document.getElementById('tpl-body-inp');
+  if(inp)inp.addEventListener('input',updateTplPreview);
+});
+
+// ── Quick Send ──
+function fillCustSelects(){
+  const opts='<option value="">— Choose customer —</option>'+_custs.map(c=>`<option value="${c.id}">${c.name} — ${c.whatsapp||c.phone||c.mobile||'No number'}</option>`).join('');
+  ['qs-cust-pick','send-tpl-cust','bulk'].forEach(id=>{const el=document.getElementById(id);if(el&&el.tagName==='SELECT')el.innerHTML=opts;});
+}
+
+function fillQSFromCustomer(val){
+  if(!val)return;
+  const c=_custs.find(x=>String(x.id)===val);
+  if(c)document.getElementById('qs-num').value=(c.whatsapp||c.phone||c.mobile||'').replace(/\D/g,'').slice(-10);
+  updateQSPreview();
+}
+
+function updateQSPreview(){
+  const msg=document.getElementById('qs-msg').value;
+  const el=document.getElementById('qs-preview');
+  el.innerHTML=msg?msg.replace(/\*([^*]+)\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>'):'Message preview will appear here as you type...';
+}
+
+function insertVar(v){
+  const ta=document.getElementById('qs-msg');
+  const pos=ta.selectionStart;
+  ta.value=ta.value.substring(0,pos)+'{'+v+'}'+ta.value.substring(ta.selectionEnd);
+  ta.focus();ta.setSelectionRange(pos+v.length+2,pos+v.length+2);
+  updateQSPreview();
+}
+
+function sendQuick(){
+  const num=(document.getElementById('qs-num').value||'').replace(/\D/g,'');
+  const msg=document.getElementById('qs-msg').value.trim();
+  if(!num||num.length<10){toast('Enter a valid WhatsApp number','e');return}
+  if(!msg){toast('Enter your message','e');return}
+  const custId=document.getElementById('qs-cust-pick').value;
+  const cust=_custs.find(c=>String(c.id)===custId)||{name:'Customer'};
+  const filled=fillVars(msg,cust);
+  window.open('https://wa.me/91'+String(num).replace(/\D/g,'').slice(-10)+'?text='+encodeURIComponent(filled),'_blank');
+  toast('📲 Opening WhatsApp...','s');
+}
+
+// ── Bulk Send ──
+function loadBulkCustomers(filter){
+  let list=[..._custs];
+  if(filter==='outstanding')list=list.filter(c=>parseFloat(c.balance||0)>0);
+  else if(filter==='overdue')list=list.filter(c=>_bills.some(b=>b.status==='Overdue'&&(b.customer_id===c.id||b.customer_name===c.name)));
+  else if(filter==='vip')list=list.filter(c=>c.customer_type==='VIP');
+  else if(filter==='no-bill-30'){const cutoff=sbpFmt(new Date(Date.now()-30*86400000));list=list.filter(c=>!_bills.some(b=>(b.customer_id===c.id||b.customer_name===c.name)&&(b.invoice_date||b.created_at||'')>=cutoff));}
+
+  _bulkSelected=new Set();
+  const el=document.getElementById('bulk-cust-list');
+
+  // Normalize: accept whatsapp, phone, or mobile field
+  const withContact = list.filter(c => c.whatsapp||c.phone||c.mobile);
+
+  if(!withContact.length){
+    el.innerHTML='<div style="text-align:center;padding:24px;color:var(--t2);font-size:12px">📵 No customers with phone numbers found.<br><span style="font-size:11px;margin-top:4px;display:block">Add phone numbers in the Customers section.</span></div>';
+    updateBulkCount();
+    return;
+  }
+
+  el.innerHTML=withContact.map(c=>{
+    const contact = c.whatsapp||c.phone||c.mobile||'';
+    return `
+    <div class="cust-pick-item" id="bcp-${c.id}" onclick="toggleBulkSel('${c.id}')">
+      <div class="cp-av" style="background:${avatarColor(c.name)}">${initials(c.name)}</div>
+      <div style="flex:1;min-width:0">
+        <div class="cp-nm">${c.name}</div>
+        <div class="cp-info">📱 ${contact}${parseFloat(c.balance||0)>0?' · Due: '+fINR(c.balance):''}</div>
+      </div>
+      <div class="cp-check" id="chk-${c.id}"></div>
+    </div>`;
+  }).join('');
+  updateBulkCount();
+}
+
+function toggleBulkSel(id){
+  const el=document.getElementById('bcp-'+id);
+  const chk=document.getElementById('chk-'+id);
+  if(_bulkSelected.has(id)){_bulkSelected.delete(id);el.classList.remove('on');chk.textContent='';}
+  else{_bulkSelected.add(id);el.classList.add('on');chk.textContent='✓';}
+  updateBulkCount();
+}
+function selectAllBulk(){document.querySelectorAll('[id^="bcp-"]').forEach(el=>{const id=el.id.replace('bcp-','');if(!_bulkSelected.has(id)){_bulkSelected.add(id);el.classList.add('on');document.getElementById('chk-'+id).textContent='✓';}});updateBulkCount()}
+function clearBulkSel(){_bulkSelected=new Set();document.querySelectorAll('[id^="bcp-"]').forEach(el=>{el.classList.remove('on')});document.querySelectorAll('[id^="chk-"]').forEach(el=>{el.textContent=''});updateBulkCount()}
+function updateBulkCount(){const n=_bulkSelected.size;document.getElementById('bulk-sel-count').textContent=n+' customer'+(n!==1?'s':'')+' selected';document.getElementById('bulk-send-btn').textContent='📢 Start Bulk Send ('+n+')';}
+function updateBulkPreview(){}
+function openBulkWithTpl(idx){showTab('bulk');document.getElementById('bulk-tpl-pick').value=idx;}
+
+// FIX #51 — Daily cap to protect WhatsApp number from being flagged
+var WA_BULK_DAILY_CAP = 30;
+var WA_BULK_INTERVAL_MS = 1500;
+var _waBulkAbort = false;
+function abortBulkSend(){_waBulkAbort=true;toast('🛑 Bulk send stopped','i');}
+
+async function startBulkSend(){
+  const tplIdx=document.getElementById('bulk-tpl-pick').value;
+  if(!tplIdx&&tplIdx!=='0'){toast('Select a message template first','e');return}
+  if(!_bulkSelected.size){toast('Select at least one customer','e');return}
+  const tpl=getTemplates()[parseInt(tplIdx)];
+  const ids=[..._bulkSelected];
+
+  // FIX #51 — daily cap check
+  const today = sbpToday();
+  const sentKey = 'sbp_wa_bulk_sent_'+today;
+  const sentToday = parseInt(localStorage.getItem(sentKey)||'0');
+  const remaining = Math.max(0, WA_BULK_DAILY_CAP - sentToday);
+  if(remaining <= 0){
+    toast('🛑 Daily limit reached ('+WA_BULK_DAILY_CAP+'/day). Try tomorrow to keep your WhatsApp number safe.','e',6000);
+    return;
+  }
+  if(ids.length > remaining){
+    if(!confirm('⚠️ Only '+remaining+' messages can be sent today (cap '+WA_BULK_DAILY_CAP+'/day for safety).\n\nFirst '+remaining+' will be sent. Continue?')) return;
+  }
+  const toSend = ids.slice(0, remaining);
+
+  // FIX #53 — abort flag + sequential await (mobile browsers block multiple opens)
+  _waBulkAbort = false;
+  toast('📢 Opening WhatsApp for '+toSend.length+' customer'+(toSend.length>1?'s':'')+' — tap "Send" in each tab','s',5000);
+  let sentCount = 0;
+  for(let i=0;i<toSend.length;i++){
+    if(_waBulkAbort) break;
+    if(i > 0) await new Promise(r=>setTimeout(r, WA_BULK_INTERVAL_MS));
+    const id = toSend[i];
+    const c=_custs.find(x=>String(x.id)===id);if(!c)continue;
+    const num=String(c.whatsapp||c.phone||c.mobile||'').replace(/\D/g,'').slice(-10);
+    if(num.length<10) continue;
+    const msg=fillVars(tpl.body,c);
+    window.open('https://wa.me/91'+num+'?text='+encodeURIComponent(msg),'_blank');
+    sentCount++;
+  }
+  localStorage.setItem(sentKey, String(sentToday + sentCount));
+}
+
+// ── Init ──
+async function init(){
+  if(_theme==='light'){document.documentElement.setAttribute('data-theme','light');document.getElementById('theme-btn').textContent='🌙'}
+  const{data:{session}}=await _sb.auth.getSession();
+  if(!session){window.location.href='index.html';return}
+  _resetTimer();
+
+  // Load fresh customers
+  const shopId=localStorage.getItem('sbp_shop_id');
+  if(navigator.onLine&&shopId){
+    try{const{data}=await _sb.from('customers').select('*').eq('shop_id',shopId).order('name');if(data&&data.length){_custs=data;localStorage.setItem('sbp_customers',JSON.stringify(_custs));}}catch(e){}
+    try{const{data}=await _sb.from('bills').select('id,invoice_no,invoice_date,customer_name,customer_id,customer_wa,grand_total,balance_due,gst_amount,status,paid_amount').eq('shop_id',shopId).order('created_at',{ascending:false}).limit(200);if(data){_bills=data;localStorage.setItem('sbp_bills',JSON.stringify(_bills));}}catch(e){}
+  }
+
+  // Fallback: if customers list is empty, extract unique customers from bills
+  if(!_custs.length){
+    const seen=new Set();
+    _bills.forEach(b=>{
+      const name=b.customer_name||'';
+      const phone=(b.customer_wa||b.customer_phone||'').replace(/\D/g,'');
+      if(name&&name!=='Walk-in Customer'&&name!=='Cash Customer'&&!seen.has(name)){
+        seen.add(name);
+        _custs.push({
+          id:'bill_'+seen.size,
+          name,
+          phone,
+          whatsapp:phone,
+          mobile:phone,
+          balance:0
+        });
+      }
+    });
+    if(_custs.length) toast(`👥 ${_custs.length} customers loaded from bills`,'s',2500);
+  }
+
+  renderTemplates();
+  fillCustSelects();
+
+  // Quick send setup
+  const vars=['name','shop','amount','invoice','date','upi','balance'];
+  const vc=document.getElementById('var-chips');
+  vc.innerHTML=vars.map(v=>`<div onclick="insertVar('${v}')" style="padding:5px 12px;border-radius:20px;border:1.5px solid var(--bord);background:var(--surf2);color:var(--acc);font-size:11px;font-weight:700;cursor:pointer;user-select:none">{${v}}</div>`).join('');
+  const qsMsg=document.getElementById('qs-msg');
+  if(qsMsg)qsMsg.addEventListener('input',updateQSPreview);
+}
+init();
+
+(function(){
+  if(window.innerWidth<1024)return;
+  var page=window.location.pathname.split('/').pop()||'dashboard.html';
+  var nav=[
+    {ic:'🏠',lb:'Dashboard',url:'dashboard.html'},
+    {ic:'🧾',lb:'New Bill',url:'billing.html',fab:true},
+    {ic:'📋',lb:'Bills',url:'bills.html'},
+    {ic:'👥',lb:'Customers',url:'customers.html'},
+    {ic:'📦',lb:'Inventory',url:'stock.html'},
+    {ic:'📊',lb:'Reports',url:'reports.html'},
+    {ic:'🛒',lb:'POS Admin',url:'pos-admin.html'},
+    {ic:'💬',lb:'WhatsApp',url:'wa-center.html'},
+    {ic:'📢',lb:'Marketing',url:'marketing.html'},
+    {ic:'💰',lb:'Cash Register',url:'cash-register.html'},
+    {ic:'🚚',lb:'Suppliers',url:'supplier.html'},
+    {ic:'🔄',lb:'Recurring',url:'recurring.html'},
+    {ic:'🗂️',lb:'Templates',url:'bill-templates.html'},
+    {ic:'👥',lb:'Team & Users',url:'team.html'},
+    {ic:'🚀',lb:'Plans & Pricing',url:'subscription.html'},
+    {ic:'⚙️',lb:'Settings',url:'settings.html'},
+  ];
+  var sb=document.createElement('div');sb.id='dsb';
+  sb.innerHTML='<div class="dsb-logo"><svg width="22" height="24" viewBox="0 0 56 62" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M28 2L4 14V32C4 46 28 60 28 60C28 60 52 46 52 32V14L28 2Z" fill="url(#sg1)"/><rect x="18" y="18" width="20" height="26" rx="2" fill="#0A0E1A" fill-opacity=".6"/><rect x="18" y="18" width="20" height="26" rx="2" stroke="#fff" stroke-width="1.5" fill="none"/><line x1="22" y1="24" x2="34" y2="24" stroke="#F5A623" stroke-width="1.5" stroke-linecap="round"/><line x1="22" y1="28" x2="30" y2="28" stroke="rgba(255,255,255,.4)" stroke-width="1" stroke-linecap="round"/><line x1="22" y1="31" x2="32" y2="31" stroke="rgba(255,255,255,.4)" stroke-width="1" stroke-linecap="round"/><line x1="22" y1="34" x2="28" y2="34" stroke="rgba(255,255,255,.4)" stroke-width="1" stroke-linecap="round"/><circle cx="32" cy="37" r="5" fill="#F5A623"/><polyline points="30,37 31.5,38.5 34.5,35.5" fill="none" stroke="#0A0E1A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><defs><linearGradient id="sg1" x1="4" y1="2" x2="52" y2="60" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#F5A623"/><stop offset="100%" stop-color="#FF6B35"/></linearGradient></defs></svg><span class="dsb-brand">ShopBill Pro</span></div><div class="dsb-nav">'+nav.map(function(n){var c='dsb-item'+(page===n.url?' active':'')+(n.fab?' fab-sb':'');return '<a class="'+c+'" href="'+n.url+'"><span class="dsb-ic">'+n.ic+'</span><span>'+n.lb+'</span></a>';}).join('')+'</div><div class="dsb-footer"><button class="dsb-item" id="dsb-logout"><span class="dsb-ic">🚪</span><span>Logout</span></button><div class="dsb-ver">ShopBill Pro v1.0</div></div>';
+  document.body.prepend(sb);
+  document.getElementById('dsb-logout').addEventListener('click',function(){
+    if(window._sb)window._sb.auth.signOut().then(function(){window.location.href='index.html';});
+    else window.location.href='index.html';
+  });
+})();
+(function(){document.documentElement.lang=localStorage.getItem('sbp_lang')||'en';})();
+</script>
+<script src="lib/beta-banner.js"></script>
+</body>
+</html>
