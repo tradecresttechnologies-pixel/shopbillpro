@@ -25,6 +25,8 @@
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Noto+Sans:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<!-- Batch 1B-D: shop-type signup wizard -->
+<script src="lib/shop-type-wizard.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;font-family:'Noto Sans','Noto Sans Devanagari',sans-serif;-webkit-font-smoothing:antialiased}
@@ -381,6 +383,10 @@ const SB_URL = 'https://jfqeirfrkjdkqqixivru.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmcWVpcmZya2pka3FxaXhpdnJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzNzQ4MzgsImV4cCI6MjA4OTk1MDgzOH0.akd4E0nil8ypLR4WOykkeYIL8g4uuNU6XdSVh_Y1utk';
 const _sb = supabase.createClient(SB_URL, SB_KEY);
 
+// Batch 1B-D: expose Supabase config to wizard library (it reads these globals)
+window.SBP_SUPABASE_URL = SB_URL;
+window.SBP_SUPABASE_KEY = SB_KEY;
+
 let _lang  = localStorage.getItem('sbp_lang')  || 'en';
 let _theme = localStorage.getItem('sbp_theme') || 'dark';
 let _tab   = 'login';
@@ -657,6 +663,38 @@ async function doLogin(prefix){
   }catch(err){toast('❌ '+err.message,'e');setLoading(p+'-login-btn',false);}
 }
 
+/* ── BATCH 1B-D: SHOP-TYPE WIZARD HELPER ──
+   Promise wrapper around the callback-style SBPWizard.open() API.
+   Returns { category, macro, otherText?, skipped }. Always resolves —
+   never rejects. Falls back to general_retail if wizard fails to load. */
+async function pickShopType(){
+  return new Promise(function(resolve){
+    if(typeof SBPWizard === 'undefined' || typeof SBPWizard.open !== 'function'){
+      console.warn('[1B-D] SBPWizard not loaded — defaulting shop_type=general_retail');
+      resolve({ category: 'general_retail', macro: null, skipped: true });
+      return;
+    }
+    try {
+      SBPWizard.open({
+        onSelect: function(catCode, macroCode, extras){
+          resolve({
+            category: catCode || 'general_retail',
+            macro: macroCode || null,
+            otherText: (extras && extras.otherText) || null,
+            skipped: false
+          });
+        },
+        onSkip: function(){
+          resolve({ category: 'general_retail', macro: null, skipped: true });
+        }
+      });
+    } catch(e){
+      console.warn('[1B-D] SBPWizard.open threw — defaulting shop_type=general_retail', e);
+      resolve({ category: 'general_retail', macro: null, skipped: true });
+    }
+  });
+}
+
 /* ── SIGNUP ── */
 async function doSignup(prefix){
   const p=prefix||'mob';
@@ -702,18 +740,42 @@ async function doSignup(prefix){
       const { data: full } = await _sb.from('shops').select('*').eq('id', existingShops[0].id).single();
       shopRow = full;
     } else {
+      // Batch 1B-D: ask new shopkeeper their business type via wizard
+      // Always returns (skip falls back to general_retail). Beta plan is applied after.
+      const wizResult = await pickShopType();
+      if(wizResult.otherText){
+        // Wizard already stashes "Other" requests in localStorage for follow-up — log here too
+        console.log('[1B-D] new signup picked Other:', wizResult.otherText);
+      }
+
       const{data:newShop,error:shopErr}=await _sb.from('shops').insert({
         owner_id:userId,name:shop,owner_name:name,phone:phone||'',email,
-        invoice_prefix:'INV',invoice_counter:1
+        invoice_prefix:'INV',invoice_counter:1,
+        shop_type: wizResult.category || 'general_retail'
       }).select().single();
       if(shopErr){
         localStorage.setItem('sbp_pending_shop', JSON.stringify({
           name:shop, owner_name:name, phone:phone||'', email, role,
-          invoice_prefix:'INV', invoice_counter:1
+          invoice_prefix:'INV', invoice_counter:1,
+          shop_type: wizResult.category || 'general_retail'
         }));
         console.warn('Shop insert failed (likely RLS / email confirm):', shopErr.message);
       } else {
         shopRow = newShop;
+
+        // Batch 1B-D: apply 60-day beta plan via RPC.
+        // Idempotent. Skips silently if beta_mode_active=false in admin_settings.
+        // Returns updated shop row so we get is_beta_signup=true, plan_expires_at, etc.
+        try {
+          const { data: betaShop, error: betaErr } = await _sb.rpc('apply_beta_plan', { p_shop_id: newShop.id });
+          if(!betaErr && betaShop){
+            shopRow = betaShop;
+          } else if(betaErr){
+            console.warn('[1B-D] apply_beta_plan failed (non-fatal):', betaErr.message);
+          }
+        } catch(e){
+          console.warn('[1B-D] apply_beta_plan threw (non-fatal):', e);
+        }
       }
     }
 
