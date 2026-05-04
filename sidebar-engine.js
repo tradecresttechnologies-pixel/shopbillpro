@@ -40,6 +40,9 @@ window.SBPSidebar = (function() {
     { code: 'customers', href: 'customers.html', icon: '👥', label_en: 'Customers',label_hi: 'ग्राहक',    order: 30 },
     { code: 'stock',     href: 'stock.html',     icon: '📦', label_en: 'Stock',    label_hi: 'स्टॉक',     order: 40 },
     { code: 'reports',   href: 'reports.html',   icon: '📊', label_en: 'Reports',  label_hi: 'रिपोर्ट',   order: 50 },
+    // BATCH 1B-C-Pilot: POS Admin + Bill Templates promoted to universal core (every shop has these)
+    { code: 'pos-admin', href: 'pos-admin.html', icon: '🛒', label_en: 'POS Admin', label_hi: 'POS एडमिन', order: 55 },
+    { code: 'bill-templates', href: 'bill-templates.html', icon: '🗂️', label_en: 'Templates', label_hi: 'टेम्पलेट', order: 135 },
     // BATCH 1B-C: 'settings' is "More" on mobile bnav (5-slot overflow), "Settings" on desktop side rail
     { code: 'settings',  href: 'settings.html',  icon: '⚙️', label_en: 'Settings', label_hi: 'सेटिंग्स',  order: 200, mobileLabel_en: 'More', mobileLabel_hi: 'अधिक', mobileIcon: '☰' },
   ];
@@ -162,7 +165,12 @@ window.SBPSidebar = (function() {
         active: m.module_code === currentPage,
       });
     });
-    items.sort((a, b) => (a.order || 999) - (b.order || 999));
+    // BATCH 1B-C-Pilot: fix falsy-0 bug — Home has order:0 which || treats as undefined
+    items.sort((a, b) => {
+      const oa = (a.order === undefined || a.order === null) ? 999 : a.order;
+      const ob = (b.order === undefined || b.order === null) ? 999 : b.order;
+      return oa - ob;
+    });
     return items;
   }
 

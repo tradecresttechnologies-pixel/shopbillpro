@@ -48,6 +48,8 @@ function sbpY(){return sbpToday().slice(0,4);}
 
 <script src="lang.js"></script>
 <script src="conversion.js"></script>
+<!-- BATCH 1B-C-Pilot: smart sidebar engine -->
+<script src="lib/sidebar-engine.js"></script>
 
 
 <script>
@@ -1189,39 +1191,15 @@ async function init() {
 
 init();
 
-/* ══ Desktop Sidebar ══ */
-(function(){
-  if(window.innerWidth<1024)return;
-  var page=(window.location.pathname.split('/').pop()||'dashboard.html');
-  var nav=[
-    {ic:'🏠',lb:'Dashboard',    url:'dashboard.html'},
-    {ic:'🧾',lb:'New Bill',     url:'billing.html',    fab:true},
-    {ic:'📋',lb:'Bills',        url:'bills.html'},
-    {ic:'👥',lb:'Customers',    url:'customers.html'},
-    {ic:'📦',lb:'Inventory',    url:'stock.html'},
-    {ic:'📊',lb:'Reports',      url:'reports.html'},
-    {ic:'🛒',lb:'POS Admin',    url:'pos-admin.html'},
-    {ic:'💬',lb:'WhatsApp',     url:'wa-center.html'},{ic:'📢',lb:'Marketing',     url:'marketing.html'},
-    {ic:'💰',lb:'Cash Register',url:'cash-register.html'},
-    {ic:'🚚',lb:'Suppliers',    url:'supplier.html'},
-    {ic:'🔄',lb:'Recurring',    url:'recurring.html'},
-    {ic:'🗂️',lb:'Bill Templates',url:'bill-templates.html'},
-    {ic:'👥',lb:'Team & Users',url:'team.html'},
-    {ic:'🚀',lb:'Plans & Pricing',url:'subscription.html'},,
-    {ic:'⚙️',lb:'Settings',     url:'settings.html'},
-  ];
-  var sb=document.createElement('div');
-  sb.id='dsb';
-  sb.innerHTML='<div class="dsb-logo"><svg width="22" height="24" viewBox="0 0 56 62" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M28 2L4 14V32C4 46 28 60 28 60C28 60 52 46 52 32V14L28 2Z" fill="url(#sg1)"/><rect x="18" y="18" width="20" height="26" rx="2" fill="#0A0E1A" fill-opacity=".6"/><rect x="18" y="18" width="20" height="26" rx="2" stroke="#fff" stroke-width="1.5" fill="none"/><line x1="22" y1="24" x2="34" y2="24" stroke="#F5A623" stroke-width="1.5" stroke-linecap="round"/><line x1="22" y1="28" x2="30" y2="28" stroke="rgba(255,255,255,.4)" stroke-width="1" stroke-linecap="round"/><line x1="22" y1="31" x2="32" y2="31" stroke="rgba(255,255,255,.4)" stroke-width="1" stroke-linecap="round"/><line x1="22" y1="34" x2="28" y2="34" stroke="rgba(255,255,255,.4)" stroke-width="1" stroke-linecap="round"/><circle cx="32" cy="37" r="5" fill="#F5A623"/><polyline points="30,37 31.5,38.5 34.5,35.5" fill="none" stroke="#0A0E1A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><defs><linearGradient id="sg1" x1="4" y1="2" x2="52" y2="60" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#F5A623"/><stop offset="100%" stop-color="#FF6B35"/></linearGradient></defs></svg><span class="dsb-brand">ShopBill Pro</span></div>'
-    +'<div class="dsb-nav">'
-    +nav.map(function(n){
-      var cls='dsb-item'+(page===n.url?' active':'')+(n.fab?' fab-sb':'');
-      return '<a class="'+cls+'" href="'+n.url+'"><span class="dsb-ic">'+n.ic+'</span><span>'+n.lb+'</span></a>';
-    }).join('')
-    +'</div>'
-    +'<div class="dsb-footer"><button class="dsb-item" id="dsb-logout-btn"><span class="dsb-ic">🚪</span><span>Logout</span></button><div class="dsb-ver">ShopBill Pro v1.0</div></div>';
-  document.body.prepend(sb);
-})();
+/* ══ Desktop Sidebar — BATCH 1B-C-Pilot: now driven by lib/sidebar-engine.js ══ */
+/* Previous inline 35-line IIFE replaced by single render call below.          */
+/* Lib auto-mounts <div id="dsb">, handles desktop/mobile widths, renders      */
+/* universal core + vertical modules per shop_type, and wires logout button.   */
+if (window.SBPSidebar && typeof window.SBPSidebar.render === 'function') {
+  window.SBPSidebar.render({ layout: 'desktop', currentPage: 'dashboard' });
+} else {
+  console.warn('[1B-C-Pilot] SBPSidebar lib not loaded — sidebar will not render');
+}
 
 /* ══ Plan Usage Banner ══ */
 function showPlanBanner() {
@@ -1251,14 +1229,7 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-/* Fix sidebar logout */
-document.addEventListener('DOMContentLoaded', function(){
-  var lb = document.getElementById('dsb-logout-btn');
-  if(lb) lb.addEventListener('click', function(){
-    if(window._sb){ window._sb.auth.signOut().then(function(){ window.location.href='index.html'; }); }
-    else { window.location.href='index.html'; }
-  });
-});
+/* BATCH 1B-C-Pilot: removed dangling dsb-logout-btn listener — lib wires logout via dsb-logout id */
 
 (function(){
   function updateDashStorage(){
