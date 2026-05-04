@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en" translate="no" class="notranslate">
+<head>
+  <meta charset="UTF-8">
+  <meta name="google" content="notranslate">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png?v=2">
+  <title>SEO Pages — Admin</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Outfit',sans-serif;background:#0A0A12;color:#F0EFF8}
+    .layout{display:flex;min-height:100vh}
+    .sidebar{width:280px;background:rgba(19,19,28,.8);backdrop-filter:blur(10px);border-right:1px solid rgba(124,58,237,.2);padding:24px;position:fixed;height:100vh;overflow-y:auto;left:0;top:0}
+    .main{flex:1;margin-left:280px;padding:32px;max-width:1200px}
+    .logo{display:flex;align-items:center;gap:12px;margin-bottom:32px}
+    .logo-icon{width:40px;height:40px;background:linear-gradient(135deg,#F5A623,#FF8A00);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px}
+    .logo-text{font-size:18px;font-weight:700}
+    .nav-section{margin-bottom:24px}
+    .nav-label{font-size:11px;font-weight:600;color:#5A5A78;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+    .nav-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;cursor:pointer;color:#8A8AA8;font-size:14px;font-weight:500;transition:all .2s}
+    .nav-item:hover{background:rgba(124,58,237,.1);color:#F0EFF8}
+    .nav-item.active{background:rgba(245,166,35,.15);color:#F5A623}
+    .header h1{font-size:32px;font-weight:800;background:linear-gradient(135deg,#F5A623,#FF8A00);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:4px}
+    .header p{font-size:14px;color:#8A8AA8;margin-bottom:24px}
+    .toolbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:18px}
+    .toolbar input{flex:1;min-width:240px;padding:11px 14px;background:rgba(20,18,32,.6);border:1px solid rgba(124,58,237,.3);border-radius:8px;color:#F0EFF8;font-size:14px;font-family:inherit}
+    .toolbar select{padding:11px 14px;background:rgba(20,18,32,.6);border:1px solid rgba(124,58,237,.3);border-radius:8px;color:#F0EFF8;font-size:14px;font-family:inherit}
+    .btn{padding:11px 18px;border-radius:8px;border:none;cursor:pointer;font-family:inherit;font-size:14px;font-weight:700}
+    .btn-primary{background:linear-gradient(135deg,#F5A623,#FF8A00);color:#0A0E1A}
+    .btn-secondary{background:rgba(124,58,237,.1);color:#F0EFF8;border:1px solid rgba(124,58,237,.3)}
+    .btn-danger{background:rgba(239,68,68,.1);color:#EF4444;border:1px solid rgba(239,68,68,.3)}
+    .btn:disabled{opacity:.5;cursor:not-allowed}
+    .table{width:100%;background:rgba(20,18,32,.6);border:1px solid rgba(124,58,237,.2);border-radius:12px;overflow:hidden;border-collapse:collapse}
+    .table th{text-align:left;padding:14px 18px;background:rgba(15,15,25,.8);font-size:12px;font-weight:700;color:#8A8AA8;text-transform:uppercase;letter-spacing:1px}
+    .table td{padding:14px 18px;font-size:14px;border-top:1px solid rgba(124,58,237,.1);color:#F0EFF8}
+    .table tr:hover{background:rgba(245,166,35,.04)}
+    .pill{display:inline-block;padding:3px 10px;border-radius:12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+    .pill-vertical{background:rgba(245,166,35,.15);color:#F5A623}
+    .pill-feature{background:rgba(99,102,241,.15);color:#818CF8}
+    .pill-vs{background:rgba(236,72,153,.15);color:#EC4899}
+    .pill-pricing{background:rgba(16,185,129,.15);color:#10B981}
+    .pill-home{background:rgba(168,85,247,.15);color:#A855F7}
+    .pill-default{background:rgba(140,140,170,.15);color:#8A8AA8}
+    .pill-noindex{background:rgba(239,68,68,.15);color:#EF4444;margin-left:6px}
+    .pill-draft{background:rgba(140,140,170,.15);color:#8A8AA8;margin-left:6px}
+
+    /* Modal */
+    .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.8);backdrop-filter:blur(6px);z-index:100;display:none;align-items:flex-start;justify-content:center;padding:32px 16px;overflow-y:auto}
+    .modal-bg.show{display:flex}
+    .modal{background:#13121C;border:1px solid rgba(124,58,237,.3);border-radius:14px;width:100%;max-width:840px;padding:28px}
+    .modal h2{font-size:20px;font-weight:800;margin-bottom:6px}
+    .modal-desc{font-size:13px;color:#8A8AA8;margin-bottom:18px}
+    .field{margin-bottom:14px}
+    .field label{display:block;font-size:13px;font-weight:600;color:#F0EFF8;margin-bottom:5px}
+    .field .hint{font-size:11px;color:#8A8AA8;margin-top:3px}
+    .field input,.field textarea,.field select{width:100%;padding:11px 13px;background:rgba(10,14,20,.6);border:1px solid rgba(124,58,237,.3);border-radius:8px;color:#F0EFF8;font-family:inherit;font-size:13px}
+    .field textarea{resize:vertical;min-height:64px}
+    .field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .field-row-3{display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:12px}
+    .modal-footer{display:flex;justify-content:space-between;gap:12px;margin-top:20px;padding-top:18px;border-top:1px solid rgba(124,58,237,.2)}
+    .toast{position:fixed;bottom:24px;right:24px;background:rgba(20,18,32,.95);border:1px solid #10B981;color:#fff;padding:14px 20px;border-radius:10px;font-weight:600;z-index:9999;max-width:400px}
+    .empty{padding:60px 20px;text-align:center;color:#8A8AA8;background:rgba(20,18,32,.4);border:1px dashed rgba(124,58,237,.3);border-radius:12px}
+    @media(max-width:900px){.sidebar{display:none}.main{margin-left:0;padding:18px}.field-row,.field-row-3{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <div class="sidebar">
+      <div class="logo">
+        <div class="logo-icon">🛡️</div>
+        <div class="logo-text">Admin</div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">Main</div>
+        <div class="nav-item" onclick="goTo('admin-dashboard.html')"><span>📊</span><span>Dashboard</span></div>
+        <div class="nav-item" onclick="goTo('admin-subscriptions.html')"><span>💳</span><span>Subscriptions</span></div>
+        <div class="nav-item" onclick="goTo('admin-users.html')"><span>👥</span><span>Users</span></div>
+        <div class="nav-item" onclick="goTo('admin-revenue.html')"><span>💰</span><span>Revenue</span></div>
+        <div class="nav-item" onclick="goTo('admin-analytics.html')"><span>📈</span><span>Analytics</span></div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">Configuration</div>
+        <div class="nav-item" onclick="goTo('admin-settings.html')"><span>⚙️</span><span>Settings</span></div>
+        <div class="nav-item" onclick="goTo('admin-features.html')"><span>🚀</span><span>Features</span></div>
+        <div class="nav-item" onclick="goTo('admin-categories.html')"><span>🏷️</span><span>Business Types</span></div>
+        <div class="nav-item" onclick="goTo('admin-technical.html')"><span>🛠️</span><span>Tech Health</span></div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">SEO &amp; Content</div>
+        <div class="nav-item" onclick="goTo('admin-seo-global.html')"><span>🌐</span><span>SEO Global</span></div>
+        <div class="nav-item active"><span>📄</span><span>SEO Pages</span></div>
+        <div class="nav-item" onclick="goTo('admin-blog.html')"><span>✍️</span><span>Blog Posts</span></div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">System</div>
+        <div class="nav-item" onclick="goTo('admin-notifications.html')"><span>🔔</span><span>Notifications</span></div>
+        <div class="nav-item" onclick="goTo('admin-audit.html')"><span>📋</span><span>Audit Logs</span></div>
+      </div>
+      <div style="margin-top:32px;padding-top:18px;border-top:1px solid rgba(124,58,237,.2)">
+        <div class="nav-item" onclick="logout()" style="color:#EF4444"><span>🚪</span><span>Logout</span></div>
+      </div>
+    </div>
+    <div class="main">
+      <div class="header">
+        <h1>📄 SEO Pages</h1>
+        <p>Per-page SEO settings for the marketing site. Changes here go live without a code deploy.</p>
+      </div>
+
+      <div class="toolbar">
+        <input id="searchInp" placeholder="🔍 Search by path, title, page type…" oninput="renderTable()">
+        <select id="typeFilter" onchange="renderTable()">
+          <option value="">All types</option>
+          <option value="home">Home</option>
+          <option value="feature">Feature</option>
+          <option value="vertical">Vertical</option>
+          <option value="vs">Comparison</option>
+          <option value="pricing">Pricing</option>
+          <option value="legal">Legal</option>
+          <option value="WebPage">Generic</option>
+        </select>
+        <button class="btn btn-secondary" onclick="loadPages()">🔄 Reload</button>
+        <button class="btn btn-primary" onclick="openNew()">＋ New Page</button>
+      </div>
+
+      <div id="content"><div class="empty">Loading…</div></div>
+    </div>
+  </div>
+
+  <!-- Edit Modal -->
+  <div class="modal-bg" id="editModal">
+    <div class="modal">
+      <h2 id="modalTitle">Edit Page</h2>
+      <div class="modal-desc">Path is the URL on the marketing site. Title and meta description are most important for SEO.</div>
+
+      <div class="field-row-3">
+        <div class="field">
+          <label>Path *</label>
+          <input id="m_path" placeholder="/for/kirana">
+          <div class="hint">URL path on marketing site. Must start with /</div>
+        </div>
+        <div class="field">
+          <label>Page Type</label>
+          <select id="m_page_type">
+            <option value="home">home</option>
+            <option value="feature">feature</option>
+            <option value="vertical">vertical</option>
+            <option value="vs">vs (comparison)</option>
+            <option value="pricing">pricing</option>
+            <option value="legal">legal</option>
+            <option value="WebPage">WebPage (generic)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Display Order</label>
+          <input id="m_display_order" type="number" value="100">
+          <div class="hint">Lower = higher up in lists.</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Title * (55–60 chars)</label>
+        <input id="m_title" maxlength="80" oninput="updateCharCount('title')">
+        <div class="hint"><span id="title_count">0</span>/60 — keyword-first, brand at end</div>
+      </div>
+      <div class="field">
+        <label>Meta Description (150–160 chars)</label>
+        <textarea id="m_meta_description" rows="2" maxlength="200" oninput="updateCharCount('meta')"></textarea>
+        <div class="hint"><span id="meta_count">0</span>/160 — compelling, with vertical hook</div>
+      </div>
+      <div class="field">
+        <label>H1 (visible page heading)</label>
+        <input id="m_h1">
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label>OG Title (optional)</label>
+          <input id="m_og_title">
+          <div class="hint">Falls back to Title if blank.</div>
+        </div>
+        <div class="field">
+          <label>OG Description (optional)</label>
+          <input id="m_og_description">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>OG Image URL</label>
+          <input id="m_og_image" placeholder="https://shopbillpro.in/og/...">
+        </div>
+        <div class="field">
+          <label>Canonical URL (optional)</label>
+          <input id="m_canonical_url" placeholder="https://shopbillpro.in/canonical-path">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Schema Type</label>
+          <select id="m_schema_type">
+            <option>WebPage</option>
+            <option>SoftwareApplication</option>
+            <option>Article</option>
+            <option>FAQPage</option>
+            <option>Product</option>
+            <option>LocalBusiness</option>
+            <option>Organization</option>
+            <option>BreadcrumbList</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Keywords</label>
+          <input id="m_keywords" placeholder="kirana billing, GST, ...">
+        </div>
+      </div>
+      <div class="field">
+        <label>Custom Schema JSON-LD (optional)</label>
+        <textarea id="m_schema_jsonld" rows="4" placeholder='{"@type":"WebPage", ...}' style="font-family:'Menlo',monospace;font-size:12px"></textarea>
+        <div class="hint">Leave empty to auto-generate from Schema Type. Paste full JSON-LD object to override.</div>
+      </div>
+
+      <!-- Hindi -->
+      <div class="field" style="margin-top:18px;padding-top:18px;border-top:1px solid rgba(124,58,237,.15)">
+        <label style="font-size:14px;font-weight:700;color:#F5A623">🇮🇳 Hindi Translations (optional)</label>
+        <div class="hint" style="margin-bottom:10px">Used for /hi/&lt;path&gt; localized version.</div>
+        <input id="m_title_hi" placeholder="हिंदी शीर्षक" style="margin-bottom:8px">
+        <input id="m_h1_hi" placeholder="हिंदी हेडिंग" style="margin-bottom:8px">
+        <textarea id="m_meta_description_hi" rows="2" placeholder="हिंदी मेटा विवरण"></textarea>
+      </div>
+
+      <!-- Sitemap controls -->
+      <div class="field-row-3" style="margin-top:18px">
+        <div class="field">
+          <label>Sitemap Priority</label>
+          <input id="m_priority" type="number" step="0.1" min="0" max="1" value="0.5">
+          <div class="hint">0.0–1.0. Homepage = 1.0, deep pages = 0.3.</div>
+        </div>
+        <div class="field">
+          <label>Change Frequency</label>
+          <select id="m_changefreq">
+            <option>always</option><option>hourly</option><option>daily</option>
+            <option selected>weekly</option><option>monthly</option><option>yearly</option><option>never</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Status</label>
+          <select id="m_status_combo">
+            <option value="published_indexed">Published &amp; Indexed</option>
+            <option value="published_noindex">Published, NoIndex</option>
+            <option value="draft">Draft (not published)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <div>
+          <button class="btn btn-danger" id="deleteBtn" onclick="deletePage()" style="display:none">🗑️ Delete</button>
+        </div>
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+          <button class="btn btn-primary" id="saveModalBtn" onclick="savePage()">💾 Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="admin-auth.js"></script>
+  <script src="admin-db.js"></script>
+  <script>
+    function goTo(url){ location.href = url; }
+    async function logout(){ if(window.auth) await auth.logout(); location.href='admin-login.html'; }
+
+    if(window.auth) auth.requireAdmin();
+    const db = AdminDB.getInstance();
+
+    let _pages = [];
+    let _editingPath = null;  // null = new
+
+    function toast(msg, isErr=false){
+      const t = document.createElement('div');
+      t.className = 'toast';
+      t.style.borderColor = isErr ? '#EF4444' : '#10B981';
+      t.textContent = msg;
+      document.body.appendChild(t);
+      setTimeout(() => t.remove(), 4000);
+    }
+
+    function escapeHtml(s){
+      return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    async function loadPages(){
+      try {
+        _pages = await db.listSEOPages();
+        renderTable();
+      } catch(e){
+        document.getElementById('content').innerHTML = '<div class="empty">❌ '+escapeHtml(e.message)+'</div>';
+      }
+    }
+
+    function renderTable(){
+      const search = document.getElementById('searchInp').value.trim().toLowerCase();
+      const typeF = document.getElementById('typeFilter').value;
+      const filtered = _pages.filter(p => {
+        if(typeF && p.page_type !== typeF) return false;
+        if(!search) return true;
+        return (p.path||'').toLowerCase().includes(search)
+          || (p.title||'').toLowerCase().includes(search)
+          || (p.page_type||'').toLowerCase().includes(search);
+      });
+
+      if(filtered.length === 0){
+        document.getElementById('content').innerHTML = '<div class="empty">No pages match. Click ＋ New Page to add one.</div>';
+        return;
+      }
+
+      const rows = filtered.map(p => {
+        const typePill = `pill-${p.page_type === 'WebPage' ? 'default' : p.page_type}`;
+        const flags = [];
+        if(p.noindex) flags.push('<span class="pill pill-noindex">noindex</span>');
+        if(!p.is_published) flags.push('<span class="pill pill-draft">draft</span>');
+        return `
+        <tr onclick="openEdit('${escapeHtml(p.path)}')" style="cursor:pointer">
+          <td><strong>${escapeHtml(p.path)}</strong>${flags.join('')}</td>
+          <td><span class="pill ${typePill}">${escapeHtml(p.page_type||'WebPage')}</span></td>
+          <td style="max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escapeHtml(p.title)}">${escapeHtml(p.title || '—')}</td>
+          <td style="color:#8A8AA8;font-size:12px">${p.priority || '—'}</td>
+          <td style="color:#8A8AA8;font-size:12px">${p.updated_at ? new Date(p.updated_at).toLocaleDateString() : '—'}</td>
+        </tr>`;
+      }).join('');
+
+      document.getElementById('content').innerHTML = `
+        <table class="table">
+          <thead><tr>
+            <th>Path</th><th>Type</th><th>Title</th><th>Priority</th><th>Updated</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>`;
+    }
+
+    function updateCharCount(which){
+      if(which === 'title'){
+        document.getElementById('title_count').textContent = document.getElementById('m_title').value.length;
+      } else if(which === 'meta'){
+        document.getElementById('meta_count').textContent = document.getElementById('m_meta_description').value.length;
+      }
+    }
+
+    function openNew(){
+      _editingPath = null;
+      document.getElementById('modalTitle').textContent = 'New Page';
+      document.getElementById('deleteBtn').style.display = 'none';
+      // Clear all fields
+      ['m_path','m_title','m_meta_description','m_h1','m_og_title','m_og_description','m_og_image',
+       'm_canonical_url','m_keywords','m_schema_jsonld','m_title_hi','m_h1_hi','m_meta_description_hi'
+      ].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('m_page_type').value = 'WebPage';
+      document.getElementById('m_schema_type').value = 'WebPage';
+      document.getElementById('m_display_order').value = '100';
+      document.getElementById('m_priority').value = '0.5';
+      document.getElementById('m_changefreq').value = 'weekly';
+      document.getElementById('m_status_combo').value = 'published_indexed';
+      updateCharCount('title'); updateCharCount('meta');
+      document.getElementById('editModal').classList.add('show');
+    }
+
+    function openEdit(path){
+      const p = _pages.find(x => x.path === path);
+      if(!p) return;
+      _editingPath = path;
+      document.getElementById('modalTitle').textContent = 'Edit: ' + path;
+      document.getElementById('deleteBtn').style.display = '';
+
+      document.getElementById('m_path').value = p.path || '';
+      document.getElementById('m_page_type').value = p.page_type || 'WebPage';
+      document.getElementById('m_display_order').value = p.display_order || 100;
+      document.getElementById('m_title').value = p.title || '';
+      document.getElementById('m_meta_description').value = p.meta_description || '';
+      document.getElementById('m_h1').value = p.h1 || '';
+      document.getElementById('m_og_title').value = p.og_title || '';
+      document.getElementById('m_og_description').value = p.og_description || '';
+      document.getElementById('m_og_image').value = p.og_image || '';
+      document.getElementById('m_canonical_url').value = p.canonical_url || '';
+      document.getElementById('m_schema_type').value = p.schema_type || 'WebPage';
+      document.getElementById('m_keywords').value = p.keywords || '';
+      document.getElementById('m_schema_jsonld').value = p.schema_jsonld ? JSON.stringify(p.schema_jsonld, null, 2) : '';
+      document.getElementById('m_title_hi').value = p.title_hi || '';
+      document.getElementById('m_h1_hi').value = p.h1_hi || '';
+      document.getElementById('m_meta_description_hi').value = p.meta_description_hi || '';
+      document.getElementById('m_priority').value = p.priority ?? 0.5;
+      document.getElementById('m_changefreq').value = p.changefreq || 'weekly';
+
+      const status = !p.is_published ? 'draft' : (p.noindex ? 'published_noindex' : 'published_indexed');
+      document.getElementById('m_status_combo').value = status;
+
+      updateCharCount('title'); updateCharCount('meta');
+      document.getElementById('editModal').classList.add('show');
+    }
+
+    function closeModal(){ document.getElementById('editModal').classList.remove('show'); }
+
+    async function savePage(){
+      const path = document.getElementById('m_path').value.trim();
+      if(!path || !path.startsWith('/')){ toast('Path must start with /', true); return; }
+      const title = document.getElementById('m_title').value.trim();
+      if(!title){ toast('Title is required', true); return; }
+
+      let schemaJsonld = null;
+      const rawSchema = document.getElementById('m_schema_jsonld').value.trim();
+      if(rawSchema){
+        try { schemaJsonld = JSON.parse(rawSchema); }
+        catch(e){ toast('Schema JSON is invalid: '+e.message, true); return; }
+      }
+
+      const status = document.getElementById('m_status_combo').value;
+      const data = {
+        path,
+        page_type: document.getElementById('m_page_type').value,
+        title,
+        meta_description: document.getElementById('m_meta_description').value.trim(),
+        h1: document.getElementById('m_h1').value.trim() || null,
+        og_title: document.getElementById('m_og_title').value.trim() || null,
+        og_description: document.getElementById('m_og_description').value.trim() || null,
+        og_image: document.getElementById('m_og_image').value.trim() || null,
+        schema_type: document.getElementById('m_schema_type').value,
+        schema_jsonld: schemaJsonld,
+        keywords: document.getElementById('m_keywords').value.trim() || null,
+        canonical_url: document.getElementById('m_canonical_url').value.trim() || null,
+        title_hi: document.getElementById('m_title_hi').value.trim() || null,
+        meta_description_hi: document.getElementById('m_meta_description_hi').value.trim() || null,
+        h1_hi: document.getElementById('m_h1_hi').value.trim() || null,
+        noindex: status === 'published_noindex',
+        is_published: status !== 'draft',
+        priority: parseFloat(document.getElementById('m_priority').value) || 0.5,
+        changefreq: document.getElementById('m_changefreq').value,
+        display_order: parseInt(document.getElementById('m_display_order').value, 10) || 100,
+        updated_by: sessionStorage.getItem('sbp_admin_user') || 'admin'
+      };
+
+      const btn = document.getElementById('saveModalBtn');
+      btn.disabled = true; btn.textContent = '⏳ Saving…';
+      try {
+        await db.upsertSEOPage(data);
+        toast('✅ Saved');
+        closeModal();
+        await loadPages();
+      } catch(e){ toast('❌ '+e.message, true); }
+      finally { btn.disabled = false; btn.textContent = '💾 Save'; }
+    }
+
+    async function deletePage(){
+      if(!_editingPath) return;
+      if(!confirm('Delete '+_editingPath+'? This cannot be undone.')) return;
+      try {
+        await db.deleteSEOPage(_editingPath);
+        toast('🗑️ Deleted');
+        closeModal();
+        await loadPages();
+      } catch(e){ toast('❌ '+e.message, true); }
+    }
+
+    document.getElementById('editModal').addEventListener('click', e => {
+      if(e.target.id === 'editModal') closeModal();
+    });
+
+    loadPages();
+  </script>
+</body>
+</html>

@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en" translate="no" class="notranslate">
+<head>
+  <meta charset="UTF-8">
+  <meta name="google" content="notranslate">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png?v=2">
+  <title>Blog — Admin</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Outfit',sans-serif;background:#0A0A12;color:#F0EFF8}
+    .layout{display:flex;min-height:100vh}
+    .sidebar{width:280px;background:rgba(19,19,28,.8);backdrop-filter:blur(10px);border-right:1px solid rgba(124,58,237,.2);padding:24px;position:fixed;height:100vh;overflow-y:auto;left:0;top:0}
+    .main{flex:1;margin-left:280px;padding:32px;max-width:1200px}
+    .logo{display:flex;align-items:center;gap:12px;margin-bottom:32px}
+    .logo-icon{width:40px;height:40px;background:linear-gradient(135deg,#F5A623,#FF8A00);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px}
+    .logo-text{font-size:18px;font-weight:700}
+    .nav-section{margin-bottom:24px}
+    .nav-label{font-size:11px;font-weight:600;color:#5A5A78;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+    .nav-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;cursor:pointer;color:#8A8AA8;font-size:14px;font-weight:500;transition:all .2s}
+    .nav-item:hover{background:rgba(124,58,237,.1);color:#F0EFF8}
+    .nav-item.active{background:rgba(245,166,35,.15);color:#F5A623}
+    .header h1{font-size:32px;font-weight:800;background:linear-gradient(135deg,#F5A623,#FF8A00);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:4px}
+    .header p{font-size:14px;color:#8A8AA8;margin-bottom:24px}
+    .toolbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:18px}
+    .toolbar input,.toolbar select{padding:11px 14px;background:rgba(20,18,32,.6);border:1px solid rgba(124,58,237,.3);border-radius:8px;color:#F0EFF8;font-size:14px;font-family:inherit}
+    .toolbar input{flex:1;min-width:240px}
+    .btn{padding:11px 18px;border-radius:8px;border:none;cursor:pointer;font-family:inherit;font-size:14px;font-weight:700}
+    .btn-primary{background:linear-gradient(135deg,#F5A623,#FF8A00);color:#0A0E1A}
+    .btn-secondary{background:rgba(124,58,237,.1);color:#F0EFF8;border:1px solid rgba(124,58,237,.3)}
+    .btn-danger{background:rgba(239,68,68,.1);color:#EF4444;border:1px solid rgba(239,68,68,.3)}
+    .btn:disabled{opacity:.5;cursor:not-allowed}
+    .post-card{background:rgba(20,18,32,.6);border:1px solid rgba(124,58,237,.2);border-radius:12px;padding:18px 20px;margin-bottom:12px;cursor:pointer;transition:all .2s}
+    .post-card:hover{border-color:#F5A623;background:rgba(245,166,35,.04)}
+    .post-card-row{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+    .post-title{font-size:16px;font-weight:700;color:#F0EFF8;margin-bottom:4px}
+    .post-excerpt{font-size:13px;color:#8A8AA8;margin-bottom:8px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+    .post-meta{font-size:11px;color:#5A5A78;display:flex;gap:14px;flex-wrap:wrap}
+    .pill{display:inline-block;padding:3px 10px;border-radius:12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+    .pill-published{background:rgba(16,185,129,.15);color:#10B981}
+    .pill-draft{background:rgba(140,140,170,.15);color:#8A8AA8}
+    .pill-scheduled{background:rgba(99,102,241,.15);color:#818CF8}
+    .pill-archived{background:rgba(239,68,68,.15);color:#EF4444}
+    .pill-cat{background:rgba(245,166,35,.12);color:#F5A623;margin-left:6px}
+
+    /* Modal */
+    .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.8);backdrop-filter:blur(6px);z-index:100;display:none;align-items:flex-start;justify-content:center;padding:32px 16px;overflow-y:auto}
+    .modal-bg.show{display:flex}
+    .modal{background:#13121C;border:1px solid rgba(124,58,237,.3);border-radius:14px;width:100%;max-width:920px;padding:28px}
+    .modal h2{font-size:20px;font-weight:800;margin-bottom:6px}
+    .modal-desc{font-size:13px;color:#8A8AA8;margin-bottom:18px}
+    .field{margin-bottom:14px}
+    .field label{display:block;font-size:13px;font-weight:600;color:#F0EFF8;margin-bottom:5px}
+    .field .hint{font-size:11px;color:#8A8AA8;margin-top:3px}
+    .field input,.field textarea,.field select{width:100%;padding:11px 13px;background:rgba(10,14,20,.6);border:1px solid rgba(124,58,237,.3);border-radius:8px;color:#F0EFF8;font-family:inherit;font-size:13px}
+    .field textarea{resize:vertical;min-height:80px}
+    .field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .field-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+    .editor-tabs{display:flex;gap:6px;margin-bottom:8px}
+    .editor-tab{padding:7px 14px;border-radius:6px;background:rgba(124,58,237,.1);color:#8A8AA8;font-size:12px;font-weight:600;cursor:pointer;border:1px solid transparent}
+    .editor-tab.active{background:rgba(245,166,35,.15);color:#F5A623;border-color:rgba(245,166,35,.3)}
+    .body-editor{font-family:'Menlo','Consolas',monospace;font-size:13px;min-height:300px;line-height:1.5}
+    .preview-pane{background:rgba(10,14,20,.6);border:1px solid rgba(124,58,237,.3);border-radius:8px;padding:16px;min-height:300px;font-size:14px;line-height:1.6;color:#F0EFF8}
+    .preview-pane h1{font-size:24px;font-weight:800;margin:18px 0 10px}
+    .preview-pane h2{font-size:20px;font-weight:700;margin:16px 0 8px}
+    .preview-pane h3{font-size:17px;font-weight:700;margin:14px 0 6px}
+    .preview-pane p{margin-bottom:10px}
+    .preview-pane code{background:rgba(245,166,35,.1);padding:2px 6px;border-radius:4px;font-size:12px;color:#F5A623}
+    .preview-pane pre{background:rgba(10,14,20,.9);padding:12px;border-radius:8px;overflow-x:auto;margin-bottom:10px}
+    .preview-pane ul,.preview-pane ol{margin-left:24px;margin-bottom:10px}
+    .preview-pane a{color:#F5A623}
+    .modal-footer{display:flex;justify-content:space-between;gap:12px;margin-top:20px;padding-top:18px;border-top:1px solid rgba(124,58,237,.2)}
+    .toast{position:fixed;bottom:24px;right:24px;background:rgba(20,18,32,.95);border:1px solid #10B981;color:#fff;padding:14px 20px;border-radius:10px;font-weight:600;z-index:9999;max-width:400px}
+    .empty{padding:60px 20px;text-align:center;color:#8A8AA8;background:rgba(20,18,32,.4);border:1px dashed rgba(124,58,237,.3);border-radius:12px}
+    @media(max-width:900px){.sidebar{display:none}.main{margin-left:0;padding:18px}.field-row,.field-row-3{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <div class="sidebar">
+      <div class="logo">
+        <div class="logo-icon">🛡️</div>
+        <div class="logo-text">Admin</div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">Main</div>
+        <div class="nav-item" onclick="goTo('admin-dashboard.html')"><span>📊</span><span>Dashboard</span></div>
+        <div class="nav-item" onclick="goTo('admin-subscriptions.html')"><span>💳</span><span>Subscriptions</span></div>
+        <div class="nav-item" onclick="goTo('admin-users.html')"><span>👥</span><span>Users</span></div>
+        <div class="nav-item" onclick="goTo('admin-revenue.html')"><span>💰</span><span>Revenue</span></div>
+        <div class="nav-item" onclick="goTo('admin-analytics.html')"><span>📈</span><span>Analytics</span></div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">Configuration</div>
+        <div class="nav-item" onclick="goTo('admin-settings.html')"><span>⚙️</span><span>Settings</span></div>
+        <div class="nav-item" onclick="goTo('admin-features.html')"><span>🚀</span><span>Features</span></div>
+        <div class="nav-item" onclick="goTo('admin-categories.html')"><span>🏷️</span><span>Business Types</span></div>
+        <div class="nav-item" onclick="goTo('admin-technical.html')"><span>🛠️</span><span>Tech Health</span></div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">SEO &amp; Content</div>
+        <div class="nav-item" onclick="goTo('admin-seo-global.html')"><span>🌐</span><span>SEO Global</span></div>
+        <div class="nav-item" onclick="goTo('admin-seo-pages.html')"><span>📄</span><span>SEO Pages</span></div>
+        <div class="nav-item active"><span>✍️</span><span>Blog Posts</span></div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">System</div>
+        <div class="nav-item" onclick="goTo('admin-notifications.html')"><span>🔔</span><span>Notifications</span></div>
+        <div class="nav-item" onclick="goTo('admin-audit.html')"><span>📋</span><span>Audit Logs</span></div>
+      </div>
+      <div style="margin-top:32px;padding-top:18px;border-top:1px solid rgba(124,58,237,.2)">
+        <div class="nav-item" onclick="logout()" style="color:#EF4444"><span>🚪</span><span>Logout</span></div>
+      </div>
+    </div>
+    <div class="main">
+      <div class="header">
+        <h1>✍️ Blog Posts</h1>
+        <p>Markdown CMS for the marketing-site blog. Drafts stay private until you set status to Published.</p>
+      </div>
+
+      <div class="toolbar">
+        <input id="searchInp" placeholder="🔍 Search title, slug, category…" oninput="renderList()">
+        <select id="statusFilter" onchange="renderList()">
+          <option value="">All statuses</option>
+          <option value="draft">Drafts</option>
+          <option value="scheduled">Scheduled</option>
+          <option value="published">Published</option>
+          <option value="archived">Archived</option>
+        </select>
+        <button class="btn btn-secondary" onclick="loadPosts()">🔄 Reload</button>
+        <button class="btn btn-primary" onclick="openNew()">＋ New Post</button>
+      </div>
+
+      <div id="content"><div class="empty">Loading…</div></div>
+    </div>
+  </div>
+
+  <!-- Edit Modal -->
+  <div class="modal-bg" id="editModal">
+    <div class="modal">
+      <h2 id="modalTitle">New Post</h2>
+      <div class="modal-desc">Title and slug are required. Save as Draft anytime — only Published posts go live.</div>
+
+      <div class="field-row">
+        <div class="field">
+          <label>Title *</label>
+          <input id="m_title" placeholder="How to make a GST bill in India">
+        </div>
+        <div class="field">
+          <label>Slug * <button onclick="autoSlug()" style="font-size:10px;padding:3px 8px;border-radius:4px;background:rgba(124,58,237,.15);color:#F5A623;border:none;cursor:pointer;margin-left:6px">auto</button></label>
+          <input id="m_slug" placeholder="how-to-make-gst-bill-india">
+          <div class="hint">URL-friendly. Lowercase, hyphens, no spaces.</div>
+        </div>
+      </div>
+      <div class="field">
+        <label>Excerpt (1-2 sentences)</label>
+        <textarea id="m_excerpt" rows="2"></textarea>
+        <div class="hint">Shown on blog index and as meta description fallback.</div>
+      </div>
+
+      <!-- Body editor with tabs -->
+      <div class="field">
+        <label>Body (Markdown)</label>
+        <div class="editor-tabs">
+          <div class="editor-tab active" id="tab_write" onclick="switchTab('write')">📝 Write</div>
+          <div class="editor-tab" id="tab_preview" onclick="switchTab('preview')">👁️ Preview</div>
+        </div>
+        <div id="pane_write">
+          <textarea id="m_body_md" class="body-editor" placeholder="# Heading&#10;&#10;Your content here..."></textarea>
+        </div>
+        <div id="pane_preview" style="display:none">
+          <div class="preview-pane" id="previewBox">Switch to preview to render…</div>
+        </div>
+      </div>
+
+      <!-- SEO -->
+      <div class="field-row">
+        <div class="field">
+          <label>Meta Title (optional, falls back to Title)</label>
+          <input id="m_meta_title">
+        </div>
+        <div class="field">
+          <label>Meta Description (155-160 chars)</label>
+          <input id="m_meta_description" maxlength="200">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>OG Image URL</label>
+          <input id="m_og_image">
+        </div>
+        <div class="field">
+          <label>Featured Image URL</label>
+          <input id="m_featured_image">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Featured Image Alt Text</label>
+          <input id="m_featured_image_alt">
+        </div>
+        <div class="field">
+          <label>Reading Time (minutes)</label>
+          <input id="m_reading_time_min" type="number" min="1">
+        </div>
+      </div>
+      <div class="field">
+        <label>Keywords (comma-separated)</label>
+        <input id="m_keywords">
+      </div>
+
+      <!-- Author -->
+      <div class="field-row">
+        <div class="field">
+          <label>Author Name</label>
+          <input id="m_author_name" value="ShopBill Pro Team">
+        </div>
+        <div class="field">
+          <label>Author Avatar URL</label>
+          <input id="m_author_avatar">
+        </div>
+      </div>
+      <div class="field">
+        <label>Author Bio</label>
+        <input id="m_author_bio">
+      </div>
+
+      <!-- Categorization & Hindi -->
+      <div class="field-row-3">
+        <div class="field">
+          <label>Category</label>
+          <select id="m_category">
+            <option value="general">General</option>
+            <option value="gst">GST</option>
+            <option value="billing">Billing</option>
+            <option value="marketing">Marketing</option>
+            <option value="tutorial">Tutorial</option>
+            <option value="comparison">Comparison</option>
+            <option value="case_study">Case Study</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Schema Type</label>
+          <select id="m_schema_type">
+            <option>Article</option>
+            <option>BlogPosting</option>
+            <option>HowTo</option>
+            <option>FAQPage</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Tags (comma-separated)</label>
+          <input id="m_tags" placeholder="GST, Hindi, kirana">
+        </div>
+      </div>
+
+      <!-- Hindi version -->
+      <div class="field" style="margin-top:18px;padding-top:18px;border-top:1px solid rgba(124,58,237,.15)">
+        <label style="font-size:14px;font-weight:700;color:#F5A623">🇮🇳 Hindi Version (optional)</label>
+        <div class="hint" style="margin-bottom:10px">Used for /hi/blog/&lt;slug&gt; localized version.</div>
+        <input id="m_title_hi" placeholder="हिंदी शीर्षक" style="margin-bottom:8px">
+        <textarea id="m_body_md_hi" rows="6" placeholder="# हिंदी शीर्षक&#10;&#10;...लेख का मुख्य भाग..."></textarea>
+      </div>
+
+      <!-- Publish controls -->
+      <div class="field-row" style="margin-top:18px">
+        <div class="field">
+          <label>Status</label>
+          <select id="m_status">
+            <option value="draft">Draft</option>
+            <option value="scheduled">Scheduled</option>
+            <option value="published">Published</option>
+            <option value="archived">Archived</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Scheduled For (if scheduled)</label>
+          <input id="m_scheduled_for" type="datetime-local">
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <div>
+          <button class="btn btn-danger" id="deleteBtn" onclick="deletePost()" style="display:none">🗑️ Delete</button>
+        </div>
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+          <button class="btn btn-primary" id="saveBtn" onclick="savePost()">💾 Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="admin-auth.js"></script>
+  <script src="admin-db.js"></script>
+  <script>
+    function goTo(url){ location.href = url; }
+    async function logout(){ if(window.auth) await auth.logout(); location.href='admin-login.html'; }
+
+    if(window.auth) auth.requireAdmin();
+    const db = AdminDB.getInstance();
+
+    let _posts = [];
+    let _editingSlug = null;
+
+    function toast(msg, isErr=false){
+      const t = document.createElement('div');
+      t.className = 'toast';
+      t.style.borderColor = isErr ? '#EF4444' : '#10B981';
+      t.textContent = msg;
+      document.body.appendChild(t);
+      setTimeout(() => t.remove(), 4000);
+    }
+
+    function escapeHtml(s){
+      return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    // Lightweight markdown renderer (only used in preview tab — not security-critical)
+    function renderMarkdown(md){
+      if(!md) return '<em style="color:#5A5A78">Empty</em>';
+      let html = escapeHtml(md);
+      // Code blocks (escape first, then process)
+      html = html.replace(/```([^`]+)```/g, '<pre><code>$1</code></pre>');
+      // Inline code
+      html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+      // Headings
+      html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+      html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+      html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+      // Bold/italic
+      html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+      html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+      // Links
+      html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+      // Lists (basic)
+      html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
+      html = html.replace(/(<li>.*<\/li>)\n(?!<li>)/g, '<ul>$1</ul>\n');
+      html = html.replace(/(<li>.*<\/li>)/gs, m => m.startsWith('<ul>') ? m : '<ul>'+m+'</ul>');
+      // Paragraphs
+      html = html.split(/\n\n+/).map(b => {
+        if(b.match(/^<(h[1-6]|ul|ol|pre|blockquote)/)) return b;
+        return '<p>'+b.replace(/\n/g, '<br>')+'</p>';
+      }).join('\n');
+      return html;
+    }
+
+    function switchTab(tab){
+      document.getElementById('tab_write').classList.toggle('active', tab === 'write');
+      document.getElementById('tab_preview').classList.toggle('active', tab === 'preview');
+      document.getElementById('pane_write').style.display = tab === 'write' ? '' : 'none';
+      document.getElementById('pane_preview').style.display = tab === 'preview' ? '' : 'none';
+      if(tab === 'preview'){
+        document.getElementById('previewBox').innerHTML = renderMarkdown(document.getElementById('m_body_md').value);
+      }
+    }
+
+    function autoSlug(){
+      const title = document.getElementById('m_title').value;
+      const slug = title.toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '');
+      document.getElementById('m_slug').value = slug;
+    }
+
+    async function loadPosts(){
+      try {
+        _posts = await db.listBlogPosts();
+        renderList();
+      } catch(e){
+        document.getElementById('content').innerHTML = '<div class="empty">❌ '+escapeHtml(e.message)+'</div>';
+      }
+    }
+
+    function renderList(){
+      const search = document.getElementById('searchInp').value.trim().toLowerCase();
+      const statusF = document.getElementById('statusFilter').value;
+      const filtered = _posts.filter(p => {
+        if(statusF && p.status !== statusF) return false;
+        if(!search) return true;
+        return (p.slug||'').toLowerCase().includes(search)
+          || (p.title||'').toLowerCase().includes(search)
+          || (p.category||'').toLowerCase().includes(search);
+      });
+
+      if(filtered.length === 0){
+        document.getElementById('content').innerHTML = '<div class="empty">No posts. Click ＋ New Post to start.</div>';
+        return;
+      }
+
+      document.getElementById('content').innerHTML = filtered.map(p => {
+        const statusPill = `pill pill-${p.status}`;
+        const date = p.published_at ? new Date(p.published_at).toLocaleDateString()
+                   : p.scheduled_for ? 'Scheduled: '+new Date(p.scheduled_for).toLocaleDateString()
+                   : 'Last edit: '+new Date(p.updated_at).toLocaleDateString();
+        return `
+        <div class="post-card" onclick="openEdit('${escapeHtml(p.slug)}')">
+          <div class="post-card-row">
+            <div style="flex:1;min-width:0">
+              <div class="post-title">${escapeHtml(p.title)}</div>
+              <div class="post-excerpt">${escapeHtml(p.excerpt || '—')}</div>
+              <div class="post-meta">
+                <span>📂 /blog/${escapeHtml(p.slug)}</span>
+                <span>📅 ${date}</span>
+                ${p.reading_time_min ? '<span>⏱️ '+p.reading_time_min+' min read</span>' : ''}
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+              <span class="${statusPill}">${escapeHtml(p.status)}</span>
+              ${p.category ? '<span class="pill pill-cat">'+escapeHtml(p.category)+'</span>' : ''}
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    function openNew(){
+      _editingSlug = null;
+      document.getElementById('modalTitle').textContent = 'New Post';
+      document.getElementById('deleteBtn').style.display = 'none';
+      // Clear all
+      ['m_title','m_slug','m_excerpt','m_body_md','m_meta_title','m_meta_description',
+       'm_og_image','m_featured_image','m_featured_image_alt','m_reading_time_min',
+       'm_keywords','m_author_avatar','m_author_bio','m_tags','m_title_hi','m_body_md_hi','m_scheduled_for'
+      ].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('m_author_name').value = 'ShopBill Pro Team';
+      document.getElementById('m_category').value = 'general';
+      document.getElementById('m_schema_type').value = 'Article';
+      document.getElementById('m_status').value = 'draft';
+      switchTab('write');
+      document.getElementById('editModal').classList.add('show');
+    }
+
+    function openEdit(slug){
+      const p = _posts.find(x => x.slug === slug);
+      if(!p) return;
+      _editingSlug = slug;
+      document.getElementById('modalTitle').textContent = 'Edit: ' + p.title;
+      document.getElementById('deleteBtn').style.display = '';
+
+      document.getElementById('m_title').value = p.title || '';
+      document.getElementById('m_slug').value = p.slug || '';
+      document.getElementById('m_excerpt').value = p.excerpt || '';
+      document.getElementById('m_body_md').value = p.body_md || '';
+      document.getElementById('m_meta_title').value = p.meta_title || '';
+      document.getElementById('m_meta_description').value = p.meta_description || '';
+      document.getElementById('m_og_image').value = p.og_image || '';
+      document.getElementById('m_featured_image').value = p.featured_image || '';
+      document.getElementById('m_featured_image_alt').value = p.featured_image_alt || '';
+      document.getElementById('m_reading_time_min').value = p.reading_time_min || '';
+      document.getElementById('m_keywords').value = p.keywords || '';
+      document.getElementById('m_author_name').value = p.author_name || 'ShopBill Pro Team';
+      document.getElementById('m_author_avatar').value = p.author_avatar || '';
+      document.getElementById('m_author_bio').value = p.author_bio || '';
+      document.getElementById('m_category').value = p.category || 'general';
+      document.getElementById('m_schema_type').value = p.schema_type || 'Article';
+      document.getElementById('m_tags').value = (p.tags || []).join(', ');
+      document.getElementById('m_title_hi').value = p.title_hi || '';
+      document.getElementById('m_body_md_hi').value = p.body_md_hi || '';
+      document.getElementById('m_status').value = p.status || 'draft';
+      document.getElementById('m_scheduled_for').value = p.scheduled_for ? p.scheduled_for.slice(0,16) : '';
+      switchTab('write');
+      document.getElementById('editModal').classList.add('show');
+    }
+
+    function closeModal(){ document.getElementById('editModal').classList.remove('show'); }
+
+    async function savePost(){
+      const title = document.getElementById('m_title').value.trim();
+      const slug = document.getElementById('m_slug').value.trim();
+      if(!title || !slug){ toast('Title and slug are required', true); return; }
+      if(!/^[a-z0-9-]+$/.test(slug)){ toast('Slug must be lowercase letters, numbers, and hyphens only', true); return; }
+
+      const tagsRaw = document.getElementById('m_tags').value.trim();
+      const tags = tagsRaw ? tagsRaw.split(',').map(t => t.trim()).filter(Boolean) : null;
+
+      const data = {
+        slug, title,
+        excerpt: document.getElementById('m_excerpt').value.trim() || null,
+        body_md: document.getElementById('m_body_md').value,
+        meta_title: document.getElementById('m_meta_title').value.trim() || null,
+        meta_description: document.getElementById('m_meta_description').value.trim() || null,
+        og_image: document.getElementById('m_og_image').value.trim() || null,
+        featured_image: document.getElementById('m_featured_image').value.trim() || null,
+        featured_image_alt: document.getElementById('m_featured_image_alt').value.trim() || null,
+        reading_time_min: document.getElementById('m_reading_time_min').value || null,
+        keywords: document.getElementById('m_keywords').value.trim() || null,
+        author_name: document.getElementById('m_author_name').value.trim() || 'ShopBill Pro Team',
+        author_avatar: document.getElementById('m_author_avatar').value.trim() || null,
+        author_bio: document.getElementById('m_author_bio').value.trim() || null,
+        category: document.getElementById('m_category').value,
+        schema_type: document.getElementById('m_schema_type').value,
+        tags,
+        title_hi: document.getElementById('m_title_hi').value.trim() || null,
+        body_md_hi: document.getElementById('m_body_md_hi').value.trim() || null,
+        status: document.getElementById('m_status').value,
+        scheduled_for: document.getElementById('m_scheduled_for').value || null,
+        updated_by: sessionStorage.getItem('sbp_admin_user') || 'admin'
+      };
+
+      const btn = document.getElementById('saveBtn');
+      btn.disabled = true; btn.textContent = '⏳ Saving…';
+      try {
+        await db.upsertBlogPost(data);
+        toast('✅ Saved');
+        closeModal();
+        await loadPosts();
+      } catch(e){ toast('❌ '+e.message, true); }
+      finally { btn.disabled = false; btn.textContent = '💾 Save'; }
+    }
+
+    async function deletePost(){
+      if(!_editingSlug) return;
+      if(!confirm('Delete post "'+_editingSlug+'"? This cannot be undone.')) return;
+      try {
+        await db.deleteBlogPost(_editingSlug);
+        toast('🗑️ Deleted');
+        closeModal();
+        await loadPosts();
+      } catch(e){ toast('❌ '+e.message, true); }
+    }
+
+    document.getElementById('editModal').addEventListener('click', e => {
+      if(e.target.id === 'editModal') closeModal();
+    });
+
+    loadPosts();
+  </script>
+</body>
+</html>

@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en" translate="no" class="notranslate">
+<head>
+  <meta charset="UTF-8">
+  <meta name="google" content="notranslate">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png?v=2">
+  <title>SEO Global — Admin</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Outfit',sans-serif;background:#0A0A12;color:#F0EFF8}
+    .layout{display:flex;min-height:100vh}
+    .sidebar{width:280px;background:rgba(19,19,28,.8);backdrop-filter:blur(10px);border-right:1px solid rgba(124,58,237,.2);padding:24px;position:fixed;height:100vh;overflow-y:auto;left:0;top:0}
+    .main{flex:1;margin-left:280px;padding:32px;max-width:1000px}
+    .logo{display:flex;align-items:center;gap:12px;margin-bottom:32px}
+    .logo-icon{width:40px;height:40px;background:linear-gradient(135deg,#F5A623,#FF8A00);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px}
+    .logo-text{font-size:18px;font-weight:700}
+    .nav-section{margin-bottom:24px}
+    .nav-label{font-size:11px;font-weight:600;color:#5A5A78;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+    .nav-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;cursor:pointer;color:#8A8AA8;font-size:14px;font-weight:500;transition:all .2s}
+    .nav-item:hover{background:rgba(124,58,237,.1);color:#F0EFF8}
+    .nav-item.active{background:rgba(245,166,35,.15);color:#F5A623}
+    .header h1{font-size:32px;font-weight:800;background:linear-gradient(135deg,#F5A623,#FF8A00);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:4px}
+    .header p{font-size:14px;color:#8A8AA8;margin-bottom:32px}
+    .section{background:rgba(20,18,32,.6);border:1px solid rgba(124,58,237,.2);border-radius:12px;padding:24px;margin-bottom:20px}
+    .section h2{font-size:18px;font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:10px}
+    .section .desc{font-size:13px;color:#8A8AA8;margin-bottom:18px}
+    .field{margin-bottom:16px}
+    .field label{display:block;font-size:13px;font-weight:600;color:#F0EFF8;margin-bottom:6px}
+    .field .hint{font-size:11px;color:#8A8AA8;margin-top:4px}
+    .field input,.field textarea,.field select{width:100%;padding:12px 14px;background:rgba(10,14,20,.6);border:1px solid rgba(124,58,237,.3);border-radius:8px;color:#F0EFF8;font-family:inherit;font-size:14px}
+    .field input:focus,.field textarea:focus,.field select:focus{outline:none;border-color:#F5A623}
+    .field textarea{resize:vertical;min-height:80px;font-family:'Menlo','Consolas',monospace;font-size:12px}
+    .field-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    .field-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+    .save-bar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:16px;background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.3);border-radius:10px;margin-bottom:20px;position:sticky;top:0;z-index:10;backdrop-filter:blur(10px)}
+    .save-status{font-size:13px;color:#8A8AA8}
+    .btn{padding:11px 24px;border-radius:8px;border:none;cursor:pointer;font-family:inherit;font-size:14px;font-weight:700}
+    .btn-primary{background:linear-gradient(135deg,#F5A623,#FF8A00);color:#0A0E1A}
+    .btn-secondary{background:rgba(124,58,237,.1);color:#F0EFF8;border:1px solid rgba(124,58,237,.3)}
+    .btn:disabled{opacity:.5;cursor:not-allowed}
+    .info{background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.3);color:#818CF8;padding:14px;border-radius:10px;font-size:13px;margin-top:10px}
+    .toast{position:fixed;bottom:24px;right:24px;background:rgba(20,18,32,.95);border:1px solid #10B981;color:#fff;padding:14px 20px;border-radius:10px;font-weight:600;z-index:9999;max-width:400px}
+    @media(max-width:900px){.sidebar{display:none}.main{margin-left:0;padding:18px}.field-row,.field-row-3{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <div class="sidebar">
+      <div class="logo">
+        <div class="logo-icon">🛡️</div>
+        <div class="logo-text">Admin</div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">Main</div>
+        <div class="nav-item" onclick="goTo('admin-dashboard.html')"><span>📊</span><span>Dashboard</span></div>
+        <div class="nav-item" onclick="goTo('admin-subscriptions.html')"><span>💳</span><span>Subscriptions</span></div>
+        <div class="nav-item" onclick="goTo('admin-users.html')"><span>👥</span><span>Users</span></div>
+        <div class="nav-item" onclick="goTo('admin-revenue.html')"><span>💰</span><span>Revenue</span></div>
+        <div class="nav-item" onclick="goTo('admin-analytics.html')"><span>📈</span><span>Analytics</span></div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">Configuration</div>
+        <div class="nav-item" onclick="goTo('admin-settings.html')"><span>⚙️</span><span>Settings</span></div>
+        <div class="nav-item" onclick="goTo('admin-features.html')"><span>🚀</span><span>Features</span></div>
+        <div class="nav-item" onclick="goTo('admin-categories.html')"><span>🏷️</span><span>Business Types</span></div>
+        <div class="nav-item" onclick="goTo('admin-technical.html')"><span>🛠️</span><span>Tech Health</span></div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">SEO &amp; Content</div>
+        <div class="nav-item active"><span>🌐</span><span>SEO Global</span></div>
+        <div class="nav-item" onclick="goTo('admin-seo-pages.html')"><span>📄</span><span>SEO Pages</span></div>
+        <div class="nav-item" onclick="goTo('admin-blog.html')"><span>✍️</span><span>Blog Posts</span></div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">System</div>
+        <div class="nav-item" onclick="goTo('admin-notifications.html')"><span>🔔</span><span>Notifications</span></div>
+        <div class="nav-item" onclick="goTo('admin-audit.html')"><span>📋</span><span>Audit Logs</span></div>
+      </div>
+      <div style="margin-top:32px;padding-top:18px;border-top:1px solid rgba(124,58,237,.2)">
+        <div class="nav-item" onclick="logout()" style="color:#EF4444"><span>🚪</span><span>Logout</span></div>
+      </div>
+    </div>
+    <div class="main">
+      <div class="header">
+        <h1>🌐 SEO Global</h1>
+        <p>Site-wide defaults, organization schema, social handles, verification tokens. Updates here propagate to every page on the marketing site.</p>
+      </div>
+
+      <div class="save-bar">
+        <div class="save-status" id="saveStatus">Loading…</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-secondary" onclick="loadGlobal()">🔄 Reload</button>
+          <button class="btn btn-primary" id="saveBtn" onclick="saveAll()">💾 Save All Changes</button>
+        </div>
+      </div>
+
+      <!-- Site Identity -->
+      <div class="section">
+        <h2>🏷️ Site Identity</h2>
+        <div class="desc">Used as defaults when a page hasn't set its own values.</div>
+        <div class="field-row">
+          <div class="field">
+            <label>Site Name</label>
+            <input id="site_name" placeholder="ShopBill Pro">
+            <div class="hint">Brand name shown in titles and OG tags.</div>
+          </div>
+          <div class="field">
+            <label>Site Tagline</label>
+            <input id="site_tagline" placeholder="Run any business in India">
+            <div class="hint">One-line description used as fallback meta and og description.</div>
+          </div>
+        </div>
+        <div class="field">
+          <label>Default Title Template</label>
+          <input id="default_title_template" placeholder="{page} | ShopBill Pro">
+          <div class="hint">Use <code>{page}</code> as placeholder for page-specific title. Example: "{page} | ShopBill Pro" → "Pricing | ShopBill Pro".</div>
+        </div>
+        <div class="field">
+          <label>Default Meta Description</label>
+          <textarea id="default_description" rows="2" placeholder="Free GST billing software for Indian shops..."></textarea>
+          <div class="hint">155–160 chars. Used when a page has no description set.</div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Default OG Image URL</label>
+            <input id="default_og_image" placeholder="https://shopbillpro.in/og/default.png">
+            <div class="hint">1200×630px PNG/JPG. Shown when sharing on WhatsApp/social.</div>
+          </div>
+          <div class="field">
+            <label>Default Keywords</label>
+            <input id="default_keywords" placeholder="billing software india, GST billing, ...">
+            <div class="hint">Comma-separated. Low SEO impact today but kept for completeness.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Organization (parent company) -->
+      <div class="section">
+        <h2>🏢 Organization (TradeCrest)</h2>
+        <div class="desc">Used for Schema.org Organization markup. ShopBill Pro is a product of TradeCrest Technologies Pvt. Ltd. — these fields appear in the corporate publisher schema.</div>
+        <div class="field-row">
+          <div class="field">
+            <label>Organization Name (display)</label>
+            <input id="org_name" placeholder="TradeCrest Technologies Pvt. Ltd.">
+          </div>
+          <div class="field">
+            <label>Legal Name</label>
+            <input id="org_legal_name" placeholder="TradeCrest Technologies Private Limited">
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Logo URL</label>
+            <input id="org_logo_url" placeholder="https://shopbillpro.in/logo.png">
+          </div>
+          <div class="field">
+            <label>Website URL</label>
+            <input id="org_url" placeholder="https://shopbillpro.in">
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Contact Email</label>
+            <input id="org_contact_email" placeholder="hello@shopbillpro.in" type="email">
+          </div>
+          <div class="field">
+            <label>Contact Phone</label>
+            <input id="org_contact_phone" placeholder="+91 …">
+          </div>
+        </div>
+        <div class="field">
+          <label>Registered Office Address</label>
+          <input id="org_address_street" placeholder="Street address" style="margin-bottom:8px">
+          <div class="field-row-3">
+            <input id="org_address_locality" placeholder="City">
+            <input id="org_address_region" placeholder="State">
+            <input id="org_address_postal" placeholder="Postal code">
+          </div>
+        </div>
+        <div class="field">
+          <label>Country (ISO code)</label>
+          <input id="org_address_country" placeholder="IN" style="max-width:120px">
+        </div>
+      </div>
+
+      <!-- Social -->
+      <div class="section">
+        <h2>📱 Social Profiles</h2>
+        <div class="desc">Full URLs to social profiles. Used in Schema.org sameAs and as meta tags.</div>
+        <div class="field-row">
+          <div class="field"><label>Twitter / X</label><input id="social_twitter" placeholder="https://twitter.com/shopbillpro"></div>
+          <div class="field"><label>Facebook</label><input id="social_facebook" placeholder="https://facebook.com/shopbillpro"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Instagram</label><input id="social_instagram" placeholder="https://instagram.com/shopbillpro"></div>
+          <div class="field"><label>YouTube</label><input id="social_youtube" placeholder="https://youtube.com/@shopbillpro"></div>
+        </div>
+        <div class="field"><label>LinkedIn</label><input id="social_linkedin" placeholder="https://linkedin.com/company/tradecrest"></div>
+      </div>
+
+      <!-- Verifications & Analytics -->
+      <div class="section">
+        <h2>🔍 Search Console &amp; Analytics</h2>
+        <div class="desc">Verification tokens and tracking IDs. These are inserted into &lt;head&gt; on every public page.</div>
+        <div class="field-row">
+          <div class="field">
+            <label>Google Search Console Token</label>
+            <input id="google_search_console_token" placeholder="abcd1234… (from GSC HTML tag method)">
+            <div class="hint">Just the token value, not the full meta tag.</div>
+          </div>
+          <div class="field">
+            <label>Bing Webmaster Token</label>
+            <input id="bing_webmaster_token" placeholder="abcd1234…">
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Google Analytics ID</label>
+            <input id="google_analytics_id" placeholder="G-XXXXXXX">
+            <div class="hint">GA4 measurement ID (starts with G-).</div>
+          </div>
+          <div class="field">
+            <label>PostHog Project Token</label>
+            <input id="posthog_token" placeholder="phc_…">
+            <div class="hint">Used for funnel analytics across signup → first bill → paid.</div>
+          </div>
+        </div>
+        <div class="field">
+          <label>Sentry DSN</label>
+          <input id="sentry_dsn" placeholder="https://abc@o123.ingest.sentry.io/456">
+          <div class="hint">Error monitoring. Free tier: 5K events/month.</div>
+        </div>
+      </div>
+
+      <!-- robots.txt -->
+      <div class="section">
+        <h2>🤖 robots.txt Content</h2>
+        <div class="desc">Served at <code>/robots.txt</code>. Crawl rules + sitemap reference.</div>
+        <div class="field">
+          <textarea id="robots_txt_content" rows="14" placeholder="User-agent: *&#10;Allow: /&#10;Sitemap: https://shopbillpro.in/sitemap.xml"></textarea>
+        </div>
+        <div class="info">
+          ℹ️ The marketing-site server reads this value and serves it as <code>/robots.txt</code> on every request. Keep app/admin paths in <code>Disallow:</code> to prevent indexing.
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="admin-auth.js"></script>
+  <script src="admin-db.js"></script>
+  <script>
+    function goTo(url){ location.href = url; }
+    async function logout(){ if(window.auth) await auth.logout(); location.href='admin-login.html'; }
+
+    if(window.auth) auth.requireAdmin();
+    const db = AdminDB.getInstance();
+
+    function toast(msg, isErr=false){
+      const t = document.createElement('div');
+      t.className = 'toast';
+      t.style.borderColor = isErr ? '#EF4444' : '#10B981';
+      t.textContent = msg;
+      document.body.appendChild(t);
+      setTimeout(() => t.remove(), 4000);
+    }
+
+    const FIELDS = [
+      'site_name','site_tagline','default_title_template','default_description','default_og_image','default_keywords',
+      'org_name','org_legal_name','org_logo_url','org_url','org_contact_email','org_contact_phone',
+      'org_address_street','org_address_locality','org_address_region','org_address_postal','org_address_country',
+      'social_twitter','social_facebook','social_instagram','social_youtube','social_linkedin',
+      'google_search_console_token','bing_webmaster_token','google_analytics_id','posthog_token','sentry_dsn',
+      'robots_txt_content'
+    ];
+
+    async function loadGlobal(){
+      try {
+        const data = await db.getSEOGlobal();
+        if(!data){
+          document.getElementById('saveStatus').innerHTML = '<span style="color:#EF4444">⚠️ No SEO global row — has migration 004_seo_admin.sql been run?</span>';
+          return;
+        }
+        FIELDS.forEach(k => {
+          const el = document.getElementById(k);
+          if(el) el.value = data[k] || '';
+        });
+        document.getElementById('saveStatus').textContent = '✅ Loaded · ' + new Date().toLocaleTimeString();
+      } catch(e){
+        document.getElementById('saveStatus').innerHTML = '<span style="color:#EF4444">❌ Could not load: '+e.message+'</span>';
+      }
+    }
+
+    async function saveAll(){
+      const btn = document.getElementById('saveBtn');
+      btn.disabled = true;
+      btn.textContent = '⏳ Saving…';
+      try {
+        const patch = {};
+        FIELDS.forEach(k => {
+          const el = document.getElementById(k);
+          if(el) patch[k] = (el.value || '').trim();
+        });
+        patch.updated_by = sessionStorage.getItem('sbp_admin_user') || 'admin';
+        await db.updateSEOGlobal(patch);
+        toast('✅ All changes saved');
+        loadGlobal();
+      } catch(e){
+        toast('❌ '+e.message, true);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '💾 Save All Changes';
+      }
+    }
+
+    loadGlobal();
+  </script>
+</body>
+</html>

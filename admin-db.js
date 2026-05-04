@@ -1,5 +1,11 @@
 /* ════════════════════════════════════════════════════════════════
    ShopBill Pro Admin — Data Layer (Real Supabase RPCs)
+
+   Updated for Batch 1A (May 2026):
+   - Added SEO Manager methods (global, pages, blog, redirects)
+   - Added business categories methods
+   - Added beta stats method
+   - All existing methods preserved unchanged
 ══════════════════════════════════════════════════════════════════ */
 
 class AdminDB {
@@ -13,6 +19,10 @@ class AdminDB {
   static getInstance() { return AdminDB.instance || new AdminDB(); }
 
   _token() { return sessionStorage.getItem('sbp_admin_token') || ''; }
+
+  // ─────────────────────────────────────────────────────────
+  // EXISTING METHODS (unchanged from previous build)
+  // ─────────────────────────────────────────────────────────
 
   async getMetrics() {
     if (!this.sb) return this._mock();
@@ -111,7 +121,6 @@ class AdminDB {
 
   async getRevenueChart(days=30) {
     if (!this.sb) return [];
-    // Pull daily revenue series for the last N days
     const since = new Date(Date.now() - days*86400000).toISOString();
     const { data } = await this.sb.from('subscriptions')
       .select('amount, created_at, plan, billing_cycle')
@@ -119,7 +128,6 @@ class AdminDB {
       .gte('created_at', since)
       .order('created_at');
     if (!data) return [];
-    // Bucket by day
     const buckets = {};
     data.forEach(r => {
       const d = (r.created_at||'').slice(0,10);
@@ -138,6 +146,160 @@ class AdminDB {
       mrr: 0, arr: 0, pending_subscriptions: 0, total_bills: 0,
       today_signups: 0, week_signups: 0, conversion_rate: 0
     };
+  }
+
+  // ═════════════════════════════════════════════════════════
+  // NEW METHODS — Batch 1A additions (May 2026)
+  // ═════════════════════════════════════════════════════════
+
+  // ─────────────────────────────────────────────────────────
+  // SEO Global (singleton)
+  // ─────────────────────────────────────────────────────────
+  async getSEOGlobal() {
+    if (!this.sb) return null;
+    const { data, error } = await this.sb.rpc('admin_get_seo_global', { p_token: this._token() });
+    if (error) throw new Error(error.message);
+    return data;
+  }
+
+  async updateSEOGlobal(patch) {
+    if (!this.sb) throw new Error('Supabase not initialized');
+    const { data, error } = await this.sb.rpc('admin_update_seo_global', {
+      p_token: this._token(), p_patch: patch
+    });
+    if (error) throw new Error(error.message);
+    return data;
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // SEO Pages (per-page settings)
+  // ─────────────────────────────────────────────────────────
+  async listSEOPages() {
+    if (!this.sb) return [];
+    const { data, error } = await this.sb.rpc('admin_list_seo_pages', { p_token: this._token() });
+    if (error) throw new Error(error.message);
+    return data || [];
+  }
+
+  async upsertSEOPage(pageData) {
+    if (!this.sb) throw new Error('Supabase not initialized');
+    const { data, error } = await this.sb.rpc('admin_upsert_seo_page', {
+      p_token: this._token(), p_data: pageData
+    });
+    if (error) throw new Error(error.message);
+    return data;
+  }
+
+  async deleteSEOPage(path) {
+    if (!this.sb) throw new Error('Supabase not initialized');
+    const { data, error } = await this.sb.rpc('admin_delete_seo_page', {
+      p_token: this._token(), p_path: path
+    });
+    if (error) throw new Error(error.message);
+    return data;
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // Blog Posts CMS
+  // ─────────────────────────────────────────────────────────
+  async listBlogPosts(status=null) {
+    if (!this.sb) return [];
+    const { data, error } = await this.sb.rpc('admin_list_blog_posts', {
+      p_token: this._token(), p_status: status
+    });
+    if (error) throw new Error(error.message);
+    return data || [];
+  }
+
+  async upsertBlogPost(postData) {
+    if (!this.sb) throw new Error('Supabase not initialized');
+    const { data, error } = await this.sb.rpc('admin_upsert_blog_post', {
+      p_token: this._token(), p_data: postData
+    });
+    if (error) throw new Error(error.message);
+    return data;
+  }
+
+  async deleteBlogPost(slug) {
+    if (!this.sb) throw new Error('Supabase not initialized');
+    const { data, error } = await this.sb.rpc('admin_delete_blog_post', {
+      p_token: this._token(), p_slug: slug
+    });
+    if (error) throw new Error(error.message);
+    return data;
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // SEO Redirects
+  // ─────────────────────────────────────────────────────────
+  async listRedirects() {
+    if (!this.sb) return [];
+    const { data, error } = await this.sb.rpc('admin_list_redirects', { p_token: this._token() });
+    if (error) throw new Error(error.message);
+    return data || [];
+  }
+
+  async upsertRedirect(redirectData) {
+    if (!this.sb) throw new Error('Supabase not initialized');
+    const { data, error } = await this.sb.rpc('admin_upsert_redirect', {
+      p_token: this._token(), p_data: redirectData
+    });
+    if (error) throw new Error(error.message);
+    return data;
+  }
+
+  async deleteRedirect(fromPath) {
+    if (!this.sb) throw new Error('Supabase not initialized');
+    const { data, error } = await this.sb.rpc('admin_delete_redirect', {
+      p_token: this._token(), p_from_path: fromPath
+    });
+    if (error) throw new Error(error.message);
+    return data;
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // Business Categories (read-only — admins edit via SQL/seed)
+  // ─────────────────────────────────────────────────────────
+  async listMacroCategories() {
+    if (!this.sb) return [];
+    const { data, error } = await this.sb.rpc('get_macro_categories');
+    if (error) { console.warn('macro cats:', error); return []; }
+    return data || [];
+  }
+
+  async listBusinessCategories(macroCode=null) {
+    if (!this.sb) return [];
+    if (macroCode) {
+      const { data, error } = await this.sb.rpc('get_business_categories', { p_macro: macroCode });
+      if (error) { console.warn('biz cats:', error); return []; }
+      return data || [];
+    } else {
+      // No macro filter — fetch all directly from table for admin page
+      const { data, error } = await this.sb.from('sbp_business_categories')
+        .select('*').order('macro_code').order('display_order');
+      if (error) { console.warn('all biz cats:', error); return []; }
+      return data || [];
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // Beta Stats
+  // ─────────────────────────────────────────────────────────
+  async getBetaStats() {
+    if (!this.sb) return null;
+    try {
+      const { data, error } = await this.sb.rpc('admin_get_beta_stats', { p_token: this._token() });
+      if (error) { console.warn('beta stats:', error); return null; }
+      // RPC returns table — Supabase returns array of one row
+      return Array.isArray(data) ? data[0] : data;
+    } catch (e) { console.warn(e); return null; }
+  }
+
+  async getBetaConfig() {
+    if (!this.sb) return null;
+    const { data, error } = await this.sb.rpc('get_beta_config');
+    if (error) { console.warn('beta config:', error); return null; }
+    return Array.isArray(data) ? data[0] : data;
   }
 }
 
