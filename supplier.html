@@ -183,6 +183,8 @@ html,body{height:100%;overflow:hidden}
 <body>
 <script>(function(){var ds=localStorage.getItem("sbp_digit_style")||"default";var fs=parseInt(localStorage.getItem("sbp_font_size")||"15");var fm={default:"inherit",mono:"Courier New,monospace",rounded:"DM Sans,sans-serif",sharp:"Outfit,sans-serif"};var st=document.getElementById("sbp-font-override");if(!st){st=document.createElement("style");st.id="sbp-font-override";document.head.appendChild(st);}st.textContent="body{font-size:"+fs+"px}.sc-val,.cm-val,.bc-amt,.cust-bal-val,.cms-val,.cart-total-val,.pos-item-price,.tot-row span:last-child,.gst-row span,.stat-val,.stat-num,.report-val,.bill-total,.bdoc-inv-no,.bc-inv,.lv{font-family:"+fm[ds]+"!important}";})();</script>
 <div id="app">
+  <div id="sbpBetaBanner"></div>
+
   <div class="topbar">
     <div class="tb-l">
       <div class="back-btn" onclick="goTo('settings.html')">←</div>
@@ -548,5 +550,6 @@ async function refreshShopPlan() {
   } catch(e) {}
 }
 </script>
+<script src="lib/beta-banner.js"></script>
 </body>
 </html>
