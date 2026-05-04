@@ -4,6 +4,9 @@
 -- Run AFTER admin_panel_full.sql.
 -- Idempotent — safe to re-run.
 --
+-- v1.1 (May 2026) FIX: corrected `sbp_shop` references to `shops`
+--   to match the actual production schema. No other behavior changes.
+--
 -- This migration introduces the shop_type system that powers:
 --   - Smart sidebar (vertical-aware module visibility)
 --   - Vertical-aware sample data on signup
@@ -14,7 +17,7 @@
 --   sbp_macro_categories  — 12 high-level business groupings
 --   sbp_business_categories — 80+ specific business sub-types
 --   sbp_module_profiles   — maps macro category → enabled modules
---   sbp_shop.shop_type    — FK to a business category (added below)
+--   shops.shop_type    — FK to a business category (added below)
 -- ════════════════════════════════════════════════════════════════
 
 
@@ -605,7 +608,7 @@ ON CONFLICT (profile, module_code) DO UPDATE SET
 
 
 -- ══════════════════════════════════════════════════════════════
--- 4. Add shop_type column to sbp_shop
+-- 4. Add shop_type column to shops
 -- ══════════════════════════════════════════════════════════════
 -- Defaults to 'general_retail' for any existing shops that signed up
 -- before the shop type system existed.
@@ -614,15 +617,15 @@ DO $$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.columns
-    WHERE table_name = 'sbp_shop' AND column_name = 'shop_type'
+    WHERE table_name = 'shops' AND column_name = 'shop_type'
   ) THEN
-    ALTER TABLE sbp_shop
+    ALTER TABLE shops
       ADD COLUMN shop_type text DEFAULT 'general_retail'
         REFERENCES sbp_business_categories(code) ON DELETE SET DEFAULT;
   END IF;
 END $$;
 
-CREATE INDEX IF NOT EXISTS idx_shop_type ON sbp_shop(shop_type);
+CREATE INDEX IF NOT EXISTS idx_shop_type ON shops(shop_type);
 
 
 -- ══════════════════════════════════════════════════════════════
@@ -675,7 +678,7 @@ DECLARE
 BEGIN
   -- Look up the shop's profile via shop_type → business_category → module_profile
   SELECT bc.module_profile INTO v_profile
-  FROM sbp_shop s
+  FROM shops s
   LEFT JOIN sbp_business_categories bc ON bc.code = s.shop_type
   WHERE s.id = p_shop_id;
 

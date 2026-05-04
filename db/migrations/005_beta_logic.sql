@@ -4,6 +4,9 @@
 -- Run AFTER migrations 003 and 004.
 -- Idempotent — safe to re-run.
 --
+-- v1.1 (May 2026) FIX: corrected `sbp_shop` references to `shops`
+--   to match the actual production schema. No other behavior changes.
+--
 -- This migration adds the server-side helpers for the 60-day beta:
 --   - Default new signups to 'business' plan with 60-day expiry
 --   - Track grace period (Day 61–67 read-only)
@@ -29,7 +32,7 @@ ON CONFLICT (key) DO NOTHING;
 
 
 -- ══════════════════════════════════════════════════════════════
--- 2. Add beta-tracking columns to sbp_shop
+-- 2. Add beta-tracking columns to shops
 -- ══════════════════════════════════════════════════════════════
 -- Existing schema has plan + plan_expires_at. We add:
 --   is_beta_signup (true if shop signed up during beta)
@@ -40,28 +43,28 @@ DO $$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.columns
-    WHERE table_name = 'sbp_shop' AND column_name = 'is_beta_signup'
+    WHERE table_name = 'shops' AND column_name = 'is_beta_signup'
   ) THEN
-    ALTER TABLE sbp_shop ADD COLUMN is_beta_signup boolean DEFAULT false;
+    ALTER TABLE shops ADD COLUMN is_beta_signup boolean DEFAULT false;
   END IF;
 
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.columns
-    WHERE table_name = 'sbp_shop' AND column_name = 'beta_grace_until'
+    WHERE table_name = 'shops' AND column_name = 'beta_grace_until'
   ) THEN
-    ALTER TABLE sbp_shop ADD COLUMN beta_grace_until timestamptz;
+    ALTER TABLE shops ADD COLUMN beta_grace_until timestamptz;
   END IF;
 
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.columns
-    WHERE table_name = 'sbp_shop' AND column_name = 'plan_pre_beta'
+    WHERE table_name = 'shops' AND column_name = 'plan_pre_beta'
   ) THEN
-    ALTER TABLE sbp_shop ADD COLUMN plan_pre_beta text DEFAULT 'free';
+    ALTER TABLE shops ADD COLUMN plan_pre_beta text DEFAULT 'free';
   END IF;
 END $$;
 
-CREATE INDEX IF NOT EXISTS idx_shop_beta_signup ON sbp_shop(is_beta_signup) WHERE is_beta_signup = true;
-CREATE INDEX IF NOT EXISTS idx_shop_grace_until ON sbp_shop(beta_grace_until) WHERE beta_grace_until IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_shop_beta_signup ON shops(is_beta_signup) WHERE is_beta_signup = true;
+CREATE INDEX IF NOT EXISTS idx_shop_grace_until ON shops(beta_grace_until) WHERE beta_grace_until IS NOT NULL;
 
 
 -- ══════════════════════════════════════════════════════════════
@@ -116,12 +119,12 @@ GRANT EXECUTE ON FUNCTION public.get_beta_config() TO authenticated, anon;
 -- Otherwise, signup_date + beta_duration_days.
 
 CREATE OR REPLACE FUNCTION public.apply_beta_plan(p_shop_id uuid)
-RETURNS sbp_shop
+RETURNS shops
 LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 DECLARE
-  v_shop sbp_shop;
+  v_shop shops;
   v_duration int;
   v_grace int;
   v_end_date date;
@@ -131,12 +134,12 @@ DECLARE
 BEGIN
   -- Skip if beta mode is not active
   IF NOT is_beta_mode_active() THEN
-    SELECT * INTO v_shop FROM sbp_shop WHERE id = p_shop_id;
+    SELECT * INTO v_shop FROM shops WHERE id = p_shop_id;
     RETURN v_shop;
   END IF;
 
   -- Read current shop
-  SELECT * INTO v_shop FROM sbp_shop WHERE id = p_shop_id;
+  SELECT * INTO v_shop FROM shops WHERE id = p_shop_id;
   IF NOT FOUND THEN
     RAISE EXCEPTION 'Shop not found: %', p_shop_id;
   END IF;
@@ -162,7 +165,7 @@ BEGIN
   v_grace_until := v_expires + (v_grace || ' days')::interval;
 
   -- Apply
-  UPDATE sbp_shop SET
+  UPDATE shops SET
     plan_pre_beta    = COALESCE(plan, 'free'),
     plan             = 'business',
     plan_expires_at  = v_expires,
@@ -198,10 +201,10 @@ SECURITY DEFINER
 STABLE
 AS $$
 DECLARE
-  v_shop sbp_shop;
+  v_shop shops;
   v_now timestamptz := now();
 BEGIN
-  SELECT * INTO v_shop FROM sbp_shop WHERE id = p_shop_id;
+  SELECT * INTO v_shop FROM shops WHERE id = p_shop_id;
   IF NOT FOUND THEN
     RETURN;
   END IF;
@@ -266,7 +269,7 @@ DECLARE
   v_graced int := 0;
 BEGIN
   -- Auto-downgrade shops whose grace period has ended
-  UPDATE sbp_shop SET
+  UPDATE shops SET
     plan = COALESCE(plan_pre_beta, 'free'),
     plan_expires_at = NULL
   WHERE is_beta_signup = true
@@ -276,7 +279,7 @@ BEGIN
   GET DIAGNOSTICS v_expired = ROW_COUNT;
 
   -- Count shops currently in grace (informational)
-  SELECT COUNT(*) INTO v_graced FROM sbp_shop
+  SELECT COUNT(*) INTO v_graced FROM shops
   WHERE is_beta_signup = true
     AND plan_expires_at IS NOT NULL
     AND beta_grace_until IS NOT NULL
@@ -315,33 +318,33 @@ BEGIN
     RAISE EXCEPTION 'Unauthorized';
   END IF;
 
-  total_beta_shops := (SELECT COUNT(*) FROM sbp_shop WHERE is_beta_signup = true);
+  total_beta_shops := (SELECT COUNT(*) FROM shops WHERE is_beta_signup = true);
 
-  active_now := (SELECT COUNT(*) FROM sbp_shop
+  active_now := (SELECT COUNT(*) FROM shops
                  WHERE is_beta_signup = true
                    AND plan = 'business'
                    AND (plan_expires_at IS NULL OR plan_expires_at > now()));
 
-  ending_in_7_days := (SELECT COUNT(*) FROM sbp_shop
+  ending_in_7_days := (SELECT COUNT(*) FROM shops
                        WHERE is_beta_signup = true
                          AND plan_expires_at IS NOT NULL
                          AND plan_expires_at > now()
                          AND plan_expires_at <= now() + interval '7 days');
 
-  ending_in_3_days := (SELECT COUNT(*) FROM sbp_shop
+  ending_in_3_days := (SELECT COUNT(*) FROM shops
                        WHERE is_beta_signup = true
                          AND plan_expires_at IS NOT NULL
                          AND plan_expires_at > now()
                          AND plan_expires_at <= now() + interval '3 days');
 
-  in_grace := (SELECT COUNT(*) FROM sbp_shop
+  in_grace := (SELECT COUNT(*) FROM shops
                WHERE is_beta_signup = true
                  AND plan_expires_at IS NOT NULL
                  AND now() > plan_expires_at
                  AND beta_grace_until IS NOT NULL
                  AND now() <= beta_grace_until);
 
-  fully_expired := (SELECT COUNT(*) FROM sbp_shop
+  fully_expired := (SELECT COUNT(*) FROM shops
                     WHERE is_beta_signup = true
                       AND beta_grace_until IS NOT NULL
                       AND now() > beta_grace_until);
