@@ -34,8 +34,21 @@ window.SBPUpgrade = (function () {
   /* ── Plan Check ── */
   function isPro() {
     try {
-      const plan = localStorage.getItem('sbp_plan') || 'free';
-      return plan !== 'free';
+      // BATCH 1B-E: read from sbp_shop (canonical source) instead of broken sbp_plan key.
+      // Recognize active beta and business plans as "pro" for upsell-suppression purposes.
+      const s = JSON.parse(localStorage.getItem('sbp_shop') || '{}');
+
+      // Active beta signup (within active or grace window) → full features → no upsells
+      if (s.is_beta_signup === true) {
+        const now = new Date();
+        const expires = s.plan_expires_at ? new Date(s.plan_expires_at) : null;
+        const grace   = s.beta_grace_until ? new Date(s.beta_grace_until) : null;
+        if (expires && expires > now) return true;
+        if (grace && grace > now) return true;
+      }
+
+      // Paid plans
+      return s.plan === 'pro' || s.plan === 'enterprise' || s.plan === 'business';
     } catch { return false; }
   }
 

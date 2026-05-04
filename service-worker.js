@@ -1,15 +1,16 @@
 /* ══════════════════════════════════════════════════════════════════
-   ShopBill Pro — Service Worker v1.5.2
+   ShopBill Pro — Service Worker v1.5.3
    TradeCrest Technologies Pvt. Ltd.
    Offline-first caching strategy
 
-   v1.5.2 changes (Batch 1B-D — May 2026):
-   - Refresh cache for index.html (signup wizard + apply_beta_plan wired in)
-   - All caching behavior identical to v1.5.1
+   v1.5.3 changes (Batch 1B-E — May 2026):
+   - Refresh cache for conversion.js + upgrade-popup.js (beta-aware isPro)
+   - Refresh cache for subscription.html (beta status panel + CTA logic)
+   - All caching behavior identical to v1.5.2
 ══════════════════════════════════════════════════════════════════ */
 
 // FIX #20 — Bump version on every release so users get fresh HTML
-const CACHE_NAME = 'shopbillpro-v1.5.2-20260504-1bd';
+const CACHE_NAME = 'shopbillpro-v1.5.3-20260504-1be';
 const OFFLINE_URL = '/index.html';
 
 const STATIC_ASSETS = [
@@ -39,7 +40,7 @@ const STATIC_ASSETS = [
   '/styles.css',
   '/fix.css',
   '/manifest.json',
-  // NEW in v1.5.2 — shared libraries (Batch 1A)
+  // NEW in v1.5.3 — shared libraries (Batch 1A)
   '/lib/sidebar-engine.js',
   '/lib/beta-banner.js',
   '/lib/shop-type-wizard.js',

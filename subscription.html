@@ -190,6 +190,9 @@ html,body{height:100%;overflow:hidden}
     </div>
   </div>
 
+  <!-- BATCH 1B-E: Beta status panel (populated by JS when shop is in active beta) -->
+  <div id="beta-mode-panel" style="display:none;margin:0 auto 24px;max-width:1200px;padding:0 20px"></div>
+
   <!-- Plan Cards -->
   <div class="plans-wrap">
 
@@ -709,21 +712,101 @@ function showUpgradeSuccess(planName, paymentId, amount) {
   updatePlanUI();
 }
 
-// Update CTAs based on current plan
-function updatePlanUI(){
-  const shop=JSON.parse(localStorage.getItem('sbp_shop')||'{}');
-  const plan=shop.plan||'free';
-  if(plan==='pro'){
-    document.getElementById('pro-cta').textContent='✅ Current Plan';
-    document.getElementById('pro-cta').className='plan-cta current';
-    document.getElementById('biz-cta').textContent='⬆️ Upgrade to Business';
-    document.getElementById('free-cta').textContent='⬇️ Downgrade';
-  } else if(plan==='enterprise'||plan==='biz'){
-    document.getElementById('biz-cta').textContent='✅ Current Plan';
-    document.getElementById('biz-cta').className='plan-cta current';
-    document.getElementById('pro-cta').textContent='⬇️ Downgrade to Pro';
-    document.getElementById('free-cta').textContent='⬇️ Downgrade';
+// BATCH 1B-E: Format ISO date to readable form ("3 Jul 2026")
+function _fmtBetaDate(iso){
+  if(!iso) return '';
+  try {
+    const d = new Date(iso);
+    return d.toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' });
+  } catch(e){ return ''; }
+}
+
+// BATCH 1B-E: Render the beta status panel above plan cards.
+// Only injects content when shop is an active beta signup (or in grace).
+function _injectBetaPanel(shop){
+  const host = document.getElementById('beta-mode-panel');
+  if(!host) return;
+  const expiresStr = _fmtBetaDate(shop.plan_expires_at);
+  const graceStr   = _fmtBetaDate(shop.beta_grace_until);
+  const now = new Date();
+  const expires = shop.plan_expires_at ? new Date(shop.plan_expires_at) : null;
+  const grace   = shop.beta_grace_until ? new Date(shop.beta_grace_until) : null;
+
+  // Decide tone: active beta vs grace period
+  const inActive = expires && expires > now;
+  const inGrace  = !inActive && grace && grace > now;
+
+  if(!inActive && !inGrace){
+    host.style.display = 'none';
+    return;
   }
+
+  let bg, border, color, icon, title, body;
+  if(inActive){
+    bg     = 'linear-gradient(135deg,rgba(16,185,129,.14),rgba(16,185,129,.04))';
+    border = 'rgba(16,185,129,.35)';
+    color  = '#10B981';
+    icon   = '🎉';
+    title  = "You're in the ShopBill Pro Beta";
+    body   = 'All Business-plan features unlocked free until <strong>' + expiresStr + '</strong>. After beta ends, choose any plan below to continue — or stay on Free with watermarked bills.';
+  } else {
+    bg     = 'linear-gradient(135deg,rgba(124,58,237,.14),rgba(124,58,237,.04))';
+    border = 'rgba(124,58,237,.35)';
+    color  = '#A78BFA';
+    icon   = '⏳';
+    title  = 'Beta ended — your data is safe';
+    body   = "Read-only access until <strong>" + graceStr + "</strong>. Pick a plan below to continue billing, or stay on Free (data preserved).";
+  }
+
+  host.innerHTML =
+    '<div style="background:' + bg + ';border:1px solid ' + border + ';border-radius:14px;padding:18px 22px;color:' + color + '">' +
+      '<div style="font-family:Outfit,sans-serif;font-size:18px;font-weight:800;margin-bottom:6px">' + icon + ' ' + title + '</div>' +
+      '<div style="font-size:13px;color:rgba(255,255,255,.85);margin-bottom:6px;line-height:1.55">' + body + '</div>' +
+      '<div style="font-size:12px;color:rgba(255,255,255,.5)">No card needed during beta. Pricing shown below is what you choose from on Day 61.</div>' +
+    '</div>';
+  host.style.display = 'block';
+}
+
+// BATCH 1B-E: Update CTAs based on current plan, with beta-aware branch
+function updatePlanUI(){
+  const shop = JSON.parse(localStorage.getItem('sbp_shop')||'{}');
+  const plan = shop.plan || 'free';
+  const now = new Date();
+  const expires = shop.plan_expires_at ? new Date(shop.plan_expires_at) : null;
+  const grace   = shop.beta_grace_until ? new Date(shop.beta_grace_until) : null;
+
+  // Active beta state — Business is currently active via beta, not via paid plan
+  const isActiveBeta = shop.is_beta_signup === true && expires && expires > now;
+
+  if(isActiveBeta){
+    _injectBetaPanel(shop);
+    document.getElementById('biz-cta').textContent  = '✅ Active (Beta)';
+    document.getElementById('biz-cta').className    = 'plan-cta current';
+    document.getElementById('pro-cta').textContent  = 'Choose Pro after beta';
+    document.getElementById('free-cta').textContent = 'Stay on Free after beta';
+    return;
+  }
+
+  // Beta ended but in grace period — show grace panel; existing-plan CTAs still apply
+  const inGrace = shop.is_beta_signup === true && (!expires || expires <= now) && grace && grace > now;
+  if(inGrace){
+    _injectBetaPanel(shop);
+    // Fall through to normal plan-state CTAs based on what plan_pre_beta or plan currently is
+  }
+
+  // Normal (non-beta) CTA logic
+  if(plan === 'pro'){
+    document.getElementById('pro-cta').textContent  = '✅ Current Plan';
+    document.getElementById('pro-cta').className    = 'plan-cta current';
+    document.getElementById('biz-cta').textContent  = '⬆️ Upgrade to Business';
+    document.getElementById('free-cta').textContent = '⬇️ Downgrade';
+  } else if(plan === 'enterprise' || plan === 'biz' || plan === 'business'){
+    document.getElementById('biz-cta').textContent  = '✅ Current Plan';
+    document.getElementById('biz-cta').className    = 'plan-cta current';
+    document.getElementById('pro-cta').textContent  = '⬇️ Downgrade to Pro';
+    document.getElementById('free-cta').textContent = '⬇️ Downgrade';
+  }
+  // else: free plan — leave default labels (Upgrade to Pro / Upgrade to Business / Your Current Plan on Free)
 }
 
 // Sidebar

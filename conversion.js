@@ -10,7 +10,17 @@
   /* ── Helpers ── */
   function isPro(){
     const s=JSON.parse(localStorage.getItem('sbp_shop')||'{}');
-    return s.plan==='pro'||s.plan==='enterprise';
+    // BATCH 1B-E: active beta signups have full features unlocked — suppress upsells
+    // (covers both the active period and the 7-day grace window)
+    if(s.is_beta_signup === true){
+      const now = new Date();
+      const expires = s.plan_expires_at ? new Date(s.plan_expires_at) : null;
+      const grace   = s.beta_grace_until ? new Date(s.beta_grace_until) : null;
+      if(expires && expires > now) return true;
+      if(grace && grace > now) return true;
+    }
+    // Paid plans (legacy 'enterprise' is normalized to 'business' elsewhere)
+    return s.plan==='pro' || s.plan==='enterprise' || s.plan==='business';
   }
   function getLang(){ return localStorage.getItem('sbp_lang')||'en'; }
   function hi(){ return getLang()==='hi'; }
