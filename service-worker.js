@@ -1,18 +1,17 @@
 /* ══════════════════════════════════════════════════════════════════
-   ShopBill Pro — Service Worker v1.5.3
+   ShopBill Pro — Service Worker v1.5.4
    TradeCrest Technologies Pvt. Ltd.
    Offline-first caching strategy
 
-   v1.5.3 changes (Batch 1B-E combined — May 2026):
-   - Beta-aware upsell suppression: conversion.js + upgrade-popup.js
-   - subscription.html: beta status panel + CTA logic
-   - 6 plan-name normalization fixes for stale 'enterprise' checks:
-     team.html, customers.html, dashboard.html, pos-admin.html, stock.html, supabase.js
-   - All caching behavior identical to v1.5.2
+   v1.5.4 changes (Batch 1B-C lib patch — May 2026):
+   - Patched lib/sidebar-engine.js: desktop rendering branch with .dsb-* classes,
+     auto-mounts <div id="dsb">, bilingual labels, Settings/More layout-aware
+   - Lib NOT YET wired into any page — pilot wiring is the next sub-batch
+   - All caching behavior identical to v1.5.3
 ══════════════════════════════════════════════════════════════════ */
 
 // FIX #20 — Bump version on every release so users get fresh HTML
-const CACHE_NAME = 'shopbillpro-v1.5.3-20260504-1be';
+const CACHE_NAME = 'shopbillpro-v1.5.4-20260504-1bc-libonly';
 const OFFLINE_URL = '/index.html';
 
 const STATIC_ASSETS = [
@@ -42,7 +41,7 @@ const STATIC_ASSETS = [
   '/styles.css',
   '/fix.css',
   '/manifest.json',
-  // NEW in v1.5.3 — shared libraries (Batch 1A)
+  // NEW in v1.5.4 — shared libraries (Batch 1A)
   '/lib/sidebar-engine.js',
   '/lib/beta-banner.js',
   '/lib/shop-type-wizard.js',
