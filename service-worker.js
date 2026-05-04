@@ -1,17 +1,15 @@
 /* ══════════════════════════════════════════════════════════════════
-   ShopBill Pro — Service Worker v1.5.0
+   ShopBill Pro — Service Worker v1.5.1
    TradeCrest Technologies Pvt. Ltd.
    Offline-first caching strategy
 
-   v1.5.0 changes (Batch 1B-A — May 2026):
-   - Refresh cache for the 16 user-facing pages updated with beta banner wiring
-   - Updated lib/beta-banner.js (now uses #sbpBetaBanner placeholder in pages)
-   - Bumped CACHE_NAME so existing PWAs refresh their precache
-   - All caching behavior identical to v1.4.0
+   v1.5.1 changes (Batch 1B-B — May 2026):
+   - Refresh cache for subscription.html and team.html (pricing fix ₹199 → ₹499)
+   - All caching behavior identical to v1.5.0
 ══════════════════════════════════════════════════════════════════ */
 
 // FIX #20 — Bump version on every release so users get fresh HTML
-const CACHE_NAME = 'shopbillpro-v1.5.0-20260504-1ba';
+const CACHE_NAME = 'shopbillpro-v1.5.1-20260504-1bb';
 const OFFLINE_URL = '/index.html';
 
 const STATIC_ASSETS = [
@@ -41,7 +39,7 @@ const STATIC_ASSETS = [
   '/styles.css',
   '/fix.css',
   '/manifest.json',
-  // NEW in v1.5.0 — shared libraries (Batch 1A)
+  // NEW in v1.5.1 — shared libraries (Batch 1A)
   '/lib/sidebar-engine.js',
   '/lib/beta-banner.js',
   '/lib/shop-type-wizard.js',

@@ -172,8 +172,6 @@ html,body{height:100%;overflow:hidden}
 <script>(function(){var ds=localStorage.getItem("sbp_digit_style")||"default";var fs=parseInt(localStorage.getItem("sbp_font_size")||"15");var fm={default:"inherit",mono:"Courier New,monospace",rounded:"DM Sans,sans-serif",sharp:"Outfit,sans-serif"};var st=document.getElementById("sbp-font-override");if(!st){st=document.createElement("style");st.id="sbp-font-override";document.head.appendChild(st);}st.textContent="body{font-size:"+fs+"px}.sc-val,.cm-val,.bc-amt,.cust-bal-val,.cms-val,.cart-total-val,.pos-item-price,.tot-row span:last-child,.gst-row span,.stat-val,.stat-num,.report-val,.bill-total,.bdoc-inv-no,.bc-inv,.lv{font-family:"+fm[ds]+"!important}";})();</script>
 <div id="app">
   <!-- Topbar -->
-  <div id="sbpBetaBanner"></div>
-
   <div class="topbar">
     <a class="back-btn" onclick="history.back()">←</a>
     <div class="tb-title">🚀 Plans & Pricing</div>
@@ -252,7 +250,7 @@ html,body{height:100%;overflow:hidden}
         <div class="plan-name">Business</div>
         <div class="plan-desc">Multi-user, advanced insights, and team management for growing shops.</div>
         <div class="plan-price biz">
-          <span class="amount" id="biz-price">₹199</span>
+          <span class="amount" id="biz-price">₹499</span>
           <span class="per">/month</span>
         </div>
         <div class="plan-per-day" id="biz-per-day">₹7/day · Best for shops with staff</div>
@@ -281,7 +279,7 @@ html,body{height:100%;overflow:hidden}
           <th>Feature</th>
           <th>Free</th>
           <th style="color:var(--acc)">Pro ₹99</th>
-          <th style="color:#F59E0B">Biz ₹199</th>
+          <th style="color:#F59E0B">Biz ₹499</th>
         </tr>
       </thead>
       <tbody>
@@ -363,7 +361,7 @@ function setBilling(type){
   document.getElementById('bill-monthly').classList.toggle('on',type==='monthly');
   document.getElementById('bill-yearly').classList.toggle('on',type==='yearly');
   const proM=99,proY=Math.round(99*12*0.8/12);
-  const bizM=199,bizY=Math.round(199*12*0.8/12);
+  const bizM=499,bizY=Math.round(499*12*0.8/12);
   if(type==='yearly'){
     document.getElementById('pro-price').textContent='₹'+proY;
     document.getElementById('pro-per-day').textContent='₹'+Math.round(proY/30)+'/day · Billed ₹'+(proY*12)+'/year';
@@ -372,8 +370,8 @@ function setBilling(type){
   }else{
     document.getElementById('pro-price').textContent='₹99';
     document.getElementById('pro-per-day').textContent='Just ₹3/day · Less than a cup of chai ☕';
-    document.getElementById('biz-price').textContent='₹199';
-    document.getElementById('biz-per-day').textContent='₹7/day · Best for shops with staff';
+    document.getElementById('biz-price').textContent='₹499';
+    document.getElementById('biz-per-day').textContent='₹17/day · Best for shops with staff';
   }
 }
 
@@ -412,8 +410,8 @@ async function _loadAdminPaymentConfig(){
     SBP_PAY_CONFIG._prices = {
       pro_monthly: parseFloat(map.plan_pro_monthly) || 99,
       pro_yearly: parseFloat(map.plan_pro_yearly) || 999,
-      business_monthly: parseFloat(map.plan_business_monthly) || 199,
-      business_yearly: parseFloat(map.plan_business_yearly) || 1999
+      business_monthly: parseFloat(map.plan_business_monthly) || 499,
+      business_yearly: parseFloat(map.plan_business_yearly) || 4990
     };
     // Re-render plan UI if function exists
     if(typeof renderPlanPrices === 'function') try{renderPlanPrices();}catch(e){}
@@ -432,7 +430,7 @@ function upgradePlan(plan) {
   const lang = localStorage.getItem('sbp_lang') || 'en';
   const hi = lang === 'hi';
   const isYearly = _billing === 'yearly';
-  const monthlyAmount = plan === 'pro' ? 99 : 199;
+  const monthlyAmount = plan === 'pro' ? 99 : 499;
   const amount = isYearly ? Math.round(monthlyAmount * 12 * 0.8) : monthlyAmount;
   const planName = plan === 'pro' ? 'Pro' : 'Business';
   const billingLabel = isYearly ? 'Yearly' : 'Monthly';
@@ -757,6 +755,5 @@ function updatePlanUI(){
 
 document.addEventListener('DOMContentLoaded',updatePlanUI);
 </script>
-<script src="lib/beta-banner.js"></script>
 </body>
 </html>
