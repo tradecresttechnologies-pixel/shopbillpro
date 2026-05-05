@@ -1,19 +1,20 @@
 /* ══════════════════════════════════════════════════════════════════
-   ShopBill Pro — Service Worker v1.5.7
+   ShopBill Pro — Service Worker v1.5.8
    TradeCrest Technologies Pvt. Ltd.
    Offline-first caching strategy
 
-   v1.5.7 changes (Batch 1B-C-Pilot REVERT — May 2026):
-   - Reverted dashboard.html to use inline sidebar IIFE (pilot revealed unresolved bug)
-   - lib/sidebar-engine.js stays on server (1B-C lib patch) but no page calls it
-   - All 1B-A through 1B-E features preserved
-   - Pilot will re-run after lib bug is diagnosed and fixed
-   - Bonus: removed pre-existing ',,' typo from inline nav array
-   - All caching behavior identical to v1.5.6
+   v1.5.8 changes (Batch 1B-C-Pilot v2 — May 2026):
+   - Wired dashboard.html to lib/sidebar-engine.js for BOTH desktop (#dsb) AND mobile (.bnav)
+   - Replaced inline desktop sidebar IIFE (35 lines) and inline static bnav HTML (15 lines)
+   - Lib renders 13+ items in desktop side rail, 5 items in mobile bottom nav
+   - Added viewport resize listener (re-renders on crossing 1024px threshold)
+   - All other 15 pages still use their own inline sidebars/bnav — unchanged
+   - 1B-C-Scale (rollout to remaining 15 pages) is the next batch if pilot validates
+   - All caching behavior identical to v1.5.7
 ══════════════════════════════════════════════════════════════════ */
 
 // FIX #20 — Bump version on every release so users get fresh HTML
-const CACHE_NAME = 'shopbillpro-v1.5.7-20260504-1bcrevert';
+const CACHE_NAME = 'shopbillpro-v1.5.8-20260505-1bcpilotv2';
 const OFFLINE_URL = '/index.html';
 
 const STATIC_ASSETS = [
@@ -43,7 +44,7 @@ const STATIC_ASSETS = [
   '/styles.css',
   '/fix.css',
   '/manifest.json',
-  // NEW in v1.5.7 — shared libraries (Batch 1A)
+  // NEW in v1.5.8 — shared libraries (Batch 1A)
   '/lib/sidebar-engine.js',
   '/lib/beta-banner.js',
   '/lib/shop-type-wizard.js',
