@@ -2,7 +2,6 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "cleanUrls": true,
   "rewrites": [
-    { "source": "/s/:slug", "destination": "/s.html" },
     {
       "source": "/",
       "has": [{ "type": "host", "value": "shopbillpro.in" }],
@@ -13,6 +12,7 @@
       "has": [{ "type": "host", "value": "www.shopbillpro.in" }],
       "destination": "/site/index.html"
     },
+    { "source": "/s/:slug", "destination": "/s.html" },
     { "source": "/pricing", "destination": "/site/pricing.html" },
     { "source": "/faq", "destination": "/site/faq.html" },
     { "source": "/why-choose-shopbill-pro", "destination": "/site/why-choose-shopbill-pro.html" },
@@ -22,6 +22,14 @@
     { "source": "/sitemap.xml", "destination": "/site/sitemap.xml" },
     { "source": "/robots.txt", "destination": "/site/robots.txt" }
   ],
+  "redirects": [
+    {
+      "source": "/index.html",
+      "has": [{ "type": "host", "value": "shopbillpro.in" }],
+      "destination": "/",
+      "permanent": false
+    }
+  ],
   "headers": [
     {
       "source": "/site/css/(.*)",
@@ -30,15 +38,15 @@
       ]
     },
     {
-      "source": "/sw.js",
+      "source": "/icons/(.*)",
       "headers": [
-        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
       ]
     },
     {
-      "source": "/(.*\\.html)",
+      "source": "/sw.js",
       "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=300, s-maxage=600" }
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
       ]
     }
   ]
