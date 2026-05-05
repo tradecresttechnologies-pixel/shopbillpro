@@ -1,24 +1,23 @@
 /* ══════════════════════════════════════════════════════════════════
-   ShopBill Pro — Service Worker v1.5.9
+   ShopBill Pro — Service Worker v1.5.10
    TradeCrest Technologies Pvt. Ltd.
    Offline-first caching strategy
 
-   v1.5.9 changes (Batch 1B-F-Pilot — May 2026):
-   - Added mobile drawer (full menu, slides in from right when "More" is tapped)
-   - Lib gained mobile-drawer layout: renders ALL items in vertical list with header + footer
-   - Mobile users now have access to Website, Services, Appointments, Stylists, History, etc.
-   - "More" button on bnav now opens drawer (instead of navigating to settings.html)
-   - Drawer has close button, ESC key support, tap-overlay-to-close, body scroll lock
-   - Drawer auto-closes on item tap and on viewport crossing to desktop width
-   - Lib version: 360 → 445 lines (+85 for drawer support)
-   - Dashboard: +18 lines drawer markup + ~60 lines drawer CSS + 3 lines drawer render call
-   - All other 15 pages still use their own inline sidebars/bnav — unchanged
-   - 1B-C-Scale (rollout drawer + sidebar to remaining 15 pages) is next batch
-   - All caching behavior identical to v1.5.8
+   v1.5.10 changes (Batch 1B-C/F-Scale — May 2026):
+   - Rolled out lib-driven sidebar + drawer to remaining 15 pages
+   - bills, customers, stock, reports, billing, pos-admin, marketing, wa-center,
+     cash-register, supplier, recurring, bill-templates, team, subscription, settings
+   - Each page got 5 surgical edits: lib script tag, empty bnav, drawer markup,
+     drawer CSS, pilot wrapper, plus inline-IIFE bail-out (skips when lib is loaded)
+   - Inline IIFE kept as fallback if lib fails to load (extremely rare since
+     it's in service worker precache)
+   - Now all 16 user-facing pages share single source of truth: lib/sidebar-engine.js
+   - Future menu changes are one-file edits in the lib instead of 32 file edits
+   - All caching behavior identical to v1.5.9
 ══════════════════════════════════════════════════════════════════ */
 
 // FIX #20 — Bump version on every release so users get fresh HTML
-const CACHE_NAME = 'shopbillpro-v1.5.9-20260505-1bfpilot';
+const CACHE_NAME = 'shopbillpro-v1.5.10-20260505-1bcfscale';
 const OFFLINE_URL = '/index.html';
 
 const STATIC_ASSETS = [
@@ -48,7 +47,7 @@ const STATIC_ASSETS = [
   '/styles.css',
   '/fix.css',
   '/manifest.json',
-  // NEW in v1.5.9 — shared libraries (Batch 1A)
+  // NEW in v1.5.10 — shared libraries (Batch 1A)
   '/lib/sidebar-engine.js',
   '/lib/beta-banner.js',
   '/lib/shop-type-wizard.js',

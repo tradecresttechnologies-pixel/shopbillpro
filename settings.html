@@ -57,6 +57,8 @@ function sbpY(){return sbpToday().slice(0,4);}
 
 
 <script src="lang.js"></script>
+<!-- BATCH 1B-C/F-Scale: smart sidebar engine -->
+<script src="lib/sidebar-engine.js"></script>
 <script src="conversion.js"></script>
 
 
@@ -428,6 +430,71 @@ html,body{height:100%;overflow:hidden}
   #app{margin-left:220px!important;max-width:calc(100vw - 220px)!important;width:calc(100vw - 220px)!important}
   .bnav{display:none!important}
 }
+
+/* ── BATCH 1B-F-Scale: Mobile Drawer (full menu, slides in from right) ── */
+.bnav-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.5);
+  opacity:0;pointer-events:none;transition:opacity .25s ease;
+  z-index:90;backdrop-filter:blur(2px);
+}
+.bnav-overlay.open{opacity:1;pointer-events:auto}
+.bnav-drawer{
+  position:fixed;top:0;right:0;bottom:0;width:min(85vw,360px);
+  background:var(--surf);color:var(--text);
+  transform:translateX(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);
+  z-index:95;display:flex;flex-direction:column;
+  box-shadow:-4px 0 24px rgba(0,0,0,.4);
+  overflow:hidden;
+}
+.bnav-drawer.open{transform:translateX(0)}
+@media(min-width:1024px){.bnav-drawer,.bnav-overlay{display:none!important}}
+
+.drawer-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:16px 18px;border-bottom:1px solid var(--surf2);
+  flex-shrink:0;
+}
+.drawer-title{display:flex;align-items:center;gap:10px}
+.drawer-brand{font-size:17px;font-weight:800;color:var(--acc);letter-spacing:.3px}
+.drawer-close{
+  width:36px;height:36px;border-radius:10px;border:none;
+  background:var(--surf2);color:var(--text);font-size:16px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+}
+.drawer-close:active{transform:scale(.92);background:var(--surf3,#2a2a3a)}
+
+.drawer-nav{
+  flex:1;overflow-y:auto;padding:8px 0;
+  -webkit-overflow-scrolling:touch;
+}
+.drawer-item{
+  display:flex;align-items:center;gap:14px;
+  padding:13px 18px;color:var(--text);text-decoration:none;
+  font-size:14px;font-weight:600;cursor:pointer;
+  border:none;background:transparent;width:100%;text-align:left;
+  transition:background .15s;position:relative;
+}
+.drawer-item:active{background:var(--surf2)}
+.drawer-item.active{background:rgba(245,166,35,.12);color:var(--acc)}
+.drawer-item.active::before{
+  content:'';position:absolute;left:0;width:3px;height:60%;
+  background:var(--acc);border-radius:0 3px 3px 0;
+}
+.drawer-item.coming-soon{opacity:.55}
+.drawer-ic{font-size:20px;width:24px;text-align:center;flex-shrink:0}
+.drawer-lb{flex:1}
+
+.drawer-footer{
+  border-top:1px solid var(--surf2);padding:8px 0 12px;
+  flex-shrink:0;
+}
+.drawer-footer .drawer-item{color:#EF4444}
+.drawer-ver{
+  text-align:center;font-size:11px;color:var(--t2,#888);
+  margin-top:4px;letter-spacing:.4px;
+}
+/* End drawer CSS */
+
 </style>
 <link rel="stylesheet" href="fix.css">
 </head>
@@ -729,13 +796,12 @@ html,body{height:100%;overflow:hidden}
   </div>
 
   <!-- Bottom Nav -->
-  <div class="bnav">
-    <div class="ni" onclick="goTo('dashboard.html')"><span class="ni-ic">🏠</span><span class="ni-lb">Home</span></div>
-    <div class="ni" onclick="goTo('bills.html')"><span class="ni-ic">🧾</span><span class="ni-lb">Bills</span></div>
-    <div class="ni" onclick="goTo('billing.html')" style="align-items:center;justify-content:center"><div class="nav-fab">＋</div></div>
-    <div class="ni" onclick="goTo('marketing.html')"><span class="ni-ic">📢</span><span class="ni-lb">Marketing</span></div>
-    <div class="ni on" onclick="goTo('settings.html')"><span class="ni-ic">☰</span><span class="ni-lb">More</span></div>
-  </div>
+  <!-- BATCH 1B-C/F-Scale: bnav populated by lib (mobile-bottom layout) -->
+  <div class="bnav"></div>
+
+  <!-- BATCH 1B-F-Scale: mobile drawer (full menu, slides in from right) -->
+  <div class="bnav-overlay" onclick="SBPSidebar._closeDrawer()"></div>
+  <div class="bnav-drawer"></div>
 </div>
 
 <!-- Shop Settings Modal -->
@@ -1399,7 +1465,7 @@ init();
 
 /* ══ Desktop Sidebar ══ */
 (function(){
-  if(window.innerWidth<1024)return;
+  if(window.innerWidth<1024||window.SBPSidebar)return;/* BATCH 1B-C/F-Scale: bail if lib is loaded */
   var page=(window.location.pathname.split('/').pop()||'dashboard.html');
   var nav=[
     {ic:'🏠',lb:'Dashboard',    url:'dashboard.html'},
@@ -1895,6 +1961,45 @@ function devSetPlan(plan) {
     </div>
   </div>
 </div>
+<!-- BATCH 1B-C/F-Scale: pilot wrapper for lib-driven sidebar -->
+<script>
+(function(){
+  if (!window.SBPSidebar || typeof window.SBPSidebar.render !== 'function') {
+    console.warn('[1B-C/F-Scale] SBPSidebar lib not loaded — sidebar will not render');
+    return;
+  }
+  function renderForViewport() {
+    if (window.innerWidth >= 1024) {
+      window.SBPSidebar.render({ layout: 'desktop', currentPage: 'settings' });
+    } else {
+      window.SBPSidebar.render({ layout: 'mobile-bottom', currentPage: 'settings', container: '.bnav' });
+      window.SBPSidebar.render({ layout: 'mobile-drawer', currentPage: 'settings', container: '.bnav-drawer' });
+    }
+  }
+  // Initial render
+  renderForViewport();
+  // Re-render on viewport crossing 1024px threshold
+  var lastIsDesktop = window.innerWidth >= 1024;
+  var resizeTimer = null;
+  window.addEventListener('resize', function(){
+    if (resizeTimer) clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function(){
+      var isDesktop = window.innerWidth >= 1024;
+      if (isDesktop !== lastIsDesktop) {
+        lastIsDesktop = isDesktop;
+        if (window.SBPSidebar._closeDrawer) window.SBPSidebar._closeDrawer();
+        renderForViewport();
+      }
+    }, 150);
+  });
+  // ESC closes drawer
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape' && window.SBPSidebar._closeDrawer) {
+      window.SBPSidebar._closeDrawer();
+    }
+  });
+})();
+</script>
 <script src="lib/beta-banner.js"></script>
 </body>
 </html>
