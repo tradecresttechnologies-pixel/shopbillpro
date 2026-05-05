@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en" translate="no" class="notranslate">
+<head>
+<script>
+// Pre-paint theme application (eliminates dark→light flash)
+(function(){
+  try {
+    var t = localStorage.getItem('sbp_theme');
+    if (t === 'light') document.documentElement.setAttribute('data-theme','light');
+  } catch(e) {}
+})();
+</script>
+
+<meta charset="UTF-8">
+<meta name="google" content="notranslate">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#F5A623">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>ShopBill Pro — Services</title>
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png?v=2">
+<link rel="apple-touch-icon" sizes="192x192" href="icons/icon-192x192.png">
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Noto+Sans:wght@300;400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+// FIX #18, #48, #49 — Unified plan check with name normalization + expiry
+function _sbpPlanInfo(){
+  const s=JSON.parse(localStorage.getItem('sbp_shop')||'{}');
+  let plan=(s.plan||'free').toLowerCase();
+  if(plan==='enterprise') plan='business';
+  const exp=s.plan_expires_at;
+  if(exp && plan!=='free' && new Date(exp) < new Date()) plan='free';
+  return {plan, expired:!!(exp && new Date(exp) < new Date())};
+}
+function isPro(){const p=_sbpPlanInfo().plan;return p==='pro'||p==='business';}
+function isBiz(){return _sbpPlanInfo().plan==='business';}
+function isFree(){return _sbpPlanInfo().plan==='free';}
+</script>
+
+<script src="lang.js"></script>
+<script src="lib/sidebar-engine.js"></script>
+<script src="conversion.js"></script>
+
+<script>
+const SB_URL='https://jfqeirfrkjdkqqixivru.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmcWVpcmZya2pka3FxaXhpdnJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzNzQ4MzgsImV4cCI6MjA4OTk1MDgzOH0.akd4E0nil8ypLR4WOykkeYIL8g4uuNU6XdSVh_Y1utk';
+const _sb=supabase.createClient(SB_URL,SB_KEY,{auth:{autoRefreshToken:true,persistSession:true,detectSessionInUrl:false}});
+window._sb=_sb;
+window.SBP=window.SBP||{};window.SBP.online=navigator.onLine;
+window.addEventListener('online',()=>{window.SBP.online=true});
+window.addEventListener('offline',()=>{window.SBP.online=false});
+</script>
+
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{font-family:'Noto Sans','Noto Sans Devanagari',sans-serif;-webkit-font-smoothing:antialiased}
+:root{
+  --acc:#F5A623;--acc2:#FF6B35;--acc3:#10B981;--acc4:#3B82F6;
+  --bg:#0A0A12;--surf:#13131C;--surf2:#1C1C28;--bord:#2A2A3A;
+  --text:#F0EFF8;--t2:#8A8AA8;--font-h:'Outfit',sans-serif;
+  --rs:14px;--tr:.2s ease;--amber:#F59E0B;--rose:#F43F5E;
+}
+[data-theme="light"]{
+  --bg:#FAFAFC;--surf:#FFFFFF;--surf2:#F2F2F8;--bord:#E5E5EE;
+  --text:#0F0E18;--t2:#5E5A7A;
+}
+body{background:var(--bg);color:var(--text);min-height:100dvh;overflow-x:hidden}
+
+/* App container */
+#app{max-width:560px;margin:0 auto;padding-bottom:80px;min-height:100dvh}
+
+/* Topbar */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 14px 10px;background:var(--bg);position:sticky;top:0;z-index:50;border-bottom:1px solid var(--bord)}
+.tb-l{display:flex;align-items:center;gap:10px}
+.tb-r{display:flex;gap:8px}
+.back-btn{width:36px;height:36px;border-radius:10px;background:var(--surf);border:1px solid var(--bord);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:var(--text);transition:var(--tr)}
+.back-btn:hover{background:var(--surf2)}
+.tb-title{font-family:var(--font-h);font-size:17px;font-weight:800;letter-spacing:.2px}
+.ic-btn{width:36px;height:36px;border-radius:10px;background:var(--surf);border:1px solid var(--bord);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;transition:var(--tr)}
+.ic-btn:hover{background:var(--surf2)}
+
+/* Summary stats */
+.sum-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:10px 14px}
+.sum-card{background:var(--surf);border:1px solid var(--bord);border-radius:var(--rs);padding:12px 8px;text-align:center}
+.sv{font-family:var(--font-h);font-size:20px;font-weight:800}
+.sl{font-size:10px;color:var(--t2);margin-top:3px;font-weight:600}
+
+/* Plan-locked banner */
+.locked-banner{margin:10px 14px;background:linear-gradient(135deg,rgba(245,166,35,.12),rgba(255,107,53,.06));border:1.5px solid rgba(245,166,35,.35);border-radius:var(--rs);padding:14px;text-align:center}
+.locked-banner-title{font-family:var(--font-h);font-size:15px;font-weight:800;color:var(--acc);margin-bottom:6px}
+.locked-banner-msg{font-size:12px;color:var(--t2);line-height:1.5;margin-bottom:10px}
+.btn-upgrade{display:inline-block;background:linear-gradient(135deg,#F5A623,#FF8A00);color:#0A0E1A;font-weight:800;font-size:13px;padding:10px 18px;border-radius:10px;border:none;cursor:pointer;font-family:var(--font-h)}
+
+/* Search */
+.search-wrap{padding:8px 14px}
+.search-inp{width:100%;padding:11px 14px;background:var(--surf);border:1px solid var(--bord);border-radius:12px;color:var(--text);font-size:14px;font-family:inherit;outline:none;transition:var(--tr)}
+.search-inp:focus{border-color:var(--acc)}
+
+/* Filter chips */
+.filter-row{display:flex;gap:6px;padding:6px 14px 10px;overflow-x:auto;scrollbar-width:none}
+.filter-row::-webkit-scrollbar{display:none}
+.chip{flex-shrink:0;padding:7px 14px;background:var(--surf);border:1px solid var(--bord);border-radius:18px;font-size:12px;font-weight:600;color:var(--t2);cursor:pointer;white-space:nowrap;transition:var(--tr)}
+.chip.on{background:var(--acc);color:#0A0E1A;border-color:var(--acc)}
+
+/* Service list */
+.svc-list{padding:4px 14px}
+.svc-card{background:var(--surf);border:1px solid var(--bord);border-radius:var(--rs);padding:12px;margin-bottom:8px;display:flex;gap:12px;align-items:center;transition:var(--tr)}
+.svc-card:hover{border-color:rgba(245,166,35,.3)}
+.svc-card.inactive{opacity:.55}
+.svc-img{width:60px;height:60px;border-radius:10px;background:linear-gradient(135deg,var(--surf2),var(--bord));display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;font-size:24px}
+.svc-img img{width:100%;height:100%;object-fit:cover}
+.svc-body{flex:1;min-width:0}
+.svc-name{font-family:var(--font-h);font-size:14px;font-weight:700;margin-bottom:3px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.svc-meta{display:flex;gap:8px;font-size:11px;color:var(--t2);align-items:center;flex-wrap:wrap}
+.svc-meta-tag{padding:2px 8px;background:var(--surf2);border-radius:8px;border:1px solid var(--bord)}
+.svc-price{font-family:var(--font-h);font-size:15px;font-weight:800;color:var(--acc3)}
+.svc-actions{display:flex;flex-direction:column;gap:6px;flex-shrink:0}
+.svc-btn{width:32px;height:32px;border-radius:9px;background:var(--surf2);border:1px solid var(--bord);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px;transition:var(--tr)}
+.svc-btn:hover{background:var(--bord)}
+.svc-btn.danger:hover{background:rgba(244,63,94,.15);border-color:var(--rose)}
+
+/* Toggle switch */
+.tgl{position:relative;display:inline-block;width:38px;height:22px;flex-shrink:0;cursor:pointer}
+.tgl input{display:none}
+.tgl-track{position:absolute;inset:0;background:var(--surf2);border:1px solid var(--bord);border-radius:11px;transition:var(--tr)}
+.tgl-track::after{content:'';position:absolute;left:2px;top:1px;width:16px;height:16px;background:var(--t2);border-radius:50%;transition:var(--tr)}
+.tgl input:checked + .tgl-track{background:rgba(16,185,129,.25);border-color:var(--acc3)}
+.tgl input:checked + .tgl-track::after{left:18px;background:var(--acc3)}
+
+/* Empty state */
+.empty{text-align:center;padding:50px 24px;color:var(--t2)}
+.empty-emoji{font-size:48px;margin-bottom:12px}
+.empty-title{font-family:var(--font-h);font-size:17px;font-weight:700;color:var(--text);margin-bottom:8px}
+.empty-msg{font-size:13px;line-height:1.5;margin-bottom:18px}
+
+/* FAB */
+.fab{position:fixed;bottom:78px;right:16px;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff;border:none;font-size:28px;font-weight:800;cursor:pointer;box-shadow:0 6px 20px rgba(245,166,35,.45);z-index:60;display:flex;align-items:center;justify-content:center;font-family:var(--font-h)}
+@media(max-width:560px){.fab{bottom:80px}}
+
+/* Modal overlay */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:200;display:none;align-items:flex-end;justify-content:center;padding:0}
+.overlay.open{display:flex}
+.sheet{background:var(--bg);border-radius:20px 20px 0 0;width:100%;max-width:560px;max-height:92dvh;overflow-y:auto;padding:8px 16px 20px;border-top:1px solid var(--bord)}
+.handle{width:44px;height:4px;background:var(--bord);border-radius:2px;margin:8px auto 14px}
+.sheet-title{font-family:var(--font-h);font-size:18px;font-weight:800;margin-bottom:14px}
+
+/* Form fields */
+.ff{margin-bottom:12px}
+.ff label{display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:5px}
+.ff input,.ff textarea,.ff select{width:100%;padding:10px 12px;background:var(--surf);border:1px solid var(--bord);border-radius:10px;color:var(--text);font-size:14px;font-family:inherit;outline:none;transition:var(--tr)}
+.ff input:focus,.ff textarea:focus,.ff select:focus{border-color:var(--acc)}
+.ff textarea{resize:vertical;min-height:60px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+/* Buttons */
+.btn-pri{width:100%;padding:13px;background:linear-gradient(135deg,var(--acc),var(--acc2));color:#0A0E1A;border:none;border-radius:12px;font-family:var(--font-h);font-size:14px;font-weight:800;cursor:pointer;transition:var(--tr)}
+.btn-pri:hover{transform:translateY(-1px)}
+.btn-pri:disabled{opacity:.5;cursor:not-allowed}
+.btn-sec{width:100%;padding:13px;background:var(--surf2);color:var(--text);border:1px solid var(--bord);border-radius:12px;font-family:var(--font-h);font-size:14px;font-weight:700;cursor:pointer;transition:var(--tr)}
+.btn-sec:hover{background:var(--bord)}
+.btn-danger{width:100%;padding:13px;background:rgba(244,63,94,.12);color:var(--rose);border:1px solid var(--rose);border-radius:12px;font-family:var(--font-h);font-size:14px;font-weight:700;cursor:pointer}
+
+/* Toast */
+#toast-container{position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:300;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{background:var(--surf);color:var(--text);padding:11px 18px;border-radius:10px;border:1px solid var(--bord);box-shadow:0 4px 16px rgba(0,0,0,.3);font-size:13px;font-weight:600;pointer-events:auto;animation:tin .2s ease}
+.toast.s{border-color:var(--acc3);background:rgba(16,185,129,.1)}
+.toast.e{border-color:var(--rose);background:rgba(244,63,94,.1)}
+.toast.i{border-color:var(--acc4);background:rgba(59,130,246,.1)}
+@keyframes tin{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
+
+/* Bottom nav */
+.bnav{position:fixed;bottom:0;left:0;right:0;background:var(--surf);border-top:1px solid var(--bord);height:60px;z-index:55}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div class="topbar">
+    <div class="tb-l">
+      <div class="back-btn" onclick="window.location.href='settings.html'">←</div>
+      <div class="tb-title">✨ Service Catalog</div>
+    </div>
+    <div class="tb-r">
+      <div class="ic-btn" onclick="toggleTheme()" id="theme-btn">☀️</div>
+      <div class="ic-btn" onclick="exportServices()" title="Export CSV">📤</div>
+    </div>
+  </div>
+
+  <!-- Plan-locked banner (only for Free shops) -->
+  <div class="locked-banner" id="locked-banner" style="display:none">
+    <div class="locked-banner-title">🔒 Service Catalog is a Pro feature</div>
+    <div class="locked-banner-msg">
+      <span class="lang-en">Manage services, prices, durations, and showcase them on your free shop website. Available on Pro &amp; Business.</span>
+      <span class="lang-hi">सेवाएं, कीमतें, अवधि प्रबंधित करें और अपनी वेबसाइट पर दिखाएं। Pro और Business में उपलब्ध।</span>
+    </div>
+    <button class="btn-upgrade" onclick="window.location.href='subscription.html'">🚀 Upgrade to Pro — ₹99/mo</button>
+  </div>
+
+  <!-- Summary -->
+  <div class="sum-grid" id="summary-row">
+    <div class="sum-card"><div class="sv" style="color:var(--acc)" id="s-total">0</div><div class="sl"><span class="lang-en">Total</span><span class="lang-hi">कुल</span></div></div>
+    <div class="sum-card"><div class="sv" style="color:var(--acc3)" id="s-active">0</div><div class="sl"><span class="lang-en">Active</span><span class="lang-hi">सक्रिय</span></div></div>
+    <div class="sum-card"><div class="sv" style="color:var(--t2)" id="s-cats">0</div><div class="sl"><span class="lang-en">Categories</span><span class="lang-hi">श्रेणियां</span></div></div>
+  </div>
+
+  <!-- Search -->
+  <div class="search-wrap">
+    <input class="search-inp" id="svc-search" placeholder="Search service name…" oninput="filterServices(this.value)">
+  </div>
+
+  <!-- Status chips -->
+  <div class="filter-row">
+    <div class="chip on" onclick="setFilter('all',this)">All</div>
+    <div class="chip" onclick="setFilter('active',this)">✅ Active</div>
+    <div class="chip" onclick="setFilter('inactive',this)">⏸️ Inactive</div>
+  </div>
+
+  <!-- Category chips (auto-populated) -->
+  <div class="filter-row" id="cat-filter-row" style="padding-top:0">
+    <div class="chip on" data-cat="all" onclick="setCatFilter('all',this)">All Categories</div>
+  </div>
+
+  <!-- Service list -->
+  <div class="svc-list" id="svc-list">
+    <div style="display:flex;align-items:center;justify-content:center;padding:40px">
+      <div style="width:28px;height:28px;border:3px solid var(--bord);border-top-color:var(--acc);border-radius:50%;animation:spin .8s linear infinite"></div>
+      <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+    </div>
+  </div>
+
+  <!-- Bottom nav -->
+  <div class="bnav"></div>
+  <div class="bnav-overlay" onclick="if(window.SBPSidebar)SBPSidebar._closeDrawer()"></div>
+  <div class="bnav-drawer"></div>
+</div>
+
+<!-- Floating Add Button -->
+<button class="fab" id="fab-add" onclick="openAddService()" title="Add service">＋</button>
+
+<!-- Add/Edit Service Modal -->
+<div class="overlay" id="svc-modal">
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="sheet-title" id="svc-modal-title">✨ Add Service</div>
+
+    <div class="ff">
+      <label><span class="lang-en">Service Name *</span><span class="lang-hi">सेवा नाम *</span></label>
+      <input type="text" id="sv-name" placeholder="e.g. Hair Cut, Facial, Consultation" maxlength="100">
+    </div>
+
+    <div class="ff">
+      <label><span class="lang-en">Description</span><span class="lang-hi">विवरण</span></label>
+      <textarea id="sv-desc" rows="2" placeholder="Short description (shown on website)" maxlength="300"></textarea>
+    </div>
+
+    <div class="row2">
+      <div class="ff">
+        <label><span class="lang-en">Price (₹) *</span><span class="lang-hi">कीमत (₹) *</span></label>
+        <input type="number" id="sv-price" min="0" step="1" value="0">
+      </div>
+      <div class="ff">
+        <label><span class="lang-en">Duration (mins)</span><span class="lang-hi">अवधि (मिनट)</span></label>
+        <input type="number" id="sv-duration" min="0" step="5" placeholder="e.g. 30">
+      </div>
+    </div>
+
+    <div class="row2">
+      <div class="ff">
+        <label><span class="lang-en">Category</span><span class="lang-hi">श्रेणी</span></label>
+        <input type="text" id="sv-category" placeholder="Hair, Skincare, etc." list="sv-cat-list" maxlength="40">
+        <datalist id="sv-cat-list"></datalist>
+      </div>
+      <div class="ff">
+        <label><span class="lang-en">GST Rate (%)</span><span class="lang-hi">GST दर (%)</span></label>
+        <select id="sv-gst">
+          <option value="0">0% (Exempt)</option>
+          <option value="5">5%</option>
+          <option value="12">12%</option>
+          <option value="18" selected>18%</option>
+          <option value="28">28%</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="row2">
+      <div class="ff">
+        <label><span class="lang-en">HSN/SAC Code</span><span class="lang-hi">HSN/SAC कोड</span></label>
+        <input type="text" id="sv-hsn" placeholder="Optional" maxlength="10">
+      </div>
+      <div class="ff">
+        <label><span class="lang-en">Image URL</span><span class="lang-hi">छवि URL</span></label>
+        <input type="url" id="sv-image" placeholder="https://...">
+      </div>
+    </div>
+
+    <div class="ff">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+        <input type="checkbox" id="sv-active" checked style="width:16px;height:16px;accent-color:var(--acc3)">
+        <span><span class="lang-en">Active (visible on website &amp; in billing)</span><span class="lang-hi">सक्रिय (वेबसाइट और बिलिंग पर दिखे)</span></span>
+      </label>
+    </div>
+
+    <button class="btn-pri" onclick="saveService()" id="btn-save-svc">💾 Save Service</button>
+    <div style="height:8px"></div>
+    <button class="btn-sec" onclick="closeModal('svc-modal')">Cancel</button>
+    <button id="btn-delete-svc" class="btn-danger" style="margin-top:8px;display:none" onclick="deleteService()">🗑️ Delete Service</button>
+    <div style="height:8px"></div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast-container"></div>
+
+<script src="lib/services.js"></script>
+<script>
+
+// ── State ────────────────────────────────────────────────
+let _shop=null, _shopId=null, _user=null;
+let _services=[];          // full list from server (or local fallback)
+let _filtered=[];          // after search + filter
+let _curStatus='all';
+let _curCategory='all';
+let _curSearch='';
+let _editingId=null;       // null = create, otherwise update
+
+// ── Helpers ──────────────────────────────────────────────
+function goTo(p){window.location.href=p}
+function fINR(n){return '₹'+(parseFloat(n)||0).toLocaleString('en-IN',{maximumFractionDigits:0})}
+function escHtml(s){return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function toast(msg,type='',dur=3000){
+  const c=document.getElementById('toast-container');
+  const t=document.createElement('div');
+  t.className='toast'+(type?' '+type:'');
+  t.textContent=msg;
+  c.appendChild(t);
+  setTimeout(()=>{t.style.opacity='0';t.style.transition='.2s';setTimeout(()=>t.remove(),220);},dur);
+}
+function toggleTheme(){
+  const cur=document.documentElement.getAttribute('data-theme')||'';
+  const next=cur==='light'?'':'light';
+  document.documentElement.setAttribute('data-theme',next);
+  localStorage.setItem('sbp_theme',next==='light'?'light':'dark');
+  document.getElementById('theme-btn').textContent=next==='light'?'🌙':'☀️';
+}
+function openModal(id){
+  const el=document.getElementById(id);
+  el.classList.add('open');
+  el.style.display='flex';
+  el.addEventListener('click',e=>{if(e.target===el)closeModal(id)},{once:true});
+}
+function closeModal(id){
+  const el=document.getElementById(id);
+  el.classList.remove('open');
+  el.style.display='none';
+}
+
+// ── Init ─────────────────────────────────────────────────
+async function init(){
+  // Theme
+  const t=localStorage.getItem('sbp_theme');
+  if(t==='light'){document.getElementById('theme-btn').textContent='🌙'}
+
+  // Auth
+  const {data:{session}} = await _sb.auth.getSession();
+  if(!session){window.location.href='index.html';return;}
+  _user=session.user;
+  _shop=JSON.parse(localStorage.getItem('sbp_shop')||'{}');
+  _shopId=localStorage.getItem('sbp_shop_id')||_shop.id;
+
+  // Plan check
+  if(isFree()){
+    document.getElementById('locked-banner').style.display='block';
+    document.getElementById('summary-row').style.display='none';
+    document.getElementById('fab-add').style.display='none';
+    document.getElementById('svc-list').innerHTML=`
+      <div class="empty">
+        <div class="empty-emoji">🎯</div>
+        <div class="empty-title"><span class="lang-en">Pro feature locked</span><span class="lang-hi">Pro फीचर लॉक है</span></div>
+        <div class="empty-msg">Upgrade to Pro (₹99/mo) to manage your service catalog and showcase services on your shop website.</div>
+      </div>`;
+    return;
+  }
+
+  // Load services
+  await loadServices();
+}
+
+async function loadServices(){
+  const list=document.getElementById('svc-list');
+  list.innerHTML=`
+    <div style="display:flex;align-items:center;justify-content:center;padding:40px">
+      <div style="width:28px;height:28px;border:3px solid var(--bord);border-top-color:var(--acc);border-radius:50%;animation:spin .8s linear infinite"></div>
+    </div>`;
+
+  if(!_shopId || !navigator.onLine){
+    // Offline fallback — read from localStorage cache
+    try {
+      _services = JSON.parse(localStorage.getItem('sbp_services_cache')||'[]');
+    } catch(_) { _services=[]; }
+    if(_services.length===0){
+      renderEmpty('Offline','You appear to be offline. Connect to load services.');
+      return;
+    }
+    applyFilters();
+    return;
+  }
+
+  const res = await SBPServices.list(_shopId);
+  if(!res.ok){
+    toast('❌ '+(res.error||'Could not load services'),'e');
+    // Fall back to cache
+    try { _services = JSON.parse(localStorage.getItem('sbp_services_cache')||'[]'); }
+    catch(_) { _services=[]; }
+  } else {
+    _services = res.services || [];
+    localStorage.setItem('sbp_services_cache', JSON.stringify(_services));
+  }
+
+  refreshCategories();
+  applyFilters();
+  updateSummary();
+}
+
+function refreshCategories(){
+  const cats=Array.from(new Set(_services.map(s=>s.category).filter(Boolean))).sort();
+  const row=document.getElementById('cat-filter-row');
+  const dl=document.getElementById('sv-cat-list');
+  let html=`<div class="chip ${_curCategory==='all'?'on':''}" data-cat="all" onclick="setCatFilter('all',this)">All Categories</div>`;
+  cats.forEach(c=>{
+    html+=`<div class="chip ${_curCategory===c?'on':''}" data-cat="${escHtml(c)}" onclick="setCatFilter('${escHtml(c)}',this)">${escHtml(c)}</div>`;
+  });
+  row.innerHTML=html;
+  dl.innerHTML = cats.map(c=>`<option value="${escHtml(c)}">`).join('');
+}
+
+function updateSummary(){
+  const total=_services.length;
+  const active=_services.filter(s=>s.active).length;
+  const cats=new Set(_services.map(s=>s.category).filter(Boolean)).size;
+  document.getElementById('s-total').textContent=total;
+  document.getElementById('s-active').textContent=active;
+  document.getElementById('s-cats').textContent=cats;
+}
+
+function applyFilters(){
+  const q=_curSearch.trim().toLowerCase();
+  _filtered = _services.filter(s=>{
+    if(_curStatus==='active' && !s.active) return false;
+    if(_curStatus==='inactive' && s.active) return false;
+    if(_curCategory!=='all' && (s.category||'')!==_curCategory) return false;
+    if(q && !((s.name||'').toLowerCase().includes(q) || (s.description||'').toLowerCase().includes(q))) return false;
+    return true;
+  });
+  renderList();
+}
+
+function renderList(){
+  const list=document.getElementById('svc-list');
+  if(_filtered.length===0){
+    if(_services.length===0){
+      list.innerHTML=`
+        <div class="empty">
+          <div class="empty-emoji">✨</div>
+          <div class="empty-title"><span class="lang-en">No services yet</span><span class="lang-hi">कोई सेवा नहीं</span></div>
+          <div class="empty-msg"><span class="lang-en">Add your first service to start billing customers and show it on your shop website.</span><span class="lang-hi">अपनी पहली सेवा जोड़ें ताकि बिलिंग शुरू कर सकें और वेबसाइट पर दिखा सकें।</span></div>
+          <button class="btn-pri" style="max-width:200px;margin:0 auto" onclick="openAddService()">＋ Add Service</button>
+        </div>`;
+    } else {
+      list.innerHTML=`
+        <div class="empty">
+          <div class="empty-emoji">🔍</div>
+          <div class="empty-title">No matches</div>
+          <div class="empty-msg">Try changing the search or filters.</div>
+        </div>`;
+    }
+    return;
+  }
+
+  list.innerHTML = _filtered.map(s=>{
+    const dur = s.duration_minutes ? `${s.duration_minutes} min` : '';
+    const cat = s.category || '';
+    const img = s.image_url
+      ? `<img src="${escHtml(s.image_url)}" alt="${escHtml(s.name)}" onerror="this.style.display='none';this.parentElement.textContent='✨'">`
+      : '✨';
+    return `<div class="svc-card${s.active?'':' inactive'}" data-id="${s.id}">
+      <div class="svc-img">${img}</div>
+      <div class="svc-body" onclick="openEditService('${s.id}')" style="cursor:pointer">
+        <div class="svc-name">${escHtml(s.name)}</div>
+        <div class="svc-meta">
+          <span class="svc-price">${fINR(s.price)}</span>
+          ${dur?`<span class="svc-meta-tag">⏱ ${dur}</span>`:''}
+          ${cat?`<span class="svc-meta-tag">${escHtml(cat)}</span>`:''}
+          ${s.gst_rate>0?`<span class="svc-meta-tag">GST ${s.gst_rate}%</span>`:''}
+        </div>
+      </div>
+      <div class="svc-actions">
+        <label class="tgl" onclick="event.stopPropagation()">
+          <input type="checkbox" ${s.active?'checked':''} onchange="toggleActive('${s.id}')">
+          <span class="tgl-track"></span>
+        </label>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderEmpty(title,msg){
+  document.getElementById('svc-list').innerHTML = `
+    <div class="empty">
+      <div class="empty-emoji">📡</div>
+      <div class="empty-title">${escHtml(title)}</div>
+      <div class="empty-msg">${escHtml(msg)}</div>
+    </div>`;
+}
+
+// ── Filter handlers ──────────────────────────────────────
+function filterServices(v){_curSearch=v;applyFilters()}
+function setFilter(status,el){
+  _curStatus=status;
+  document.querySelectorAll('.filter-row .chip[onclick^="setFilter"]').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on');
+  applyFilters();
+}
+function setCatFilter(cat,el){
+  _curCategory=cat;
+  document.querySelectorAll('#cat-filter-row .chip').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on');
+  applyFilters();
+}
+
+// ── Modal: Add / Edit ────────────────────────────────────
+function openAddService(){
+  _editingId = null;
+  document.getElementById('svc-modal-title').textContent = '✨ Add Service';
+  document.getElementById('btn-delete-svc').style.display = 'none';
+  document.getElementById('sv-name').value = '';
+  document.getElementById('sv-desc').value = '';
+  document.getElementById('sv-price').value = 0;
+  document.getElementById('sv-duration').value = '';
+  document.getElementById('sv-category').value = '';
+  document.getElementById('sv-gst').value = '18';
+  document.getElementById('sv-hsn').value = '';
+  document.getElementById('sv-image').value = '';
+  document.getElementById('sv-active').checked = true;
+  openModal('svc-modal');
+  setTimeout(()=>document.getElementById('sv-name').focus(), 250);
+}
+
+function openEditService(id){
+  const s = _services.find(x=>x.id===id);
+  if(!s) return;
+  _editingId = id;
+  document.getElementById('svc-modal-title').textContent = '✏️ Edit Service';
+  document.getElementById('btn-delete-svc').style.display = 'block';
+  document.getElementById('sv-name').value = s.name || '';
+  document.getElementById('sv-desc').value = s.description || '';
+  document.getElementById('sv-price').value = s.price || 0;
+  document.getElementById('sv-duration').value = s.duration_minutes || '';
+  document.getElementById('sv-category').value = s.category || '';
+  document.getElementById('sv-gst').value = String(s.gst_rate ?? 18);
+  document.getElementById('sv-hsn').value = s.hsn_sac_code || '';
+  document.getElementById('sv-image').value = s.image_url || '';
+  document.getElementById('sv-active').checked = !!s.active;
+  openModal('svc-modal');
+}
+
+async function saveService(){
+  const name = document.getElementById('sv-name').value.trim();
+  if(!name){ toast('Service name required','e'); return; }
+  const price = parseFloat(document.getElementById('sv-price').value) || 0;
+  if(price < 0){ toast('Price cannot be negative','e'); return; }
+
+  const payload = {
+    name: name,
+    description: document.getElementById('sv-desc').value.trim() || null,
+    category: document.getElementById('sv-category').value.trim() || null,
+    price: price,
+    duration_minutes: parseInt(document.getElementById('sv-duration').value, 10) || null,
+    gst_rate: parseFloat(document.getElementById('sv-gst').value) || 0,
+    hsn_sac_code: document.getElementById('sv-hsn').value.trim() || null,
+    image_url: document.getElementById('sv-image').value.trim() || null,
+    active: document.getElementById('sv-active').checked
+  };
+
+  const btn = document.getElementById('btn-save-svc');
+  btn.disabled = true; btn.textContent = '⏳ Saving…';
+
+  let res;
+  if(_editingId){
+    res = await SBPServices.update(_editingId, payload);
+  } else {
+    res = await SBPServices.create(_shopId, payload);
+  }
+
+  btn.disabled = false; btn.textContent = '💾 Save Service';
+
+  if(res.ok){
+    toast(_editingId ? '✅ Updated' : '✅ Service added', 's');
+    closeModal('svc-modal');
+    await loadServices();
+  } else {
+    toast('❌ ' + (res.error || 'Save failed'), 'e');
+  }
+}
+
+async function deleteService(){
+  if(!_editingId) return;
+  if(!confirm('Delete this service permanently? Bills already created will keep the line item, but new bills cannot use this service.')) return;
+  const res = await SBPServices.delete(_editingId);
+  if(res.ok){
+    toast('✅ Deleted', 's');
+    closeModal('svc-modal');
+    await loadServices();
+  } else {
+    toast('❌ ' + (res.error || 'Delete failed'), 'e');
+  }
+}
+
+async function toggleActive(id){
+  const res = await SBPServices.toggleActive(id);
+  if(res.ok){
+    const s = _services.find(x=>x.id===id);
+    if(s) s.active = res.active;
+    updateSummary();
+    applyFilters();
+  } else {
+    toast('❌ ' + (res.error || 'Toggle failed'), 'e');
+    // Revert UI if RPC failed
+    await loadServices();
+  }
+}
+
+// ── Export ───────────────────────────────────────────────
+function exportServices(){
+  if(!_services.length){ toast('No services to export','i'); return; }
+  const headers = ['Name','Description','Category','Price','Duration (min)','GST %','HSN/SAC','Active'];
+  const rows = _services.map(s=>[
+    s.name, s.description||'', s.category||'',
+    s.price||0, s.duration_minutes||'', s.gst_rate||0,
+    s.hsn_sac_code||'', s.active?'Yes':'No'
+  ]);
+  const csv = [headers, ...rows].map(r =>
+    r.map(v => /[",\n]/.test(String(v)) ? '"'+String(v).replace(/"/g,'""')+'"' : String(v)).join(',')
+  ).join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'services_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('✅ Exported','s');
+}
+
+// ── Boot ─────────────────────────────────────────────────
+init();
+</script>
+<script src="lib/beta-banner.js"></script>
+</body>
+</html>

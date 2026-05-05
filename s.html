@@ -83,6 +83,26 @@ body{background:var(--bg);color:var(--text);min-height:100dvh;overflow-x:hidden}
 .psp-services{display:flex;flex-wrap:wrap;gap:8px;padding-top:4px}
 .psp-svc{background:var(--surf2);color:var(--text);font-size:13px;font-weight:500;padding:8px 14px;border-radius:10px;border:1px solid var(--bord)}
 
+/* Enhanced services list (rendered from sbp_get_shop_services_public) */
+.psp-services-rich{display:flex;flex-direction:column;gap:8px;padding-top:4px}
+.psp-svc-row{display:flex;gap:12px;padding:10px 12px;background:var(--surf2);border:1px solid var(--bord);border-radius:12px;align-items:center}
+.psp-svc-img{width:48px;height:48px;border-radius:10px;background:linear-gradient(135deg,var(--surf2),var(--bord));display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:22px;overflow:hidden}
+.psp-svc-img img{width:100%;height:100%;object-fit:cover}
+.psp-svc-info{flex:1;min-width:0}
+.psp-svc-name{font-family:var(--font-h);font-size:14px;font-weight:700;color:var(--text);margin-bottom:2px;line-height:1.3}
+.psp-svc-desc{font-size:11.5px;color:var(--t2);line-height:1.4;margin-bottom:3px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.psp-svc-meta{display:flex;gap:6px;flex-wrap:wrap;font-size:10.5px;color:var(--t2)}
+.psp-svc-meta-tag{padding:1px 7px;background:rgba(255,255,255,.04);border:1px solid var(--bord);border-radius:6px}
+.psp-svc-price{font-family:var(--font-h);font-size:15px;font-weight:800;color:var(--ok);flex-shrink:0;text-align:right}
+
+/* About section */
+.psp-about-text{color:var(--t2);font-size:13.5px;line-height:1.6;white-space:pre-line}
+
+/* Gallery */
+.psp-gallery{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding-top:4px}
+.psp-gal-tile{aspect-ratio:1;border-radius:10px;overflow:hidden;background:var(--surf2);border:1px solid var(--bord)}
+.psp-gal-tile img{width:100%;height:100%;object-fit:cover;display:block}
+
 /* Footer */
 .psp-foot{margin-top:20px;text-align:center;padding:18px 16px;background:var(--surf);border:1px solid var(--bord);border-radius:16px}
 .psp-foot-line{font-size:12px;color:var(--t2);margin-bottom:8px;letter-spacing:.3px}
@@ -238,11 +258,31 @@ function renderShop(data) {
 
   const infoCard = infoRows ? `<div class="psp-card"><div class="psp-card-h">📋 Business info</div>${infoRows}</div>` : '';
 
-  // Services
+  // Services (legacy fallback from content_json — replaced by async DB load below)
   let servicesCard = '';
   if (services.length > 0) {
     const items = services.map(s => `<div class="psp-svc">${escHtml(typeof s === 'string' ? s : s.name || '')}</div>`).join('');
-    servicesCard = `<div class="psp-card"><div class="psp-card-h">✨ What we offer</div><div class="psp-services">${items}</div></div>`;
+    servicesCard = `<div class="psp-card" id="psp-services-card"><div class="psp-card-h">✨ What we offer</div><div class="psp-services">${items}</div></div>`;
+  } else {
+    // Empty placeholder — fills async via sbp_get_shop_services_public RPC
+    servicesCard = `<div id="psp-services-card" style="display:none"></div>`;
+  }
+
+  // About section (Pro+ feature, from content_json.about)
+  const aboutText = c.about || '';
+  let aboutCard = '';
+  if (aboutText) {
+    aboutCard = `<div class="psp-card"><div class="psp-card-h">📖 About us</div><div class="psp-about-text">${escHtml(aboutText)}</div></div>`;
+  }
+
+  // Gallery (Pro+ feature, from content_json.gallery — array of image URLs)
+  const gallery = Array.isArray(c.gallery) ? c.gallery.filter(u => u && typeof u === 'string') : [];
+  let galleryCard = '';
+  if (gallery.length > 0) {
+    const tiles = gallery.slice(0, 6).map(url =>
+      `<div class="psp-gal-tile"><img src="${escHtml(url)}" alt="" loading="lazy" onerror="this.parentElement.style.display='none'"></div>`
+    ).join('');
+    galleryCard = `<div class="psp-card"><div class="psp-card-h">📸 Gallery</div><div class="psp-gallery">${tiles}</div></div>`;
   }
 
   // Footer (Powered by)
@@ -263,8 +303,10 @@ function renderShop(data) {
       <div class="psp-badge">✓ Verified on ShopBill Pro</div>
     </div>
     ${actionsHtml}
-    ${infoCard}
+    ${aboutCard}
     ${servicesCard}
+    ${galleryCard}
+    ${infoCard}
     ${footerHtml}
   `;
 
@@ -285,6 +327,48 @@ function renderShop(data) {
 
   // Log view (fire and forget)
   logView(slug);
+}
+
+// Load services from public RPC (sbp_get_shop_services_public)
+// First API-first storefront endpoint — anon-callable, no auth required.
+async function loadServicesPublic(slug) {
+  try {
+    const { data, error } = await sb.rpc('sbp_get_shop_services_public', { p_slug: slug });
+    if (error || !data || !data.ok || !Array.isArray(data.services) || data.services.length === 0) {
+      return; // Silent fail: legacy content_json.services may already be rendered
+    }
+
+    const card = document.getElementById('psp-services-card');
+    if (!card) return;
+
+    const items = data.services.map(s => {
+      const img = s.image_url
+        ? `<img src="${escHtml(s.image_url)}" alt="" loading="lazy" onerror="this.parentElement.style.display='none'">`
+        : '✨';
+      const price = (typeof s.price === 'number' && s.price > 0) ? '₹' + Math.round(s.price).toLocaleString('en-IN') : '';
+      const dur = s.duration_minutes ? `⏱ ${s.duration_minutes} min` : '';
+      const cat = s.category ? escHtml(s.category) : '';
+      const desc = s.description ? `<div class="psp-svc-desc">${escHtml(s.description)}</div>` : '';
+      const meta = [dur, cat].filter(Boolean).map(x => `<span class="psp-svc-meta-tag">${x}</span>`).join('');
+
+      return `<div class="psp-svc-row">
+        <div class="psp-svc-img">${img}</div>
+        <div class="psp-svc-info">
+          <div class="psp-svc-name">${escHtml(s.name || '')}</div>
+          ${desc}
+          ${meta ? `<div class="psp-svc-meta">${meta}</div>` : ''}
+        </div>
+        ${price ? `<div class="psp-svc-price">${price}</div>` : ''}
+      </div>`;
+    }).join('');
+
+    card.style.display = '';
+    card.className = 'psp-card';
+    card.innerHTML = `<div class="psp-card-h">✨ Services</div><div class="psp-services-rich">${items}</div>`;
+  } catch (e) {
+    console.warn('[PSP] services load failed:', e);
+    // Silent fail — page still works without services
+  }
 }
 
 async function init() {
@@ -320,6 +404,9 @@ async function init() {
     }
 
     renderShop(data);
+    // Async: load services from sbp_services table via public RPC
+    // (separate from resolve_shop_slug to keep the resolve cacheable + fast)
+    loadServicesPublic(slug);
   } catch (err) {
     console.error('[PSP] resolve error:', err);
     renderEmpty(
