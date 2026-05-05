@@ -1,20 +1,24 @@
 /* ══════════════════════════════════════════════════════════════════
-   ShopBill Pro — Service Worker v1.5.8
+   ShopBill Pro — Service Worker v1.5.9
    TradeCrest Technologies Pvt. Ltd.
    Offline-first caching strategy
 
-   v1.5.8 changes (Batch 1B-C-Pilot v2 — May 2026):
-   - Wired dashboard.html to lib/sidebar-engine.js for BOTH desktop (#dsb) AND mobile (.bnav)
-   - Replaced inline desktop sidebar IIFE (35 lines) and inline static bnav HTML (15 lines)
-   - Lib renders 13+ items in desktop side rail, 5 items in mobile bottom nav
-   - Added viewport resize listener (re-renders on crossing 1024px threshold)
+   v1.5.9 changes (Batch 1B-F-Pilot — May 2026):
+   - Added mobile drawer (full menu, slides in from right when "More" is tapped)
+   - Lib gained mobile-drawer layout: renders ALL items in vertical list with header + footer
+   - Mobile users now have access to Website, Services, Appointments, Stylists, History, etc.
+   - "More" button on bnav now opens drawer (instead of navigating to settings.html)
+   - Drawer has close button, ESC key support, tap-overlay-to-close, body scroll lock
+   - Drawer auto-closes on item tap and on viewport crossing to desktop width
+   - Lib version: 360 → 445 lines (+85 for drawer support)
+   - Dashboard: +18 lines drawer markup + ~60 lines drawer CSS + 3 lines drawer render call
    - All other 15 pages still use their own inline sidebars/bnav — unchanged
-   - 1B-C-Scale (rollout to remaining 15 pages) is the next batch if pilot validates
-   - All caching behavior identical to v1.5.7
+   - 1B-C-Scale (rollout drawer + sidebar to remaining 15 pages) is next batch
+   - All caching behavior identical to v1.5.8
 ══════════════════════════════════════════════════════════════════ */
 
 // FIX #20 — Bump version on every release so users get fresh HTML
-const CACHE_NAME = 'shopbillpro-v1.5.8-20260505-1bcpilotv2';
+const CACHE_NAME = 'shopbillpro-v1.5.9-20260505-1bfpilot';
 const OFFLINE_URL = '/index.html';
 
 const STATIC_ASSETS = [
@@ -44,7 +48,7 @@ const STATIC_ASSETS = [
   '/styles.css',
   '/fix.css',
   '/manifest.json',
-  // NEW in v1.5.8 — shared libraries (Batch 1A)
+  // NEW in v1.5.9 — shared libraries (Batch 1A)
   '/lib/sidebar-engine.js',
   '/lib/beta-banner.js',
   '/lib/shop-type-wizard.js',
