@@ -80,9 +80,10 @@ button{font-family:inherit;cursor:pointer;border:none;background:none}
 .nav-wrap{display:flex;align-items:center;justify-content:space-between;padding:14px 0;gap:24px}
 .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px;font-family:var(--font-h);color:var(--text)}
 .brand-mark{
-  width:34px;height:34px;border-radius:9px;background:var(--acc-grad);
-  display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:18px;
-  box-shadow:var(--shadow-acc)
+  width:34px;height:34px;border-radius:9px;
+  display:block;object-fit:cover;
+  box-shadow:var(--shadow-acc);
+  background:var(--acc-grad)
 }
 .nav-links{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .nav-link{

@@ -6,25 +6,25 @@
     {
       "source": "/",
       "has": [{ "type": "host", "value": "shopbillpro.in" }],
-      "destination": "/marketing/index.html"
+      "destination": "/site/index.html"
     },
     {
       "source": "/",
       "has": [{ "type": "host", "value": "www.shopbillpro.in" }],
-      "destination": "/marketing/index.html"
+      "destination": "/site/index.html"
     },
-    { "source": "/pricing", "destination": "/marketing/pricing.html" },
-    { "source": "/faq", "destination": "/marketing/faq.html" },
-    { "source": "/why-choose-shopbill-pro", "destination": "/marketing/why-choose-shopbill-pro.html" },
-    { "source": "/free-billing-software-india", "destination": "/marketing/free-billing-software-india.html" },
-    { "source": "/features/:slug", "destination": "/marketing/features/:slug.html" },
-    { "source": "/for/:slug", "destination": "/marketing/for/:slug.html" },
-    { "source": "/sitemap.xml", "destination": "/marketing/sitemap.xml" },
-    { "source": "/robots.txt", "destination": "/marketing/robots.txt" }
+    { "source": "/pricing", "destination": "/site/pricing.html" },
+    { "source": "/faq", "destination": "/site/faq.html" },
+    { "source": "/why-choose-shopbill-pro", "destination": "/site/why-choose-shopbill-pro.html" },
+    { "source": "/free-billing-software-india", "destination": "/site/free-billing-software-india.html" },
+    { "source": "/features/:slug", "destination": "/site/features/:slug.html" },
+    { "source": "/for/:slug", "destination": "/site/for/:slug.html" },
+    { "source": "/sitemap.xml", "destination": "/site/sitemap.xml" },
+    { "source": "/robots.txt", "destination": "/site/robots.txt" }
   ],
   "headers": [
     {
-      "source": "/marketing/css/(.*)",
+      "source": "/site/css/(.*)",
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
       ]
