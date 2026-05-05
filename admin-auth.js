@@ -9,14 +9,27 @@
 ══════════════════════════════════════════════════════════ */
 
 // Master password is stored as SHA-256 hash, not plaintext.
-// To regenerate: open DevTools console, run:
-//   const enc = new TextEncoder().encode('YOUR_NEW_PASSWORD');
-//   crypto.subtle.digest('SHA-256', enc).then(b =>
-//     console.log(Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join(''))
-//   );
+//
+// To rotate the password (Block 2 Housekeeping, May 5, 2026):
+//   1. Open password-hasher.html (in your repo root) in any browser
+//      OR open DevTools console on any page and run:
+//      const enc = new TextEncoder().encode('YOUR_NEW_PASSWORD');
+//      crypto.subtle.digest('SHA-256', enc).then(b =>
+//        console.log(Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join(''))
+//      );
+//   2. Copy the 64-character hex string output
+//   3. Paste it as the value of MASTER_PASSWORD_HASH below (replacing the placeholder)
+//   4. In Supabase SQL Editor, run: SELECT admin_set_master_token('YOUR_NEW_PASSWORD');
+//   5. Commit + push admin-auth.js
+//
+// IMPORTANT: The previous default 'SBP_ADMIN_2024_SECURE' was publicly documented
+// in design notes and MUST NOT be reused. Pick something new and strong.
 const ADMIN_CONFIG = {
-  // SHA-256 of 'SBP_ADMIN_2024_SECURE' — change in production!
-  MASTER_PASSWORD_HASH: '68b9de762bdc872d5a7e8cd2b9d0f497aec0f53cefcb4caa8c1a8a6f63c7d8fc',
+  // SHA-256 of your master password — rotated May 5, 2026 (Batch Block 2)
+  // PLACEHOLDER until you paste your hash. The current value below is intentionally
+  // invalid (won't match any password) — server-side admin_verify_token RPC remains
+  // the working auth check until you update this.
+  MASTER_PASSWORD_HASH: '5698e6addee1d69b95e0d9a97c4bbefe242b92fc93ed53bf5338a0b050a4d9ff',
   SESSION_TIMEOUT: 60 * 60 * 1000,
   MAX_LOGIN_ATTEMPTS: 5,
   LOCKOUT_TIME: 15 * 60 * 1000,

@@ -2029,6 +2029,12 @@ function devSetPlan(plan) {
 </script>
 <!-- BATCH PSP-MVP: Public Shop Page (slug load + share buttons) -->
 <script>
+// Hardcoded so the URL shown to owners is always brand-correct,
+// regardless of which Vercel deployment domain settings.html was loaded from.
+// To migrate to root domain (shopbillpro.in/s/...) per Master Plan A-04,
+// just change this constant — no other code changes needed.
+const PUBLIC_SHOP_BASE_URL = 'https://app.shopbillpro.in';
+
 let _pspSlug = null;
 
 async function pspLoadSlug() {
@@ -2039,7 +2045,7 @@ async function pspLoadSlug() {
     const { data, error } = await window._sb.from('sbp_shop_websites').select('slug').eq('shop_id', shopId).single();
     if (data?.slug) {
       _pspSlug = data.slug;
-      const url = window.location.origin + '/s/' + _pspSlug;
+      const url = PUBLIC_SHOP_BASE_URL + '/s/' + _pspSlug;
       const urlRow = document.getElementById('psp-url-row');
       const loadingRow = document.getElementById('psp-loading-row');
       if (urlRow) { urlRow.textContent = url; urlRow.style.display = 'block'; }
@@ -2058,12 +2064,12 @@ async function pspLoadSlug() {
 
 function pspPreview() {
   if (!_pspSlug) { toast('⏳ Save shop details first', 'i'); return; }
-  window.open('/s/' + _pspSlug, '_blank');
+  window.open(PUBLIC_SHOP_BASE_URL + '/s/' + _pspSlug, '_blank');
 }
 
 function pspCopy() {
   if (!_pspSlug) { toast('⏳ Save shop details first', 'i'); return; }
-  const url = window.location.origin + '/s/' + _pspSlug;
+  const url = PUBLIC_SHOP_BASE_URL + '/s/' + _pspSlug;
   if (navigator.clipboard?.writeText) {
     navigator.clipboard.writeText(url).then(() => toast('✅ URL copied!', 's')).catch(() => prompt('Copy this URL:', url));
   } else {
@@ -2074,7 +2080,7 @@ function pspCopy() {
 function pspShareWa() {
   if (!_pspSlug) { toast('⏳ Save shop details first', 'i'); return; }
   const shop = JSON.parse(localStorage.getItem('sbp_shop')||'{}');
-  const url = window.location.origin + '/s/' + _pspSlug;
+  const url = PUBLIC_SHOP_BASE_URL + '/s/' + _pspSlug;
   const lang = localStorage.getItem('sbp_lang') || 'en';
   const msg = lang === 'hi'
     ? `नमस्ते! ${shop.name || 'मेरी दुकान'} पर आइए: ${url}`
