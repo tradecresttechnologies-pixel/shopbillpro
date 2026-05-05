@@ -14,7 +14,7 @@
     }
   ],
   "rewrites": [
-    { "source": "/s/:slug", "destination": "/s.html" }
+    { "source": "/s/:slug", "destination": "/s" }
   ],
   "headers": [
     {
