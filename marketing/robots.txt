@@ -1,0 +1,14 @@
+# ShopBill Pro Marketing Site
+
+User-agent: *
+Allow: /
+
+# Block app subdomain from getting indexed under marketing root
+# (app.shopbillpro.in has its own SEO/privacy needs)
+Disallow: /admin
+Disallow: /admin-*
+Disallow: /admin-login
+Disallow: /js/
+Disallow: /css/
+
+Sitemap: https://shopbillpro.in/sitemap.xml
