@@ -35,6 +35,233 @@
   } catch(e) {}
 })();
 </script>
+<!-- ===== Schema.org JSON-LD ===== -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "ShopBill Pro",
+  "alternateName": "ShopBill Pro by TradeCrest",
+  "url": "https://shopbillpro.in",
+  "logo": "https://shopbillpro.in/icons/icon-192x192.png",
+  "description": "India's operating system for small businesses. GST billing, WhatsApp bills, stock management, customer khata, and free shop website — all in one app.",
+  "knowsLanguage": [
+    "en",
+    "hi"
+  ],
+  "areaServed": {
+    "@type": "Country",
+    "name": "India"
+  },
+  "contactPoint": {
+    "@type": "ContactPoint",
+    "contactType": "customer support",
+    "email": "support@shopbillpro.in",
+    "availableLanguage": [
+      "English",
+      "Hindi"
+    ]
+  }
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Is ShopBill Pro really free?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes — the Free plan is genuinely free forever, no credit card required. You get 100 bills per month, GST billing (POS + Manual), customer khata, WhatsApp bills with UPI QR, basic stock tracking, and a free single-page shop website. The trade-off: bills carry a small \"Powered by ShopBill Pro\" footer. Pro at ₹99/month removes the watermark and adds unlimited bills."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Do I need GST registration to use this?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. ShopBill Pro works for both GST-registered and non-GST businesses. If you have a GSTIN, the app handles GST calculation, CGST/SGST/IGST split, and GSTR-1/3B exports automatically. If you don't, you can still create regular bills, manage customers, and track inventory — just leave the GSTIN field empty."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Is the app available in Hindi?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. ShopBill Pro is fully bilingual — Hindi and English. You can toggle between the two from settings, and the entire interface (menus, buttons, reports, error messages) updates immediately. We're adding Tamil, Telugu, Marathi, and Bengali in Month 12 of our roadmap."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Does it work offline?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. ShopBill Pro is a Progressive Web App (PWA) with full offline support. You can create bills, look up customers, manage inventory — all without internet. When you're back online, everything syncs to the cloud automatically."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Which devices does it work on?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Any device with a modern browser — Android phones, iPhones, Windows PCs, Macs, even older Android devices. You can install it as an app on your phone (Add to Home Screen) for a native-app feel. No download from Play Store needed."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How does ShopBill Pro compare to Vyapar?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Both apps cover GST billing, stock, and customer ledger. Key differences: ShopBill Pro has a generous free tier (100 bills/month with all core features), WhatsApp bills with UPI QR built-in, and a free public shop website at shopbillpro.in/s/[your-shop]. Pro pricing is ₹99/month."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Is ShopBill Pro a good Khatabook alternative?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "If you currently use Khatabook for customer ledger and want to add proper GST billing, stock management, and reports — yes, ShopBill Pro covers all of that in one app. Our customer khata is feature-equivalent (3-way matching by ID/phone/name, auto-credit on unpaid bills) plus you get GST invoices, GSTR exports, and the WhatsApp + UPI QR billing flow on top."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How is this different from myBillBook?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "myBillBook focuses primarily on billing. ShopBill Pro is a broader business OS — billing, stock, khata, reports, free shop website, vertical-specific modules (restaurant tools, salon scheduling, pharmacy drug DB). Both work well for GST compliance. ShopBill Pro's free tier is more generous, and our Pro tier is ₹99/month."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can I import data from my existing billing app?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. CSV import is supported for products and customers. If your current app exports CSV (most do), you can import in 2 minutes. For Tally exports, we have a converter coming in Month 8. For everything else, our support team can help — email support@shopbillpro.in with your export file."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can I export my data if I leave?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Always. Your data is yours — export bills, customers, products, and reports as CSV anytime, no questions asked. Even on the Free plan. We don't believe in vendor lock-in."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Are GSTR-1 and GSTR-3B exports in GSTN format?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. Our GSTR-1 export is in the exact CSV format the GSTN portal accepts — B2B and B2C splits, HSN summary, all required columns. GSTR-3B is also generated as a summary you can copy into the portal directly. Note: ShopBill Pro is a billing tool — actual filing remains your or your CA's responsibility."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Does it handle CGST/SGST/IGST automatically?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. Set the supply type (intra-state vs inter-state) on each bill, and the system automatically splits GST into CGST+SGST (intra) or IGST (inter). HSN codes can be assigned to products and flow through to GSTR-1 reports."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can I send bills directly via WhatsApp?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes — this is one of our most-used features. After creating a bill, tap WhatsApp icon. We generate a UPI QR image with your bill amount pre-filled, attach it to the WhatsApp message along with bill details, and open WhatsApp to your customer's number. They scan, pay, tap \"Mark as Paid\" — your ledger updates automatically."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can I have multiple staff using the same shop?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. Free supports 1 user. Pro supports 3 users. Business supports 10 users. Each user has their own login with role-based permissions (admin, manager, cashier, viewer). All actions are logged in the audit trail."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Where is my data stored?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "On Supabase cloud servers in Singapore (closest data center to India), with daily automated backups. Data is encrypted in transit (HTTPS) and at rest. Local copy on your device is also kept for offline access. Both layers are isolated by Row-Level Security — only you can access your shop's data."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Is my data secure?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. We use industry-standard practices: encrypted data at rest (Supabase), HTTPS for all connections, Row-Level Security policies on every table, encrypted admin credentials with pgcrypto, signed Razorpay webhooks with HMAC verification. We don't sell or share your data with anyone."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What happens if I lose internet for days?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No problem. The app works fully offline thanks to its PWA architecture — bills, customers, products are all cached on your device. Create as many bills as you want offline. The moment you reconnect, everything syncs to the cloud automatically."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What's the 60-day Business beta?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "When you sign up, you automatically get the full Business plan free for 60 days — every feature, no card required. Use it like a trial. After 60 days, you choose: continue Business at ₹499/month, downgrade to Pro ₹99/month, or stay on Free (your data is preserved either way)."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How do I pay?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "UPI, debit card, credit card, net banking — all major Indian payment methods via Razorpay. Monthly or annual (annual saves 17%). Auto-renewal optional. Cancel anytime — refund pro-rated for unused time."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can I get a custom website built for me?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes — ₹2,999 one-time. Our designer/developer builds a custom website matching your brand and business in 5–7 days. This is for shops that want something different from our templates."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How do I get help if I'm stuck?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Free plan: community + tutorial videos. Pro plan: email support (24-hour response). Business plan: priority WhatsApp + email support. We also have an in-app help center with searchable articles."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Are there tutorial videos?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. We're producing 10 tutorial videos covering: first bill, products & stock, daily report, WhatsApp bills, GST returns, multi-staff setup, and more. Hindi voiceover with English subtitles. Available on YouTube and embedded in-app."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How do I contact you?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Email: support@shopbillpro.in. WhatsApp: available in-app for paid plans. We reply to all emails within 24 hours, faster on WhatsApp for Business plan."
+      }
+    }
+  ]
+}
+</script>
+
+<!-- PostHog Analytics -->
+<script>
+!function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.async=!0,p.src=s.api_host+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="capture identify alias people.set people.set_once set_config register register_once unregister opt_out_capturing has_opted_out_capturing opt_in_capturing reset isFeatureEnabled onFeatureFlags getFeatureFlag getFeatureFlagPayload reloadFeatureFlags group updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures getActiveMatchingSurveys getSurveys getNextSurveyStep onSessionId".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+posthog.init('phc_t4N2JZA9uUvph9kcxjwaKM8CrVc7aYTp3UjXMSMvvkWQ', {api_host: 'https://us.i.posthog.com', person_profiles: 'identified_only'});
+</script>
 </head>
 <body>
 

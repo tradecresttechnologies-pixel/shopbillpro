@@ -24,28 +24,6 @@
 <meta name="twitter:title" content="ShopBill Pro — Run Any Business in India">
 <meta name="twitter:description" content="Free GST billing + WhatsApp bills + stock + khata + reports. One app for every Indian business.">
 
-<!-- Schema.org -->
-<script type="application/ld+json">
-{
-  "@context":"https://schema.org",
-  "@type":"SoftwareApplication",
-  "name":"ShopBill Pro",
-  "operatingSystem":"Web, Android, iOS",
-  "applicationCategory":"BusinessApplication",
-  "description":"Free GST billing software for Indian shops with WhatsApp bills, stock management, customer khata, and GSTR exports.",
-  "offers":[
-    {"@type":"Offer","name":"Free","price":"0","priceCurrency":"INR"},
-    {"@type":"Offer","name":"Pro","price":"99","priceCurrency":"INR"},
-    {"@type":"Offer","name":"Business","price":"499","priceCurrency":"INR"}
-  ],
-  "publisher":{
-    "@type":"Organization",
-    "name":"TradeCrest Technologies Private Limited",
-    "url":"https://shopbillpro.in"
-  }
-}
-</script>
-
 <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192x192.png">
 <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180x180.png">
@@ -65,6 +43,114 @@
     if (l === 'hi') document.documentElement.setAttribute('data-lang','hi');
   } catch(e) {}
 })();
+</script>
+<!-- ===== Schema.org JSON-LD ===== -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "ShopBill Pro",
+  "alternateName": "ShopBill Pro by TradeCrest",
+  "url": "https://shopbillpro.in",
+  "logo": "https://shopbillpro.in/icons/icon-192x192.png",
+  "description": "India's operating system for small businesses. GST billing, WhatsApp bills, stock management, customer khata, and free shop website — all in one app.",
+  "knowsLanguage": [
+    "en",
+    "hi"
+  ],
+  "areaServed": {
+    "@type": "Country",
+    "name": "India"
+  },
+  "contactPoint": {
+    "@type": "ContactPoint",
+    "contactType": "customer support",
+    "email": "support@shopbillpro.in",
+    "availableLanguage": [
+      "English",
+      "Hindi"
+    ]
+  }
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "ShopBill Pro",
+  "url": "https://shopbillpro.in",
+  "inLanguage": [
+    "en",
+    "hi"
+  ],
+  "publisher": {
+    "@type": "Organization",
+    "name": "TradeCrest Technologies Private Limited"
+  }
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "ShopBill Pro",
+  "operatingSystem": "Any (Progressive Web App)",
+  "applicationCategory": "BusinessApplication",
+  "applicationSubCategory": "Billing & Invoicing",
+  "description": "GST billing, POS, WhatsApp bills with UPI QR, customer khata, stock management, and GSTR-1/3B exports for Indian businesses. Works offline. Free plan available.",
+  "url": "https://shopbillpro.in",
+  "offers": [
+    {
+      "@type": "Offer",
+      "name": "Free",
+      "price": "0",
+      "priceCurrency": "INR",
+      "description": "100 bills/month, GST billing, WhatsApp bills, customer khata, basic stock"
+    },
+    {
+      "@type": "Offer",
+      "name": "Pro",
+      "price": "99",
+      "priceCurrency": "INR",
+      "description": "Unlimited bills, no watermark, full reports, 3 staff users",
+      "priceSpecification": {
+        "@type": "UnitPriceSpecification",
+        "price": "99",
+        "priceCurrency": "INR",
+        "unitText": "MONTH"
+      }
+    },
+    {
+      "@type": "Offer",
+      "name": "Business",
+      "price": "499",
+      "priceCurrency": "INR",
+      "description": "Everything in Pro, plus AI-generated website, vertical modules, 10 staff users, custom domain support",
+      "priceSpecification": {
+        "@type": "UnitPriceSpecification",
+        "price": "499",
+        "priceCurrency": "INR",
+        "unitText": "MONTH"
+      }
+    }
+  ],
+  "featureList": [
+    "GST Billing (POS + Manual)",
+    "WhatsApp Bills with UPI QR",
+    "Customer Khata / Ledger",
+    "Stock & Inventory Management",
+    "GSTR-1 & GSTR-3B Exports",
+    "Offline-First PWA",
+    "Multi-Staff with Role Permissions",
+    "Hindi & English"
+  ]
+}
+</script>
+
+<!-- PostHog Analytics -->
+<script>
+!function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.async=!0,p.src=s.api_host+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="capture identify alias people.set people.set_once set_config register register_once unregister opt_out_capturing has_opted_out_capturing opt_in_capturing reset isFeatureEnabled onFeatureFlags getFeatureFlag getFeatureFlagPayload reloadFeatureFlags group updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures getActiveMatchingSurveys getSurveys getNextSurveyStep onSessionId".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+posthog.init('phc_t4N2JZA9uUvph9kcxjwaKM8CrVc7aYTp3UjXMSMvvkWQ', {api_host: 'https://us.i.posthog.com', person_profiles: 'identified_only'});
 </script>
 </head>
 
