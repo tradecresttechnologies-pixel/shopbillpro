@@ -212,7 +212,7 @@ BEGIN
     RETURN v_check;
   END IF;
 
-  SELECT COALESCE(jsonb_agg(row_to_jsonb(p) ORDER BY p.display_order, p.created_at), '[]'::jsonb)
+  SELECT COALESCE(jsonb_agg(to_jsonb(p) ORDER BY p.display_order, p.created_at), '[]'::jsonb)
   INTO v_rows
   FROM (
     SELECT id, name, role, phone, email, photo_url, bio,
@@ -439,7 +439,7 @@ BEGIN
   v_check := sbp_check_business_owner(v_shop_id);
   IF NOT (v_check->>'ok')::boolean THEN RETURN v_check; END IF;
 
-  SELECT COALESCE(jsonb_agg(row_to_jsonb(b) ORDER BY b.block_date), '[]'::jsonb)
+  SELECT COALESCE(jsonb_agg(to_jsonb(b) ORDER BY b.block_date), '[]'::jsonb)
   INTO v_rows
   FROM (
     SELECT id, block_date, start_time::text, end_time::text, reason, created_at
@@ -473,7 +473,7 @@ BEGIN
   v_check := sbp_check_business_owner(p_shop_id);
   IF NOT (v_check->>'ok')::boolean THEN RETURN v_check; END IF;
 
-  SELECT COALESCE(jsonb_agg(row_to_jsonb(a) ORDER BY a.starts_at), '[]'::jsonb)
+  SELECT COALESCE(jsonb_agg(to_jsonb(a) ORDER BY a.starts_at), '[]'::jsonb)
   INTO v_rows
   FROM (
     SELECT
@@ -705,7 +705,7 @@ BEGIN
   END IF;
 
   -- Providers (active only, public-safe columns)
-  SELECT COALESCE(jsonb_agg(row_to_jsonb(p) ORDER BY p.display_order), '[]'::jsonb)
+  SELECT COALESCE(jsonb_agg(to_jsonb(p) ORDER BY p.display_order), '[]'::jsonb)
   INTO v_providers
   FROM (
     SELECT id, name, role, photo_url, bio, working_days,
@@ -717,7 +717,7 @@ BEGIN
   ) p;
 
   -- Services bookable (active only, with duration > 0)
-  SELECT COALESCE(jsonb_agg(row_to_jsonb(s) ORDER BY s.display_order), '[]'::jsonb)
+  SELECT COALESCE(jsonb_agg(to_jsonb(s) ORDER BY s.display_order), '[]'::jsonb)
   INTO v_services
   FROM (
     SELECT id, name, description, category, price, duration_minutes, image_url

@@ -502,6 +502,14 @@ function closeModal(id){const el=document.getElementById(id);el.classList.remove
 
 // ── Init ──
 async function init(){
+  // ── BATCH 012 FIX (6 May 2026): render sidebar + inject lang CSS
+  // Fixes: missing sidebar (BUG-004) + bilingual text concatenated (BUG-005).
+  if (window.SBPSidebar) {
+    SBPSidebar.render({ currentPage: 'appointments', layout: 'desktop' });
+    SBPSidebar.render({ currentPage: 'appointments', layout: 'mobile-bottom', container: '.bnav' });
+    SBPSidebar.render({ currentPage: 'appointments', layout: 'mobile-drawer', container: '.bnav-drawer' });
+  }
+
   if(localStorage.getItem('sbp_theme')==='light'){document.getElementById('theme-btn').textContent='🌙'}
 
   const {data:{session}} = await _sb.auth.getSession();

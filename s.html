@@ -38,6 +38,35 @@ body{background:var(--bg);color:var(--text);min-height:100dvh;overflow-x:hidden}
 
 .psp{max-width:560px;margin:0 auto;padding:20px 16px 80px;min-height:100dvh}
 
+/* ── BATCH 012: Responsive desktop layout (decision 1, 6 May 2026) ──
+   Mobile (default): keep narrow Instagram-bio feel (560px max).
+   Tablet 768px+:    widen to 720px, more breathing room.
+   Desktop 1024px+:  widen to 820px, refined typography spacing,
+                     gallery flows to 4 columns, actions row stretches.
+   Goal: page feels appropriate on any device — not a tiny mobile column
+   stranded in the middle of a wide laptop screen. */
+@media (min-width: 768px) {
+  .psp{max-width:720px;padding:32px 24px 96px}
+  .psp-hero{padding:40px 32px}
+  .psp-photo{width:108px;height:108px;font-size:54px;border-radius:28px}
+  .psp-name{font-size:32px}
+  .psp-tagline{font-size:16px}
+  .psp-actions{grid-template-columns:repeat(4,1fr);gap:12px}
+  .psp-card{padding:24px 28px}
+  .psp-gallery{grid-template-columns:repeat(4,1fr)}
+}
+@media (min-width: 1024px) {
+  .psp{max-width:820px}
+  .psp-hero{padding:48px 36px}
+  .psp-name{font-size:36px}
+  .psp-actions{gap:14px}
+  .psp-act{padding:20px 16px}
+  .psp-act-ic{width:46px;height:46px;font-size:24px}
+  .psp-card{padding:28px 32px}
+  .psp-card-h{font-size:14px}
+  .psp-row{font-size:15px}
+}
+
 /* Loading state */
 .psp-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60dvh;gap:14px;color:var(--t2)}
 .psp-spin{width:40px;height:40px;border:3px solid var(--bord);border-top-color:var(--acc);border-radius:50%;animation:psp-spin 1s linear infinite}
@@ -351,10 +380,15 @@ function renderShop(data) {
   const gallery = Array.isArray(c.gallery) ? c.gallery.filter(u => u && typeof u === 'string') : [];
   let galleryCard = '';
   if (gallery.length > 0) {
-    const tiles = gallery.slice(0, 6).map(url =>
-      `<div class="psp-gal-tile"><img src="${escHtml(url)}" alt="" loading="lazy" onerror="this.parentElement.style.display='none'"></div>`
+    // BATCH 012 FIX (BUG-008): each tile reports load/error to parent card.
+    // If all images fail (broken URLs / placeholder data), hide the entire
+    // card after the dust settles, so customers don't see an empty box.
+    const tiles = gallery.slice(0, 6).map((url, i) =>
+      `<div class="psp-gal-tile" data-i="${i}"><img src="${escHtml(url)}" alt="" loading="lazy"
+         onload="this.parentElement.dataset.ok='1';if(window._pspGalCheck)window._pspGalCheck()"
+         onerror="this.parentElement.style.display='none';if(window._pspGalCheck)window._pspGalCheck()"></div>`
     ).join('');
-    galleryCard = `<div class="psp-card"><div class="psp-card-h">📸 Gallery</div><div class="psp-gallery">${tiles}</div></div>`;
+    galleryCard = `<div class="psp-card" id="psp-gallery-card"><div class="psp-card-h">📸 Gallery</div><div class="psp-gallery" data-total="${gallery.length}">${tiles}</div></div>`;
   }
 
   // Footer (Powered by)
@@ -397,6 +431,20 @@ function renderShop(data) {
     }
   };
   window.__pspLogWa = function() { logWaClick(slug); };
+
+  // BATCH 012 FIX (BUG-008): if every gallery image fails to load
+  // (broken URLs, placeholder data, expired CDN links), hide the
+  // whole gallery card so customers don't see an empty box.
+  // Each tile's onload/onerror calls this; we check after a short
+  // settle delay (covers cached vs network image loads).
+  window._pspGalCheck = function() {
+    setTimeout(() => {
+      const card = document.getElementById('psp-gallery-card');
+      if (!card) return;
+      const okTiles = card.querySelectorAll('.psp-gal-tile[data-ok="1"]');
+      if (okTiles.length === 0) card.style.display = 'none';
+    }, 100);
+  };
 
   // Log view (fire and forget)
   logView(slug);

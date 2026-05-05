@@ -1,168 +1,136 @@
-# 🚀 ShopBill Pro — Full Build with SaaS Admin Panel
+# ShopBill Pro — Planning & Reference Documents (v1.1)
 
-**Replace your repo with these files. Run BOTH SQL migrations.**
+**Version:** v1.1 (post Batch 012)
+**Generated:** 6 May 2026
+**Purpose:** Single source of truth for product strategy, current build state, and next sprint plan.
 
----
+This is a "living" reference. Keep it in `docs/` at repo root. Update at end of every batch.
 
-## What's in this build
-
-- All previous audit fixes (62 bugs, Phase 1 UPI, Reports Pro)
-- **NEW: Full SaaS admin panel with Razorpay automation**
-  - Encrypted settings (paste Razorpay creds in admin UI)
-  - Razorpay webhook → auto-activates plans (zero manual SQL)
-  - Subscription approval queue with one-click approve/reject
-  - User management (search, plan change, suspend)
-  - Real metrics (MRR, ARR, conversion, churn)
-  - Revenue charts + recent payments
-  - Signup funnel + activation rate
+**v1.1 changelog:**
+- Locked decisions from 6 May founder session baked into Vertical Playbook §11
+- 12 bugs moved from "open" to "closed" in Current State Audit §2 after Batch 012 deploy
+- BUG_FIX_PLAN renamed to historical record; new active deploy guide is `BATCH_012_DEPLOY.md` shipped with the batch zip
 
 ---
 
-## ⚠️ DEPLOY ORDER — DO NOT SKIP STEPS
+## What's in this folder
 
-### Step 1 — Run BOTH SQL files in Supabase SQL Editor
+### 📘 `VERTICAL_PLAYBOOK.md` (strategic — rarely changes)
 
-**1a. First time only (if not done):** `audit_round_db_patch.sql`
-**1b. New:** `admin_panel_full.sql`
+Per-vertical reference for "how does ShopBill Pro work for a salon vs a kirana vs a clinic."
 
-Both are idempotent (safe to re-run).
+**Read this when:**
+- A new vertical sub-type needs to be added
+- Designing a new feature (figure out which verticals it applies to)
+- AI website prompt engineering
+- Sample data seeding decisions
+- Decision points around module visibility per vertical
 
-### Step 2 — Set the encryption key (one-time, critical)
+**Sections:**
+- §1 Architecture in one page
+- §2 The 12 macro categories
+- §3 The 19 module profiles
+- §4 Per-vertical sidebar maps (salon, healthcare, education, services, kirana, restaurant, pharmacy, etc.)
+- §5 All 85 sub-types → profile map
+- §6 Module catalog (universal core, add-ons, vertical-specific)
+- §7 Vertical coverage scoring
+- §8 Sample data per vertical (signup seed)
+- §9 AI website prompt skeleton per vertical
+- §10 Drift tracker (when doc and code disagree)
+- §11 Decision points needing founder input
+- §12 Versioning & maintenance
 
-In Supabase SQL Editor:
+### 📋 `CURRENT_STATE_AUDIT.md` (snapshot — update after every batch)
 
-```sql
-ALTER DATABASE postgres SET app.encryption_key = 'replace-with-your-32-character-random-string';
-```
+What exists in code right now. Files, RPCs, deploys, bugs, tech debt.
 
-Then **restart the database**: Supabase Dashboard → Settings → Database → Restart.
+**Read this when:**
+- Returning after a break and need to know "where are we"
+- Auditing for compliance with API-first rule
+- Figuring out which migrations are deployed
+- Triaging a bug — first check if it's already in the register
 
-This key encrypts the Razorpay Key Secret. **Without it, secret storage will fail.**
-**Save the key somewhere safe** — if you lose it, all stored secrets become unreadable.
+**Sections:**
+- §1 File inventory (HTML, JS, SQL — root + admin + lib + site)
+- §2 Bug register (open) — 19 bugs catalogued with severity
+- §3 API-first compliance audit
+- §4 Deploy state
+- §5 Recently shipped timeline
+- §6 Open questions / pending decisions
+- §7 Maintenance note
 
-### Step 3 — Set the admin master password
+### 🔧 `BUG_FIX_PLAN.md` (next sprint — execute when given "go")
 
-In Supabase SQL Editor (replace with your chosen password):
+Concrete batch plan with exact diffs for the bugs found in the latest audit.
 
-```sql
-SELECT admin_set_master_token('YOUR_NEW_ADMIN_PASSWORD_HERE');
-```
+**Read this when:**
+- About to start a bug-fix sprint
+- Need to estimate how long a fix will take
+- Verifying scope before deploy
 
-This becomes the password for `admin-login.html`. Until you run this, the default `SBP_ADMIN_2024_SECURE` still works as a fallback.
-
-### Step 4 — Push files to GitHub
-
-Replace your repo's contents with this package, commit, push. Vercel auto-deploys.
-
-### Step 5 — Log into admin panel
-
-Open: `https://app.shopbillpro.in/admin-login.html`
-
-Enter your master password from Step 3.
-
-### Step 6 — Configure Razorpay in admin
-
-Admin panel → **Settings** → fill:
-- **Razorpay Mode**: test (start here) or live
-- **Razorpay Key ID**: from dashboard.razorpay.com → API Keys
-- **Razorpay Key Secret**: same place (stored encrypted, never exposed to client)
-- **UPI Receiving ID**: your UPI for direct payments
-- **Admin WhatsApp**: 10-digit + country code (no `+`)
-- **Plan prices**: leave default ₹99/₹199 or change
-
-Click **Save All Changes**.
-
-### Step 7 — Deploy Razorpay webhook
-
-This is what auto-activates subscriptions when payments complete. See `supabase/functions/razorpay-webhook/README.md` for full instructions.
-
-Quick version:
-```bash
-# 1. Install Supabase CLI (one-time)
-npm i -g supabase
-
-# 2. Link project
-supabase login
-supabase link --project-ref jfqeirfrkjdkqqixivru
-
-# 3. Set webhook secret (any long random string)
-supabase secrets set RAZORPAY_WEBHOOK_SECRET="paste-a-long-random-string-here"
-
-# 4. Deploy
-supabase functions deploy razorpay-webhook --no-verify-jwt
-```
-
-Then in **Razorpay Dashboard → Settings → Webhooks → Add**:
-- URL: `https://jfqeirfrkjdkqqixivru.supabase.co/functions/v1/razorpay-webhook`
-- Secret: same string as step 3 above
-- Events: `payment.captured` (minimum)
-
-### Step 8 — Test
-
-1. Sign up a new test shop in your app (use Razorpay test card `4111 1111 1111 1111`)
-2. Try to upgrade to Pro
-3. Complete the test payment
-4. Within seconds, the user's plan should flip to Pro automatically (no SQL needed)
-5. Check Admin Panel → Subscriptions → should show as Active
+**Sections:**
+- §1 Sprint goals
+- §2 Fix order (priority + dependencies)
+- §3 Detailed fixes (with exact diffs)
+- §4 Deploy plan
+- §5 Smoke test checklist
+- §6 Rollback plan
+- §7 Files in final zip
+- §8 Time estimate
+- §9 Decision points needing founder input
 
 ---
 
-## File map
+## How to use these docs
 
-### Modified (audit fixes)
-admin-auth.js · admin-db.js · auth.js · bill-templates.html · billing.html · bills.html · cash-register.html · customers.html · dashboard.html · db.js · index.html · lang.js · marketing.html · pos-admin.html · recurring.html · reports.html · service-worker.js · settings.html · stock.html · subscription.html · supplier.html · sync.js · team.html · ui.js · wa-center.html · supabase.js
+### When a new batch starts
 
-### Modified (admin panel)
-admin-dashboard.html · admin-users.html · admin-revenue.html · admin-analytics.html
+1. Read **CURRENT_STATE_AUDIT.md §1 (File Inventory)** to know the file landscape
+2. Read **CURRENT_STATE_AUDIT.md §2 (Bug Register)** to know what's open
+3. Read **VERTICAL_PLAYBOOK.md** sections relevant to the vertical(s) being touched
+4. Plan the batch
+5. Execute
+6. **Update CURRENT_STATE_AUDIT.md** with new files, fixed bugs, new RPCs
+7. **Update VERTICAL_PLAYBOOK.md** if module/profile/vertical changes
 
-### NEW admin pages
-admin-subscriptions.html · admin-settings.html
+### When founder asks "what's the state of the app"
 
-### NEW infrastructure
-audit_round_db_patch.sql · admin_panel_full.sql · supabase/functions/razorpay-webhook/index.ts · supabase/functions/razorpay-webhook/README.md
+Read aloud from **CURRENT_STATE_AUDIT.md §5 (Recently Shipped Timeline)** + §2 (Bug Register critical/high).
 
----
+### When founder asks "how does X vertical work"
 
-## Daily workflow (after setup)
+Read **VERTICAL_PLAYBOOK.md §4** for the specific vertical (salon, kirana, etc.).
 
-**Morning routine** — open `admin-dashboard.html`:
-- See MRR, today's revenue, pending verifications, recent activity
-- Pending count > 0 in nav badge means manual UPI payments to review
+### When a new bug is filed
 
-**Subscription review** — `admin-subscriptions.html`:
-- Pending tab: review each, click ✅ Approve or ❌ Reject
-- Razorpay payments auto-activate (no review needed)
+Add to **CURRENT_STATE_AUDIT.md §2** with severity, affected pages, and likely cause file.
 
-**User support** — `admin-users.html`:
-- Search by name/email/phone
-- Click "Plan" to upgrade/downgrade/extend
-- Click "Suspend" to lock out a user
+### When a bug is fixed
 
-**Revenue tracking** — `admin-revenue.html`:
-- Stacked bar chart: Pro vs Business by day
-- Top paying shops
-- All recent payments with status
-
-**Analytics** — `admin-analytics.html`:
-- Signup funnel: Signup → First Bill → Paid → Active
-- Drop-off at each step
-- 30-day signup chart
+Move to a "Closed" subsection in §2, with date + batch reference.
 
 ---
 
-## Security notes
+## Versioning
 
-- **Encryption key**: stored as Postgres database parameter, only readable via SQL. Anyone with full DB access can read encrypted secrets — same risk as any SQL backend.
-- **Admin token**: SHA-256 hashed in `admin_settings.admin_token_hash`. Brute-force protected by lockout in `admin-auth.js` (5 attempts → 15 min lockout).
-- **Webhook signature**: HMAC-SHA256 verified by Edge Function before reaching Postgres. Failed signatures still logged in `webhook_events` but never activate subscriptions.
-- **Client never sees the Razorpay Key Secret** — it stays in Postgres, encrypted, only used by the webhook function (which has Service Role access).
+All three docs are at **v1.0** (6 May 2026). Bump version when:
+- Major structural change to the doc
+- A locked decision changes
+- New macro/profile added
 
----
-
-## What still uses manual SQL?
-
-After this build, **only one thing**: the initial encryption key setup (Step 2 above) and the master password bootstrap (Step 3). After that, everything else flows through the admin UI.
+Date-stamp every edit at the top of the relevant section.
 
 ---
 
-See `AUDIT_CHANGELOG.md` for the full bug-by-bug history.
+## Future enhancement
+
+Once these docs are referenced enough, consider:
+- Auto-generating §1 (File Inventory) and §2 (Bug Register) from a script that scans the repo
+- Auto-generating §6 (Module Catalog) from `lib/sidebar-engine.js` and `sbp_module_profiles` table
+- Sub-folder per macro vertical with extended notes (`docs/verticals/salon.md`, `docs/verticals/kirana.md`)
+
+For now, hand-maintained markdown is the right level of effort for a solo-founder build.
+
+---
+
+*ShopBill Pro · TradeCrest Technologies Pvt. Ltd.*

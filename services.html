@@ -357,6 +357,17 @@ function closeModal(id){
 
 // ── Init ─────────────────────────────────────────────────
 async function init(){
+  // ── BATCH 012 FIX (6 May 2026): render sidebar + inject lang CSS
+  // Fixes: missing sidebar (BUG-004) + bilingual text concatenated (BUG-005).
+  // SBPSidebar.render() does double duty: (1) renders desktop side rail and
+  // mobile drawer, (2) injects the .lang-hi { display:none } CSS that lets
+  // <span class="lang-en">/<span class="lang-hi"> spans toggle correctly.
+  if (window.SBPSidebar) {
+    SBPSidebar.render({ currentPage: 'services', layout: 'desktop' });
+    SBPSidebar.render({ currentPage: 'services', layout: 'mobile-bottom', container: '.bnav' });
+    SBPSidebar.render({ currentPage: 'services', layout: 'mobile-drawer', container: '.bnav-drawer' });
+  }
+
   // Theme
   const t=localStorage.getItem('sbp_theme');
   if(t==='light'){document.getElementById('theme-btn').textContent='🌙'}

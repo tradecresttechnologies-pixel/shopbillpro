@@ -273,7 +273,7 @@ BEGIN
     RETURN jsonb_build_object('ok', false, 'error', 'not_owner');
   END IF;
 
-  SELECT COALESCE(jsonb_agg(row_to_jsonb(s) ORDER BY s.display_order, s.created_at), '[]'::jsonb)
+  SELECT COALESCE(jsonb_agg(to_jsonb(s) ORDER BY s.display_order, s.created_at), '[]'::jsonb)
   INTO v_rows
   FROM (
     SELECT id, name, description, category, price, duration_minutes,
@@ -323,7 +323,7 @@ BEGIN
   END IF;
 
   -- Return ONLY active services, public-safe columns only
-  SELECT COALESCE(jsonb_agg(row_to_jsonb(s) ORDER BY s.display_order), '[]'::jsonb)
+  SELECT COALESCE(jsonb_agg(to_jsonb(s) ORDER BY s.display_order), '[]'::jsonb)
   INTO v_rows
   FROM (
     SELECT id, name, description, category, price, duration_minutes,

@@ -581,7 +581,7 @@ BEGIN
     RETURN jsonb_build_object('ok', false, 'error', 'not_owner');
   END IF;
 
-  SELECT COALESCE(jsonb_agg(row_to_jsonb(r) ORDER BY r.created_at DESC), '[]'::jsonb)
+  SELECT COALESCE(jsonb_agg(to_jsonb(r) ORDER BY r.created_at DESC), '[]'::jsonb)
   INTO v_rows
   FROM (
     SELECT id, txn_type, points, description, bill_id, expires_at, created_at
