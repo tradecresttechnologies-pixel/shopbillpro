@@ -548,6 +548,33 @@ html,body{height:100%;overflow:hidden}
       </div>
     </div>
 
+    <!-- BATCH PSP-MVP: Your Shop Website (Public Profile) -->
+    <div style="padding:14px 14px 0">
+      <div style="background:linear-gradient(135deg,rgba(245,166,35,.08),rgba(255,107,53,.06));border:1.5px solid rgba(245,166,35,.3);border-radius:14px;padding:14px;position:relative">
+        <div style="position:absolute;top:10px;right:10px;font-size:9px;font-weight:800;background:linear-gradient(135deg,#10B981,#059669);color:#fff;border-radius:6px;padding:3px 7px;letter-spacing:.4px">NEW</div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+          <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#F5A623,#FF6B35);display:flex;align-items:center;justify-content:center;font-size:18px">🌐</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:800;color:var(--text)"><span class="lang-en">Your Shop Website</span><span class="lang-hi">आपकी शॉप वेबसाइट</span></div>
+            <div style="font-size:11px;color:var(--t2)"><span class="lang-en">Share your free profile page on WhatsApp &amp; Instagram</span><span class="lang-hi">अपना मुफ्त पेज WhatsApp और Instagram पर शेयर करें</span></div>
+          </div>
+        </div>
+        <div id="psp-url-row" style="display:none;background:var(--surf2);border:1px solid var(--bord);border-radius:10px;padding:8px 10px;margin-bottom:8px;font-size:11px;color:var(--text);word-break:break-all;font-family:monospace"></div>
+        <div id="psp-loading-row" style="background:var(--surf2);border:1px dashed var(--bord);border-radius:10px;padding:10px;margin-bottom:8px;font-size:11px;color:var(--t2);text-align:center"><span class="lang-en">Loading your shop URL…</span><span class="lang-hi">आपका URL लोड हो रहा है…</span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+          <button onclick="pspPreview()" style="background:var(--surf2);border:1px solid var(--bord);border-radius:10px;padding:9px 6px;color:var(--text);font-weight:600;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px">
+            <span style="font-size:14px">👁️</span><span><span class="lang-en">Preview</span><span class="lang-hi">देखें</span></span>
+          </button>
+          <button onclick="pspCopy()" style="background:var(--surf2);border:1px solid var(--bord);border-radius:10px;padding:9px 6px;color:var(--text);font-weight:600;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px">
+            <span style="font-size:14px">📋</span><span><span class="lang-en">Copy URL</span><span class="lang-hi">कॉपी</span></span>
+          </button>
+          <button onclick="pspShareWa()" style="background:#25D366;border:1px solid #25D366;border-radius:10px;padding:9px 6px;color:#fff;font-weight:700;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px">
+            <span style="font-size:14px">💬</span><span><span class="lang-en">Share</span><span class="lang-hi">शेयर</span></span>
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Shop Management -->
     <div style="padding-top:14px">
       <div class="menu-sec">
@@ -2000,6 +2027,69 @@ function devSetPlan(plan) {
   });
 })();
 </script>
+<!-- BATCH PSP-MVP: Public Shop Page (slug load + share buttons) -->
+<script>
+let _pspSlug = null;
+
+async function pspLoadSlug() {
+  if (!window._sb) return;
+  const shopId = window._shopId || JSON.parse(localStorage.getItem('sbp_shop')||'{}').id;
+  if (!shopId) return;
+  try {
+    const { data, error } = await window._sb.from('sbp_shop_websites').select('slug').eq('shop_id', shopId).single();
+    if (data?.slug) {
+      _pspSlug = data.slug;
+      const url = window.location.origin + '/s/' + _pspSlug;
+      const urlRow = document.getElementById('psp-url-row');
+      const loadingRow = document.getElementById('psp-loading-row');
+      if (urlRow) { urlRow.textContent = url; urlRow.style.display = 'block'; }
+      if (loadingRow) loadingRow.style.display = 'none';
+    } else if (error) {
+      // Migration not deployed yet, or no row — show placeholder
+      const loadingRow = document.getElementById('psp-loading-row');
+      if (loadingRow) loadingRow.innerHTML = '<span class="lang-en">Save shop details once to activate your page</span><span class="lang-hi">पेज शुरू करने के लिए शॉप विवरण सेव करें</span>';
+    }
+  } catch (e) {
+    console.warn('[PSP] slug load error:', e);
+    const loadingRow = document.getElementById('psp-loading-row');
+    if (loadingRow) loadingRow.innerHTML = '<span class="lang-en">Page setup pending — save shop details to activate</span><span class="lang-hi">पेज सेटअप पेंडिंग — शॉप विवरण सेव करें</span>';
+  }
+}
+
+function pspPreview() {
+  if (!_pspSlug) { toast('⏳ Save shop details first', 'i'); return; }
+  window.open('/s/' + _pspSlug, '_blank');
+}
+
+function pspCopy() {
+  if (!_pspSlug) { toast('⏳ Save shop details first', 'i'); return; }
+  const url = window.location.origin + '/s/' + _pspSlug;
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(url).then(() => toast('✅ URL copied!', 's')).catch(() => prompt('Copy this URL:', url));
+  } else {
+    prompt('Copy this URL:', url);
+  }
+}
+
+function pspShareWa() {
+  if (!_pspSlug) { toast('⏳ Save shop details first', 'i'); return; }
+  const shop = JSON.parse(localStorage.getItem('sbp_shop')||'{}');
+  const url = window.location.origin + '/s/' + _pspSlug;
+  const lang = localStorage.getItem('sbp_lang') || 'en';
+  const msg = lang === 'hi'
+    ? `नमस्ते! ${shop.name || 'मेरी दुकान'} पर आइए: ${url}`
+    : `Hi! Visit ${shop.name || 'my shop'}: ${url}`;
+  window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
+}
+
+// Load slug after DOM ready (and Supabase client init)
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => setTimeout(pspLoadSlug, 600));
+} else {
+  setTimeout(pspLoadSlug, 600);
+}
+</script>
+
 <script src="lib/beta-banner.js"></script>
 </body>
 </html>

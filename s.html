@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en" translate="no" class="notranslate">
+<head>
+
+<script>
+// Pre-paint theme application (eliminates dark→light flash)
+(function(){
+  try {
+    var t = localStorage.getItem('sbp_theme');
+    if (t === 'light') document.documentElement.setAttribute('data-theme','light');
+  } catch(e) {}
+})();
+</script>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#F5A623">
+<meta name="robots" content="index, follow">
+
+<!-- These get rewritten by JS once the slug resolves -->
+<title>Shop · ShopBill Pro</title>
+<meta name="description" content="A business profile on ShopBill Pro — India's operating system for small businesses.">
+<meta property="og:title" content="Shop · ShopBill Pro">
+<meta property="og:description" content="Visit this shop's profile">
+<meta property="og:type" content="business.business">
+
+<link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32x32.png?v=2">
+<link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180x180.png?v=2">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Noto+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{font-family:'Noto Sans',sans-serif;-webkit-font-smoothing:antialiased}
+:root{--acc:#F5A623;--acc2:#FF6B35;--ok:#10B981;--bg:#0A0A12;--surf:#13131C;--surf2:#1C1C28;--bord:#2A2A3A;--text:#F0EFF8;--t2:#8A8AA8;--font-h:'Outfit',sans-serif}
+[data-theme="light"]{--bg:#FAFAFC;--surf:#FFFFFF;--surf2:#F2F2F8;--bord:#E5E5EE;--text:#0F0E18;--t2:#5E5A7A}
+body{background:var(--bg);color:var(--text);min-height:100dvh;overflow-x:hidden}
+
+.psp{max-width:560px;margin:0 auto;padding:20px 16px 80px;min-height:100dvh}
+
+/* Loading state */
+.psp-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60dvh;gap:14px;color:var(--t2)}
+.psp-spin{width:40px;height:40px;border:3px solid var(--bord);border-top-color:var(--acc);border-radius:50%;animation:psp-spin 1s linear infinite}
+@keyframes psp-spin{to{transform:rotate(360deg)}}
+
+/* 404 / error state */
+.psp-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60dvh;gap:16px;text-align:center;padding:0 16px}
+.psp-empty-emoji{font-size:48px}
+.psp-empty-title{font-family:var(--font-h);font-size:22px;font-weight:800;color:var(--text)}
+.psp-empty-msg{color:var(--t2);font-size:15px;line-height:1.5;max-width:320px}
+.psp-cta{display:inline-block;background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff;font-weight:700;font-size:14px;padding:12px 22px;border-radius:12px;text-decoration:none;margin-top:8px}
+
+/* Hero */
+.psp-hero{background:var(--surf);border:1px solid var(--bord);border-radius:20px;padding:28px 22px;text-align:center;margin-bottom:14px;position:relative;overflow:hidden}
+.psp-hero::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--acc),var(--acc2))}
+.psp-photo{width:88px;height:88px;border-radius:24px;background:linear-gradient(135deg,var(--acc),var(--acc2));margin:0 auto 14px;display:flex;align-items:center;justify-content:center;font-size:44px;color:#fff;font-weight:800;font-family:var(--font-h);box-shadow:0 8px 24px rgba(245,166,35,.3);overflow:hidden}
+.psp-photo img{width:100%;height:100%;object-fit:cover}
+.psp-name{font-family:var(--font-h);font-size:24px;font-weight:800;line-height:1.2;color:var(--text);margin-bottom:6px;word-break:break-word}
+.psp-tagline{font-size:14px;color:var(--t2);line-height:1.4;margin-bottom:0}
+.psp-badge{display:inline-flex;align-items:center;gap:4px;background:rgba(16,185,129,.12);color:var(--ok);font-size:11px;font-weight:700;padding:4px 10px;border-radius:8px;margin-top:10px;letter-spacing:.3px}
+
+/* Action row */
+.psp-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.psp-act{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:16px 12px;background:var(--surf);border:1px solid var(--bord);border-radius:16px;color:var(--text);text-decoration:none;font-weight:600;font-size:13px;transition:transform .15s ease,border-color .15s ease;cursor:pointer}
+.psp-act:hover{transform:translateY(-1px);border-color:var(--acc)}
+.psp-act-ic{font-size:22px;width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center}
+.psp-act.wa .psp-act-ic{background:#25D366;color:#fff}
+.psp-act.call .psp-act-ic{background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff}
+.psp-act.dirs .psp-act-ic{background:#4285F4;color:#fff}
+.psp-act.share .psp-act-ic{background:var(--surf2);color:var(--text)}
+
+/* Info card */
+.psp-card{background:var(--surf);border:1px solid var(--bord);border-radius:16px;padding:18px 20px;margin-bottom:12px}
+.psp-card-h{font-family:var(--font-h);font-size:13px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.psp-row{display:flex;align-items:flex-start;gap:12px;padding:8px 0;border-bottom:1px dashed var(--bord);font-size:14px;line-height:1.5}
+.psp-row:last-child{border-bottom:none;padding-bottom:0}
+.psp-row:first-child{padding-top:0}
+.psp-row-ic{width:24px;flex-shrink:0;color:var(--t2);font-size:16px;text-align:center}
+.psp-row-val{flex:1;color:var(--text);word-break:break-word}
+.psp-row-val a{color:var(--acc);text-decoration:none}
+
+/* Services list */
+.psp-services{display:flex;flex-wrap:wrap;gap:8px;padding-top:4px}
+.psp-svc{background:var(--surf2);color:var(--text);font-size:13px;font-weight:500;padding:8px 14px;border-radius:10px;border:1px solid var(--bord)}
+
+/* Footer */
+.psp-foot{margin-top:20px;text-align:center;padding:18px 16px;background:var(--surf);border:1px solid var(--bord);border-radius:16px}
+.psp-foot-line{font-size:12px;color:var(--t2);margin-bottom:8px;letter-spacing:.3px}
+.psp-foot-cta{display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff;font-weight:700;font-size:13px;padding:10px 18px;border-radius:12px;text-decoration:none}
+.psp-foot-cta:hover{transform:translateY(-1px);box-shadow:0 6px 16px rgba(245,166,35,.3)}
+.psp-foot-sub{font-size:11px;color:var(--t2);margin-top:8px;letter-spacing:.3px}
+
+@media(max-width:380px){
+  .psp-actions{grid-template-columns:1fr 1fr}
+  .psp-name{font-size:21px}
+}
+</style>
+</head>
+<body>
+
+<div class="psp" id="psp-root">
+  <div class="psp-loading" id="psp-loading">
+    <div class="psp-spin"></div>
+    <div>Loading shop profile…</div>
+  </div>
+</div>
+
+<script>
+// ════ Public Shop Page renderer ══════════════════════════════════════
+// Reads slug from URL pathname /s/[slug], resolves via Supabase RPC,
+// renders single-page profile with WhatsApp/Call/Directions/Share actions.
+// Logs page view (anon-callable RPC).
+// ════════════════════════════════════════════════════════════════════
+
+const SB_URL = 'https://jfqeirfrkjdkqqixivru.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmcWVpcmZya2pka3FxaXhpdnJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzNzQ4MzgsImV4cCI6MjA4OTk1MDgzOH0.akd4E0nil8ypLR4WOykkeYIL8g4uuNU6XdSVh_Y1utk';
+const sb = supabase.createClient(SB_URL, SB_KEY);
+
+function escHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function getSlugFromUrl() {
+  // Vercel rewrites /s/:slug → /s.html?slug=:slug, but the visible URL stays /s/foo
+  // Check both query string AND pathname.
+  const qs = new URLSearchParams(window.location.search);
+  if (qs.get('slug')) return qs.get('slug').toLowerCase().trim();
+  const path = window.location.pathname;
+  const match = path.match(/^\/s\/([a-z0-9-]+)\/?$/i);
+  if (match) return match[1].toLowerCase().trim();
+  return null;
+}
+
+function buildWhatsAppLink(phone, shopName) {
+  if (!phone) return null;
+  const clean = String(phone).replace(/[^0-9]/g, '');
+  if (clean.length < 10) return null;
+  const withCountry = clean.length === 10 ? '91' + clean : clean;
+  const msg = encodeURIComponent(`Hi! I found your shop on ShopBill Pro. ${shopName ? '(' + shopName + ')' : ''}`);
+  return `https://wa.me/${withCountry}?text=${msg}`;
+}
+
+function buildPhoneLink(phone) {
+  if (!phone) return null;
+  return `tel:${String(phone).replace(/[^0-9+]/g, '')}`;
+}
+
+function buildMapsLink(addr, city) {
+  const q = encodeURIComponent([addr, city].filter(Boolean).join(', '));
+  if (!q) return null;
+  return `https://www.google.com/maps/search/?api=1&query=${q}`;
+}
+
+function setMeta(name, value) {
+  let tag = document.querySelector(`meta[name="${name}"]`) || document.querySelector(`meta[property="${name}"]`);
+  if (!tag) {
+    tag = document.createElement('meta');
+    if (name.startsWith('og:')) tag.setAttribute('property', name);
+    else tag.setAttribute('name', name);
+    document.head.appendChild(tag);
+  }
+  tag.setAttribute('content', value);
+}
+
+async function logView(slug) {
+  try { await sb.rpc('sbp_log_shop_page_view', { p_slug: slug }); }
+  catch(e) { /* silently ignore */ }
+}
+
+async function logWaClick(slug) {
+  try { await sb.rpc('sbp_log_whatsapp_click', { p_slug: slug }); }
+  catch(e) { /* silently ignore */ }
+}
+
+function renderEmpty(title, msg, ctaText) {
+  document.getElementById('psp-root').innerHTML = `
+    <div class="psp-empty">
+      <div class="psp-empty-emoji">🏪</div>
+      <div class="psp-empty-title">${escHtml(title)}</div>
+      <div class="psp-empty-msg">${escHtml(msg)}</div>
+      <a href="https://app.shopbillpro.in/signup.html" class="psp-cta">${escHtml(ctaText || 'Get your free shop page →')}</a>
+    </div>`;
+}
+
+function renderShop(data) {
+  const c = data.content || {};
+  const slug = data.slug;
+  const shopName = c.name || data.shop_name || 'Shop';
+  const tagline = c.tagline || '';
+  const phone = c.phone || '';
+  const wa = c.whatsapp || phone || '';
+  const email = c.email || '';
+  const addr = c.address || '';
+  const city = c.city || '';
+  const fullAddr = [addr, city].filter(Boolean).join(', ');
+  const gst = c.gst_number || '';
+  const upi = c.upi || '';
+  const hours = c.hours || '';
+  const photoUrl = c.photo_url || '';
+  const services = Array.isArray(c.services) ? c.services : [];
+  const showPoweredBy = c.show_powered_by !== false;
+
+  // SEO meta tags
+  document.title = `${shopName} · ShopBill Pro`;
+  setMeta('description', tagline || `Visit ${shopName}. Find contact, address, hours and services. A business on ShopBill Pro.`);
+  setMeta('og:title', shopName);
+  setMeta('og:description', tagline || `Contact ${shopName}`);
+
+  const initial = (shopName.match(/[A-Za-z\u0900-\u097F]/) || ['S'])[0].toUpperCase();
+  const photoHtml = photoUrl
+    ? `<img src="${escHtml(photoUrl)}" alt="${escHtml(shopName)}" onerror="this.style.display='none';this.parentElement.textContent='${escHtml(initial)}'">`
+    : escHtml(initial);
+
+  const waLink = buildWhatsAppLink(wa, shopName);
+  const phoneLink = buildPhoneLink(phone);
+  const mapsLink = buildMapsLink(addr, city);
+
+  let actionsHtml = '<div class="psp-actions">';
+  if (waLink) {
+    actionsHtml += `<a href="${escHtml(waLink)}" class="psp-act wa" target="_blank" rel="noopener" onclick="window.__pspLogWa()"><div class="psp-act-ic">💬</div><div>WhatsApp</div></a>`;
+  }
+  if (phoneLink) {
+    actionsHtml += `<a href="${escHtml(phoneLink)}" class="psp-act call"><div class="psp-act-ic">📞</div><div>Call</div></a>`;
+  }
+  if (mapsLink) {
+    actionsHtml += `<a href="${escHtml(mapsLink)}" class="psp-act dirs" target="_blank" rel="noopener"><div class="psp-act-ic">📍</div><div>Directions</div></a>`;
+  }
+  actionsHtml += `<a href="javascript:void(0)" class="psp-act share" onclick="window.__pspShare()"><div class="psp-act-ic">🔗</div><div>Share</div></a>`;
+  actionsHtml += '</div>';
+
+  // Info card with hours / address / contact
+  let infoRows = '';
+  if (hours) infoRows += `<div class="psp-row"><div class="psp-row-ic">🕒</div><div class="psp-row-val">${escHtml(hours)}</div></div>`;
+  if (fullAddr) infoRows += `<div class="psp-row"><div class="psp-row-ic">📍</div><div class="psp-row-val">${escHtml(fullAddr)}</div></div>`;
+  if (phone) infoRows += `<div class="psp-row"><div class="psp-row-ic">📞</div><div class="psp-row-val">${escHtml(phone)}</div></div>`;
+  if (email) infoRows += `<div class="psp-row"><div class="psp-row-ic">✉️</div><div class="psp-row-val"><a href="mailto:${escHtml(email)}">${escHtml(email)}</a></div></div>`;
+  if (gst) infoRows += `<div class="psp-row"><div class="psp-row-ic">🧾</div><div class="psp-row-val">GSTIN: ${escHtml(gst)}</div></div>`;
+
+  const infoCard = infoRows ? `<div class="psp-card"><div class="psp-card-h">📋 Business info</div>${infoRows}</div>` : '';
+
+  // Services
+  let servicesCard = '';
+  if (services.length > 0) {
+    const items = services.map(s => `<div class="psp-svc">${escHtml(typeof s === 'string' ? s : s.name || '')}</div>`).join('');
+    servicesCard = `<div class="psp-card"><div class="psp-card-h">✨ What we offer</div><div class="psp-services">${items}</div></div>`;
+  }
+
+  // Footer (Powered by)
+  const footerHtml = showPoweredBy ? `
+    <div class="psp-foot">
+      <div class="psp-foot-line">⚡ Powered by ShopBill Pro</div>
+      <a href="https://app.shopbillpro.in/signup.html" class="psp-foot-cta" target="_blank" rel="noopener">
+        Get your free shop page →
+      </a>
+      <div class="psp-foot-sub">Free GST billing · WhatsApp bills · Multi-staff · Reports</div>
+    </div>` : '';
+
+  document.getElementById('psp-root').innerHTML = `
+    <div class="psp-hero">
+      <div class="psp-photo">${photoHtml}</div>
+      <h1 class="psp-name">${escHtml(shopName)}</h1>
+      ${tagline ? `<p class="psp-tagline">${escHtml(tagline)}</p>` : ''}
+      <div class="psp-badge">✓ Verified on ShopBill Pro</div>
+    </div>
+    ${actionsHtml}
+    ${infoCard}
+    ${servicesCard}
+    ${footerHtml}
+  `;
+
+  // Wire up share + WhatsApp logger
+  window.__pspShare = function() {
+    const url = window.location.href;
+    if (navigator.share) {
+      navigator.share({ title: shopName, url }).catch(() => {});
+    } else {
+      navigator.clipboard?.writeText(url).then(() => {
+        alert('Link copied!');
+      }).catch(() => {
+        prompt('Copy this link:', url);
+      });
+    }
+  };
+  window.__pspLogWa = function() { logWaClick(slug); };
+
+  // Log view (fire and forget)
+  logView(slug);
+}
+
+async function init() {
+  const slug = getSlugFromUrl();
+
+  if (!slug) {
+    renderEmpty(
+      'Page not found',
+      'This shop link looks incomplete. Check the URL and try again.',
+      'Get your free shop page →'
+    );
+    return;
+  }
+
+  try {
+    const { data, error } = await sb.rpc('sbp_resolve_shop_slug', { p_slug: slug });
+
+    if (error) throw error;
+
+    if (!data || !data.ok) {
+      renderEmpty(
+        'Shop not found',
+        `We couldn't find a shop at /s/${slug}. The shop may have changed its URL or removed their page.`,
+        'Get your free shop page →'
+      );
+      return;
+    }
+
+    // Handle redirect (slug changed but old URL still active for 12 months)
+    if (data.redirect && data.new_slug) {
+      window.location.replace('/s/' + data.new_slug);
+      return;
+    }
+
+    renderShop(data);
+  } catch (err) {
+    console.error('[PSP] resolve error:', err);
+    renderEmpty(
+      'Could not load shop',
+      'Something went wrong. Please refresh or try again later.',
+      'Visit ShopBill Pro →'
+    );
+  }
+}
+
+init();
+</script>
+
+</body>
+</html>
