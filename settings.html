@@ -735,6 +735,33 @@ html,body{height:100%;overflow:hidden}
       </div>
 
 
+
+      <!-- Customer Loyalty / Reward Points (009_loyalty) -->
+      <div class="menu-sec" id="loyalty-section">
+        <div class="menu-sec-t">🎁 Customer Loyalty</div>
+
+        <div class="menu-it" onclick="openLoyaltyConfigModal()">
+          <div class="mi-ic" style="background:rgba(245,166,35,.15)">🎁</div>
+          <div class="mi-txt">
+            <h4>Loyalty Program <span id="loyalty-status-badge" style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;margin-left:6px;display:none"></span></h4>
+            <p id="loyalty-status-text">Reward repeat customers with points (Pro feature)</p>
+          </div>
+          <label class="toggle-sw" onclick="event.stopPropagation();toggleLoyaltyEnabled()">
+            <input type="checkbox" id="loyalty-enabled-chk" disabled>
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+
+        <div id="loyalty-summary-row" style="display:none;margin:0 14px 10px;background:var(--surf2);border-radius:10px;padding:10px 12px;font-size:11px;color:var(--t2);border:1px solid var(--bord)">
+          💡 <span id="loyalty-summary-text">Earn 1 point per ₹100 · Redeem 100 points = ₹10 off</span>
+        </div>
+
+        <div id="loyalty-pro-locked" style="margin:0 14px 10px;background:var(--surf2);border-radius:10px;padding:9px 12px;font-size:11px;color:var(--t2);border:1px solid var(--bord)">
+          🔒 <span class="lang-en">Available on Pro &amp; Business plans.</span><span class="lang-hi">Pro और Business प्लान पर उपलब्ध।</span>
+        </div>
+      </div>
+
+
       <!-- Plan & Subscription -->
       <div class="menu-sec" id="plan-section">
         <div class="menu-sec-t">Plan & Subscription</div>
@@ -883,6 +910,85 @@ html,body{height:100%;overflow:hidden}
       </div>
     </div>
     <button class="btn-sec" onclick="closeModal('lang-modal')">Close</button>
+    <div style="height:8px"></div>
+  </div>
+</div>
+
+<!-- Loyalty Configuration Modal (009_loyalty) -->
+<div class="overlay" id="loyalty-config-modal">
+  <div class="sheet" style="max-width:500px">
+    <div class="handle"></div>
+    <div class="sheet-title">🎁 Loyalty Program Settings</div>
+    <div style="font-size:12px;color:var(--t2);margin-bottom:14px">
+      <span class="lang-en">Reward repeat customers with points. They earn on every bill, redeem on future ones. Drives retention.</span>
+      <span class="lang-hi">रिटर्न ग्राहकों को अंक दें। हर बिल पर कमाएं, अगले बिल पर रिडीम करें।</span>
+    </div>
+
+    <!-- Plan-locked notice -->
+    <div id="lc-locked-notice" style="display:none;background:rgba(245,166,35,.12);border:1px solid rgba(245,166,35,.3);border-radius:10px;padding:12px;margin-bottom:14px;font-size:12px">
+      🔒 <strong>Pro feature.</strong> <span class="lang-en">Upgrade to Pro (₹99/mo) or Business (₹499/mo) to enable.</span><span class="lang-hi">Pro (₹99) या Business (₹499) में अपग्रेड करें।</span>
+    </div>
+
+    <!-- Enable toggle -->
+    <div style="display:flex;align-items:center;background:var(--surf2);border-radius:10px;padding:12px;margin-bottom:14px;border:1px solid var(--bord)">
+      <div style="flex:1">
+        <div style="font-weight:700;font-size:14px;margin-bottom:2px">Enable Loyalty Program</div>
+        <div style="font-size:11px;color:var(--t2)" id="lc-enable-status">Currently disabled</div>
+      </div>
+      <label class="toggle-sw">
+        <input type="checkbox" id="lc-enabled">
+        <span class="toggle-track"></span>
+      </label>
+    </div>
+
+    <!-- Earn Rate -->
+    <div class="ff" style="margin-bottom:10px">
+      <label><span class="lang-en">Earn Rate</span><span class="lang-hi">कमाने की दर</span></label>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:12px;color:var(--t2)">For every ₹</span>
+        <input type="number" id="lc-earn-amount" min="1" value="100" style="width:80px;padding:7px 8px">
+        <span style="font-size:12px;color:var(--t2)">spent (taxable), customer gets</span>
+        <input type="number" id="lc-earn-points" min="1" value="1" style="width:60px;padding:7px 8px">
+        <span style="font-size:12px;color:var(--t2)">point(s)</span>
+      </div>
+    </div>
+
+    <!-- Redeem Rate -->
+    <div class="ff" style="margin-bottom:10px">
+      <label><span class="lang-en">Redeem Rate</span><span class="lang-hi">रिडीम दर</span></label>
+      <div style="display:flex;align-items:center;gap:8px">
+        <input type="number" id="lc-redeem-points" min="1" value="100" style="width:80px;padding:7px 8px">
+        <span style="font-size:12px;color:var(--t2)">points = ₹</span>
+        <input type="number" id="lc-redeem-amount" min="1" value="10" style="width:80px;padding:7px 8px">
+        <span style="font-size:12px;color:var(--t2)">discount</span>
+      </div>
+    </div>
+
+    <!-- Min Redeem -->
+    <div class="ff" style="margin-bottom:10px">
+      <label><span class="lang-en">Minimum points before customer can redeem</span><span class="lang-hi">रिडीम के लिए न्यूनतम अंक</span></label>
+      <input type="number" id="lc-min-redeem" min="0" value="100" style="width:120px;padding:7px 8px">
+    </div>
+
+    <!-- Expiry -->
+    <div class="ff" style="margin-bottom:10px">
+      <label><span class="lang-en">Points expire after (months, 0 = never)</span><span class="lang-hi">अंक की समाप्ति (महीने, 0 = कभी नहीं)</span></label>
+      <input type="number" id="lc-expiry-months" min="0" max="60" value="12" style="width:120px;padding:7px 8px">
+    </div>
+
+    <!-- Live preview -->
+    <div style="background:var(--surf2);border-radius:10px;padding:11px 12px;margin-bottom:14px;border:1px dashed var(--bord);font-size:12px">
+      <div style="font-weight:700;margin-bottom:4px">📊 Preview</div>
+      <div id="lc-preview" style="color:var(--t2);line-height:1.6">
+        Customer spends ₹500 → earns 5 points<br>
+        Customer with 200 points → can redeem ₹20 off
+      </div>
+    </div>
+
+    <button class="btn-pri" onclick="saveLoyaltyConfig()" id="lc-save-btn" style="width:100%;margin-bottom:8px">
+      💾 Save Configuration
+    </button>
+    <button class="btn-sec" onclick="closeModal('loyalty-config-modal')" style="width:100%">Close</button>
     <div style="height:8px"></div>
   </div>
 </div>
@@ -1158,6 +1264,149 @@ function toast(msg,type='',dur=3000){const c=document.getElementById('toast-cont
 function toggleTheme(){_theme=_theme==='dark'?'light':'dark';localStorage.setItem('sbp_theme',_theme);document.documentElement.setAttribute('data-theme',_theme==='light'?'light':'');document.getElementById('theme-btn').textContent=_theme==='light'?'🌙':'☀️';document.getElementById('theme-chk').checked=_theme==='light'}
 function openModal(id){const el=document.getElementById(id);if(id==='sync-modal')updateSyncStats();el.classList.add('open');el.style.display='flex';el.addEventListener('click',e=>{if(e.target===el)closeModal(id);},{once:true})}
 function closeModal(id){const el=document.getElementById(id);el.classList.remove('open');el.style.display='none'}
+
+// ── Loyalty Program (009_loyalty) ──
+let _loyaltyConfig = null;
+
+async function loadLoyaltyStatus(){
+  if(!window.SBPLoyalty || !_shop || !_shop.id) return;
+  const proAvailable = (typeof isPro === 'function') ? isPro() : false;
+  const lockedNotice = document.getElementById('loyalty-pro-locked');
+  const enabledChk = document.getElementById('loyalty-enabled-chk');
+  const summaryRow = document.getElementById('loyalty-summary-row');
+  const summaryText = document.getElementById('loyalty-summary-text');
+  const statusText = document.getElementById('loyalty-status-text');
+  const badge = document.getElementById('loyalty-status-badge');
+
+  if(!proAvailable){
+    if(lockedNotice) lockedNotice.style.display='block';
+    if(enabledChk){ enabledChk.disabled = true; enabledChk.checked = false; }
+    if(badge){ badge.style.display='inline-block'; badge.textContent='PRO'; badge.style.background='rgba(245,166,35,.2)'; badge.style.color='var(--acc)'; }
+    if(statusText) statusText.textContent = 'Reward repeat customers (Pro feature)';
+    return;
+  }
+
+  if(lockedNotice) lockedNotice.style.display='none';
+  if(enabledChk) enabledChk.disabled = false;
+
+  const res = await SBPLoyalty.getConfig(_shop.id);
+  if(res.ok){
+    _loyaltyConfig = res.config;
+    if(enabledChk) enabledChk.checked = !!res.config.enabled;
+    if(res.config.enabled){
+      if(badge){ badge.style.display='inline-block'; badge.textContent='ON'; badge.style.background='rgba(16,185,129,.18)'; badge.style.color='#10B981'; }
+      if(statusText) statusText.textContent = 'Active — tap to configure';
+      if(summaryRow) summaryRow.style.display = 'block';
+      if(summaryText) summaryText.textContent =
+        `Earn ${res.config.earn_rate_points} pt per ₹${res.config.earn_rate_amount} · Redeem ${res.config.redeem_rate_points} pts = ₹${res.config.redeem_rate_amount} off`;
+    } else {
+      if(badge){ badge.style.display='inline-block'; badge.textContent='OFF'; badge.style.background='rgba(148,163,184,.18)'; badge.style.color='var(--t2)'; }
+      if(statusText) statusText.textContent = 'Disabled — tap to configure';
+      if(summaryRow) summaryRow.style.display = 'none';
+    }
+  }
+}
+
+async function toggleLoyaltyEnabled(){
+  if(!_shop || !_shop.id) return;
+  if(typeof isPro === 'function' && !isPro()){
+    toast('🔒 Loyalty is a Pro feature','e');
+    if(window.openUpgradeModal) openUpgradeModal();
+    return;
+  }
+  const chk = document.getElementById('loyalty-enabled-chk');
+  const newVal = chk.checked;
+  // If enabling for the first time and no config exists, open the config modal
+  if(newVal && (!_loyaltyConfig || !_loyaltyConfig.shop_id)){
+    chk.checked = false;
+    openLoyaltyConfigModal();
+    return;
+  }
+  const res = await SBPLoyalty.saveConfig(_shop.id, { enabled: newVal });
+  if(res.ok){
+    _loyaltyConfig = res.config;
+    toast(newVal ? '✅ Loyalty enabled' : '⏸️ Loyalty paused', 's');
+    loadLoyaltyStatus();
+  } else {
+    chk.checked = !newVal;
+    toast('❌ '+(res.error||'Save failed'),'e');
+  }
+}
+
+async function openLoyaltyConfigModal(){
+  if(!_shop || !_shop.id){ toast('Shop not loaded','e'); return; }
+
+  const proAvailable = (typeof isPro === 'function') ? isPro() : false;
+  const lockedNotice = document.getElementById('lc-locked-notice');
+  const saveBtn = document.getElementById('lc-save-btn');
+
+  if(lockedNotice) lockedNotice.style.display = proAvailable ? 'none' : 'block';
+  if(saveBtn) saveBtn.disabled = !proAvailable;
+
+  // Load current config
+  const res = await SBPLoyalty.getConfig(_shop.id);
+  const cfg = (res.ok && res.config) ? res.config : SBPLoyalty.DEFAULT_CONFIG;
+
+  document.getElementById('lc-enabled').checked = !!cfg.enabled;
+  document.getElementById('lc-enable-status').textContent = cfg.enabled ? 'Currently enabled' : 'Currently disabled';
+  document.getElementById('lc-earn-amount').value = cfg.earn_rate_amount;
+  document.getElementById('lc-earn-points').value = cfg.earn_rate_points;
+  document.getElementById('lc-redeem-points').value = cfg.redeem_rate_points;
+  document.getElementById('lc-redeem-amount').value = cfg.redeem_rate_amount;
+  document.getElementById('lc-min-redeem').value = cfg.min_redeem_points;
+  document.getElementById('lc-expiry-months').value = cfg.expiry_months;
+
+  // Live-update preview when any input changes
+  const updatePreview = () => {
+    const ea = +document.getElementById('lc-earn-amount').value || 100;
+    const ep = +document.getElementById('lc-earn-points').value || 1;
+    const rp = +document.getElementById('lc-redeem-points').value || 100;
+    const ra = +document.getElementById('lc-redeem-amount').value || 10;
+    const sample500 = Math.floor(500 / ea) * ep;
+    const sample200Discount = (200 / rp) * ra;
+    document.getElementById('lc-preview').innerHTML =
+      `Customer spends ₹500 → earns <strong>${sample500} points</strong><br>` +
+      `Customer with 200 points → can redeem <strong>₹${sample200Discount.toFixed(0)} off</strong>`;
+  };
+  ['lc-earn-amount','lc-earn-points','lc-redeem-points','lc-redeem-amount'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el){ el.removeEventListener('input', updatePreview); el.addEventListener('input', updatePreview); }
+  });
+  updatePreview();
+  openModal('loyalty-config-modal');
+}
+
+async function saveLoyaltyConfig(){
+  if(!_shop || !_shop.id) return;
+  if(typeof isPro === 'function' && !isPro()){
+    toast('🔒 Pro feature','e');
+    return;
+  }
+  const btn = document.getElementById('lc-save-btn');
+  if(btn){ btn.disabled = true; btn.textContent = '⏳ Saving...'; }
+
+  const patch = {
+    enabled: document.getElementById('lc-enabled').checked,
+    earn_rate_amount: Math.max(1, +document.getElementById('lc-earn-amount').value || 100),
+    earn_rate_points: Math.max(1, +document.getElementById('lc-earn-points').value || 1),
+    redeem_rate_points: Math.max(1, +document.getElementById('lc-redeem-points').value || 100),
+    redeem_rate_amount: Math.max(1, +document.getElementById('lc-redeem-amount').value || 10),
+    min_redeem_points: Math.max(0, +document.getElementById('lc-min-redeem').value || 100),
+    expiry_months: Math.max(0, Math.min(60, +document.getElementById('lc-expiry-months').value || 12))
+  };
+
+  const res = await SBPLoyalty.saveConfig(_shop.id, patch);
+  if(btn){ btn.disabled = false; btn.textContent = '💾 Save Configuration'; }
+
+  if(res.ok){
+    _loyaltyConfig = res.config;
+    toast('✅ Loyalty config saved','s');
+    closeModal('loyalty-config-modal');
+    loadLoyaltyStatus();
+  } else {
+    toast('❌ '+(res.error||'Save failed'),'e');
+  }
+}
 
 // ── Shop Settings ──
 function fillShopForm(){
@@ -1486,6 +1735,11 @@ async function init(){
   
   // Load plan info
   loadPlanInfo();
+
+  // Load loyalty status (009_loyalty)
+  if (typeof loadLoyaltyStatus === 'function') {
+    loadLoyaltyStatus();
+  }
 }
 
 init();
@@ -2097,5 +2351,6 @@ if (document.readyState === 'loading') {
 </script>
 
 <script src="lib/beta-banner.js"></script>
+<script src="lib/loyalty.js"></script>
 </body>
 </html>

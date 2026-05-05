@@ -500,6 +500,26 @@ html,body{height:100%;overflow:hidden}
         <div style="display:flex;justify-content:flex-end;margin-top:-4px">
           <button onclick="saveAsCustomer()" style="font-size:11px;padding:4px 10px;border-radius:20px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);color:var(--acc3);cursor:pointer;font-weight:700">💾 Save as Customer</button>
         </div>
+
+        <!-- Loyalty Banner (009_loyalty) — shown when saved customer is selected and loyalty is enabled -->
+        <div id="bill-loyalty-banner" style="display:none;margin-top:10px;background:linear-gradient(135deg,rgba(245,166,35,.12),rgba(255,138,0,.06));border:1.5px solid rgba(245,166,35,.30);border-radius:12px;padding:10px 12px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+            <div style="font-size:12px">
+              <span style="font-size:18px">🎁</span>
+              <strong id="bill-loyalty-name"></strong>
+              has <strong id="bill-loyalty-points" style="color:var(--acc)">0</strong> points
+              <span id="bill-loyalty-value" style="color:var(--t2);font-size:11px">(≈ ₹0)</span>
+            </div>
+            <button id="bill-loyalty-redeem-btn" onclick="openLoyaltyRedeem()"
+                    style="font-size:11px;padding:6px 12px;border-radius:8px;background:var(--acc);border:none;color:#0A0E1A;cursor:pointer;font-weight:700;display:none">
+              Redeem
+            </button>
+          </div>
+          <div id="bill-loyalty-applied-row" style="display:none;margin-top:8px;padding:7px 10px;background:rgba(16,185,129,.10);border-radius:8px;font-size:12px;color:var(--acc3)">
+            ✅ <span id="bill-loyalty-applied-text"></span>
+            <button onclick="clearLoyaltyRedemption()" style="float:right;background:transparent;border:none;color:var(--t2);font-size:11px;cursor:pointer">✕ Remove</button>
+          </div>
+        </div>
       </div>
 
       <!-- Invoice Details -->
@@ -1601,6 +1621,8 @@ async function confirmSettle(){
       cached.unshift({...savedBill,bill_items:b.items});
       localStorage.setItem('sbp_bills',JSON.stringify(cached));
       toast('✅ Bill saved!','s');
+      // Loyalty hook (009_loyalty) — apply redemption + award earn
+      if(typeof _loyaltyHookAfterBillSave === 'function') _loyaltyHookAfterBillSave(savedBill);
     }
 
     // FIX #15 — Deduct stock for matched products in manual mode (was missing)
@@ -2158,6 +2180,10 @@ function pickCustomer(id,name,wa,gst,email,addr){
   if(gst)document.getElementById('cust-gstin-full').value=gst;
   closeModal('pick-cust-modal');
   toast('✅ '+name+' selected','s');
+  // Loyalty (009_loyalty): track selected customer ID and refresh banner
+  window._loyaltyCustId = id || null;
+  window._loyaltyCustName = name || '';
+  if (typeof refreshLoyaltyBanner === 'function') refreshLoyaltyBanner();
 }
 
 async function saveAsCustomer(){
@@ -2182,6 +2208,170 @@ async function saveAsCustomer(){
   _custs.unshift(local);localStorage.setItem('sbp_customers',JSON.stringify(_custs));
   toast('✅ '+name+' saved locally!','s');
 }
+
+// ══════════════════════════════════════════
+// LOYALTY HELPERS (009_loyalty)
+// ══════════════════════════════════════════
+window._loyaltyCustId = null;
+window._loyaltyCustName = '';
+window._loyaltyConfig = null;
+window._loyaltyAppliedPoints = 0;
+window._loyaltyAppliedAmount = 0;
+
+async function refreshLoyaltyBanner(){
+  const banner = document.getElementById('bill-loyalty-banner');
+  if(!banner) return;
+  if(!window.SBPLoyalty || !isPro() || !_shopId || !window._loyaltyCustId){
+    banner.style.display = 'none';
+    return;
+  }
+
+  // Load config (cached)
+  const cfgRes = await SBPLoyalty.getConfig(_shopId);
+  if(!cfgRes.ok || !cfgRes.config || !cfgRes.config.enabled){
+    banner.style.display = 'none';
+    return;
+  }
+  window._loyaltyConfig = cfgRes.config;
+
+  // Load balance
+  const balRes = await SBPLoyalty.balance(_shopId, window._loyaltyCustId, { skipCache: true });
+  const points = (balRes.ok ? balRes.balance : 0) || 0;
+  const valuePerPoint = cfgRes.config.redeem_rate_amount / cfgRes.config.redeem_rate_points;
+  const rupeeValue = Math.floor(points * valuePerPoint);
+
+  banner.style.display = 'block';
+  document.getElementById('bill-loyalty-name').textContent = window._loyaltyCustName || 'Customer';
+  document.getElementById('bill-loyalty-points').textContent = points;
+  document.getElementById('bill-loyalty-value').textContent = '(≈ ₹'+rupeeValue+')';
+
+  // Show redeem button only if customer has enough points
+  const redeemBtn = document.getElementById('bill-loyalty-redeem-btn');
+  if(redeemBtn){
+    redeemBtn.style.display = (points >= cfgRes.config.min_redeem_points) ? 'inline-block' : 'none';
+  }
+}
+
+async function openLoyaltyRedeem(){
+  if(!window._loyaltyConfig || !window._loyaltyCustId || !_shopId) return;
+
+  const balRes = await SBPLoyalty.balance(_shopId, window._loyaltyCustId, { skipCache: true });
+  if(!balRes.ok){ toast('Could not load balance','e'); return; }
+  const balance = balRes.balance || 0;
+  const cfg = window._loyaltyConfig;
+
+  // Try to get current bill grand total to cap the redemption
+  // Look for grand total in either Manual mode (var b.grand) or POS mode
+  let billTotal = 0;
+  try {
+    if(typeof computeManualTotals === 'function') {
+      const mTotals = computeManualTotals();
+      if(mTotals && mTotals.grand) billTotal = mTotals.grand;
+    }
+  } catch(_){}
+  // Fallback: look for displayed total in DOM
+  if(!billTotal){
+    const totalEls = document.querySelectorAll('[id*="total"],[id*="grand"]');
+    for(const el of totalEls){
+      const txt = (el.textContent||'').replace(/[^\d.]/g,'');
+      const v = parseFloat(txt);
+      if(v > billTotal) billTotal = v;
+    }
+  }
+  if(!billTotal) billTotal = 100000; // No bill yet, allow up to 1L for now
+
+  const max = SBPLoyalty.maxRedeemable(balance, cfg, billTotal);
+  if(max.maxPoints <= 0){
+    toast('Not enough points to redeem (need '+cfg.min_redeem_points+' min)','e');
+    return;
+  }
+
+  const promptMsg = `Customer has ${balance} points (worth ₹${Math.floor(balance * cfg.redeem_rate_amount / cfg.redeem_rate_points)}).\n\n` +
+    `Maximum redeemable now: ${max.maxPoints} points = ₹${max.maxAmount} off\n\n` +
+    `Enter points to redeem (multiples of ${cfg.redeem_rate_points}, min ${cfg.min_redeem_points}):`;
+
+  const input = prompt(promptMsg, max.maxPoints);
+  if(!input) return;
+  const points = parseInt(input, 10);
+  if(isNaN(points) || points <= 0){ toast('Invalid points','e'); return; }
+  if(points < cfg.min_redeem_points){ toast('Below minimum ('+cfg.min_redeem_points+')','e'); return; }
+  if(points > balance){ toast('Exceeds balance','e'); return; }
+  if(points % cfg.redeem_rate_points !== 0){
+    toast('Must be multiple of '+cfg.redeem_rate_points,'e');
+    return;
+  }
+
+  // Just store locally — actual redemption RPC is called at bill save (with bill_id)
+  const amount = (points / cfg.redeem_rate_points) * cfg.redeem_rate_amount;
+  window._loyaltyAppliedPoints = points;
+  window._loyaltyAppliedAmount = amount;
+
+  const row = document.getElementById('bill-loyalty-applied-row');
+  const txt = document.getElementById('bill-loyalty-applied-text');
+  if(row){ row.style.display='block'; }
+  if(txt){ txt.textContent = `${points} points = ₹${amount} off (applied at bill save)`; }
+  toast('🎁 ₹'+amount+' loyalty discount applied','s');
+
+  // Trigger total recompute if functions exist
+  if(typeof computeManualTotals === 'function') { try { computeManualTotals(); } catch(_){} }
+  if(typeof updatePOSTotals === 'function') { try { updatePOSTotals(); } catch(_){} }
+}
+
+function clearLoyaltyRedemption(){
+  window._loyaltyAppliedPoints = 0;
+  window._loyaltyAppliedAmount = 0;
+  const row = document.getElementById('bill-loyalty-applied-row');
+  if(row) row.style.display = 'none';
+  toast('Loyalty redemption removed','i');
+  // Trigger total recompute
+  if(typeof computeManualTotals === 'function') { try { computeManualTotals(); } catch(_){} }
+  if(typeof updatePOSTotals === 'function') { try { updatePOSTotals(); } catch(_){} }
+}
+
+// Called after a bill is saved successfully — applies redeem (if any) + earn
+async function _loyaltyHookAfterBillSave(savedBill){
+  if(!savedBill || !savedBill.id || !window.SBPLoyalty || !isPro() || !_shopId) return;
+  if(!window._loyaltyCustId) return; // Only saved customers earn/redeem
+
+  try {
+    // Apply pending redemption first (if any)
+    if(window._loyaltyAppliedPoints > 0){
+      const redeemRes = await SBPLoyalty.redeem(_shopId, window._loyaltyCustId, savedBill.id, window._loyaltyAppliedPoints);
+      if(redeemRes.ok){
+        toast(`💸 Redeemed ${window._loyaltyAppliedPoints} pts (₹${window._loyaltyAppliedAmount} off)`,'s',2500);
+      } else {
+        console.warn('Loyalty redeem failed:', redeemRes.error);
+      }
+      window._loyaltyAppliedPoints = 0;
+      window._loyaltyAppliedAmount = 0;
+    }
+
+    // Award earn points
+    const earnRes = await SBPLoyalty.earnOnBill(savedBill.id);
+    if(earnRes.ok && earnRes.points > 0){
+      const balText = earnRes.new_balance ? ` (total: ${earnRes.new_balance})` : '';
+      toast(`🎁 ${window._loyaltyCustName} earned ${earnRes.points} points${balText}`,'s', 4000);
+    }
+  } catch(e){
+    console.warn('Loyalty hook error:', e);
+  }
+}
+
+// Reset loyalty state (called when customer is cleared or new bill started)
+function resetLoyaltyState(){
+  window._loyaltyCustId = null;
+  window._loyaltyCustName = '';
+  window._loyaltyAppliedPoints = 0;
+  window._loyaltyAppliedAmount = 0;
+  const banner = document.getElementById('bill-loyalty-banner');
+  if(banner) banner.style.display = 'none';
+  const row = document.getElementById('bill-loyalty-applied-row');
+  if(row) row.style.display = 'none';
+}
+
+// ══════════════════════════════════════════
+// END LOYALTY HELPERS
+// ══════════════════════════════════════════
 
 // ══════════════════════════════════════════
 // POS MODE
@@ -2547,6 +2737,8 @@ async function confirmPOSCheckout(){
         const cached=JSON.parse(localStorage.getItem('sbp_bills')||'[]');
         cached.unshift({...savedBill,bill_items:items});
         localStorage.setItem('sbp_bills',JSON.stringify(cached));
+        // Loyalty hook (009_loyalty) — apply redemption + award earn (POS new bill)
+        if(typeof _loyaltyHookAfterBillSave === 'function') _loyaltyHookAfterBillSave(savedBill);
       }
     }else{
       if(!savedBill) savedBill={...billData,id:isEditMode?editBillId:'local_'+Date.now(),bill_items:items,created_at:new Date().toISOString()};
@@ -2558,6 +2750,8 @@ async function confirmPOSCheckout(){
         window._editBillId=null;window._editBillOriginalStatus=null;
       }else{
         cached.unshift({...savedBill,bill_items:items});
+        // Loyalty hook (009_loyalty) — POS offline new bill
+        if(typeof _loyaltyHookAfterBillSave === 'function') _loyaltyHookAfterBillSave(savedBill);
       }
       localStorage.setItem('sbp_bills',JSON.stringify(cached));
     }
@@ -3611,5 +3805,6 @@ function showCollectPayment(billId) {
 })();
 </script>
 <script src="lib/beta-banner.js"></script>
+<script src="lib/loyalty.js"></script>
 </body>
 </html>

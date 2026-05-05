@@ -675,6 +675,109 @@ function toggleTheme(){
 }
 function openModal(id){const el=document.getElementById(id);el.classList.add('open');el.style.display='flex';el.addEventListener('click',e=>{if(e.target===el)closeModal(id);},{once:true})}
 function closeModal(id){const el=document.getElementById(id);el.classList.remove('open');el.style.display='none'}
+
+// ── Customer Loyalty (009_loyalty) ──
+async function loadCustomerLoyalty(custId){
+  const wrap = document.getElementById('cust-loyalty-section');
+  if(!wrap || !custId) return;
+  if(!window.SBPLoyalty){ wrap.style.display='none'; return; }
+  if(!isPro()){ wrap.style.display='none'; return; }
+  const shopId = localStorage.getItem('sbp_shop_id');
+  if(!shopId){ wrap.style.display='none'; return; }
+
+  // Check if loyalty is enabled for this shop
+  const cfgRes = await SBPLoyalty.getConfig(shopId);
+  if(!cfgRes.ok || !cfgRes.config || !cfgRes.config.enabled){
+    wrap.style.display='none';
+    return;
+  }
+  const cfg = cfgRes.config;
+
+  // Fetch balance
+  const balRes = await SBPLoyalty.balance(shopId, custId, { skipCache: true });
+  const points = (balRes.ok ? balRes.balance : 0) || 0;
+  const earned = (balRes.ok ? balRes.earned : 0) || 0;
+  const redeemed = (balRes.ok ? balRes.redeemed : 0) || 0;
+  const valuePerPoint = cfg.redeem_rate_amount / cfg.redeem_rate_points;
+  const rupeeValue = (points * valuePerPoint).toFixed(0);
+  const expiringSoon = (balRes.ok ? balRes.expiring_30d : 0) || 0;
+
+  wrap.style.display = 'block';
+  wrap.innerHTML = `
+    <div class="det-section" style="background:linear-gradient(135deg,rgba(245,166,35,.10),rgba(255,138,0,.06));border:1.5px solid rgba(245,166,35,.30);border-radius:14px;padding:14px 14px 12px;margin-bottom:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div class="det-sec-t" style="margin:0">🎁 Loyalty Points</div>
+        <button onclick="openLoyaltyAdjust('${custId}')" style="background:transparent;border:1px solid var(--bord);color:var(--t2);font-size:11px;padding:4px 10px;border-radius:8px;cursor:pointer">Adjust</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px">
+        <div style="text-align:center;padding:10px 6px;background:var(--surf2);border-radius:10px">
+          <div style="font-family:var(--font-h);font-size:20px;font-weight:800;color:var(--acc)">${points}</div>
+          <div style="font-size:10px;color:var(--t2);margin-top:2px">Available</div>
+        </div>
+        <div style="text-align:center;padding:10px 6px;background:var(--surf2);border-radius:10px">
+          <div style="font-family:var(--font-h);font-size:20px;font-weight:800">₹${rupeeValue}</div>
+          <div style="font-size:10px;color:var(--t2);margin-top:2px">Worth</div>
+        </div>
+        <div style="text-align:center;padding:10px 6px;background:var(--surf2);border-radius:10px">
+          <div style="font-family:var(--font-h);font-size:14px;font-weight:700;color:var(--t2)">${earned} / ${redeemed}</div>
+          <div style="font-size:10px;color:var(--t2);margin-top:2px">Earned / Redeemed</div>
+        </div>
+      </div>
+      ${expiringSoon > 0 ? `<div style="font-size:11px;color:#D97706;background:rgba(245,158,11,.1);padding:6px 10px;border-radius:8px;margin-top:6px">⏰ ${expiringSoon} points expiring in next 30 days</div>` : ''}
+      <div id="cust-loyalty-txns" style="margin-top:10px"></div>
+    </div>`;
+
+  // Async load recent transactions
+  loadCustomerLoyaltyTxns(custId);
+}
+
+async function loadCustomerLoyaltyTxns(custId){
+  const wrap = document.getElementById('cust-loyalty-txns');
+  if(!wrap || !window.SBPLoyalty) return;
+  const shopId = localStorage.getItem('sbp_shop_id');
+  if(!shopId) return;
+
+  const res = await SBPLoyalty.recentTxns(shopId, custId, 5);
+  if(!res.ok || !res.txns || res.txns.length === 0){
+    wrap.innerHTML = '<div style="font-size:11px;color:var(--t2);text-align:center;padding:6px">No loyalty activity yet</div>';
+    return;
+  }
+
+  const TYPE_ICONS = {
+    earn: '✨', redeem: '💸', expire: '⏰',
+    manual_adjust: '✏️', birthday: '🎂', welcome: '👋', void_reverse: '↩️'
+  };
+
+  wrap.innerHTML = `
+    <div style="font-size:11px;color:var(--t2);font-weight:700;margin-bottom:6px">Recent Activity</div>
+    ${res.txns.map(t => {
+      const date = new Date(t.created_at).toLocaleDateString('en-IN', {day:'2-digit', month:'short'});
+      const sign = t.points > 0 ? '+' : '';
+      const color = t.points > 0 ? 'var(--acc3)' : 'var(--acc2)';
+      return `<div style="display:flex;align-items:center;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px dashed var(--bord)">
+        <span>${TYPE_ICONS[t.txn_type]||'•'} ${t.description||t.txn_type}</span>
+        <span style="font-weight:700;color:${color}">${sign}${t.points}</span>
+      </div>`;
+    }).join('')}
+  `;
+}
+
+async function openLoyaltyAdjust(custId){
+  if(!window.SBPLoyalty || !isPro()){ toast('Pro feature','e'); return; }
+  const points = prompt('Adjust points (use negative to deduct):\n\nExample: 50 to give bonus, -20 to deduct.');
+  if(!points || isNaN(+points) || +points === 0) return;
+  const reason = prompt('Reason for adjustment:', 'Manual adjustment');
+  if(reason === null) return;
+
+  const shopId = localStorage.getItem('sbp_shop_id');
+  const res = await SBPLoyalty.adjust(shopId, custId, +points, reason);
+  if(res.ok){
+    toast(`✅ ${+points > 0 ? 'Added' : 'Deducted'} ${Math.abs(+points)} points`, 's');
+    loadCustomerLoyalty(custId);
+  } else {
+    toast('❌ '+(res.error||'Failed'),'e');
+  }
+}
 function fINR(n){return '₹'+(parseFloat(n)||0).toLocaleString('en-IN',{maximumFractionDigits:0})}
 function fDate(d){if(!d)return '—';try{return new Date(d).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});}catch{return d}}
 function fDateShort(d){if(!d)return '—';try{return new Date(d).toLocaleDateString('en-IN',{day:'2-digit',month:'short'});}catch{return d}}
@@ -839,6 +942,9 @@ function openCustDetail(custId){
       <div class="ds-card"><div class="ds-val ${bal>0?'':''}"><span style="color:${bal>0?'var(--acc2)':'var(--acc3)'}">${fINR(bal)}</span></div><div class="ds-lbl">${bal>0?'Due':'Clear'}</div></div>
     </div>
 
+    <!-- Loyalty Points Section (009_loyalty) — populated async by loadCustomerLoyalty() -->
+    <div id="cust-loyalty-section" data-cust-id="${c.id}" style="display:none"></div>
+
     <div class="det-section">
       <div class="det-sec-t">Contact Details</div>
       <div class="det-grid">
@@ -877,6 +983,8 @@ function openCustDetail(custId){
     <div style="height:10px"></div>
   `;
   openModal('cust-detail-modal');
+  // Async-load loyalty info if Pro+ and loyalty is enabled
+  if (typeof loadCustomerLoyalty === 'function') loadCustomerLoyalty(c.id);
 }
 
 function openWhatsApp(phone,name){
@@ -1742,5 +1850,6 @@ window.logActivity = logActivity;
 })();
 </script>
 <script src="lib/beta-banner.js"></script>
+<script src="lib/loyalty.js"></script>
 </body>
 </html>
