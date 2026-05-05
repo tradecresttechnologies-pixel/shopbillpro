@@ -1,93 +1,22 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "cleanUrls": true,
-
   "redirects": [
     {
-      "source": "/:path*",
-      "has": [{ "type": "host", "value": "www.shopbillpro.in" }],
-      "destination": "https://shopbillpro.in/:path*",
-      "permanent": true
-    },
-
-    {
-      "source": "/:slug(dashboard|bills|customers|stock|reports|pos-admin|billing|bill-templates|cash-register|recurring|settings|subscription|supplier|team|wa-center|marketing|password-hasher|shopbillpro_website|admin-login|admin-dashboard|admin-users|admin-revenue|admin-analytics|admin-settings|admin-subscriptions|admin-categories|admin-features|admin-blog|admin-seo-global|admin-seo-pages|admin-notifications|admin-technical|admin-audit)",
-      "has": [{ "type": "host", "value": "shopbillpro.in" }],
-      "destination": "https://app.shopbillpro.in/:slug",
+      "source": "/login",
+      "destination": "/",
       "permanent": false
     },
     {
-      "source": "/:slug(dashboard|bills|customers|stock|reports|pos-admin|billing|bill-templates|cash-register|recurring|settings|subscription|supplier|team|wa-center|marketing|password-hasher|shopbillpro_website|admin-login|admin-dashboard|admin-users|admin-revenue|admin-analytics|admin-settings|admin-subscriptions|admin-categories|admin-features|admin-blog|admin-seo-global|admin-seo-pages|admin-notifications|admin-technical|admin-audit).html",
-      "has": [{ "type": "host", "value": "shopbillpro.in" }],
-      "destination": "https://app.shopbillpro.in/:slug",
-      "permanent": false
-    },
-
-    {
-      "source": "/index.html",
-      "has": [{ "type": "host", "value": "shopbillpro.in" }],
+      "source": "/signup",
       "destination": "/",
       "permanent": false
     }
   ],
-
   "rewrites": [
-    { "source": "/s/:slug", "destination": "/s.html" },
-
-    {
-      "source": "/",
-      "has": [{ "type": "host", "value": "shopbillpro.in" }],
-      "destination": "/site/index.html"
-    },
-    {
-      "source": "/pricing",
-      "has": [{ "type": "host", "value": "shopbillpro.in" }],
-      "destination": "/site/pricing.html"
-    },
-    {
-      "source": "/faq",
-      "has": [{ "type": "host", "value": "shopbillpro.in" }],
-      "destination": "/site/faq.html"
-    },
-    {
-      "source": "/why-choose-shopbill-pro",
-      "has": [{ "type": "host", "value": "shopbillpro.in" }],
-      "destination": "/site/why-choose-shopbill-pro.html"
-    },
-    {
-      "source": "/free-billing-software-india",
-      "has": [{ "type": "host", "value": "shopbillpro.in" }],
-      "destination": "/site/free-billing-software-india.html"
-    },
-    {
-      "source": "/features/:slug",
-      "has": [{ "type": "host", "value": "shopbillpro.in" }],
-      "destination": "/site/features/:slug.html"
-    },
-    {
-      "source": "/for/:slug",
-      "has": [{ "type": "host", "value": "shopbillpro.in" }],
-      "destination": "/site/for/:slug.html"
-    },
-    {
-      "source": "/sitemap.xml",
-      "has": [{ "type": "host", "value": "shopbillpro.in" }],
-      "destination": "/site/sitemap.xml"
-    },
-    {
-      "source": "/robots.txt",
-      "has": [{ "type": "host", "value": "shopbillpro.in" }],
-      "destination": "/site/robots.txt"
-    }
+    { "source": "/s/:slug", "destination": "/s.html" }
   ],
-
   "headers": [
-    {
-      "source": "/site/css/(.*)",
-      "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
-      ]
-    },
     {
       "source": "/icons/(.*)",
       "headers": [
