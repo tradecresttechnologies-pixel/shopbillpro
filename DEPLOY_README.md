@@ -1,93 +1,54 @@
-# ShopBill Pro — Root Directory Split (Simplified)
+# CSS Path Hotfix
 
-## What this batch does
+## What broke
 
-1. **Marketing project** (`shopbillpro.in`) and **App project** (`app.shopbillpro.in`) get split at the file-system level using Vercel's "Root Directory" setting. No more PWA file leaks, no more rewrite gymnastics.
+After Root Directory was changed to `site`, the marketing pages stopped loading their stylesheet — making the page render as plain unstyled HTML with both English and Hindi text visible at once.
 
-2. **No automatic redirects from marketing-domain to app-domain.** Users navigate via the existing "Sign in" / "Get started" buttons in the marketing nav. Clean, standard SaaS pattern (Shopify / Razorpay / Notion all do exactly this).
+## Why
 
-## What's in this zip
+The 14 marketing HTML files referenced CSS as `/site/css/marketing.css`. That path worked when Root Directory was `./` (repo root). With Root Directory now `site`, the deployment treats `/site/` as root, so the CSS file is actually served at `/css/marketing.css` (without the `/site/` prefix). The OLD path now 404s.
 
-| File | Goes to | Action |
-|---|---|---|
-| `vercel.json` | `/vercel.json` (repo root) | REPLACE existing |
-| `site/vercel.json` | `/site/vercel.json` | NEW |
-| `site/icons/*` (10 PNGs) | `/site/icons/` | NEW (copies of `/icons/*`) |
+## Fix
 
-The repo-root `/icons/` folder stays — the PWA still uses it.
-
-## Why /vercel.json has login/signup redirects
-
-The marketing site's "Sign in" / "Get started" buttons currently link to:
-- `https://app.shopbillpro.in/login.html`
-- `https://app.shopbillpro.in/signup.html`
-
-But your PWA login is at `/index.html` (no `/login.html` or `/signup.html` file exists). Without these redirects, the buttons would 404. The redirects make them work transparently:
-- `/login` → `/`
-- `/signup` → `/`
-
-Vercel's `cleanUrls` strips `.html` first, so `/login.html` becomes `/login`, then redirects to `/`.
-
-## Why /site/vercel.json is so small
-
-After Root Directory = `site`, the marketing project only contains marketing files. Nothing to redirect except `www → bare domain` for SEO canonicalization.
-
-## Deploy steps
-
-### 1. Drop files into repo
-
-Replace `/vercel.json` with the new one. Add `/site/vercel.json` and `/site/icons/`.
-
-### 2. Commit + push to `main`
-
-### 3. Vercel UI — set Root Directory on MARKETING project (CRITICAL STEP)
-
-1. Vercel Dashboard → **shopbillpro** project (the rho one)
-2. **Settings** → **Build & Deployment**
-3. **Root Directory** → enter exactly: `site` → Save
-
-Do NOT touch Root Directory on the app project.
-
-### 4. Force redeploy without cache (both projects)
-
-Deployments → latest → ⋯ → Redeploy → uncheck "Use existing Build Cache".
-
-### 5. Wait 10–15 min, then verify in incognito
-
-## Verification
-
-| URL | Expected |
-|---|---|
-| `https://shopbillpro.in/` | Marketing home |
-| `https://shopbillpro.in/pricing` | Marketing pricing |
-| `https://shopbillpro.in/faq` | Marketing FAQ |
-| `https://shopbillpro.in/for/retail` | Retail landing |
-| `https://shopbillpro.in/features/gst-billing` | GST feature page |
-| `https://www.shopbillpro.in/` | 301 → `https://shopbillpro.in/` |
-| `https://shopbillpro.in/dashboard` | **404** (intentional — users use the "Sign in" button) |
-| Click "Sign in" on marketing nav | → `app.shopbillpro.in/` (PWA login) |
-| Click "Get started — Free" on nav | → `app.shopbillpro.in/` (PWA login) |
-| `https://app.shopbillpro.in/` | PWA login |
-| `https://app.shopbillpro.in/dashboard` | PWA dashboard |
-| `https://app.shopbillpro.in/login` | Redirects to `/` (PWA login) |
-| `https://app.shopbillpro.in/signup` | Redirects to `/` (PWA login) |
-
-## Final clean architecture
-
+Single change applied to all 14 marketing HTML files:
 ```
-shopbillpro.in/                    → marketing home
-shopbillpro.in/pricing             → marketing pricing
-shopbillpro.in/faq                 → marketing FAQ
-shopbillpro.in/for/<vertical>      → vertical landing
-shopbillpro.in/features/<feature>  → feature page
-shopbillpro.in/<anything-else>     → 404
-
-app.shopbillpro.in/                → PWA login
-app.shopbillpro.in/dashboard       → PWA dashboard
-app.shopbillpro.in/admin-login     → admin panel
-app.shopbillpro.in/s/<slug>        → public shop page
+/site/css/marketing.css  →  /css/marketing.css
 ```
 
-## Rollback if needed
+## Files in this zip (14 HTML files)
 
-Vercel UI → marketing project → Settings → Root Directory → clear field → Save. Both projects redeploy in their old state.
+```
+site/
+├── index.html
+├── pricing.html
+├── faq.html
+├── why-choose-shopbill-pro.html
+├── free-billing-software-india.html
+├── features/
+│   ├── gst-billing.html
+│   ├── inventory-stock.html
+│   ├── pos-billing.html
+│   └── whatsapp-bills.html
+└── for/
+    ├── education.html
+    ├── healthcare.html
+    ├── restaurants.html
+    ├── retail.html
+    └── services.html
+```
+
+## Deploy
+
+1. Drop the `site/` folder over your existing `/site/` folder in the repo (overwrites the 14 HTML files)
+2. Commit + push to `main`
+3. Marketing project auto-deploys
+4. Wait 5–10 min for edge cache
+5. Test `https://shopbillpro.in/` in incognito → should show fully styled marketing page (light theme, orange, English-only or Hindi-only depending on toggle)
+
+No Vercel UI changes needed. Root Directory stays `site`. This is a pure HTML content fix.
+
+## Why this happens generally
+
+Absolute paths starting with `/site/...` are coupled to "the deployment serves from repo root". When you change Root Directory, those paths break because they no longer match the new file layout in the deployment.
+
+For future-proofing, marketing HTML should reference assets relative to the marketing root, not relative to the repo root. This batch makes them match the new Root Directory setup.
