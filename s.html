@@ -103,6 +103,63 @@ body{background:var(--bg);color:var(--text);min-height:100dvh;overflow-x:hidden}
 .psp-gal-tile{aspect-ratio:1;border-radius:10px;overflow:hidden;background:var(--surf2);border:1px solid var(--bord)}
 .psp-gal-tile img{width:100%;height:100%;object-fit:cover;display:block}
 
+/* Book Appointment CTA + Booking flow modal */
+.psp-book-cta{display:block;width:100%;padding:14px;background:linear-gradient(135deg,#8B5CF6,#3B82F6);color:#fff;border:none;border-radius:14px;font-family:var(--font-h);font-size:15px;font-weight:800;cursor:pointer;margin-bottom:14px;box-shadow:0 4px 16px rgba(139,92,246,.4)}
+.psp-book-cta:active{transform:translateY(1px)}
+.psp-book-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:none;align-items:flex-end;justify-content:center}
+.psp-book-overlay.open{display:flex}
+.psp-book-sheet{background:var(--bg);border-radius:20px 20px 0 0;width:100%;max-width:560px;max-height:92dvh;overflow-y:auto;padding:8px 16px 24px;border-top:1px solid var(--bord)}
+.psp-book-handle{width:44px;height:4px;background:var(--bord);border-radius:2px;margin:8px auto 14px}
+.psp-step-bar{display:flex;gap:4px;margin-bottom:14px}
+.psp-step-dot{flex:1;height:3px;background:var(--bord);border-radius:2px;transition:.2s}
+.psp-step-dot.on{background:linear-gradient(90deg,#8B5CF6,#3B82F6)}
+.psp-step-title{font-family:var(--font-h);font-size:18px;font-weight:800;margin-bottom:14px}
+.psp-svc-pick{padding:14px;background:var(--surf);border:1.5px solid var(--bord);border-radius:12px;margin-bottom:8px;cursor:pointer;display:flex;gap:12px;align-items:center;transition:.15s}
+.psp-svc-pick:hover{border-color:#8B5CF6}
+.psp-svc-pick.on{border-color:#8B5CF6;background:linear-gradient(135deg,rgba(139,92,246,.1),rgba(59,130,246,.06))}
+.psp-svc-pick-img{width:40px;height:40px;border-radius:9px;background:var(--surf2);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;overflow:hidden}
+.psp-svc-pick-img img{width:100%;height:100%;object-fit:cover}
+.psp-svc-pick-body{flex:1;min-width:0}
+.psp-svc-pick-name{font-family:var(--font-h);font-weight:700;font-size:14px;color:var(--text)}
+.psp-svc-pick-meta{font-size:11.5px;color:var(--t2);margin-top:1px}
+.psp-svc-pick-price{font-family:var(--font-h);font-weight:800;font-size:14px;color:#8B5CF6}
+.psp-prv-pick{display:flex;align-items:center;gap:10px;padding:10px;background:var(--surf);border:1.5px solid var(--bord);border-radius:11px;margin-bottom:8px;cursor:pointer;transition:.15s}
+.psp-prv-pick:hover{border-color:#8B5CF6}
+.psp-prv-pick.on{border-color:#8B5CF6;background:linear-gradient(135deg,rgba(139,92,246,.1),rgba(59,130,246,.06))}
+.psp-prv-avatar{width:38px;height:38px;border-radius:50%;background:var(--surf2);display:flex;align-items:center;justify-content:center;font-family:var(--font-h);font-weight:800;color:var(--t2);overflow:hidden;flex-shrink:0}
+.psp-prv-avatar img{width:100%;height:100%;object-fit:cover}
+.psp-prv-pick-name{font-family:var(--font-h);font-weight:700;font-size:13.5px}
+.psp-prv-pick-role{font-size:11px;color:var(--t2)}
+.psp-date-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.psp-date-tile{padding:10px 4px;background:var(--surf);border:1.5px solid var(--bord);border-radius:10px;text-align:center;cursor:pointer;font-family:var(--font-h);transition:.15s}
+.psp-date-tile:hover{border-color:#8B5CF6}
+.psp-date-tile.on{background:linear-gradient(135deg,rgba(139,92,246,.15),rgba(59,130,246,.08));border-color:#8B5CF6;color:#8B5CF6}
+.psp-date-day{font-size:10px;color:var(--t2);font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+.psp-date-num{font-size:17px;font-weight:800;margin-top:2px}
+.psp-date-mon{font-size:10px;color:var(--t2);margin-top:1px}
+.psp-slot-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:4px}
+.psp-slot{padding:10px 4px;background:var(--surf);border:1.5px solid var(--bord);border-radius:10px;text-align:center;cursor:pointer;font-family:var(--font-h);font-weight:700;font-size:13px;transition:.15s}
+.psp-slot:hover{border-color:#8B5CF6}
+.psp-slot.on{background:linear-gradient(135deg,#8B5CF6,#3B82F6);color:#fff;border-color:#8B5CF6}
+.psp-slot-empty{grid-column:1/-1;text-align:center;padding:20px;color:var(--t2);font-size:13px}
+.psp-form-fld{margin-bottom:10px}
+.psp-form-fld label{display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:4px}
+.psp-form-fld input,.psp-form-fld textarea{width:100%;padding:11px 12px;background:var(--surf);border:1px solid var(--bord);border-radius:10px;color:var(--text);font-size:14px;font-family:inherit;outline:none}
+.psp-form-fld input:focus,.psp-form-fld textarea:focus{border-color:#8B5CF6}
+.psp-summary-card{background:var(--surf);border:1.5px solid #8B5CF6;border-radius:12px;padding:14px;margin-bottom:14px}
+.psp-summary-row{display:flex;justify-content:space-between;font-size:13px;padding:4px 0}
+.psp-summary-row span:first-child{color:var(--t2)}
+.psp-summary-row span:last-child{font-weight:700;color:var(--text)}
+.psp-step-btns{display:flex;gap:8px;margin-top:14px}
+.psp-btn-back{flex:0 0 35%;padding:12px;background:var(--surf2);color:var(--text);border:1px solid var(--bord);border-radius:11px;font-family:var(--font-h);font-weight:700;font-size:13.5px;cursor:pointer}
+.psp-btn-next{flex:1;padding:12px;background:linear-gradient(135deg,#8B5CF6,#3B82F6);color:#fff;border:none;border-radius:11px;font-family:var(--font-h);font-weight:800;font-size:13.5px;cursor:pointer}
+.psp-btn-next:disabled{opacity:.5;cursor:not-allowed}
+.psp-success{text-align:center;padding:30px 14px}
+.psp-success-emoji{font-size:64px;margin-bottom:12px}
+.psp-success-title{font-family:var(--font-h);font-size:22px;font-weight:800;margin-bottom:8px}
+.psp-success-msg{color:var(--t2);font-size:13.5px;line-height:1.6;margin-bottom:18px}
+.psp-success-id{font-family:monospace;font-size:11px;color:var(--t2);background:var(--surf);padding:6px 10px;border-radius:6px;border:1px dashed var(--bord);display:inline-block}
+
 /* Footer */
 .psp-foot{margin-top:20px;text-align:center;padding:18px 16px;background:var(--surf);border:1px solid var(--bord);border-radius:16px}
 .psp-foot-line{font-size:12px;color:var(--t2);margin-bottom:8px;letter-spacing:.3px}
@@ -122,6 +179,21 @@ body{background:var(--bg);color:var(--text);min-height:100dvh;overflow-x:hidden}
   <div class="psp-loading" id="psp-loading">
     <div class="psp-spin"></div>
     <div>Loading shop profile…</div>
+  </div>
+</div>
+
+<!-- Public Appointment Booking Modal (011_appointments) -->
+<div class="psp-book-overlay" id="psp-book-overlay">
+  <div class="psp-book-sheet" id="psp-book-sheet">
+    <div class="psp-book-handle"></div>
+    <div class="psp-step-bar">
+      <div class="psp-step-dot" data-step="1"></div>
+      <div class="psp-step-dot" data-step="2"></div>
+      <div class="psp-step-dot" data-step="3"></div>
+      <div class="psp-step-dot" data-step="4"></div>
+      <div class="psp-step-dot" data-step="5"></div>
+    </div>
+    <div id="psp-book-step"></div>
   </div>
 </div>
 
@@ -303,6 +375,7 @@ function renderShop(data) {
       <div class="psp-badge">✓ Verified on ShopBill Pro</div>
     </div>
     ${actionsHtml}
+    <div id="psp-book-cta-slot"></div>
     ${aboutCard}
     ${servicesCard}
     ${galleryCard}
@@ -407,6 +480,8 @@ async function init() {
     // Async: load services from sbp_services table via public RPC
     // (separate from resolve_shop_slug to keep the resolve cacheable + fast)
     loadServicesPublic(slug);
+    // Async: load appointment config — shows Book CTA if shop has Business plan + active providers
+    loadAppointmentConfig(slug);
   } catch (err) {
     console.error('[PSP] resolve error:', err);
     renderEmpty(
@@ -415,6 +490,464 @@ async function init() {
       'Visit ShopBill Pro →'
     );
   }
+}
+
+// ════════════════════════════════════════════════════════════════════
+// APPOINTMENT BOOKING FLOW (011_appointments)
+// Public storefront feature — anon-callable, no auth.
+// Loads via sbp_get_appointment_config_public; only shows CTA if enabled.
+// ════════════════════════════════════════════════════════════════════
+
+const _bookState = {
+  slug: null,
+  config: null,
+  step: 1,
+  service: null,
+  provider: null,
+  date: null,           // YYYY-MM-DD
+  slot: null,           // {starts_at, ends_at, time_label}
+  customer: { name: '', phone: '', wa: '', notes: '' }
+};
+
+async function loadAppointmentConfig(slug) {
+  try {
+    const { data, error } = await sb.rpc('sbp_get_appointment_config_public', { p_slug: slug });
+    if (error || !data || !data.ok || !data.enabled) return;
+
+    _bookState.slug = slug;
+    _bookState.config = data;
+
+    const slot = document.getElementById('psp-book-cta-slot');
+    if (!slot) return;
+    slot.innerHTML = `<button class="psp-book-cta" onclick="openBookingFlow()">📅 Book Appointment</button>`;
+  } catch (e) {
+    console.warn('[PSP] appointment config load failed:', e);
+  }
+}
+
+function openBookingFlow() {
+  if (!_bookState.config) return;
+  // Reset
+  _bookState.step = 1;
+  _bookState.service = null;
+  _bookState.provider = null;
+  _bookState.date = null;
+  _bookState.slot = null;
+  _bookState.customer = { name: '', phone: '', wa: '', notes: '' };
+
+  const overlay = document.getElementById('psp-book-overlay');
+  overlay.classList.add('open');
+  overlay.addEventListener('click', e => { if (e.target === overlay) closeBookingFlow(); }, { once: true });
+
+  // Skip step 1 (service) if 0 services — go straight to provider
+  // Skip step 2 (provider) if 1 provider — auto-select
+  startBookingFlow();
+}
+
+function closeBookingFlow() {
+  document.getElementById('psp-book-overlay').classList.remove('open');
+}
+
+function startBookingFlow() {
+  const services = _bookState.config.services || [];
+  const providers = _bookState.config.providers || [];
+
+  // If no services configured, skip service step entirely
+  if (services.length === 0) {
+    _bookState.step = 2;
+  }
+
+  // If only 1 provider, auto-select and skip
+  if (providers.length === 1) {
+    _bookState.provider = providers[0];
+    if (_bookState.step <= 2) _bookState.step = 3;
+  }
+
+  renderBookingStep();
+}
+
+function _updateStepBar() {
+  document.querySelectorAll('.psp-step-dot').forEach(d => {
+    const s = parseInt(d.dataset.step, 10);
+    d.classList.toggle('on', s <= _bookState.step);
+  });
+}
+
+function renderBookingStep() {
+  _updateStepBar();
+  const step = _bookState.step;
+  const root = document.getElementById('psp-book-step');
+
+  if (step === 1) renderStepService(root);
+  else if (step === 2) renderStepProvider(root);
+  else if (step === 3) renderStepDate(root);
+  else if (step === 4) renderStepSlot(root);
+  else if (step === 5) renderStepConfirm(root);
+  else if (step === 6) renderStepSuccess(root);
+}
+
+// ── Step 1: Service ──
+function renderStepService(root) {
+  const services = _bookState.config.services || [];
+  const selectedId = _bookState.service ? _bookState.service.id : null;
+
+  root.innerHTML = `
+    <div class="psp-step-title">Choose a service</div>
+    <div>
+      <div class="psp-svc-pick ${!selectedId ? 'on' : ''}" onclick="pickService(null)">
+        <div class="psp-svc-pick-img">📌</div>
+        <div class="psp-svc-pick-body">
+          <div class="psp-svc-pick-name">General appointment</div>
+          <div class="psp-svc-pick-meta">No specific service</div>
+        </div>
+      </div>
+      ${services.map(s => {
+        const dur = s.duration_minutes ? s.duration_minutes + ' min' : '';
+        const meta = [s.category, dur].filter(Boolean).join(' · ');
+        const img = s.image_url ? `<img src="${escHtml(s.image_url)}" alt="" onerror="this.parentElement.textContent='✨'">` : '✨';
+        return `<div class="psp-svc-pick ${selectedId===s.id?'on':''}" onclick="pickService('${s.id}')">
+          <div class="psp-svc-pick-img">${img}</div>
+          <div class="psp-svc-pick-body">
+            <div class="psp-svc-pick-name">${escHtml(s.name)}</div>
+            <div class="psp-svc-pick-meta">${escHtml(meta)}</div>
+          </div>
+          ${parseFloat(s.price)>0 ? `<div class="psp-svc-pick-price">₹${parseFloat(s.price).toLocaleString('en-IN',{maximumFractionDigits:0})}</div>` : ''}
+        </div>`;
+      }).join('')}
+    </div>
+    <div class="psp-step-btns">
+      <button class="psp-btn-back" onclick="closeBookingFlow()">Cancel</button>
+      <button class="psp-btn-next" onclick="bookingNext()">Continue →</button>
+    </div>`;
+}
+
+function pickService(id) {
+  const services = _bookState.config.services || [];
+  _bookState.service = id ? services.find(s => s.id === id) : null;
+  // Update visual selection
+  document.querySelectorAll('.psp-svc-pick').forEach(el => el.classList.remove('on'));
+  event.currentTarget.classList.add('on');
+}
+
+// ── Step 2: Provider ──
+function renderStepProvider(root) {
+  const providers = _bookState.config.providers || [];
+  const selectedId = _bookState.provider ? _bookState.provider.id : null;
+
+  if (providers.length === 0) {
+    root.innerHTML = `
+      <div class="psp-step-title">No staff available</div>
+      <p style="color:var(--t2);font-size:13px">This shop hasn't configured booking yet. Try contacting them directly.</p>
+      <div class="psp-step-btns">
+        <button class="psp-btn-next" onclick="closeBookingFlow()">Close</button>
+      </div>`;
+    return;
+  }
+
+  const dowNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  root.innerHTML = `
+    <div class="psp-step-title">Choose someone</div>
+    <div>
+      ${providers.map(p => {
+        const days = (p.working_days || []).map(d => dowNames[d]).join(', ');
+        const initial = (p.name.match(/[A-Za-z\u0900-\u097F]/) || ['?'])[0].toUpperCase();
+        const av = p.photo_url ? `<img src="${escHtml(p.photo_url)}" alt="" onerror="this.parentElement.textContent='${escHtml(initial)}'">` : escHtml(initial);
+        return `<div class="psp-prv-pick ${selectedId===p.id?'on':''}" onclick="pickProvider('${p.id}')">
+          <div class="psp-prv-avatar">${av}</div>
+          <div style="flex:1;min-width:0">
+            <div class="psp-prv-pick-name">${escHtml(p.name)}</div>
+            <div class="psp-prv-pick-role">${p.role?escHtml(p.role)+' · ':''}${escHtml(days)}</div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+    <div class="psp-step-btns">
+      <button class="psp-btn-back" onclick="bookingBack()">← Back</button>
+      <button class="psp-btn-next" onclick="bookingNext()" id="step-next-btn" ${selectedId?'':'disabled'}>Continue →</button>
+    </div>`;
+}
+
+function pickProvider(id) {
+  const providers = _bookState.config.providers || [];
+  _bookState.provider = providers.find(p => p.id === id) || null;
+  document.querySelectorAll('.psp-prv-pick').forEach(el => el.classList.remove('on'));
+  event.currentTarget.classList.add('on');
+  const nextBtn = document.getElementById('step-next-btn');
+  if (nextBtn) nextBtn.disabled = false;
+}
+
+// ── Step 3: Date ──
+function renderStepDate(root) {
+  const provider = _bookState.provider;
+  const workingDays = provider ? (provider.working_days || []) : [0,1,2,3,4,5,6];
+
+  // Build next 21 days
+  const tiles = [];
+  const today = new Date(); today.setHours(0,0,0,0);
+  for (let i = 0; i < 21; i++) {
+    const d = new Date(today);
+    d.setDate(d.getDate() + i);
+    const dow = d.getDay();
+    if (workingDays.indexOf(dow) < 0) continue;  // skip closed days
+    const iso = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    const dayLbl = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dow];
+    const monLbl = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()];
+    const isOn = _bookState.date === iso;
+    tiles.push(`<div class="psp-date-tile ${isOn?'on':''}" onclick="pickDate('${iso}')">
+      <div class="psp-date-day">${dayLbl}${i===0?' (Today)':''}</div>
+      <div class="psp-date-num">${d.getDate()}</div>
+      <div class="psp-date-mon">${monLbl}</div>
+    </div>`);
+  }
+
+  root.innerHTML = `
+    <div class="psp-step-title">Pick a date</div>
+    ${tiles.length === 0 ? '<p style="color:var(--t2);font-size:13px;padding:20px 0">No working days available in next 3 weeks.</p>' : `<div class="psp-date-grid">${tiles.join('')}</div>`}
+    <div class="psp-step-btns">
+      <button class="psp-btn-back" onclick="bookingBack()">← Back</button>
+      <button class="psp-btn-next" onclick="bookingNext()" id="step-next-btn" ${_bookState.date?'':'disabled'}>Continue →</button>
+    </div>`;
+}
+
+function pickDate(iso) {
+  _bookState.date = iso;
+  _bookState.slot = null;  // clear any previous slot pick
+  document.querySelectorAll('.psp-date-tile').forEach(el => el.classList.remove('on'));
+  event.currentTarget.classList.add('on');
+  const nextBtn = document.getElementById('step-next-btn');
+  if (nextBtn) nextBtn.disabled = false;
+}
+
+// ── Step 4: Time slot ──
+async function renderStepSlot(root) {
+  const provider = _bookState.provider;
+  const date = _bookState.date;
+  const service = _bookState.service;
+  const duration = service && service.duration_minutes ? service.duration_minutes : (provider.slot_interval_minutes || 30);
+
+  root.innerHTML = `
+    <div class="psp-step-title">Pick a time</div>
+    <div style="font-size:12.5px;color:var(--t2);margin-bottom:10px">
+      ${escHtml(provider.name)} · ${new Date(date).toLocaleDateString('en-IN',{weekday:'short',day:'2-digit',month:'short'})} · ${duration} min
+    </div>
+    <div id="psp-slots-container" style="display:flex;justify-content:center;padding:30px">
+      <div class="psp-spin" style="border-top-color:#8B5CF6"></div>
+    </div>
+    <div class="psp-step-btns">
+      <button class="psp-btn-back" onclick="bookingBack()">← Back</button>
+      <button class="psp-btn-next" onclick="bookingNext()" id="step-next-btn" disabled>Continue →</button>
+    </div>`;
+
+  try {
+    const { data, error } = await sb.rpc('sbp_get_available_slots_public', {
+      p_slug: _bookState.slug,
+      p_provider_id: provider.id,
+      p_date: date,
+      p_duration_minutes: duration
+    });
+
+    const cont = document.getElementById('psp-slots-container');
+    if (!cont) return;  // user navigated away
+
+    if (error || !data || !data.ok) {
+      cont.innerHTML = `<div class="psp-slot-empty">⚠️ Could not load slots${data&&data.error?': '+escHtml(data.error):''}</div>`;
+      return;
+    }
+
+    const slots = data.slots || [];
+    if (slots.length === 0) {
+      const reason = data.reason === 'closed' ? 'Closed on this day' : (data.reason === 'blocked' ? 'Blocked off' : 'All slots taken or already passed');
+      cont.innerHTML = `<div class="psp-slot-empty">😔 ${escHtml(reason)}<br><span style="font-size:11px">Try another date</span></div>`;
+      return;
+    }
+
+    _bookState._slotsCache = slots;  // remember for picker
+    cont.outerHTML = `<div class="psp-slot-grid" id="psp-slots-container">${slots.map((s, i) => {
+      const isOn = _bookState.slot && _bookState.slot.starts_at === s.starts_at;
+      return `<div class="psp-slot ${isOn?'on':''}" onclick="pickSlot(${i})">${escHtml(s.time_label)}</div>`;
+    }).join('')}</div>`;
+  } catch (e) {
+    const cont = document.getElementById('psp-slots-container');
+    if (cont) cont.innerHTML = `<div class="psp-slot-empty">⚠️ Network error. Please retry.</div>`;
+  }
+}
+
+function pickSlot(idx) {
+  const slots = _bookState._slotsCache || [];
+  _bookState.slot = slots[idx] || null;
+  document.querySelectorAll('.psp-slot').forEach(el => el.classList.remove('on'));
+  event.currentTarget.classList.add('on');
+  const nextBtn = document.getElementById('step-next-btn');
+  if (nextBtn) nextBtn.disabled = false;
+}
+
+// ── Step 5: Customer info + Confirm ──
+function renderStepConfirm(root) {
+  const provider = _bookState.provider;
+  const service = _bookState.service;
+  const date = _bookState.date;
+  const slot = _bookState.slot;
+  const c = _bookState.customer;
+  const dateLabel = new Date(date).toLocaleDateString('en-IN',{weekday:'long',day:'2-digit',month:'long'});
+
+  root.innerHTML = `
+    <div class="psp-step-title">Your details</div>
+    <div class="psp-summary-card">
+      ${service ? `<div class="psp-summary-row"><span>Service</span><span>${escHtml(service.name)}</span></div>` : ''}
+      <div class="psp-summary-row"><span>With</span><span>${escHtml(provider.name)}</span></div>
+      <div class="psp-summary-row"><span>Date</span><span>${escHtml(dateLabel)}</span></div>
+      <div class="psp-summary-row"><span>Time</span><span>${escHtml(slot.time_label)}</span></div>
+      ${service && parseFloat(service.price)>0 ? `<div class="psp-summary-row" style="border-top:1px dashed var(--bord);padding-top:8px;margin-top:4px"><span>Price</span><span style="color:#8B5CF6">₹${parseFloat(service.price).toLocaleString('en-IN',{maximumFractionDigits:0})}</span></div>` : ''}
+    </div>
+    <div class="psp-form-fld">
+      <label>Your name *</label>
+      <input type="text" id="bk-name" value="${escHtml(c.name)}" maxlength="80">
+    </div>
+    <div class="psp-form-fld">
+      <label>Phone number *</label>
+      <input type="tel" id="bk-phone" value="${escHtml(c.phone)}" maxlength="15" placeholder="10-digit number">
+    </div>
+    <div class="psp-form-fld">
+      <label>WhatsApp (if different)</label>
+      <input type="tel" id="bk-wa" value="${escHtml(c.wa)}" maxlength="15" placeholder="Optional">
+    </div>
+    <div class="psp-form-fld">
+      <label>Notes (optional)</label>
+      <textarea id="bk-notes" rows="2" maxlength="300" placeholder="Anything the shop should know?">${escHtml(c.notes)}</textarea>
+    </div>
+    <div class="psp-step-btns">
+      <button class="psp-btn-back" onclick="bookingBack()">← Back</button>
+      <button class="psp-btn-next" onclick="submitBooking()" id="step-next-btn">📅 Confirm Booking</button>
+    </div>`;
+}
+
+async function submitBooking() {
+  const name = (document.getElementById('bk-name').value || '').trim();
+  const phone = (document.getElementById('bk-phone').value || '').trim();
+  const wa = (document.getElementById('bk-wa').value || '').trim();
+  const notes = (document.getElementById('bk-notes').value || '').trim();
+
+  if (!name) { alert('Please enter your name'); return; }
+  const cleanPhone = phone.replace(/[^0-9]/g, '');
+  if (cleanPhone.length < 7) { alert('Please enter a valid phone number'); return; }
+
+  _bookState.customer = { name, phone, wa, notes };
+
+  const provider = _bookState.provider;
+  const service = _bookState.service;
+  const slot = _bookState.slot;
+  const duration = service && service.duration_minutes ? service.duration_minutes : (provider.slot_interval_minutes || 30);
+
+  const btn = document.getElementById('step-next-btn');
+  btn.disabled = true; btn.textContent = '⏳ Booking…';
+
+  try {
+    const { data, error } = await sb.rpc('sbp_book_appointment_public', {
+      p_slug: _bookState.slug,
+      p_data: {
+        provider_id: provider.id,
+        service_id: service ? service.id : null,
+        starts_at: slot.starts_at,
+        duration_minutes: duration,
+        customer_name: name,
+        customer_phone: phone,
+        customer_wa: wa || null,
+        notes: notes || null
+      }
+    });
+
+    if (error || !data || !data.ok) {
+      const errMsg = data && data.error
+        ? (data.error === 'slot_taken' ? 'That slot was just booked. Please pick another time.'
+          : data.error === 'past_starts_at' ? 'That time has passed. Please pick a future slot.'
+          : data.error === 'feature_disabled' ? 'Online booking is not available right now.'
+          : data.error)
+        : (error ? error.message : 'Booking failed');
+      alert('Could not book: ' + errMsg);
+      btn.disabled = false; btn.textContent = '📅 Confirm Booking';
+      // If slot conflict, jump back to slot step to refresh
+      if (data && data.error === 'slot_taken') {
+        _bookState.slot = null;
+        _bookState.step = 4;
+        renderBookingStep();
+      }
+      return;
+    }
+
+    // Success
+    _bookState.bookingResult = data;
+    _bookState.step = 6;
+    renderBookingStep();
+  } catch (e) {
+    alert('Network error. Please try again.');
+    btn.disabled = false; btn.textContent = '📅 Confirm Booking';
+  }
+}
+
+// ── Step 6: Success ──
+function renderStepSuccess(root) {
+  const r = _bookState.bookingResult || {};
+  const provider = _bookState.provider;
+  const slot = _bookState.slot;
+  const date = _bookState.date;
+  const dateLabel = new Date(date).toLocaleDateString('en-IN',{weekday:'long',day:'2-digit',month:'long'});
+
+  // Mark all step dots as on
+  document.querySelectorAll('.psp-step-dot').forEach(d => d.classList.add('on'));
+
+  root.innerHTML = `
+    <div class="psp-success">
+      <div class="psp-success-emoji">✅</div>
+      <div class="psp-success-title">Booking received!</div>
+      <div class="psp-success-msg">
+        Your appointment is <strong>pending confirmation</strong> from the shop.<br>
+        ${provider ? `<strong>${escHtml(provider.name)}</strong> · ` : ''}${escHtml(dateLabel)} · ${escHtml(slot.time_label)}
+        <br><br>
+        We'll send a WhatsApp confirmation shortly. Save your booking ID below in case you need to contact the shop.
+      </div>
+      <div class="psp-success-id">ID: ${escHtml((r.appointment_id || '').slice(0, 8))}</div>
+    </div>
+    <div class="psp-step-btns">
+      <button class="psp-btn-next" onclick="closeBookingFlow()">Done</button>
+    </div>`;
+}
+
+// ── Navigation ──
+function bookingNext() {
+  // Validation per step
+  const step = _bookState.step;
+  if (step === 2 && !_bookState.provider) { alert('Please pick someone'); return; }
+  if (step === 3 && !_bookState.date) { alert('Please pick a date'); return; }
+  if (step === 4 && !_bookState.slot) { alert('Please pick a time'); return; }
+
+  // Skip provider step if only 1 provider (already auto-selected)
+  let next = step + 1;
+  if (next === 2 && (_bookState.config.providers || []).length === 1) {
+    _bookState.provider = _bookState.config.providers[0];
+    next = 3;
+  }
+
+  _bookState.step = next;
+  renderBookingStep();
+}
+
+function bookingBack() {
+  let prev = _bookState.step - 1;
+  // Skip back over auto-selected provider step
+  if (prev === 2 && (_bookState.config.providers || []).length === 1) {
+    prev = 1;
+  }
+  // Skip back over service step if no services exist
+  if (prev === 1 && (_bookState.config.services || []).length === 0) {
+    closeBookingFlow();
+    return;
+  }
+  if (prev < 1) {
+    closeBookingFlow();
+    return;
+  }
+  _bookState.step = prev;
+  renderBookingStep();
 }
 
 init();
