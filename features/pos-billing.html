@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en" data-lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+<meta name="theme-color" content="#F5A623">
+
+<title>POS Billing Software — Lightning Fast Counter Sales</title>
+<meta name="description" content="POS billing built for Indian retail counters. Tap items from grid, scan barcodes, calculate GST automatically. Cash register integration, multi-staff cashier mode, end-of-day reports.">
+<link rel="canonical" href="https://shopbillpro.in/features/pos-billing">
+<meta property="og:type" content="website">
+<meta property="og:title" content="POS Billing Software — Lightning Fast Counter Sales">
+<meta property="og:description" content="POS billing built for Indian retail counters. Tap items from grid, scan barcodes, calculate GST automatically. Cash register integration, multi-staff cashier mode, end-of-day reports.">
+<meta property="og:url" content="https://shopbillpro.in/features/pos-billing">
+<meta property="og:site_name" content="ShopBill Pro">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="POS Billing Software — Lightning Fast Counter Sales">
+<meta name="twitter:description" content="POS billing built for Indian retail counters. Tap items from grid, scan barcodes, calculate GST automatically. Cash register integration, multi-staff cashier mode, end-of-day reports.">
+
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon32x32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/icon192x192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/icon180x180.png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;500;700&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="/marketing/css/marketing.css">
+
+<script>
+(function(){
+  try {
+    var l = localStorage.getItem('sbp_marketing_lang');
+    if (l === 'hi') document.documentElement.setAttribute('data-lang','hi');
+  } catch(e) {}
+})();
+</script>
+</head>
+<body>
+
+<header class="nav">
+  <div class="container">
+    <div class="nav-wrap">
+      <a href="/" class="brand">
+        <img class="brand-mark" src="/icon96x96.png" alt="ShopBill Pro logo">
+        <span>ShopBill Pro</span>
+      </a>
+      <nav class="nav-links">
+        <a href="/features/gst-billing" class="nav-link active"><span class="lang-en">Features</span><span class="lang-hi">फीचर्स</span></a>
+        <a href="/for/retail" class="nav-link "><span class="lang-en">For Business</span><span class="lang-hi">बिज़नेस के लिए</span></a>
+        <a href="/pricing" class="nav-link "><span class="lang-en">Pricing</span><span class="lang-hi">कीमत</span></a>
+        <a href="/why-choose-shopbill-pro" class="nav-link "><span class="lang-en">Why us</span><span class="lang-hi">क्यों हम</span></a>
+        <a href="/faq" class="nav-link "><span class="lang-en">FAQ</span><span class="lang-hi">सवाल</span></a>
+      </nav>
+      <div class="nav-cta">
+        <div class="lang-toggle hide-mobile">
+          <button onclick="setLang('en',this)" class="on" id="lt-en">EN</button>
+          <button onclick="setLang('hi',this)" id="lt-hi">हिं</button>
+        </div>
+        <a href="https://app.shopbillpro.in/login.html" class="btn btn-ghost btn-sm hide-mobile"><span class="lang-en">Sign in</span><span class="lang-hi">लॉगिन</span></a>
+        <a href="https://app.shopbillpro.in/signup.html" class="btn btn-pri btn-sm"><span class="lang-en">Get started — Free</span><span class="lang-hi">मुफ्त शुरू करें</span></a>
+        <button class="nav-mobile-toggle" onclick="openDrawer()" aria-label="Menu">☰</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="nav-drawer" id="nav-drawer">
+  <div class="nav-drawer-panel">
+    <button class="nav-drawer-close" onclick="closeDrawer()" aria-label="Close">✕</button>
+    <a href="/features/gst-billing" class="nav-drawer-link"><span class="lang-en">Features</span><span class="lang-hi">फीचर्स</span></a>
+    <a href="/for/retail" class="nav-drawer-link"><span class="lang-en">For Business</span><span class="lang-hi">बिज़नेस के लिए</span></a>
+    <a href="/pricing" class="nav-drawer-link"><span class="lang-en">Pricing</span><span class="lang-hi">कीमत</span></a>
+    <a href="/why-choose-shopbill-pro" class="nav-drawer-link"><span class="lang-en">Why us</span><span class="lang-hi">क्यों हम</span></a>
+    <a href="/faq" class="nav-drawer-link"><span class="lang-en">FAQ</span><span class="lang-hi">सवाल</span></a>
+    <a href="https://app.shopbillpro.in/login.html" class="nav-drawer-link"><span class="lang-en">Sign in</span><span class="lang-hi">लॉगिन</span></a>
+    <div style="margin-top:14px;display:flex;justify-content:center">
+      <div class="lang-toggle">
+        <button onclick="setLang('en',this)" class="on" id="lt-en-m">EN</button>
+        <button onclick="setLang('hi',this)" id="lt-hi-m">हिं</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ==== PAGE BODY ==== -->
+<section class="page-hero">
+  <div class="container page-hero-inner">
+    <div class="hero-eyebrow"><span class="lang-en">Feature · POS Billing</span><span class="lang-hi">फीचर · POS बिलिंग</span></div>
+    <h1 class="h-1"><span class="lang-en">POS billing built for <span class="gradient-text">Indian counters</span></span><span class="lang-hi"><span class="gradient-text">भारतीय काउंटर</span> के लिए POS</span></h1>
+    <p class="lead" style="margin:18px auto 0;max-width:680px"><span class="lang-en">Tap items from the grid. Scan barcodes. Calculate GST instantly. Print or send via WhatsApp. Built for shops where customers don't wait.</span><span class="lang-hi">ग्रिड से आइटम चुनें। बारकोड स्कैन करें। तुरंत GST कैलकुलेशन। प्रिंट या WhatsApp।</span></p>
+    <div class="hero-cta mt-3" style="justify-content:center">
+      <a href="https://app.shopbillpro.in/signup.html" class="btn btn-pri btn-lg"><span class="lang-en">Try free now</span><span class="lang-hi">मुफ्त आज़माएं</span></a>
+      <a href="/features/gst-billing" class="btn btn-sec btn-lg"><span class="lang-en">See manual mode</span><span class="lang-hi">मैनुअल मोड देखें</span></a>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <div class="section-c">
+      <div class="section-eyebrow"><span class="lang-en">Built for speed</span><span class="lang-hi">तेज़ी के लिए</span></div>
+      <h2 class="h-2 section-h"><span class="lang-en">From scan to bill in 10 seconds</span><span class="lang-hi">स्कैन से बिल तक 10 सेकंड</span></h2>
+      <p class="lead section-lead"><span class="lang-en">When customers are queued at your counter, every second matters. Our POS is designed to minimize taps and waiting.</span><span class="lang-hi">जब काउंटर पर लाइन लगी हो, हर सेकंड मायने रखता है। हमारा POS कम-से-कम टैप के लिए डिज़ाइन है।</span></p>
+    </div>
+    <div class="grid-3">
+      <div class="card"><div class="card-icon">📷</div><div class="card-h"><span class="lang-en">Barcode scanning (camera)</span><span class="lang-hi">बारकोड स्कैन (कैमरा)</span></div><div class="card-p"><span class="lang-en">Built-in barcode scanner using your phone's camera. Auto-add to bill. Works with any product barcode.</span><span class="lang-hi">फोन के कैमरे से बारकोड स्कैन। बिल में अपने आप जुड़ेगा।</span></div></div>
+      <div class="card"><div class="card-icon">⌨️</div><div class="card-h"><span class="lang-en">USB barcode gun support</span><span class="lang-hi">USB बारकोड गन सपोर्ट</span></div><div class="card-p"><span class="lang-en">Plug in any USB barcode scanner. Works on phone, tablet, or PC. No drivers needed.</span><span class="lang-hi">कोई भी USB बारकोड स्कैनर लगाएं। फोन, टैबलेट, PC पर चलेगा।</span></div></div>
+      <div class="card"><div class="card-icon">🎯</div><div class="card-h"><span class="lang-en">Quick item grid</span><span class="lang-hi">त्वरित आइटम ग्रिड</span></div><div class="card-p"><span class="lang-en">Customizable grid of your top-selling items. One tap to add. Reorderable based on sales velocity.</span><span class="lang-hi">सबसे ज्यादा बिकने वाले आइटम का ग्रिड। एक टैप से जोड़ें।</span></div></div>
+      <div class="card"><div class="card-icon">🧮</div><div class="card-h"><span class="lang-en">Quantity shortcuts</span><span class="lang-hi">मात्रा शॉर्टकट</span></div><div class="card-p"><span class="lang-en">+/- buttons, decimal quantities (1.5 kg), pack sizes (12 = 1 dozen). Quick price override per line.</span><span class="lang-hi">+/- बटन, दशमलव मात्रा (1.5 किलो), पैक साइज़।</span></div></div>
+      <div class="card"><div class="card-icon">💰</div><div class="card-h"><span class="lang-en">Cash drawer + change</span><span class="lang-hi">कैश ड्रॉर + बकाया</span></div><div class="card-p"><span class="lang-en">Tap "Cash Tendered" amount, system shows change. Cash drawer opens (with compatible hardware).</span><span class="lang-hi">कैश राशि डालें, बकाया दिखेगा। कैश ड्रॉर खुलेगा।</span></div></div>
+      <div class="card"><div class="card-icon">🖨️</div><div class="card-h"><span class="lang-en">Thermal printer support</span><span class="lang-hi">थर्मल प्रिंटर</span></div><div class="card-p"><span class="lang-en">Connect any 58mm or 80mm thermal printer via Bluetooth or USB. Auto-format for receipt size.</span><span class="lang-hi">58mm या 80mm थर्मल प्रिंटर — Bluetooth या USB से।</span></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="section" style="background:var(--bg-soft)">
+  <div class="container">
+    <div class="section-c">
+      <div class="section-eyebrow"><span class="lang-en">Built for staff</span><span class="lang-hi">स्टाफ के लिए</span></div>
+      <h2 class="h-2 section-h"><span class="lang-en">Multi-cashier mode with role permissions</span><span class="lang-hi">मल्टी-कैशियर मोड</span></h2>
+    </div>
+    <div class="feat-list" style="max-width:760px;margin:0 auto">
+      <div class="feat-row"><div class="feat-row-ic">✓</div><div class="feat-row-txt"><div class="feat-row-h"><span class="lang-en">Per-cashier login + PIN</span><span class="lang-hi">प्रति-कैशियर लॉगिन + PIN</span></div><div class="feat-row-p"><span class="lang-en">Each cashier has their own login. PIN-protected actions for sensitive operations (void, discount, refund).</span><span class="lang-hi">हर कैशियर का अपना लॉगिन। संवेदनशील क्रियाओं पर PIN।</span></div></div></div>
+      <div class="feat-row"><div class="feat-row-ic">✓</div><div class="feat-row-txt"><div class="feat-row-h"><span class="lang-en">Role-based permissions</span><span class="lang-hi">भूमिका-आधारित अनुमतियाँ</span></div><div class="feat-row-p"><span class="lang-en">Admin, manager, cashier, viewer roles. Configure who can void bills, see profit, edit prices, manage staff.</span><span class="lang-hi">एडमिन, मैनेजर, कैशियर, व्यूअर भूमिकाएं। कौन क्या कर सकता है — आप तय करें।</span></div></div></div>
+      <div class="feat-row"><div class="feat-row-ic">✓</div><div class="feat-row-txt"><div class="feat-row-h"><span class="lang-en">Audit trail per action</span><span class="lang-hi">हर क्रिया का ऑडिट</span></div><div class="feat-row-p"><span class="lang-en">Every void, discount, refund, edit logged with cashier name and timestamp.</span><span class="lang-hi">हर वॉइड, छूट, रिफंड का लॉग — कैशियर नाम और समय के साथ।</span></div></div></div>
+      <div class="feat-row"><div class="feat-row-ic">✓</div><div class="feat-row-txt"><div class="feat-row-h"><span class="lang-en">End-of-shift reconciliation</span><span class="lang-hi">शिफ्ट के अंत में मिलान</span></div><div class="feat-row-p"><span class="lang-en">Z-report at shift close: cash collected, payment mode breakdown, discount given, refunds. Match with cash drawer.</span><span class="lang-hi">शिफ्ट के अंत में Z-रिपोर्ट: कैश, भुगतान मोड, छूट, रिफंड।</span></div></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <div class="cta-banner">
+      <div class="cta-banner-inner">
+        <h2 class="h-1"><span class="lang-en">Run your counter on ShopBill Pro</span><span class="lang-hi">अपना काउंटर ShopBill Pro पर चलाएं</span></h2>
+        <p><span class="lang-en">Start free. Tap, scan, bill — in seconds. No card, no hidden fees.</span><span class="lang-hi">मुफ्त शुरू करें। टैप, स्कैन, बिल — सेकंडों में।</span></p>
+        <a href="https://app.shopbillpro.in/signup.html" class="btn btn-pri btn-lg"><span class="lang-en">Start free now</span><span class="lang-hi">अभी मुफ्त शुरू करें</span></a>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ==== FOOTER ==== -->
+<footer class="foot">
+  <div class="container">
+    <div class="foot-grid">
+      <div>
+        <div class="foot-brand"><img class="brand-mark" src="/icon96x96.png" alt="ShopBill Pro logo">ShopBill Pro</div>
+        <p class="foot-tag"><span class="lang-en">India's operating system for small businesses. From your tea stall to your jewellery showroom — one app.</span><span class="lang-hi">भारत के छोटे बिज़नेस का ऐप। चाय की दुकान से जेवर शोरूम तक।</span></p>
+        <div class="lang-toggle">
+          <button onclick="setLang('en',this)" id="lt-en-f" class="on">EN</button>
+          <button onclick="setLang('hi',this)" id="lt-hi-f">हिं</button>
+        </div>
+      </div>
+      <div>
+        <div class="foot-h"><span class="lang-en">Product</span><span class="lang-hi">प्रोडक्ट</span></div>
+        <a class="foot-link" href="/features/gst-billing"><span class="lang-en">GST Billing</span><span class="lang-hi">GST बिलिंग</span></a>
+        <a class="foot-link" href="/features/pos-billing"><span class="lang-en">POS Billing</span><span class="lang-hi">POS बिलिंग</span></a>
+        <a class="foot-link" href="/features/whatsapp-bills"><span class="lang-en">WhatsApp Bills</span><span class="lang-hi">WhatsApp बिल</span></a>
+        <a class="foot-link" href="/features/inventory-stock"><span class="lang-en">Stock</span><span class="lang-hi">स्टॉक</span></a>
+        <a class="foot-link" href="/pricing"><span class="lang-en">Pricing</span><span class="lang-hi">कीमत</span></a>
+      </div>
+      <div>
+        <div class="foot-h"><span class="lang-en">For Business</span><span class="lang-hi">बिज़नेस के लिए</span></div>
+        <a class="foot-link" href="/for/retail"><span class="lang-en">Retail</span><span class="lang-hi">रिटेल</span></a>
+        <a class="foot-link" href="/for/restaurants"><span class="lang-en">Restaurants</span><span class="lang-hi">रेस्टोरेंट</span></a>
+        <a class="foot-link" href="/for/services"><span class="lang-en">Salon &amp; Services</span><span class="lang-hi">सलून &amp; सेवाएं</span></a>
+        <a class="foot-link" href="/for/healthcare"><span class="lang-en">Healthcare</span><span class="lang-hi">हेल्थकेयर</span></a>
+        <a class="foot-link" href="/for/education"><span class="lang-en">Education</span><span class="lang-hi">शिक्षा</span></a>
+      </div>
+      <div>
+        <div class="foot-h"><span class="lang-en">Company</span><span class="lang-hi">कंपनी</span></div>
+        <a class="foot-link" href="/why-choose-shopbill-pro"><span class="lang-en">Why ShopBill Pro</span><span class="lang-hi">क्यों ShopBill Pro</span></a>
+        <a class="foot-link" href="/free-billing-software-india"><span class="lang-en">Free Billing Software</span><span class="lang-hi">मुफ्त बिलिंग</span></a>
+        <a class="foot-link" href="/faq"><span class="lang-en">FAQ</span><span class="lang-hi">सवाल</span></a>
+        <a class="foot-link" href="https://app.shopbillpro.in/signup.html"><span class="lang-en">Sign up</span><span class="lang-hi">साइनअप</span></a>
+        <a class="foot-link" href="https://app.shopbillpro.in/login.html"><span class="lang-en">Sign in</span><span class="lang-hi">लॉगिन</span></a>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <div>© 2026 TradeCrest Technologies Private Limited. All rights reserved.</div>
+      <div class="foot-legal">
+        <a href="/terms">Terms</a>
+        <a href="/privacy">Privacy</a>
+        <a href="/refund">Refund Policy</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+function setLang(lang, btn) {
+  document.documentElement.setAttribute('data-lang', lang);
+  try { localStorage.setItem('sbp_marketing_lang', lang); } catch(e){}
+  document.querySelectorAll('#lt-en, #lt-en-m, #lt-en-f').forEach(b => b.classList.toggle('on', lang==='en'));
+  document.querySelectorAll('#lt-hi, #lt-hi-m, #lt-hi-f').forEach(b => b.classList.toggle('on', lang==='hi'));
+}
+function openDrawer() { document.getElementById('nav-drawer').classList.add('open'); document.body.style.overflow='hidden'; }
+function closeDrawer() { document.getElementById('nav-drawer').classList.remove('open'); document.body.style.overflow=''; }
+document.getElementById('nav-drawer').addEventListener('click', e => { if(e.target.id === 'nav-drawer') closeDrawer(); });
+(function(){
+  var l = document.documentElement.getAttribute('data-lang') || 'en';
+  document.querySelectorAll('#lt-en, #lt-en-m, #lt-en-f').forEach(b => b.classList.toggle('on', l==='en'));
+  document.querySelectorAll('#lt-hi, #lt-hi-m, #lt-hi-f').forEach(b => b.classList.toggle('on', l==='hi'));
+})();
+
+// FAQ accordion
+document.querySelectorAll('.faq-q').forEach(q => {
+  q.addEventListener('click', () => q.parentElement.classList.toggle('open'));
+});
+</script>
+
+</body>
+</html>
