@@ -1,4 +1,28 @@
-<!DOCTYPE html>
+<div class="overlay" id="sync-modal">
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="sheet-title">☁️ Cloud Sync</div>
+    <div id="sync-status-wrap" style="background:rgba(16,185,129,.1);border:1.5px solid rgba(16,185,129,.3);border-radius:14px;padding:18px;margin-bottom:14px;text-align:center">
+      <div style="font-size:36px;margin-bottom:8px">✅</div>
+      <div style="font-family:var(--font-h);font-size:16px;font-weight:800;color:var(--acc3)" id="sync-status-title">Cloud Active</div>
+      <div style="font-size:12px;color:var(--t2);margin-top:4px" id="sync-status-sub">Your data is safely backed up</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+      <div style="background:var(--surf2);border-radius:12px;padding:14px;text-align:center;border:1px solid var(--bord)">
+        <div style="font-size:24px;margin-bottom:4px">👥</div>
+        <div style="font-family:var(--font-h);font-size:20px;font-weight:800" id="sync-cust-count">0</div>
+        <div style="font-size:11px;color:var(--t2)">Customers</div>
+      </div>
+      <div style="background:var(--surf2);border-radius:12px;padding:14px;text-align:center;border:1px solid var(--bord)">
+        <div style="font-size:24px;margin-bottom:4px">🧾</div>
+        <div style="font-family:var(--font-h);font-size:20px;font-weight:800" id="sync-bill-count">0</div>
+        <div style="font-size:11px;color:var(--t2)">Bills</div>
+      </div>
+    </div>
+    <button onclick="syncNow()" style="width:100%;padding:14px;border-radius:12px;background:linear-gradient(135deg,var(--acc),#FF8A00);border:none;color:#0A0E1A;font-family:var(--font-h);font-size:15px;font-weight:700;cursor:pointer;margin-bottom:10px">☁️ Sync Now</button>
+    <button onclick="closeModal('sync-modal')" style="width:100%;padding:12px;border-radius:12px;background:var(--surf2);border:1px solid var(--bord);color:var(--t2);font-size:14px;cursor:pointer">Close</button>
+  </div>
+</div><!DOCTYPE html>
 <html lang="en" translate="no" class="notranslate">
 <head>
 <script>
@@ -558,6 +582,12 @@ html,body{height:100%;overflow:hidden}
         <div class="menu-it" onclick="openModal('shop-settings-modal')">
           <div class="mi-ic" style="background:rgba(245,166,35,.15)">🏪</div>
           <div class="mi-txt"><h4>Shop Details</h4><p>Name, address, GSTIN, UPI ID</p></div>
+          <span class="mi-arr">›</span>
+        </div>
+        <!-- BATCH 016: Change Business Type — opens SBPWizard in change-mode -->
+        <div class="menu-it" onclick="openChangeShopType()">
+          <div class="mi-ic" style="background:rgba(168,85,247,.15)">🔄</div>
+          <div class="mi-txt"><h4>Business Type <span id="bt-current-pill" style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:8px;margin-left:6px;background:var(--surf2);color:var(--t2);vertical-align:middle">…</span></h4><p id="bt-subtitle">Tap to change your shop category. Once per day.</p></div>
           <span class="mi-arr">›</span>
         </div>
         <div class="menu-it" onclick="goTo('stock.html')">
@@ -1235,23 +1265,6 @@ async function saveWebsiteContent(){
     .filter(line => line.length > 0 && /^https?:\/\//i.test(line))
     .filter((url, i, a) => a.indexOf(url) === i)
     .slice(0, 6);
-
-  // ── BATCH 012 FIX (BUG-009): warn if gallery URLs look like placeholders or non-image
-  // Common placeholder patterns: yourlink.com, example.com, placeholder, lorem
-  // Non-image extensions: anything not .jpg/.jpeg/.png/.webp/.gif (or no extension at all)
-  if (galleryArr.length > 0) {
-    const looksFake = galleryArr.some(url => /yourlink\.com|placeholder|lorem|^https?:\/\/(www\.)?example\.(com|org|net)/i.test(url));
-    const lacksImageExt = galleryArr.some(url => !/\.(jpe?g|png|webp|gif|avif|svg)(\?|$)/i.test(url));
-    if (looksFake) {
-      if (!confirm('⚠️ These look like placeholder URLs (example.com / yourlink.com). They will NOT load as images.\n\nSave anyway? (Customers will see an empty gallery on your shop page.)')) {
-        return;
-      }
-    } else if (lacksImageExt) {
-      if (!confirm('⚠️ Some URLs don\'t end in .jpg / .png / .webp etc. They may not load as images on your shop page.\n\nSave anyway?')) {
-        return;
-      }
-    }
-  }
 
   const btn = document.getElementById('wc-save-btn');
   if(btn){ btn.disabled = true; btn.textContent = '⏳ Saving…'; }
@@ -2213,5 +2226,144 @@ if (document.readyState === 'loading') {
 </script>
 
 <script src="lib/beta-banner.js"></script>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     BATCH 016: Change Business Type
+     Loads SBPWizard library + opens it in change-mode when the
+     "Business Type" menu item is tapped. On selection: confirms,
+     calls sbp_change_shop_type RPC, on success refreshes the page
+     so the sidebar engine picks up the new module set.
+     ═══════════════════════════════════════════════════════════════ -->
+<script src="lib/shop-type-wizard.js"></script>
+<script>
+(function(){
+  'use strict';
+
+  // Expose Supabase URL+KEY for SBPWizard's category fetches (it has its own
+  // fallback catalog if these aren't set, but the live data is preferred).
+  window.SBP_SUPABASE_URL = window.SBP_SUPABASE_URL || (typeof SB_URL !== 'undefined' ? SB_URL : null);
+  window.SBP_SUPABASE_KEY = window.SBP_SUPABASE_KEY || (typeof SB_KEY !== 'undefined' ? SB_KEY : null);
+
+  // ── Load current type info into the menu pill on page load ──
+  async function _loadCurrentTypePill(){
+    try {
+      const sb = window._sb;
+      const shopId = localStorage.getItem('sbp_shop_id') || (JSON.parse(localStorage.getItem('sbp_shop')||'{}').id);
+      if(!sb || !shopId) return;
+
+      const { data, error } = await sb.rpc('sbp_get_my_shop_type', { p_shop_id: shopId });
+      if(error || !data || !data.ok) return;
+
+      const pill = document.getElementById('bt-current-pill');
+      const sub = document.getElementById('bt-subtitle');
+      if(pill){
+        pill.textContent = `${data.emoji||'🏪'} ${data.name_en||data.shop_type}`;
+        pill.style.background = 'rgba(168,85,247,.15)';
+        pill.style.color = '#A855F7';
+      }
+      if(sub){
+        if(!data.can_change_now){
+          sub.textContent = `Already changed today. Available again in ${data.hours_remaining}h.`;
+          sub.style.color = 'var(--t3)';
+        } else {
+          sub.textContent = 'Tap to change your shop category. Once per day.';
+        }
+      }
+    } catch(e){ /* silent */ }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => setTimeout(_loadCurrentTypePill, 800));
+  } else {
+    setTimeout(_loadCurrentTypePill, 800);
+  }
+
+  // ── Public entry: opens the wizard in change-mode ──
+  window.openChangeShopType = async function(){
+    if (!window.SBPWizard) {
+      if (window.toast) toast('Wizard library not loaded — refresh the page', 'e');
+      return;
+    }
+
+    // Soft pre-check: if already changed today, warn before opening wizard
+    try {
+      const sb = window._sb;
+      const shopId = localStorage.getItem('sbp_shop_id') || (JSON.parse(localStorage.getItem('sbp_shop')||'{}').id);
+      if(sb && shopId){
+        const { data } = await sb.rpc('sbp_get_my_shop_type', { p_shop_id: shopId });
+        if (data && data.ok && !data.can_change_now){
+          alert(`You already changed your business type today.\n\nYou can change it again in ${data.hours_remaining} hour${data.hours_remaining===1?'':'s'}.`);
+          return;
+        }
+      }
+    } catch(e){ /* proceed anyway — server will reject if needed */ }
+
+    // Open wizard in change mode
+    SBPWizard.open({
+      mode: 'change',
+      onSelect: async function(categoryCode, macroCode, extras){
+        if (!categoryCode) return;
+        // Confirm
+        const ok = confirm(`Change business type to "${categoryCode}"?\n\nYour bills, customers, products, and other data will be preserved. Sidebar modules will update to match the new type.`);
+        if (!ok){ SBPWizard.close(); return; }
+
+        // Apply via RPC
+        await _applyChange(categoryCode);
+      }
+    });
+  };
+
+  async function _applyChange(newCode){
+    const sb = window._sb;
+    const shopId = localStorage.getItem('sbp_shop_id') || (JSON.parse(localStorage.getItem('sbp_shop')||'{}').id);
+    if(!sb || !shopId){
+      if (window.toast) toast('Not logged in or no shop selected', 'e');
+      return;
+    }
+
+    try {
+      const { data, error } = await sb.rpc('sbp_change_shop_type', {
+        p_shop_id: shopId,
+        p_new_shop_type: newCode
+      });
+      if (error) throw error;
+      if (!data || !data.ok){
+        const errCode = data?.error || 'unknown_error';
+        const messages = {
+          rate_limited:      `Already changed today. Try again in ${data?.hours_remaining||'~24'}h.`,
+          no_change:         'That is already your current business type.',
+          invalid_shop_type: 'That business type is not valid.',
+          not_owner:         'You are not the owner of this shop.',
+          shop_not_found:    'Shop not found.'
+        };
+        if (window.toast) toast(messages[errCode] || ('Could not change type: '+errCode), 'e', 4500);
+        else alert(messages[errCode] || ('Could not change type: '+errCode));
+        return;
+      }
+
+      // Update localStorage with new shop_type so sidebar engine picks it up
+      try {
+        const shop = JSON.parse(localStorage.getItem('sbp_shop')||'{}');
+        shop.shop_type = data.new.code;
+        localStorage.setItem('sbp_shop', JSON.stringify(shop));
+        // Also clear the cached sidebar items so they re-fetch
+        const shopId2 = shop.id || shopId;
+        if(shopId2) localStorage.removeItem('sbp_sidebar_modules_'+shopId2);
+      } catch(e){}
+
+      SBPWizard.close();
+      if (window.toast) toast(`✅ Business type changed to ${data.new.emoji} ${data.new.name_en}. Refreshing…`, 's', 2500);
+
+      // Hard refresh so sidebar engine + plan-gates pick up the new modules
+      setTimeout(() => { window.location.reload(); }, 1600);
+
+    } catch(e){
+      console.error('[ChangeShopType] error:', e);
+      if (window.toast) toast('Change failed: ' + (e.message||e), 'e');
+      else alert('Change failed: ' + (e.message||e));
+    }
+  }
+})();
+</script>
 </body>
 </html>
