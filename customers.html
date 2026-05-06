@@ -963,7 +963,15 @@ function openCustDetail(custId){
     </div>
     ${histHTML}
 
-    <div class="btn-row col2" style="margin-top:14px">
+    <!-- BATCH 013 (6 May 2026): View Full Timeline link to customer-history.html.
+         Brings up the unified bills + appointments + loyalty + join timeline view
+         with summary stats. Existing modal stays as the quick view. -->
+    <button onclick="goTo('customer-history.html?customer_id=${c.id}')"
+      style="width:100%;margin-top:10px;padding:11px;background:var(--surf2);color:var(--text);border:1px solid var(--bord);border-radius:12px;font-family:var(--font-h);font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">
+      📋 <span class="lang-en">View Full Timeline</span><span class="lang-hi">पूरा इतिहास देखें</span> →
+    </button>
+
+    <div class="btn-row col2" style="margin-top:8px">
       <button class="btn-wa" onclick="openWhatsApp('${c.whatsapp||c.phone||''}','${c.name}')">📲 WhatsApp</button>
       <button class="btn-pri" onclick="closeModal('cust-detail-modal');goTo('billing.html?cust=${encodeURIComponent(c.name)}&wa=${c.whatsapp||''}')">🧾 New Bill</button>
     </div>
