@@ -3060,6 +3060,86 @@ function loadFromTemplateParams(){
     return;
   }
 
+  // ── BATCH 015: Hospitality booking → bill checkout flow ──
+  // bookings.html → SBPHotel.bookings.checkOut() → redirects here with
+  // ?booking_id=<uuid>&cust=<name>&wa=<phone>&auto=1
+  // We pre-fill customer + line items (room nights + each folio extra),
+  // and stash the booking ID so the post-save hook can link the bill back.
+  if(params.get('booking_id')){
+    const bookingId = params.get('booking_id');
+    window._currentBookingId = bookingId;
+
+    // Quick prefill from URL params (instant, no async wait)
+    const ucust = params.get('cust') || '';
+    const uwa = params.get('wa') || '';
+    if(ucust){const el=document.getElementById('cust-nm');if(el)el.value=ucust}
+    if(uwa){const el=document.getElementById('cust-wa');if(el)el.value=uwa}
+
+    // Show edit-mode-style banner
+    const banner = document.createElement('div');
+    banner.id = 'booking-checkout-banner';
+    banner.style.cssText = 'background:linear-gradient(135deg,rgba(16,185,129,.15),rgba(16,185,129,.05));border:1px solid var(--acc3);border-radius:12px;padding:10px 14px;margin:10px 14px;font-size:12px;color:var(--acc3);font-weight:600;display:flex;align-items:center;gap:8px';
+    banner.innerHTML = '<span style="font-size:18px">🏨</span><div>Hotel checkout — folio loaded as bill items. Review and save.</div>';
+    document.querySelector('#app .topbar')?.insertAdjacentElement('afterend', banner);
+
+    // Async: fetch booking + extras, populate items
+    (async function(){
+      try {
+        if(!window.SBPHotel || !window._sb){ toast('⚠️ Hospitality module not loaded','e'); return }
+        const shopId = localStorage.getItem('sbp_shop_id') || (JSON.parse(localStorage.getItem('sbp_shop')||'{}').id);
+        if(!shopId){ toast('⚠️ Shop not loaded','e'); return }
+
+        // Get all bookings to find this one (cheap — small list)
+        const list = await SBPHotel.bookings.list(shopId, 'all', null);
+        if(!list.ok){ toast('⚠️ Could not load booking','e'); return }
+        const b = (list.bookings||[]).find(x=>x.id===bookingId);
+        if(!b){ toast('⚠️ Booking not found','e'); return }
+
+        // Load folio extras
+        const exRes = await SBPHotel.extras.list(shopId, bookingId);
+        const extras = exRes.ok ? (exRes.extras||[]) : [];
+
+        // Clear existing items, add room line + each extra
+        const wrap = document.getElementById('items-wrap');
+        if(wrap) wrap.innerHTML = '';
+
+        // Build label like: "Room 101 · Standard AC (2026-05-06 → 2026-05-08)"
+        const roomLabel = `Room ${b.room_number||'TBD'}${b.room_type_name?' · '+b.room_type_name:''} (${b.check_in_date} → ${b.check_out_date})`;
+        if(typeof addItem === 'function'){
+          addItem();
+          const rows = document.querySelectorAll('#items-wrap .item-row');
+          const row = rows[rows.length-1];
+          if(row){
+            const nmEl = row.querySelector('.it-nm'); if(nmEl) nmEl.value = roomLabel;
+            const qEl  = row.querySelector('.it-qty'); if(qEl)  qEl.value  = b.num_nights || 1;
+            const rEl  = row.querySelector('.it-rt');  if(rEl)  rEl.value  = b.rate_per_night || 0;
+            const gEl  = row.querySelector('.it-gst'); if(gEl)  gEl.value  = '0';  // Hotel rooms — shopkeeper sets GST manually if applicable
+          }
+
+          // Each extra as its own line
+          extras.forEach(e => {
+            addItem();
+            const rs = document.querySelectorAll('#items-wrap .item-row');
+            const r2 = rs[rs.length-1];
+            if(r2){
+              const nm = r2.querySelector('.it-nm'); if(nm) nm.value = `${e.description} (${e.category})`;
+              const q  = r2.querySelector('.it-qty'); if(q)  q.value  = e.qty || 1;
+              const rt = r2.querySelector('.it-rt');  if(rt) rt.value  = e.unit_price || 0;
+              const g  = r2.querySelector('.it-gst'); if(g)  g.value  = '0';
+            }
+          });
+        }
+
+        if(typeof calcTotals === 'function') setTimeout(calcTotals, 100);
+        toast('🏨 Folio loaded — review items and save bill', 's', 3500);
+      } catch(e) {
+        console.error('[BookingCheckout] load error:', e);
+        toast('⚠️ Could not load folio: '+(e.message||e), 'e');
+      }
+    })();
+    return;
+  }
+
   // FIX #39 — Support sessionStorage payload for large templates
   let payload = null;
   if(params.get('tpl_payload') === 'session'){
@@ -3806,5 +3886,50 @@ function showCollectPayment(billId) {
 </script>
 <script src="lib/beta-banner.js"></script>
 <script src="lib/loyalty.js"></script>
+<script src="lib/hospitality.js"></script>
+
+<!-- BATCH 015: Bookings → Bill linkage hook ─────────────────────────
+     When billing.html was opened with ?booking_id=X (hospitality
+     checkout flow), watch for new bills appearing in localStorage,
+     then call SBPHotel.bookings.linkBill so the booking gets the
+     bill_id back. Idempotent — safe to fire multiple times. -->
+<script>
+(function(){
+  if(!new URLSearchParams(window.location.search).get('booking_id')) return;
+  let lastSeenIds = new Set();
+  try {
+    JSON.parse(localStorage.getItem('sbp_bills')||'[]').forEach(b => lastSeenIds.add(String(b.id)));
+  } catch(e){}
+
+  function checkForNewBill(){
+    if(!window._currentBookingId) return;
+    let bills = [];
+    try { bills = JSON.parse(localStorage.getItem('sbp_bills')||'[]') } catch(e){ return }
+    const newest = bills.find(b => b && b.id && !lastSeenIds.has(String(b.id)));
+    if(!newest) return;
+
+    // Found a new bill — link it
+    lastSeenIds.add(String(newest.id));
+    const bookingId = window._currentBookingId;
+    window._currentBookingId = null;
+
+    (async function(){
+      try {
+        const shopId = localStorage.getItem('sbp_shop_id') || (JSON.parse(localStorage.getItem('sbp_shop')||'{}').id);
+        // Wait briefly for cloud-sync to complete (so bill exists in Supabase)
+        await new Promise(r=>setTimeout(r, 1500));
+        if(window.SBPHotel && shopId){
+          await SBPHotel.bookings.linkBill(shopId, bookingId, newest.id);
+          console.log('[BookingCheckout] Linked bill', newest.id, 'to booking', bookingId);
+        }
+      } catch(e){ console.warn('[BookingCheckout] linkBill failed:', e) }
+    })();
+  }
+
+  // Poll every 1.5s; cheap, only runs when booking_id was in URL
+  setInterval(checkForNewBill, 1500);
+})();
+</script>
+
 </body>
 </html>

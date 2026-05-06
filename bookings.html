@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en" translate="no" class="notranslate">
+<head>
+<script>
+(function(){try{var t=localStorage.getItem('sbp_theme');if(t==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}})();
+</script>
+<meta charset="UTF-8">
+<meta name="google" content="notranslate">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#F5A623">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>ShopBill Pro — Bookings</title>
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png?v=2">
+<link rel="apple-touch-icon" sizes="192x192" href="icons/icon-192x192.png">
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Noto+Sans:wght@300;400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+function _sbpPlanInfo(){const s=JSON.parse(localStorage.getItem('sbp_shop')||'{}');let plan=(s.plan||'free').toLowerCase();if(plan==='enterprise')plan='business';const exp=s.plan_expires_at;if(exp&&plan!=='free'&&new Date(exp)<new Date())plan='free';return{plan,expired:!!(exp&&new Date(exp)<new Date())}}
+function isPro(){const p=_sbpPlanInfo().plan;return p==='pro'||p==='business'}
+function isBiz(){return _sbpPlanInfo().plan==='business'}
+function isFree(){return _sbpPlanInfo().plan==='free'}
+</script>
+<script src="lang.js"></script>
+<script src="lib/sidebar-engine.js"></script>
+<script src="lib/hospitality.js"></script>
+<script src="conversion.js"></script>
+<script>
+const SB_URL='https://jfqeirfrkjdkqqixivru.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmcWVpcmZya2pka3FxaXhpdnJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzNzQ4MzgsImV4cCI6MjA4OTk1MDgzOH0.akd4E0nil8ypLR4WOykkeYIL8g4uuNU6XdSVh_Y1utk';
+const _sb=supabase.createClient(SB_URL,SB_KEY,{auth:{autoRefreshToken:true,persistSession:true,detectSessionInUrl:false}});
+window._sb=_sb;
+</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{font-family:'Noto Sans','Noto Sans Devanagari',sans-serif;-webkit-font-smoothing:antialiased}
+:root{--acc:#F5A623;--acc2:#FF6B35;--acc3:#10B981;--acc4:#3B82F6;--bg:#0A0A12;--surf:#13131C;--surf2:#1C1C28;--surf3:#252535;--bord:#2A2A3A;--text:#F0EFF8;--t2:#8A8AA8;--t3:#5A5A75;--font-h:'Outfit',sans-serif;--rs:14px;--tr:.2s ease;--rose:#F43F5E;--safe-bottom:env(safe-area-inset-bottom,0px)}
+[data-theme="light"]{--bg:#FAFAFC;--surf:#FFFFFF;--surf2:#F2F2F8;--surf3:#E8E8F0;--bord:#E5E5EE;--text:#0F0E18;--t2:#5E5A7A;--t3:#9090AA}
+body{background:var(--bg);color:var(--text);min-height:100dvh;overflow-x:hidden}
+#app{max-width:560px;margin:0 auto;padding-bottom:80px;min-height:100dvh}
+
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 14px 10px;background:var(--bg);position:sticky;top:0;z-index:50;border-bottom:1px solid var(--bord)}
+.tb-l{display:flex;align-items:center;gap:10px}
+.tb-r{display:flex;gap:8px}
+.back-btn{width:36px;height:36px;border-radius:10px;background:var(--surf);border:1px solid var(--bord);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:var(--text)}
+.tb-title{font-family:var(--font-h);font-size:17px;font-weight:800}
+.ic-btn{width:36px;height:36px;border-radius:10px;background:var(--surf);border:1px solid var(--bord);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px}
+
+.locked-banner{margin:14px;background:linear-gradient(135deg,rgba(245,166,35,.12),rgba(255,107,53,.06));border:1.5px solid rgba(245,166,35,.35);border-radius:var(--rs);padding:18px;text-align:center}
+.lb-t{font-family:var(--font-h);font-size:15px;font-weight:800;color:var(--acc);margin-bottom:6px}
+.lb-m{font-size:12px;color:var(--t2);line-height:1.5;margin-bottom:12px}
+.btn-upgrade{background:linear-gradient(135deg,#F5A623,#FF8A00);color:#0A0E1A;font-weight:800;font-size:13px;padding:10px 18px;border-radius:10px;border:none;cursor:pointer;font-family:var(--font-h)}
+
+.sum-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:10px 14px}
+.sum-card{background:var(--surf);border:1px solid var(--bord);border-radius:var(--rs);padding:10px 4px;text-align:center}
+.sv{font-family:var(--font-h);font-size:18px;font-weight:800}
+.sl{font-size:9px;color:var(--t2);margin-top:2px;font-weight:600}
+
+.tabs{display:flex;gap:6px;padding:8px 14px 0;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex-shrink:0;padding:8px 14px;background:var(--surf);border:1px solid var(--bord);border-radius:18px;font-size:12px;font-weight:600;color:var(--t2);cursor:pointer;white-space:nowrap;font-family:inherit}
+.tab.on{background:var(--acc);color:#0A0E1A;border-color:var(--acc)}
+
+.lst{padding:8px 14px}
+
+.bk-card{background:var(--surf);border:1px solid var(--bord);border-radius:var(--rs);padding:12px;margin-bottom:8px;cursor:pointer;transition:var(--tr)}
+.bk-card:hover{border-color:rgba(245,166,35,.3)}
+.bk-row1{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px}
+.bk-cust{font-family:var(--font-h);font-size:14px;font-weight:700;color:var(--text);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bk-amt{font-family:var(--font-h);font-size:14px;font-weight:800;color:var(--acc);white-space:nowrap;flex-shrink:0}
+.bk-meta{font-size:11px;color:var(--t2);line-height:1.5}
+.bk-meta-row{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px;align-items:center}
+.bk-tag{padding:2px 7px;border-radius:6px;font-size:10px;font-weight:600;border:1px solid;letter-spacing:.2px}
+.bk-tag.pending     {background:rgba(245,166,35,.15);color:#F5A623;border-color:#F5A623}
+.bk-tag.confirmed   {background:rgba(59,130,246,.15);color:#3B82F6;border-color:#3B82F6}
+.bk-tag.checked_in  {background:rgba(16,185,129,.15);color:#10B981;border-color:#10B981}
+.bk-tag.checked_out {background:var(--surf2);color:var(--t2);border-color:var(--bord)}
+.bk-tag.cancelled   {background:rgba(244,63,94,.15);color:var(--rose);border-color:var(--rose)}
+.bk-tag.no_show     {background:rgba(244,63,94,.15);color:var(--rose);border-color:var(--rose)}
+.bk-tag.dim         {background:var(--surf2);color:var(--t2);border-color:var(--bord)}
+.bk-tag.online      {background:rgba(59,130,246,.10);color:var(--acc4);border-color:var(--acc4)}
+
+.fab{position:fixed;bottom:78px;right:16px;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff;border:none;font-size:28px;cursor:pointer;box-shadow:0 6px 20px rgba(245,166,35,.45);z-index:60;font-family:var(--font-h)}
+
+.empty{text-align:center;padding:50px 24px;color:var(--t2)}
+.empty-emoji{font-size:48px;margin-bottom:12px}
+.empty-title{font-family:var(--font-h);font-size:17px;font-weight:700;color:var(--text);margin-bottom:8px}
+.empty-msg{font-size:13px;line-height:1.5;margin-bottom:16px}
+
+.loader{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px;gap:12px}
+.spinner{width:28px;height:28px;border:3px solid var(--bord);border-top-color:var(--acc);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:200;display:none;align-items:flex-end;justify-content:center}
+.overlay.open{display:flex}
+.sheet{background:var(--bg);border-radius:20px 20px 0 0;width:100%;max-width:560px;max-height:92dvh;overflow-y:auto;padding:8px 16px 20px;border-top:1px solid var(--bord)}
+.handle{width:44px;height:4px;background:var(--bord);border-radius:2px;margin:8px auto 14px}
+.sheet-title{font-family:var(--font-h);font-size:18px;font-weight:800;margin-bottom:14px}
+
+.ff{margin-bottom:12px}
+.ff label{display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:5px}
+.ff input,.ff textarea,.ff select{width:100%;padding:10px 12px;background:var(--surf);border:1px solid var(--bord);border-radius:10px;color:var(--text);font-size:14px;font-family:inherit;outline:none}
+.ff input:focus,.ff textarea:focus,.ff select:focus{border-color:var(--acc)}
+.ff textarea{resize:vertical;min-height:60px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+
+.btn-pri{width:100%;padding:13px;background:linear-gradient(135deg,var(--acc),var(--acc2));color:#0A0E1A;border:none;border-radius:12px;font-family:var(--font-h);font-size:14px;font-weight:800;cursor:pointer}
+.btn-sec{width:100%;padding:13px;background:var(--surf2);color:var(--text);border:1px solid var(--bord);border-radius:12px;font-family:var(--font-h);font-size:14px;font-weight:700;cursor:pointer}
+.btn-success{width:100%;padding:13px;background:linear-gradient(135deg,#10B981,#059669);color:#fff;border:none;border-radius:12px;font-family:var(--font-h);font-size:14px;font-weight:800;cursor:pointer}
+.btn-danger{width:100%;padding:13px;background:rgba(244,63,94,.12);color:var(--rose);border:1px solid var(--rose);border-radius:12px;font-family:var(--font-h);font-size:14px;font-weight:700;cursor:pointer}
+
+/* Detail modal — folio */
+.det-section{background:var(--surf2);border:1px solid var(--bord);border-radius:12px;padding:12px;margin-bottom:10px}
+.det-h{font-family:var(--font-h);font-size:13px;font-weight:800;color:var(--text);margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+.det-row{display:flex;justify-content:space-between;padding:5px 0;font-size:13px}
+.det-row .k{color:var(--t2)}
+.det-row .v{font-weight:700}
+.det-row.total{padding-top:8px;border-top:1px solid var(--bord);margin-top:6px}
+.det-row.total .v{font-family:var(--font-h);font-size:16px;color:var(--acc);font-weight:800}
+
+.extra-item{display:flex;justify-content:space-between;align-items:center;padding:8px;background:var(--surf);border:1px solid var(--bord);border-radius:8px;margin-bottom:5px;font-size:13px;gap:10px}
+.extra-item .x-name{flex:1;min-width:0}
+.extra-item .x-amt{font-weight:700;color:var(--acc);white-space:nowrap}
+.extra-item .x-rm{width:24px;height:24px;border-radius:6px;background:transparent;border:1px solid var(--bord);color:var(--rose);cursor:pointer;font-size:11px;flex-shrink:0}
+
+.bnav{}
+</style>
+<style>
+.bnav{display:flex;align-items:stretch;background:var(--surf);border-top:1px solid var(--bord);flex-shrink:0;padding-bottom:var(--safe-bottom);z-index:100}
+.ni{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 4px;gap:3px;cursor:pointer;position:relative;min-height:56px;user-select:none}
+.ni-ic{font-size:20px;line-height:1}
+.ni-lb{font-size:10px;color:var(--t2);font-weight:600;white-space:nowrap}
+.ni.on .ni-lb{color:var(--acc)}
+.ni.on::after{content:'';position:absolute;top:0;left:20%;right:20%;height:2.5px;border-radius:0 0 4px 4px;background:var(--acc)}
+.nav-fab{width:48px;height:48px;border-radius:16px;background:linear-gradient(135deg,var(--acc),#FF8A00);color:#fff;font-size:22px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(245,166,35,.5);margin-bottom:4px}
+.bnav-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:opacity .25s ease;z-index:90;backdrop-filter:blur(2px)}
+.bnav-overlay.open{opacity:1;pointer-events:auto}
+.bnav-drawer{position:fixed;top:0;right:0;bottom:0;width:min(85vw,360px);background:var(--surf);color:var(--text);transform:translateX(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);z-index:95;display:flex;flex-direction:column;box-shadow:-4px 0 24px rgba(0,0,0,.4);overflow:hidden}
+.bnav-drawer.open{transform:translateX(0)}
+@media(min-width:1024px){.bnav-drawer,.bnav-overlay{display:none!important}}
+.drawer-header{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid var(--surf2);flex-shrink:0}
+.drawer-brand{font-size:17px;font-weight:800;color:var(--acc)}
+.drawer-close{width:36px;height:36px;border-radius:10px;border:none;background:var(--surf2);color:var(--text);font-size:16px;cursor:pointer}
+.drawer-nav{flex:1;overflow-y:auto;padding:8px 0}
+.drawer-item{display:flex;align-items:center;gap:14px;padding:13px 18px;color:var(--text);text-decoration:none;font-size:14px;font-weight:600;cursor:pointer;border:none;background:transparent;width:100%;text-align:left}
+.drawer-item.active{background:rgba(245,166,35,.12);color:var(--acc);position:relative}
+.drawer-item.active::before{content:'';position:absolute;left:0;width:3px;height:60%;background:var(--acc);border-radius:0 3px 3px 0}
+.drawer-item.coming-soon{opacity:.55}
+.drawer-ic{font-size:20px;width:24px;text-align:center}
+.drawer-lb{flex:1}
+.drawer-footer{border-top:1px solid var(--surf2);padding:8px 0 12px}
+.drawer-footer .drawer-item{color:#EF4444}
+.drawer-ver{text-align:center;font-size:11px;color:var(--t2);margin-top:4px}
+#toast-container{position:fixed;bottom:calc(72px + var(--safe-bottom));left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none}
+.toast{background:var(--surf3);color:var(--text);padding:10px 18px;border-radius:20px;font-size:13px;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.45);border:1px solid var(--bord);max-width:calc(100vw - 40px);overflow:hidden;text-overflow:ellipsis;animation:tin .22s;pointer-events:all}
+.toast.s{background:rgba(16,185,129,.15);color:var(--acc3);border-color:rgba(16,185,129,.3)}
+.toast.e{background:rgba(239,68,68,.15);color:var(--acc2);border-color:rgba(239,68,68,.3)}
+.toast.i{background:rgba(245,166,35,.15);color:#FF8A00;border-color:rgba(245,166,35,.3)}
+@keyframes tin{from{opacity:0;transform:translateY(8px) scale(.95)}to{opacity:1;transform:translateY(0) scale(1)}}
+#dsb{position:fixed;left:0;top:0;bottom:0;width:220px;background:var(--surf);border-right:1px solid var(--bord);display:flex;flex-direction:column;z-index:200;overflow-y:auto}
+.dsb-logo{display:flex;align-items:center;gap:10px;padding:20px 16px 14px;border-bottom:1px solid var(--bord)}
+.dsb-brand{font-family:var(--font-h);font-size:15px;font-weight:800;color:var(--acc)}
+.dsb-nav{flex:1;padding:10px 8px;display:flex;flex-direction:column;gap:2px;overflow-y:auto}
+.dsb-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;cursor:pointer;text-decoration:none;color:var(--t2);font-size:13px;font-weight:600;border:none;background:none;width:100%;white-space:nowrap}
+.dsb-item:hover{background:var(--surf2);color:var(--text)}
+.dsb-item.active{background:rgba(245,166,35,.12);color:var(--acc)}
+.dsb-item.fab-sb{background:linear-gradient(135deg,#F5A623,#FF8A00);color:#fff;margin:4px 0 8px;font-weight:700}
+.dsb-ic{font-size:17px;width:22px;text-align:center}
+.dsb-sep{height:1px;background:var(--bord);margin:6px 12px}
+.dsb-footer{padding:8px;border-top:1px solid var(--bord)}
+.dsb-ver{font-size:10px;color:var(--t3);text-align:center;padding:8px 0 4px}
+@media(max-width:1023px){#dsb{display:none!important}}
+@media(min-width:640px) and (max-width:1023px){#app{max-width:600px!important;margin:0 auto;box-shadow:0 0 80px rgba(0,0,0,.5)}}
+@media(min-width:1024px){#app{margin-left:220px!important;max-width:calc(100vw - 220px)!important;width:calc(100vw - 220px)!important;box-shadow:none!important}.bnav{display:none!important}#toast-container{left:calc(220px + 50%)!important;transform:translateX(-50%)}}
+@media (max-width:1023px){.bnav{position:fixed;bottom:0;left:0;right:0;height:60px;z-index:55}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="topbar">
+    <div class="tb-l">
+      <div class="back-btn" onclick="window.location.href='dashboard.html'">←</div>
+      <div class="tb-title">📆 <span class="lang-en">Bookings</span><span class="lang-hi">बुकिंग</span></div>
+    </div>
+    <div class="tb-r">
+      <div class="ic-btn" onclick="toggleTheme()" id="theme-btn">☀️</div>
+      <div class="ic-btn" onclick="window.location.reload()" title="Refresh">🔄</div>
+    </div>
+  </div>
+
+  <div id="loader" class="loader"><div class="spinner"></div><div style="font-size:11px;color:var(--t2)">Loading…</div></div>
+
+  <div id="locked-banner" class="locked-banner" style="display:none">
+    <div class="lb-t">🔒 <span class="lang-en">Hospitality is a Pro feature</span></div>
+    <div class="lb-m"><span class="lang-en">Take bookings, check guests in/out, generate folios. Available on Pro &amp; Business plans.</span></div>
+    <button class="btn-upgrade" onclick="window.location.href='subscription.html'">🚀 Upgrade to Pro — ₹99/mo</button>
+  </div>
+
+  <div id="no-rooms-banner" class="locked-banner" style="display:none">
+    <div class="lb-t">🛏️ <span class="lang-en">No rooms set up yet</span></div>
+    <div class="lb-m"><span class="lang-en">Add at least one room before taking bookings. Set up room types first (e.g. Deluxe AC), then add individual rooms.</span></div>
+    <button class="btn-upgrade" onclick="window.location.href='rooms.html'">🛏️ Go to Rooms</button>
+  </div>
+
+  <div id="main" style="display:none">
+    <div class="sum-grid" id="summary-row"></div>
+
+    <div class="tabs">
+      <button class="tab on" data-tab="today"    onclick="switchTab('today')">📍 <span class="lang-en">Today</span><span class="lang-hi">आज</span></button>
+      <button class="tab"    data-tab="upcoming" onclick="switchTab('upcoming')">📆 <span class="lang-en">Upcoming</span><span class="lang-hi">आगामी</span></button>
+      <button class="tab"    data-tab="past"     onclick="switchTab('past')">📜 <span class="lang-en">Past</span><span class="lang-hi">पिछले</span></button>
+      <button class="tab"    data-tab="all"      onclick="switchTab('all')">🗂️ <span class="lang-en">All</span><span class="lang-hi">सभी</span></button>
+    </div>
+
+    <div class="lst" id="bk-list"></div>
+  </div>
+
+  <button class="fab" id="fab" onclick="openNewBooking()" style="display:none">+</button>
+
+  <div class="bnav"></div>
+  <div class="bnav-overlay" onclick="if(window.SBPSidebar)SBPSidebar._closeDrawer()"></div>
+  <div class="bnav-drawer"></div>
+</div>
+
+<!-- New Booking modal -->
+<div class="overlay" id="new-modal">
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="sheet-title">📆 <span class="lang-en">New Booking</span><span class="lang-hi">नई बुकिंग</span></div>
+
+    <div class="ff"><label>Guest Name *</label><input type="text" id="nb-name" placeholder="Full name"></div>
+    <div class="row2">
+      <div class="ff"><label>Phone</label><input type="tel" id="nb-phone" placeholder="9876543210"></div>
+      <div class="ff"><label>WhatsApp (optional)</label><input type="tel" id="nb-wa" placeholder="9876543210"></div>
+    </div>
+    <div class="ff"><label>Email (optional)</label><input type="email" id="nb-email"></div>
+
+    <div class="row2">
+      <div class="ff"><label>Check-in *</label><input type="date" id="nb-in"></div>
+      <div class="ff"><label>Check-out *</label><input type="date" id="nb-out"></div>
+    </div>
+    <div id="nb-nights" style="font-size:12px;color:var(--t2);text-align:center;margin:-6px 0 8px">—</div>
+
+    <div class="row2">
+      <div class="ff"><label>Adults</label><input type="number" id="nb-adults" min="1" value="1"></div>
+      <div class="ff"><label>Children</label><input type="number" id="nb-children" min="0" value="0"></div>
+    </div>
+
+    <div class="ff"><label>Room *</label>
+      <select id="nb-room">
+        <option value="">— Pick dates first to see available rooms —</option>
+      </select>
+    </div>
+    <div class="ff"><label>Rate per Night ₹</label><input type="number" id="nb-rate" min="0" step="50"></div>
+
+    <div class="ff"><label>ID Proof Type (optional)</label>
+      <select id="nb-idtype">
+        <option value="">— None —</option>
+        <option value="aadhaar">Aadhaar</option>
+        <option value="pan">PAN</option>
+        <option value="passport">Passport</option>
+        <option value="driving_license">Driving License</option>
+        <option value="voter_id">Voter ID</option>
+        <option value="other">Other</option>
+      </select>
+    </div>
+    <div class="ff"><label>ID Number</label><input type="text" id="nb-idnum"></div>
+
+    <div class="ff"><label>Notes</label><textarea id="nb-notes" placeholder="Special requests, arrival time, etc."></textarea></div>
+
+    <div id="nb-total" style="text-align:center;padding:10px;background:rgba(245,166,35,.1);border:1px solid var(--acc);border-radius:10px;margin-bottom:12px;font-family:var(--font-h);font-weight:800">Total: ₹0</div>
+
+    <button class="btn-pri" onclick="saveBooking()" id="nb-save">💾 Create Booking</button>
+    <button class="btn-sec" onclick="closeModal('new-modal')" style="margin-top:8px">Cancel</button>
+    <div style="height:8px"></div>
+  </div>
+</div>
+
+<!-- Booking Detail / Folio modal -->
+<div class="overlay" id="det-modal">
+  <div class="sheet" id="det-content"></div>
+</div>
+
+<!-- Add Extra modal -->
+<div class="overlay" id="extra-modal">
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="sheet-title">➕ <span class="lang-en">Add Extra Charge</span><span class="lang-hi">अतिरिक्त शुल्क</span></div>
+    <input type="hidden" id="ex-bid">
+    <div class="ff"><label>Category</label>
+      <select id="ex-cat">
+        <option value="food">🍽️ Food / Restaurant</option>
+        <option value="laundry">👕 Laundry</option>
+        <option value="minibar">🥃 Mini-bar</option>
+        <option value="service">🛎️ Service / Other</option>
+        <option value="telephone">☎️ Telephone</option>
+        <option value="transport">🚗 Transport / Pickup</option>
+        <option value="other">📌 Other</option>
+      </select>
+    </div>
+    <div class="ff"><label>Description *</label><input type="text" id="ex-desc" placeholder="e.g. Lunch (room service)"></div>
+    <div class="row2">
+      <div class="ff"><label>Quantity</label><input type="number" id="ex-qty" min="1" value="1"></div>
+      <div class="ff"><label>Unit Price ₹</label><input type="number" id="ex-unit" min="0" step="10"></div>
+    </div>
+    <div id="ex-amt" style="text-align:center;padding:8px;font-family:var(--font-h);font-weight:700;color:var(--acc);margin-bottom:10px">Total: ₹0</div>
+    <button class="btn-pri" onclick="saveExtra()" id="ex-save">💾 Add to Folio</button>
+    <button class="btn-sec" onclick="closeModal('extra-modal')" style="margin-top:8px">Cancel</button>
+    <div style="height:8px"></div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script>
+let _user=null,_shop=null,_shopId=null;
+let _activeTab='today';
+let _bookings=[],_rooms=[],_roomTypes=[],_summary=null;
+let _currentBooking=null;
+
+const $=s=>document.querySelector(s);
+const $$=s=>document.querySelectorAll(s);
+const fINR=n=>'₹'+Math.round(Number(n)||0).toLocaleString('en-IN');
+const escHtml=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function toast(msg,type='i'){const c=$('#toast-container');const el=document.createElement('div');el.className='toast '+type;el.textContent=msg;c.appendChild(el);setTimeout(()=>{el.style.opacity='0';setTimeout(()=>el.remove(),250)},2400)}
+function toggleTheme(){const cur=document.documentElement.getAttribute('data-theme')||'dark';const next=cur==='light'?'dark':'light';if(next==='light')document.documentElement.setAttribute('data-theme','light');else document.documentElement.removeAttribute('data-theme');localStorage.setItem('sbp_theme',next);$('#theme-btn').textContent=next==='light'?'🌙':'☀️'}
+function openModal(id){document.getElementById(id).classList.add('open')}
+function closeModal(id){document.getElementById(id).classList.remove('open')}
+
+function fmtDate(iso){if(!iso)return '—';try{return new Date(iso+'T00:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric',timeZone:'Asia/Kolkata'})}catch(e){return '—'}}
+function fmtDateShort(iso){if(!iso)return '—';try{return new Date(iso+'T00:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short',timeZone:'Asia/Kolkata'})}catch(e){return '—'}}
+function todayISO(){const d=new Date();const y=d.getFullYear();const m=String(d.getMonth()+1).padStart(2,'0');const dd=String(d.getDate()).padStart(2,'0');return `${y}-${m}-${dd}`}
+function tomorrowISO(){const d=new Date();d.setDate(d.getDate()+1);const y=d.getFullYear();const m=String(d.getMonth()+1).padStart(2,'0');const dd=String(d.getDate()).padStart(2,'0');return `${y}-${m}-${dd}`}
+
+async function init(){
+  if(window.SBPSidebar){
+    SBPSidebar.render({currentPage:'bookings',layout:'desktop'});
+    SBPSidebar.render({currentPage:'bookings',layout:'mobile-bottom',container:'.bnav'});
+    SBPSidebar.render({currentPage:'bookings',layout:'mobile-drawer',container:'.bnav-drawer'});
+  }
+  if(localStorage.getItem('sbp_theme')==='light')$('#theme-btn').textContent='🌙';
+
+  const{data:{session}}=await _sb.auth.getSession();
+  if(!session){window.location.href='index.html';return}
+  _user=session.user;
+  _shop=JSON.parse(localStorage.getItem('sbp_shop')||'{}');
+  _shopId=localStorage.getItem('sbp_shop_id')||_shop.id;
+
+  if(isFree()){
+    $('#loader').style.display='none';
+    $('#locked-banner').style.display='block';
+    return;
+  }
+
+  // Load room inventory once (for booking creation)
+  const[s,rl,rt]=await Promise.all([
+    SBPHotel.summary(_shopId),
+    SBPHotel.rooms.list(_shopId),
+    SBPHotel.roomTypes.list(_shopId)
+  ]);
+  if(!s.ok && (s.error||'').includes('free_plan')){
+    $('#loader').style.display='none';
+    $('#locked-banner').style.display='block';
+    return;
+  }
+  _summary=s.ok?s:null;
+  _rooms=rl.ok?rl.rooms||[]:[];
+  _roomTypes=rt.ok?rt.room_types||[]:[];
+
+  if(!_rooms.length){
+    $('#loader').style.display='none';
+    $('#no-rooms-banner').style.display='block';
+    return;
+  }
+
+  await loadBookings();
+
+  $('#loader').style.display='none';
+  $('#main').style.display='block';
+  $('#fab').style.display='flex';
+}
+
+async function loadBookings(){
+  const r = await SBPHotel.bookings.list(_shopId, _activeTab, null);
+  _bookings = r.ok ? r.bookings || [] : [];
+  renderSummary();
+  renderBookings();
+}
+
+function renderSummary(){
+  const s = _summary || {};
+  $('#summary-row').innerHTML = `
+    <div class="sum-card"><div class="sv" style="color:var(--acc)">${s.occupancy_pct||0}%</div><div class="sl"><span class="lang-en">Occupancy</span><span class="lang-hi">अधिभोग</span></div></div>
+    <div class="sum-card"><div class="sv" style="color:var(--acc3)">${s.arrivals_today||0}</div><div class="sl"><span class="lang-en">Arrivals</span><span class="lang-hi">आगमन</span></div></div>
+    <div class="sum-card"><div class="sv" style="color:var(--acc2)">${s.departures_today||0}</div><div class="sl"><span class="lang-en">Departures</span><span class="lang-hi">प्रस्थान</span></div></div>
+    <div class="sum-card"><div class="sv" style="color:var(--acc4)">${s.currently_in_house||0}</div><div class="sl"><span class="lang-en">In-House</span><span class="lang-hi">घर में</span></div></div>
+  `;
+}
+
+function renderBookings(){
+  const list=$('#bk-list');
+  if(!_bookings.length){
+    const emptyMsg = _activeTab==='today' ? 'No check-ins or check-outs scheduled today.'
+                   : _activeTab==='upcoming' ? 'No upcoming bookings yet. Tap + to add one.'
+                   : _activeTab==='past' ? 'No past bookings yet.'
+                   : 'No bookings yet.';
+    list.innerHTML=`<div class="empty"><div class="empty-emoji">📭</div><div class="empty-title"><span class="lang-en">${_activeTab==='all'?'No bookings':'Nothing here'}</span></div><div class="empty-msg">${emptyMsg}</div>${_activeTab==='upcoming'||_activeTab==='all'?'<button class="btn-upgrade" onclick="openNewBooking()">+ New Booking</button>':''}</div>`;
+    return;
+  }
+  list.innerHTML=_bookings.map(b=>{
+    const sb=SBPHotel.statusBadgeColor(b.status);
+    const sourceTag = b.source==='public_form'?`<span class="bk-tag online">🌐 Online</span>`
+                    : b.source==='walk_in'?`<span class="bk-tag dim">🚶 Walk-in</span>`
+                    : '';
+    const roomLine = b.room_number ? `Room ${escHtml(b.room_number)}${b.room_type_name?` · ${escHtml(b.room_type_name)}`:''}` : 'Room TBD';
+    return `
+    <div class="bk-card" onclick="openDetail('${b.id}')">
+      <div class="bk-row1">
+        <div class="bk-cust">${escHtml(b.customer_name)}</div>
+        <div class="bk-amt">${fINR(b.grand_total)}</div>
+      </div>
+      <div class="bk-meta">${roomLine} · ${b.num_adults}A${b.num_children>0?'+'+b.num_children+'C':''}</div>
+      <div class="bk-meta">📅 ${fmtDateShort(b.check_in_date)} → ${fmtDateShort(b.check_out_date)} (${b.num_nights}n)</div>
+      <div class="bk-meta-row">
+        <span class="bk-tag ${b.status}">${sb.label}</span>
+        ${sourceTag}
+        ${b.bill_id?`<span class="bk-tag dim">🧾 Bill</span>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function switchTab(tab){
+  _activeTab=tab;
+  $$('.tab').forEach(t=>t.classList.toggle('on',t.dataset.tab===tab));
+  loadBookings();
+}
+
+// ── New booking ─────────────────────────────────────────────────
+function openNewBooking(){
+  $('#nb-name').value='';$('#nb-phone').value='';$('#nb-wa').value='';$('#nb-email').value='';
+  $('#nb-in').value=todayISO();$('#nb-out').value=tomorrowISO();
+  $('#nb-adults').value=1;$('#nb-children').value=0;
+  $('#nb-rate').value='';$('#nb-idtype').value='';$('#nb-idnum').value='';$('#nb-notes').value='';
+  $('#nb-room').innerHTML='<option value="">— Pick dates first —</option>';
+  $('#nb-nights').textContent='1 night';
+  $('#nb-total').textContent='Total: ₹0';
+  openModal('new-modal');
+  refreshAvailability();
+}
+
+async function refreshAvailability(){
+  const ci=$('#nb-in').value, co=$('#nb-out').value;
+  if(!ci || !co){return}
+  const inD=new Date(ci+'T00:00:00'), outD=new Date(co+'T00:00:00');
+  if(outD<=inD){
+    $('#nb-room').innerHTML='<option value="">— Check-out must be after check-in —</option>';
+    $('#nb-nights').textContent='—';
+    return;
+  }
+  const nights = Math.round((outD-inD)/86400000);
+  $('#nb-nights').textContent=`${nights} night${nights>1?'s':''}`;
+  const res=await SBPHotel.rooms.checkAvailability(_shopId, ci, co);
+  if(!res.ok){
+    $('#nb-room').innerHTML='<option value="">— Could not check availability —</option>';
+    return;
+  }
+  const avail=res.available_rooms||[];
+  if(!avail.length){
+    $('#nb-room').innerHTML='<option value="">— No rooms available for these dates —</option>';
+    return;
+  }
+  $('#nb-room').innerHTML='<option value="">— Select a room —</option>'+avail.map(r=>{
+    const tlabel = r.room_type_name ? ` (${escHtml(r.room_type_name)} · ${fINR(r.base_price)}/n)` : ` (${fINR(r.base_price||0)}/n)`;
+    return `<option value="${r.id}" data-rate="${r.base_price||0}">Room ${escHtml(r.room_number)}${tlabel}</option>`;
+  }).join('');
+}
+
+$('#nb-in').addEventListener('change', refreshAvailability);
+$('#nb-out').addEventListener('change', refreshAvailability);
+$('#nb-room').addEventListener('change', e=>{
+  const opt=e.target.selectedOptions[0];
+  const rate=parseFloat(opt?.dataset?.rate||'0');
+  if(rate>0 && !$('#nb-rate').value)$('#nb-rate').value=rate;
+  recalcTotal();
+});
+$('#nb-rate').addEventListener('input', recalcTotal);
+
+function recalcTotal(){
+  const ci=$('#nb-in').value, co=$('#nb-out').value;
+  if(!ci||!co){$('#nb-total').textContent='Total: ₹0';return}
+  const nights=Math.max(0,Math.round((new Date(co)-new Date(ci))/86400000));
+  const rate=parseFloat($('#nb-rate').value)||0;
+  $('#nb-total').textContent=`Total: ${fINR(rate*nights)} (${nights} × ${fINR(rate)})`;
+}
+
+async function saveBooking(){
+  const data={
+    customer_name: $('#nb-name').value.trim(),
+    customer_phone: $('#nb-phone').value.trim(),
+    customer_wa: $('#nb-wa').value.trim(),
+    customer_email: $('#nb-email').value.trim(),
+    check_in_date: $('#nb-in').value,
+    check_out_date: $('#nb-out').value,
+    num_adults: parseInt($('#nb-adults').value,10)||1,
+    num_children: parseInt($('#nb-children').value,10)||0,
+    room_id: $('#nb-room').value,
+    rate_per_night: parseFloat($('#nb-rate').value)||0,
+    id_proof_type: $('#nb-idtype').value || null,
+    id_proof_number: $('#nb-idnum').value.trim(),
+    notes: $('#nb-notes').value.trim(),
+    status: 'confirmed',
+    source: 'admin'
+  };
+  if(!data.customer_name){toast('Guest name required','e');return}
+  if(!data.check_in_date || !data.check_out_date){toast('Dates required','e');return}
+  if(!data.room_id){toast('Pick a room','e');return}
+
+  $('#nb-save').disabled=true; $('#nb-save').textContent='⏳ Creating…';
+  try{
+    const res=await SBPHotel.bookings.create(_shopId,data);
+    if(!res.ok){
+      const m=({room_already_booked:'Room already booked for these dates',room_unavailable:'Room is in maintenance/blocked',invalid_date_range:'Check-out must be after check-in',customer_name_required:'Guest name required'}[res.error])||res.error||'Save failed';
+      throw new Error(m);
+    }
+    toast('✅ Booking created','s');
+    closeModal('new-modal');
+    await loadBookings();
+    // refresh summary
+    const sm=await SBPHotel.summary(_shopId); if(sm.ok)_summary=sm; renderSummary();
+  }catch(e){toast(e.message||'Save failed','e')}finally{
+    $('#nb-save').disabled=false; $('#nb-save').textContent='💾 Create Booking';
+  }
+}
+
+// ── Booking detail / folio ───────────────────────────────────────
+async function openDetail(id){
+  _currentBooking = _bookings.find(b=>b.id===id);
+  if(!_currentBooking)return;
+  await renderDetail();
+  openModal('det-modal');
+}
+
+async function renderDetail(){
+  const b=_currentBooking;
+  // Load extras
+  const exRes = await SBPHotel.extras.list(_shopId, b.id);
+  const extras = exRes.ok ? (exRes.extras||[]) : [];
+  const extrasTotal = exRes.ok ? (exRes.extras_total||0) : 0;
+
+  const sb=SBPHotel.statusBadgeColor(b.status);
+  const grandTotal = (Number(b.room_total)||0) + extrasTotal + (Number(b.tax_amount)||0) - (Number(b.discount_amount)||0);
+
+  const actionBtns = [];
+  if(b.status==='pending' || b.status==='confirmed'){
+    actionBtns.push(`<button class="btn-success" onclick="doCheckIn()" style="margin-bottom:8px">✅ Check In Now</button>`);
+    actionBtns.push(`<button class="btn-danger" onclick="doCancel()" style="margin-bottom:8px">❌ Cancel Booking</button>`);
+  }else if(b.status==='checked_in'){
+    actionBtns.push(`<button class="btn-pri" onclick="openAddExtra()" style="margin-bottom:8px">➕ Add Extra Charge</button>`);
+    actionBtns.push(`<button class="btn-success" onclick="doCheckOut()" style="margin-bottom:8px">🧾 Check Out & Generate Bill</button>`);
+    actionBtns.push(`<button class="btn-danger" onclick="doCancel()" style="margin-bottom:8px">❌ Cancel</button>`);
+  }else if(b.status==='checked_out' && b.bill_id){
+    actionBtns.push(`<button class="btn-pri" onclick="window.location.href='bills.html?id=${b.bill_id}'" style="margin-bottom:8px">🧾 View Bill</button>`);
+  }
+
+  const extrasHtml = extras.length
+    ? extras.map(e=>`<div class="extra-item"><div class="x-name">${escHtml(e.description)} ${e.qty>1?`<span style="color:var(--t2)">× ${e.qty}</span>`:''}</div><div class="x-amt">${fINR(e.amount)}</div>${b.status==='checked_in'?`<button class="x-rm" onclick="event.stopPropagation();removeExtra('${e.id}')">✕</button>`:''}</div>`).join('')
+    : `<div style="text-align:center;color:var(--t2);font-size:12px;padding:10px">No extras yet</div>`;
+
+  $('#det-content').innerHTML=`
+    <div class="handle"></div>
+    <div class="sheet-title">${escHtml(b.customer_name)} <span class="bk-tag ${b.status}" style="font-size:11px;margin-left:8px;vertical-align:middle">${sb.label}</span></div>
+
+    <div class="det-section">
+      <div class="det-h">📋 <span class="lang-en">Guest Details</span></div>
+      <div class="det-row"><span class="k">Phone</span><span class="v">${escHtml(b.customer_phone||'—')}</span></div>
+      <div class="det-row"><span class="k">WhatsApp</span><span class="v">${escHtml(b.customer_wa||'—')}</span></div>
+      <div class="det-row"><span class="k">Guests</span><span class="v">${b.num_adults} adult${b.num_adults>1?'s':''}${b.num_children>0?', '+b.num_children+' child':''}</span></div>
+      ${b.id_proof_type?`<div class="det-row"><span class="k">ID</span><span class="v">${escHtml(b.id_proof_type)}: ${escHtml(b.id_proof_number||'—')}</span></div>`:''}
+      ${b.notes?`<div class="det-row"><span class="k">Notes</span><span class="v" style="font-size:11px;font-style:italic;text-align:right">"${escHtml(b.notes)}"</span></div>`:''}
+    </div>
+
+    <div class="det-section">
+      <div class="det-h">🛏️ <span class="lang-en">Stay</span></div>
+      <div class="det-row"><span class="k">Room</span><span class="v">${escHtml(b.room_number||'TBD')}${b.room_type_name?` (${escHtml(b.room_type_name)})`:''}</span></div>
+      <div class="det-row"><span class="k">Check-in</span><span class="v">${fmtDate(b.check_in_date)}</span></div>
+      <div class="det-row"><span class="k">Check-out</span><span class="v">${fmtDate(b.check_out_date)}</span></div>
+      <div class="det-row"><span class="k">Nights</span><span class="v">${b.num_nights}</span></div>
+      <div class="det-row"><span class="k">Rate</span><span class="v">${fINR(b.rate_per_night)}/night</span></div>
+    </div>
+
+    <div class="det-section">
+      <div class="det-h">📒 <span class="lang-en">Folio</span></div>
+      <div class="det-row"><span class="k">Room (${b.num_nights} × ${fINR(b.rate_per_night)})</span><span class="v">${fINR(b.room_total)}</span></div>
+      <div style="margin:10px 0 6px;font-size:11px;color:var(--t2);font-weight:700;text-transform:uppercase;letter-spacing:.4px">EXTRAS (${extras.length})</div>
+      ${extrasHtml}
+      ${(Number(b.tax_amount)||0)>0?`<div class="det-row" style="margin-top:8px"><span class="k">Tax</span><span class="v">${fINR(b.tax_amount)}</span></div>`:''}
+      ${(Number(b.discount_amount)||0)>0?`<div class="det-row"><span class="k">Discount</span><span class="v" style="color:var(--rose)">−${fINR(b.discount_amount)}</span></div>`:''}
+      <div class="det-row total"><span class="k">Total</span><span class="v">${fINR(grandTotal)}</span></div>
+    </div>
+
+    ${actionBtns.join('')}
+    <button class="btn-sec" onclick="closeModal('det-modal')" style="margin-top:8px">Close</button>
+    <div style="height:8px"></div>
+  `;
+}
+
+async function doCheckIn(){
+  if(!confirm('Check this guest in now?'))return;
+  const res=await SBPHotel.bookings.checkIn(_shopId, _currentBooking.id);
+  if(!res.ok){toast(res.error||'Check-in failed','e');return}
+  toast('✅ Checked in','s');
+  closeModal('det-modal');
+  await loadBookings();
+  const sm=await SBPHotel.summary(_shopId); if(sm.ok)_summary=sm; renderSummary();
+}
+
+async function doCancel(){
+  const reason = prompt('Reason for cancellation (optional):');
+  if(reason === null) return;
+  const res=await SBPHotel.bookings.cancel(_shopId, _currentBooking.id, reason);
+  if(!res.ok){toast(res.error||'Cancel failed','e');return}
+  toast('❌ Cancelled','s');
+  closeModal('det-modal');
+  await loadBookings();
+  const sm=await SBPHotel.summary(_shopId); if(sm.ok)_summary=sm; renderSummary();
+}
+
+async function doCheckOut(){
+  if(!confirm('Check out this guest and generate the final bill?'))return;
+  const res=await SBPHotel.bookings.checkOut(_shopId, _currentBooking.id);
+  if(!res.ok){toast(res.error||'Check-out failed','e');return}
+  // Server returned folio summary — encode as URL params and bounce to billing.html
+  const f=res.folio||{};
+  const params=new URLSearchParams({
+    booking_id: _currentBooking.id,
+    cust: f.customer_name||'',
+    wa: f.customer_wa||f.customer_phone||'',
+    auto: '1'
+  });
+  toast('✅ Checked out — generating bill…','s');
+  closeModal('det-modal');
+  setTimeout(()=>{ window.location.href='billing.html?'+params.toString() }, 700);
+}
+
+// ── Folio extras ───────────────────────────────────────
+function openAddExtra(){
+  $('#ex-bid').value=_currentBooking.id;
+  $('#ex-cat').value='food';
+  $('#ex-desc').value='';
+  $('#ex-qty').value=1;
+  $('#ex-unit').value='';
+  $('#ex-amt').textContent='Total: ₹0';
+  openModal('extra-modal');
+}
+
+function recalcExtraAmt(){
+  const q=parseInt($('#ex-qty').value,10)||0;
+  const u=parseFloat($('#ex-unit').value)||0;
+  $('#ex-amt').textContent=`Total: ${fINR(q*u)}`;
+}
+$('#ex-qty').addEventListener('input', recalcExtraAmt);
+$('#ex-unit').addEventListener('input', recalcExtraAmt);
+
+async function saveExtra(){
+  const bid=$('#ex-bid').value;
+  const data={
+    category: $('#ex-cat').value,
+    description: $('#ex-desc').value.trim(),
+    qty: parseInt($('#ex-qty').value,10)||1,
+    unit_price: parseFloat($('#ex-unit').value)||0
+  };
+  if(!data.description){toast('Description required','e');return}
+  if(data.unit_price<=0){toast('Price must be > 0','e');return}
+  $('#ex-save').disabled=true; $('#ex-save').textContent='⏳ Adding…';
+  try{
+    const res=await SBPHotel.extras.add(_shopId, bid, data);
+    if(!res.ok)throw new Error(res.error||'Add failed');
+    toast('✅ Added to folio','s');
+    closeModal('extra-modal');
+    // Reload current booking + redraw detail
+    const list=await SBPHotel.bookings.list(_shopId, 'all', null);
+    if(list.ok){_bookings=list.bookings||[];_currentBooking=_bookings.find(b=>b.id===bid)||_currentBooking}
+    await renderDetail();
+  }catch(e){toast(e.message||'Add failed','e')}finally{
+    $('#ex-save').disabled=false; $('#ex-save').textContent='💾 Add to Folio';
+  }
+}
+
+async function removeExtra(extraId){
+  if(!confirm('Remove this extra charge?'))return;
+  const res=await SBPHotel.extras.remove(_shopId, extraId);
+  if(!res.ok){toast(res.error||'Remove failed','e');return}
+  toast('🗑️ Removed','s');
+  // Reload current booking + redraw
+  const list=await SBPHotel.bookings.list(_shopId, 'all', null);
+  if(list.ok){_bookings=list.bookings||[];_currentBooking=_bookings.find(b=>b.id===_currentBooking.id)||_currentBooking}
+  await renderDetail();
+}
+
+init();
+</script>
+</body>
+</html>
