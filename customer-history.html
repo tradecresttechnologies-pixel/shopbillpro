@@ -514,19 +514,24 @@ async function loadDetail(){
   $('#picker-mode').style.display = 'none';
   $('#detail-mode').style.display = 'none';
 
-  // ── HOTFIX (6 May 2026): Resilient detail load ──
-  // Original bug: when sbp_get_customer_timeline RPC failed (most often
-  // because migration 013_customer_history.sql isn't deployed yet), the
-  // page would still show the detail mode without rendering anything,
-  // resulting in a broken empty page + "Could not load timeline" toast.
-  // Fix: try the RPC first; on failure, fall back to fetching the
-  // customer directly from the customers table (which we know works),
-  // render header + empty stats + empty timeline + diagnostic message,
-  // OR bounce back to customers.html if even fallback fails.
+  // ── HOTFIX v2 (6 May 2026): Three-tier bulletproof load ──
+  // v1 had two bugs: explicit column list (some columns may not exist on
+  // older customers tables, errors the whole query); .single() throws on
+  // 0 rows. Result: when RPC failed, fallback also failed → user bounced
+  // to customers.html with "Could not load customer".
+  // v2: select('*') + .maybeSingle() + localStorage as 3rd-tier fallback.
+  //
+  // Tier 1: sbp_get_customer_timeline RPC (full timeline)
+  // Tier 2: direct customers table fetch (basic info, empty timeline)
+  // Tier 3: localStorage sbp_customers cache (offline-created customers)
+  // Bounce: only if all three tiers fail (e.g., bad customer_id in URL)
 
   let rpcOk = false;
-  let diagnosticMsg = '';
+  let foundInSupabase = false;
+  let foundInLocal = false;
+  let lastError = '';
 
+  // ── Tier 1: RPC (full timeline) ──
   try {
     const { data, error } = await _sb.rpc('sbp_get_customer_timeline', { p_customer_id: _customerId });
     if (error) throw error;
@@ -537,50 +542,85 @@ async function loadDetail(){
     _timeline = data.timeline || [];
     rpcOk = true;
   } catch (e) {
-    console.warn('[CustomerHistory] timeline RPC failed:', e?.message || e);
-    const msg = String(e?.message || e || '').toLowerCase();
+    lastError = String(e?.message || e || '');
+    console.warn('[CustomerHistory] Tier 1 RPC failed:', lastError);
 
-    // Hard errors → bounce back
-    if (msg.includes('customer_not_found') || msg.includes('unauthorized') || msg.includes('not_owner')) {
+    // Hard auth/ownership errors → bounce immediately, no fallback
+    const lcMsg = lastError.toLowerCase();
+    if (lcMsg.includes('customer_not_found') || lcMsg.includes('unauthorized') || lcMsg.includes('not_owner')) {
       toast('Customer not found', 'e');
       setTimeout(() => { window.location.href = 'customers.html'; }, 1200);
       return;
     }
 
-    // Detect "function does not exist" — migration 013 not deployed
-    const isMissingFn = msg.includes('does not exist') || msg.includes('function sbp_get_customer_timeline') || msg.includes('schema cache');
-    diagnosticMsg = isMissingFn
-      ? 'Timeline feature needs migration 013 deployed in Supabase. Showing basic info only.'
-      : 'Could not load activity history. Showing basic info only.';
-
-    // Fallback: fetch customer directly from customers table
+    // ── Tier 2: Direct Supabase fetch ──
+    // select('*') instead of explicit columns → tolerates schema variations
+    // .maybeSingle() instead of .single() → returns null on 0 rows instead of throwing
     try {
       const { data: cust, error: cErr } = await _sb
         .from('customers')
-        .select('id,name,phone,whatsapp,customer_type,joined_at,email,address,balance,credit_limit,gstin,city')
+        .select('*')
         .eq('id', _customerId)
-        .single();
+        .maybeSingle();
 
-      if (cErr || !cust) throw cErr || new Error('not_found');
-
-      _customer = cust;
-      _stats    = {};   // No stats available without RPC
-      _timeline = [];   // No timeline available without RPC
+      if (cErr) {
+        console.warn('[CustomerHistory] Tier 2 Supabase error:', cErr.message || cErr);
+        throw cErr;
+      }
+      if (cust) {
+        _customer = cust;
+        _stats    = {};
+        _timeline = [];
+        foundInSupabase = true;
+        console.info('[CustomerHistory] Tier 2 OK — loaded from customers table');
+      } else {
+        console.warn('[CustomerHistory] Tier 2 returned null — customer ID not in Supabase');
+      }
     } catch (e2) {
-      // Fallback also failed — bounce back, don't show broken UI
-      console.error('[CustomerHistory] fallback also failed:', e2);
+      console.warn('[CustomerHistory] Tier 2 failed:', e2?.message || e2);
+    }
+
+    // ── Tier 3: localStorage cache ──
+    if (!foundInSupabase) {
+      try {
+        const cached = JSON.parse(localStorage.getItem('sbp_customers') || '[]');
+        const local = (cached || []).find(c => c && String(c.id) === String(_customerId));
+        if (local) {
+          _customer = local;
+          _stats    = {};
+          _timeline = [];
+          foundInLocal = true;
+          console.info('[CustomerHistory] Tier 3 OK — loaded from localStorage');
+        } else {
+          console.warn('[CustomerHistory] Tier 3: customer ID not in localStorage either');
+        }
+      } catch (e3) {
+        console.warn('[CustomerHistory] Tier 3 failed:', e3?.message || e3);
+      }
+    }
+
+    // ── All three tiers failed → bounce ──
+    if (!foundInSupabase && !foundInLocal) {
+      console.error('[CustomerHistory] All three lookup tiers failed. Last error:', lastError);
       toast('Could not load customer', 'e');
       setTimeout(() => { window.location.href = 'customers.html'; }, 1500);
       return;
     }
   }
 
-  // Always render with whatever we have — never show empty broken state
+  // ── Render with whatever we have ──
   renderDetail();
 
-  // Show diagnostic toast if we used fallback (after render so user sees the page first)
-  if (!rpcOk && diagnosticMsg) {
-    setTimeout(() => toast(diagnosticMsg, 'i', 4500), 300);
+  // Show informational toast about why timeline is missing (only when fallback used)
+  if (!rpcOk) {
+    const lcLast = lastError.toLowerCase();
+    const isMissingFn = lcLast.includes('does not exist') || lcLast.includes('schema cache') || lcLast.includes('function sbp_get_customer_timeline') || lcLast.includes('not found in schema');
+    const msg = isMissingFn
+      ? 'Activity timeline needs migration 013. Basic info shown.'
+      : foundInLocal && !foundInSupabase
+      ? 'Showing offline data. Sync customer to see full activity.'
+      : 'Showing basic info — activity history unavailable.';
+    setTimeout(() => toast(msg, 'i', 4500), 300);
   }
 
   $('#loader').style.display = 'none';
