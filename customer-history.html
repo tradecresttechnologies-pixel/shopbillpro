@@ -429,22 +429,44 @@ async function loadPicker(){
   $('#picker-mode').style.display = 'none';
   $('#detail-mode').style.display = 'none';
 
+  // ── HOTFIX (6 May 2026): customers table doesn't have updated_at column.
+  // Use joined_at (fallback to name) for ordering. If Supabase fails entirely
+  // (offline, RLS issue, network), fall back to localStorage cache that
+  // customers.html populates on every load — better than empty page.
+  let custs = [];
+  let supabaseOk = false;
   try {
     const { data, error } = await _sb
       .from('customers')
-      .select('id,name,phone,whatsapp,customer_type,joined_at,updated_at')
+      .select('id,name,phone,whatsapp,customer_type,joined_at')
       .eq('shop_id', _shopId)
-      .order('updated_at', { ascending: false, nullsLast: true })
+      .order('joined_at', { ascending: false })
       .limit(40);
     if (error) throw error;
-    _pickerCusts = data || [];
-    renderPicker(_pickerCusts);
+    custs = data || [];
+    supabaseOk = true;
   } catch (e) {
-    console.error(e);
-    toast('Could not load customers', 'e');
-    _pickerCusts = [];
-    renderPicker([]);
+    console.warn('[CustomerHistory] Supabase fetch failed, using localStorage:', e?.message || e);
+    // Fallback to localStorage cache populated by customers.html
+    try {
+      const cached = JSON.parse(localStorage.getItem('sbp_customers') || '[]');
+      custs = (cached || [])
+        .filter(c => c && c.id && c.name)
+        .sort((a,b) => {
+          const ta = a.joined_at ? new Date(a.joined_at).getTime() : 0;
+          const tb = b.joined_at ? new Date(b.joined_at).getTime() : 0;
+          if (tb !== ta) return tb - ta;
+          return String(a.name||'').localeCompare(String(b.name||''));
+        })
+        .slice(0, 40);
+    } catch (cacheErr) {
+      custs = [];
+    }
+    if (!custs.length) toast('Could not load customers', 'e');
   }
+
+  _pickerCusts = custs;
+  renderPicker(_pickerCusts);
 
   $('#loader').style.display = 'none';
   $('#picker-mode').style.display = 'block';
