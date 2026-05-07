@@ -50,6 +50,12 @@ function sbpY(){return sbpToday().slice(0,4);}
 <script src="lang.js"></script>
 <!-- BATCH 1B-C/F-Scale: smart sidebar engine -->
 <script src="lib/sidebar-engine.js"></script>
+<!-- BATCH 017 BUG-025 FIX: hospitality.js MUST load before init() so
+     window.SBPHotel exists when the booking_id branch runs. Previously
+     this was at end-of-body (line ~3889), which loaded AFTER init() ran
+     at ~3480. Result: prefill toast'd "Hospitality module not loaded"
+     and bailed without filling items. Now it loads here. -->
+<script src="lib/hospitality.js"></script>
 <script src="conversion.js"></script>
 
 
@@ -3085,19 +3091,31 @@ function loadFromTemplateParams(){
     // Async: fetch booking + extras, populate items
     (async function(){
       try {
-        if(!window.SBPHotel || !window._sb){ toast('⚠️ Hospitality module not loaded','e'); return }
+        // BATCH 017: Wait briefly if SBPHotel hasn't finished loading.
+        // Should normally be ready (script now loads early in <head>),
+        // but defensive — script load can be slow on first visit.
+        let waited = 0;
+        while ((!window.SBPHotel || !window._sb) && waited < 3000) {
+          await new Promise(r => setTimeout(r, 100));
+          waited += 100;
+        }
+        if(!window.SBPHotel || !window._sb){ toast('⚠️ Hospitality module not loaded — refresh page','e',4000); return }
         const shopId = localStorage.getItem('sbp_shop_id') || (JSON.parse(localStorage.getItem('sbp_shop')||'{}').id);
         if(!shopId){ toast('⚠️ Shop not loaded','e'); return }
 
         // Get all bookings to find this one (cheap — small list)
         const list = await SBPHotel.bookings.list(shopId, 'all', null);
-        if(!list.ok){ toast('⚠️ Could not load booking','e'); return }
+        if(!list.ok){ toast('⚠️ Could not load booking: '+(list.error||'unknown'),'e'); return }
         const b = (list.bookings||[]).find(x=>x.id===bookingId);
         if(!b){ toast('⚠️ Booking not found','e'); return }
 
         // Load folio extras
         const exRes = await SBPHotel.extras.list(shopId, bookingId);
         const extras = exRes.ok ? (exRes.extras||[]) : [];
+
+        // Stash for any later flow (e.g., Print Folio button)
+        window._currentBooking = b;
+        window._currentBookingExtras = extras;
 
         // Clear existing items, add room line + each extra
         const wrap = document.getElementById('items-wrap');
@@ -3886,7 +3904,7 @@ function showCollectPayment(billId) {
 </script>
 <script src="lib/beta-banner.js"></script>
 <script src="lib/loyalty.js"></script>
-<script src="lib/hospitality.js"></script>
+<!-- BATCH 017 BUG-025: hospitality.js now loads at top of file, not here -->
 
 <!-- BATCH 015: Bookings → Bill linkage hook ─────────────────────────
      When billing.html was opened with ?booking_id=X (hospitality

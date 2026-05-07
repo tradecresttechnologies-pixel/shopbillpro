@@ -80,7 +80,8 @@ body{background:var(--bg);color:var(--text);min-height:100dvh;overflow-x:hidden}
 .act-btn{width:30px;height:30px;border-radius:8px;background:var(--surf2);border:1px solid var(--bord);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px}
 .act-btn.danger:hover{background:rgba(244,63,94,.12);border-color:var(--rose)}
 
-.fab{position:fixed;bottom:78px;right:16px;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff;border:none;font-size:28px;cursor:pointer;box-shadow:0 6px 20px rgba(245,166,35,.45);z-index:60;font-family:var(--font-h)}
+.fab{position:fixed;bottom:78px;right:16px;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff;border:none;font-size:32px;line-height:1;cursor:pointer;box-shadow:0 6px 20px rgba(245,166,35,.45);z-index:60;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-weight:300;display:flex;align-items:center;justify-content:center;padding:0;padding-bottom:4px}
+@media(min-width:1024px){.fab{bottom:24px}}
 
 .empty{text-align:center;padding:50px 24px;color:var(--t2)}
 .empty-emoji{font-size:48px;margin-bottom:12px}
@@ -94,6 +95,10 @@ body{background:var(--bg);color:var(--text);min-height:100dvh;overflow-x:hidden}
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:200;display:none;align-items:flex-end;justify-content:center}
 .overlay.open{display:flex}
 .sheet{background:var(--bg);border-radius:20px 20px 0 0;width:100%;max-width:560px;max-height:92dvh;overflow-y:auto;padding:8px 16px 20px;border-top:1px solid var(--bord)}
+@media(min-width:1024px){
+  .overlay{align-items:center}
+  .sheet{max-width:680px;border-radius:18px;border:1px solid var(--bord);max-height:90dvh;padding:14px 24px 24px}
+}
 .handle{width:44px;height:4px;background:var(--bord);border-radius:2px;margin:8px auto 14px}
 .sheet-title{font-family:var(--font-h);font-size:18px;font-weight:800;margin-bottom:14px}
 .ff{margin-bottom:12px}

@@ -81,7 +81,11 @@ body{background:var(--bg);color:var(--text);min-height:100dvh;overflow-x:hidden}
 .bk-tag.dim         {background:var(--surf2);color:var(--t2);border-color:var(--bord)}
 .bk-tag.online      {background:rgba(59,130,246,.10);color:var(--acc4);border-color:var(--acc4)}
 
-.fab{position:fixed;bottom:78px;right:16px;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff;border:none;font-size:28px;cursor:pointer;box-shadow:0 6px 20px rgba(245,166,35,.45);z-index:60;font-family:var(--font-h)}
+/* BATCH 017 BUG-024 FIX: FAB now uses flex centering + system font for + glyph
+   (avoids font-loading flash where Outfit renders + as offset/cropped).
+   Also adds line-height:1 to prevent vertical clipping. */
+.fab{position:fixed;bottom:78px;right:16px;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff;border:none;font-size:32px;line-height:1;cursor:pointer;box-shadow:0 6px 20px rgba(245,166,35,.45);z-index:60;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-weight:300;display:flex;align-items:center;justify-content:center;padding:0;padding-bottom:4px}
+@media(min-width:1024px){.fab{bottom:24px}}
 
 .empty{text-align:center;padding:50px 24px;color:var(--t2)}
 .empty-emoji{font-size:48px;margin-bottom:12px}
@@ -95,6 +99,11 @@ body{background:var(--bg);color:var(--text);min-height:100dvh;overflow-x:hidden}
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:200;display:none;align-items:flex-end;justify-content:center}
 .overlay.open{display:flex}
 .sheet{background:var(--bg);border-radius:20px 20px 0 0;width:100%;max-width:560px;max-height:92dvh;overflow-y:auto;padding:8px 16px 20px;border-top:1px solid var(--bord)}
+/* BATCH 017 BUG-022a FIX: Widen modal on desktop (mobile width felt cramped on laptop) */
+@media(min-width:1024px){
+  .overlay{align-items:center}
+  .sheet{max-width:760px;border-radius:18px;border:1px solid var(--bord);max-height:90dvh;padding:14px 24px 24px}
+}
 .handle{width:44px;height:4px;background:var(--bord);border-radius:2px;margin:8px auto 14px}
 .sheet-title{font-family:var(--font-h);font-size:18px;font-weight:800;margin-bottom:14px}
 
@@ -555,6 +564,8 @@ async function renderDetail(){
   const grandTotal = (Number(b.room_total)||0) + extrasTotal + (Number(b.tax_amount)||0) - (Number(b.discount_amount)||0);
 
   const actionBtns = [];
+  // BATCH 017 BUG-022b: Always show Print Folio (works in any state)
+  actionBtns.push(`<button class="btn-sec" onclick="printFolio()" style="margin-bottom:8px">🖨️ <span class="lang-en">Print Folio</span><span class="lang-hi">फोलियो प्रिंट करें</span></button>`);
   if(b.status==='pending' || b.status==='confirmed'){
     actionBtns.push(`<button class="btn-success" onclick="doCheckIn()" style="margin-bottom:8px">✅ Check In Now</button>`);
     actionBtns.push(`<button class="btn-danger" onclick="doCancel()" style="margin-bottom:8px">❌ Cancel Booking</button>`);
@@ -699,6 +710,109 @@ async function removeExtra(extraId){
   const list=await SBPHotel.bookings.list(_shopId, 'all', null);
   if(list.ok){_bookings=list.bookings||[];_currentBooking=_bookings.find(b=>b.id===_currentBooking.id)||_currentBooking}
   await renderDetail();
+}
+
+// ── BATCH 017 BUG-022b: Print Folio ────────────────────────────────
+// Opens a clean print-friendly window with full folio breakdown.
+// Uses a hidden iframe + window.print() so the main UI isn't replaced.
+async function printFolio(){
+  const b = _currentBooking;
+  if(!b){ toast('No booking selected','e'); return }
+
+  // Load fresh extras
+  const exRes = await SBPHotel.extras.list(_shopId, b.id);
+  const extras = exRes.ok ? (exRes.extras||[]) : [];
+  const extrasTotal = exRes.ok ? (exRes.extras_total||0) : 0;
+  const grandTotal = (Number(b.room_total)||0) + extrasTotal + (Number(b.tax_amount)||0) - (Number(b.discount_amount)||0);
+
+  const shop = JSON.parse(localStorage.getItem('sbp_shop')||'{}');
+  const shopName = shop.name || shop.shop_name || 'Hotel';
+  const shopAddr = shop.address || '';
+  const shopPhone = shop.phone || '';
+  const shopGST = shop.gstin || '';
+
+  const extrasRows = extras.length
+    ? extras.map(e => `<tr><td>${escHtml(e.description)} (${escHtml(e.category)})</td><td style="text-align:center">${e.qty}</td><td style="text-align:right">₹${Math.round(e.unit_price).toLocaleString('en-IN')}</td><td style="text-align:right">₹${Math.round(e.amount).toLocaleString('en-IN')}</td></tr>`).join('')
+    : '<tr><td colspan="4" style="text-align:center;color:#999;font-style:italic;padding:8px">No extras</td></tr>';
+
+  const html = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Folio — ${escHtml(b.customer_name)} — ${b.check_out_date}</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:-apple-system,'Segoe UI',Arial,sans-serif;color:#1a1a2e;padding:24px;max-width:780px;margin:0 auto;font-size:13px;line-height:1.45}
+  h1{font-size:22px;margin-bottom:4px}
+  .shop-meta{color:#555;font-size:11px;margin-bottom:16px;padding-bottom:14px;border-bottom:2px solid #1a1a2e}
+  h2{font-size:14px;margin:16px 0 8px;padding-bottom:4px;border-bottom:1px solid #ddd;text-transform:uppercase;letter-spacing:.5px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px 24px}
+  .row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dotted #eee}
+  .row .k{color:#666}
+  .row .v{font-weight:600}
+  table{width:100%;border-collapse:collapse;margin-top:6px;font-size:12px}
+  th{text-align:left;background:#f5f5f7;padding:7px 8px;font-weight:600;border-bottom:2px solid #1a1a2e}
+  td{padding:6px 8px;border-bottom:1px solid #eee}
+  .tot{margin-top:12px;border-top:2px solid #1a1a2e;padding-top:10px}
+  .tot .row{font-size:14px}
+  .tot .row.grand{font-size:18px;font-weight:800;padding-top:8px;color:#F5A623}
+  .footer{margin-top:32px;padding-top:14px;border-top:1px solid #ddd;font-size:11px;color:#666;text-align:center}
+  @media print{
+    body{padding:0;font-size:12px}
+    @page{margin:1.5cm}
+  }
+</style>
+</head><body>
+  <h1>${escHtml(shopName)}</h1>
+  <div class="shop-meta">
+    ${escHtml(shopAddr)}${shopAddr?'<br>':''}
+    ${shopPhone?'📞 '+escHtml(shopPhone)+'  ':''}${shopGST?'GSTIN: '+escHtml(shopGST):''}
+    <br><strong>FOLIO / GUEST STATEMENT</strong>
+  </div>
+
+  <div class="grid2">
+    <div>
+      <h2>Guest</h2>
+      <div class="row"><span class="k">Name</span><span class="v">${escHtml(b.customer_name)}</span></div>
+      ${b.customer_phone?`<div class="row"><span class="k">Phone</span><span class="v">${escHtml(b.customer_phone)}</span></div>`:''}
+      ${b.id_proof_type?`<div class="row"><span class="k">${escHtml(b.id_proof_type)}</span><span class="v">${escHtml(b.id_proof_number||'')}</span></div>`:''}
+      <div class="row"><span class="k">Guests</span><span class="v">${b.num_adults}A${b.num_children>0?'+'+b.num_children+'C':''}</span></div>
+    </div>
+    <div>
+      <h2>Stay</h2>
+      <div class="row"><span class="k">Room</span><span class="v">${escHtml(b.room_number||'TBD')}${b.room_type_name?' ('+escHtml(b.room_type_name)+')':''}</span></div>
+      <div class="row"><span class="k">Check-in</span><span class="v">${fmtDate(b.check_in_date)}</span></div>
+      <div class="row"><span class="k">Check-out</span><span class="v">${fmtDate(b.check_out_date)}</span></div>
+      <div class="row"><span class="k">Nights</span><span class="v">${b.num_nights}</span></div>
+    </div>
+  </div>
+
+  <h2>Charges</h2>
+  <table>
+    <thead><tr><th>Description</th><th style="text-align:center">Qty</th><th style="text-align:right">Rate</th><th style="text-align:right">Amount</th></tr></thead>
+    <tbody>
+      <tr><td>Room (${b.num_nights}n × ${escHtml(b.room_type_name||'')})</td><td style="text-align:center">${b.num_nights}</td><td style="text-align:right">₹${Math.round(b.rate_per_night).toLocaleString('en-IN')}</td><td style="text-align:right">₹${Math.round(b.room_total).toLocaleString('en-IN')}</td></tr>
+      ${extrasRows}
+    </tbody>
+  </table>
+
+  <div class="tot">
+    <div class="row"><span class="k">Room Subtotal</span><span class="v">₹${Math.round(b.room_total).toLocaleString('en-IN')}</span></div>
+    <div class="row"><span class="k">Extras (${extras.length})</span><span class="v">₹${Math.round(extrasTotal).toLocaleString('en-IN')}</span></div>
+    ${(Number(b.tax_amount)||0)>0?`<div class="row"><span class="k">Tax</span><span class="v">₹${Math.round(b.tax_amount).toLocaleString('en-IN')}</span></div>`:''}
+    ${(Number(b.discount_amount)||0)>0?`<div class="row"><span class="k">Discount</span><span class="v">−₹${Math.round(b.discount_amount).toLocaleString('en-IN')}</span></div>`:''}
+    <div class="row grand"><span>TOTAL</span><span>₹${Math.round(grandTotal).toLocaleString('en-IN')}</span></div>
+  </div>
+
+  <div class="footer">
+    Generated on ${new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata'})}<br>
+    Thank you for staying with us.
+  </div>
+  <script>setTimeout(()=>{window.print();}, 300);</scrip${''}t>
+</body></html>`;
+
+  const w = window.open('', '_blank', 'width=900,height=700');
+  if(!w){ toast('Pop-up blocked. Please allow pop-ups.','e',4000); return }
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
 }
 
 init();
