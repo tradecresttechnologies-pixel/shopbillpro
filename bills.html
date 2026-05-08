@@ -61,7 +61,6 @@ function sbpY(){return sbpToday().slice(0,4);}
 <script src="lang.js"></script>
 <!-- BATCH 1B-C/F-Scale: smart sidebar engine -->
 <script src="lib/sidebar-engine.js"></script>
-<script src="lib/loyalty.js"></script>
 <script src="conversion.js"></script>
 
 
@@ -665,8 +664,16 @@ function openBillPreview(billId){
       const voided=it.voided;
       const gstRate=parseFloat(it.gst_rate||0);
       const gstAmt=parseFloat(it.gst_amount||(parseFloat(it.line_total||0)*gstRate/(100+gstRate))||0);
+      // Batch 019: kind badge
+      const _kind = (it.kind || 'product').toLowerCase();
+      const _kindBadge = _kind === 'service'
+        ? '<span style="display:inline-block;padding:1px 6px;background:rgba(236,72,153,.15);color:#EC4899;font-size:9px;font-weight:700;border-radius:6px;margin-left:6px;text-transform:uppercase;letter-spacing:.5px">✂️ Service</span>'
+        : _kind === 'room'
+          ? '<span style="display:inline-block;padding:1px 6px;background:rgba(16,185,129,.15);color:#10B981;font-size:9px;font-weight:700;border-radius:6px;margin-left:6px;text-transform:uppercase;letter-spacing:.5px">🛏️ Room</span>'
+          : '';
+      const _qtyLabel = it.qty_unit_label || (it.unit ? `${it.qty||1} ${it.unit}${(it.qty||1)>1?'s':''}` : `Qty: ${it.qty||1}`);
       return `<div class="bdoc-table-row" style="${voided?'opacity:.4;text-decoration:line-through':''}">
-        <div><div class="bdoc-item-nm">${it.item_name||'Item'}${voided?' <span style="color:var(--acc2);font-size:10px">[VOID]</span>':''}</div><div class="bdoc-item-sub">Qty: ${it.qty||1} × ₹${it.rate||0} | GST ${gstRate}%${gstRate>0?' (₹'+gstAmt.toFixed(2)+')':''}${it.hsn_code?' · HSN:'+it.hsn_code:''}</div></div>
+        <div><div class="bdoc-item-nm">${it.item_name||'Item'}${_kindBadge}${voided?' <span style="color:var(--acc2);font-size:10px">[VOID]</span>':''}</div><div class="bdoc-item-sub">${_qtyLabel} × ₹${it.rate||0} | GST ${gstRate}%${gstRate>0?' (₹'+gstAmt.toFixed(2)+')':''}${it.hsn_code?' · HSN:'+it.hsn_code:''}</div></div>
         <div style="text-align:center">${it.qty||1}</div>
         <div style="text-align:right">₹${it.rate||0}</div>
         <div style="text-align:right;font-weight:800;display:flex;flex-direction:column;align-items:flex-end;gap:3px">
@@ -1193,17 +1200,6 @@ async function _doVoidBill(billId){
       }
     }
   }
-
-  // BUG carryover (Batch 018): Reverse loyalty points (earn + redeem) on void.
-  // Defensive — silently no-ops if loyalty module not loaded or not active for shop.
-  try {
-    if (window.SBPLoyalty && typeof SBPLoyalty.reverseBill === 'function') {
-      const lr = await SBPLoyalty.reverseBill(billId);
-      if (lr && lr.ok && (lr.points_earned || lr.points_redeemed)) {
-        console.log('[loyalty void hook] reversed', lr);
-      }
-    }
-  } catch (e) { console.warn('[loyalty void hook] non-fatal:', e.message); }
 
   _bills[idx].status='Voided';
   _bills[idx].voided_at=new Date().toISOString();

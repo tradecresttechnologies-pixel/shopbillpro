@@ -542,7 +542,10 @@ html,body{height:100%;overflow:hidden}
       <div class="fsec">
         <div class="fsec-t">Items / Services</div>
         <div id="items-wrap"></div>
-        <button class="add-row-btn" onclick="addItem()">＋ Add Item / Service</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="add-row-btn" onclick="addItem()" style="flex:1;min-width:160px">＋ Add Item / Service</button>
+          <button class="add-row-btn" onclick="openItemPicker()" style="flex:1;min-width:160px;background:rgba(124,58,237,.08);border-color:rgba(124,58,237,.3)">📚 Browse Catalogue</button>
+        </div>
 
         <!-- Bill Discount -->
         <div style="background:var(--surf2);border:1.5px solid var(--bord);border-radius:var(--rs);padding:11px;margin-bottom:9px">
@@ -947,14 +950,65 @@ function addItem(prefill){
   // Prefill if product passed
   if(prefill){
     d.querySelector('.it-nm').value=prefill.name||'';
-    d.querySelector('.it-qty').value=1;
-    d.querySelector('.it-rt').value=prefill.price||prefill.selling_price||0;
+    d.querySelector('.it-qty').value=prefill.qty||1;
+    d.querySelector('.it-rt').value=prefill.rate||prefill.price||prefill.selling_price||0;
     const gst=prefill.gst_rate||prefill.gst||0;
     const gstSel=d.querySelector('.it-gst');
     for(var i=0;i<gstSel.options.length;i++){if(parseFloat(gstSel.options[i].value)===parseFloat(gst)){gstSel.selectedIndex=i;break;}}
+    // Batch 019: stamp item kind + source ID for later persistence
+    d.dataset.kind = prefill.kind || 'product';
+    if(prefill.kind==='product' && prefill.id) d.dataset.productId = prefill.id;
+    if(prefill.kind==='service' && prefill.id) d.dataset.serviceId = prefill.id;
+    if(prefill.kind==='room'    && prefill.id) d.dataset.roomTypeId = prefill.id;
+    if(prefill.unit) d.dataset.unit = prefill.unit;
     calcTotals();
+  } else {
+    // Default new row is treated as a product (matches pre-019 behaviour)
+    d.dataset.kind = 'product';
   }
   d.querySelector('.it-nm').focus();
+}
+
+// Batch 019 — open Universal Item Picker
+function openItemPicker(){
+  if(typeof SBPItemPicker === 'undefined' || !SBPItemPicker.open){
+    if(typeof toast==='function') toast('Item picker not loaded — refresh the page','e');
+    return;
+  }
+  const shop = JSON.parse(localStorage.getItem('sbp_shop')||'{}');
+  if(!shop || !shop.id){
+    if(typeof toast==='function') toast('No shop selected','e');
+    return;
+  }
+  SBPItemPicker.open({
+    shopId:   shop.id,
+    shopType: shop.shop_type || null,
+    onSelect: function(item){
+      // For rooms, ask for nights up front
+      let qty = 1, unit = item.unit || 'piece';
+      let qtyLabel = '';
+      if(item.kind === 'room'){
+        const n = prompt('Number of nights?', '1');
+        if(n === null) return;          // user cancelled
+        qty = Math.max(1, parseInt(n,10) || 1);
+        qtyLabel = qty + ' night' + (qty>1?'s':'');
+      } else if(item.kind === 'service' && item.duration){
+        // optional: prompt sessions for service
+        qty = 1;
+        qtyLabel = '1 session';
+      }
+      addItem({
+        kind:      item.kind,
+        id:        item.id,
+        name:      item.name,
+        rate:      item.rate,
+        gst_rate:  item.gst_rate,
+        unit:      unit,
+        qty:       qty,
+        qty_unit_label: qtyLabel
+      });
+    }
+  });
 }
 
 function showItemSuggestions(input){
@@ -992,6 +1046,10 @@ function selectItemSuggestion(el,productId){
   const gst=p.gst_rate||p.gst||0;
   const gstSel=row.querySelector('.it-gst');
   for(var i=0;i<gstSel.options.length;i++){if(parseFloat(gstSel.options[i].value)===parseFloat(gst)){gstSel.selectedIndex=i;break;}}
+  // Batch 019: stamp the row as a product with its source ID
+  row.dataset.kind = 'product';
+  row.dataset.productId = p.id || '';
+  row.dataset.unit = p.unit || 'piece';
   el.closest('.item-suggestions').classList.remove('show');
   calcTotals();
   row.querySelector('.it-qty').focus();
@@ -1077,7 +1135,16 @@ function gatherBill(){
     const lineAmt=q*r;
     const lineNet=Math.max(0,lineAmt-disc);
     netAfterItemDisc+=lineNet;
-    rawItems.push({nm,q,r,rate,disc,lineAmt,lineNet});
+    // Batch 019: pull kind & source IDs from the row's data attributes
+    rawItems.push({
+      nm,q,r,rate,disc,lineAmt,lineNet,
+      kind:        row.dataset.kind || 'product',
+      productId:   row.dataset.productId   || null,
+      serviceId:   row.dataset.serviceId   || null,
+      roomTypeId:  row.dataset.roomTypeId  || null,
+      unit:        row.dataset.unit        || null,
+      qtyUnitLabel: row.dataset.qtyUnitLabel || null
+    });
   });
 
   // Distribute bill discount proportionally and calc GST on post-discount amount
@@ -1551,7 +1618,13 @@ async function confirmSettle(){
               await _sb.from('bill_items').insert(b.items.map(it=>({
                 bill_id:editBillId,item_name:it.nm,qty:it.q,rate:it.r,
                 gst_rate:it.rate,discount:it.disc||0,
-                line_total:parseFloat(it.tot),gst_amount:parseFloat(it.lineGST||0)
+                line_total:parseFloat(it.tot),gst_amount:parseFloat(it.lineGST||0),
+                kind:           it.kind || 'product',
+                product_id:     it.productId   || null,
+                service_id:     it.serviceId   || null,
+                room_type_id:   it.roomTypeId  || null,
+                unit:           it.unit        || null,
+                qty_unit_label: it.qtyUnitLabel || null
               })));
             }
             savedBill={...updatePayload,id:editBillId};
@@ -1605,7 +1678,13 @@ async function confirmSettle(){
             await _sb.from('bill_items').insert(b.items.map(it=>({
               bill_id:data.id,item_name:it.nm,qty:it.q,rate:it.r,
               gst_rate:it.rate,discount:it.disc||0,
-              line_total:parseFloat(it.tot),gst_amount:parseFloat(it.lineGST||0)
+              line_total:parseFloat(it.tot),gst_amount:parseFloat(it.lineGST||0),
+              kind:           it.kind || 'product',
+              product_id:     it.productId   || null,
+              service_id:     it.serviceId   || null,
+              room_type_id:   it.roomTypeId  || null,
+              unit:           it.unit        || null,
+              qty_unit_label: it.qtyUnitLabel || null
             })));
           }
           // FIX #23 — Counter was already incremented by next_invoice_no RPC at bill open.
@@ -1632,10 +1711,13 @@ async function confirmSettle(){
     }
 
     // FIX #15 — Deduct stock for matched products in manual mode (was missing)
+    // Batch 019: skip non-product items (services + rooms have no stock concept)
     try {
       const products = JSON.parse(localStorage.getItem('sbp_products')||'[]');
       let stockChanged = false;
       for(const it of (b.items||[])){
+        // Only products deduct stock — services & rooms skip this entirely
+        if((it.kind || 'product') !== 'product') continue;
         let pIdx = -1;
         if(it.productId) pIdx = products.findIndex(p => String(p.id)===String(it.productId));
         if(pIdx<0 && it.nm) pIdx = products.findIndex(p => (p.name||'').toLowerCase().trim()===String(it.nm).toLowerCase().trim());
@@ -2696,7 +2778,7 @@ async function confirmPOSCheckout(){
           const{error:uerr}=await _sb.from('bills').update(updatePayload).eq('id',editBillId);
           if(!uerr){
             await _sb.from('bill_items').delete().eq('bill_id',editBillId);
-            await _sb.from('bill_items').insert(items.map(it=>({bill_id:editBillId,item_name:it.nm,qty:it.q,rate:it.r,gst_rate:it.rate,discount:0,line_total:parseFloat(it.tot),gst_amount:it.lineGST})));
+            await _sb.from('bill_items').insert(items.map(it=>({bill_id:editBillId,item_name:it.nm,qty:it.q,rate:it.r,gst_rate:it.rate,discount:0,line_total:parseFloat(it.tot),gst_amount:it.lineGST,kind:'product',product_id:it.productId||null,unit:it.unit||'piece'})));
             savedBill={...updatePayload,id:editBillId};
           }
         }catch(e){console.warn('POS edit save error:',e);}
@@ -2721,7 +2803,7 @@ async function confirmPOSCheckout(){
         const{data,error}=await _sb.from('bills').insert(billData).select().single();
         if(!error&&data){
           savedBill=data;
-          await _sb.from('bill_items').insert(items.map(it=>({bill_id:data.id,item_name:it.nm,qty:it.q,rate:it.r,gst_rate:it.rate,discount:0,line_total:parseFloat(it.tot),gst_amount:it.lineGST})));
+          await _sb.from('bill_items').insert(items.map(it=>({bill_id:data.id,item_name:it.nm,qty:it.q,rate:it.r,gst_rate:it.rate,discount:0,line_total:parseFloat(it.tot),gst_amount:it.lineGST,kind:'product',product_id:it.productId||null,unit:it.unit||'piece'})));
           // Deduct stock
           for(const it of items){
             const idx=_posItems.findIndex(p=>String(p.id)===String(it.productId));
@@ -3904,6 +3986,7 @@ function showCollectPayment(billId) {
 </script>
 <script src="lib/beta-banner.js"></script>
 <script src="lib/loyalty.js"></script>
+<script src="lib/item-picker.js"></script>
 <!-- BATCH 017 BUG-025: hospitality.js now loads at top of file, not here -->
 
 <!-- BATCH 015: Bookings → Bill linkage hook ─────────────────────────
