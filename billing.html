@@ -3223,8 +3223,20 @@ function loadFromTemplateParams(){
           r2.dataset.bookingId = b.id || bookingId;
           const desc = e.description || e.name || 'Extra';
           const qty  = e.qty || e.quantity || 1;
-          // Batch 021: prefer taxable_amount from folio; fall back to unit_price
-          const price = e.unit_price || e.rate || (e.taxable_amount ? (e.taxable_amount/qty) : 0) || 0;
+          // Batch 021.2 — CRITICAL FIX: use taxable_amount as the bill's RATE,
+          // not unit_price. taxable_amount is always pre-GST (whether the extra
+          // was entered inclusive or exclusive). billing.html applies GST on
+          // TOP of the rate. Using taxable_amount ensures bill's gross total
+          // matches the folio's gross total exactly.
+          //
+          // Example — inclusive dinner ₹650 @ 5%:
+          //   unit_price=650 (gross), taxable_amount=619.05 (base)
+          //   Old code: rate=650 + 5% GST → ₹682.50 (over-charges by ₹32.50)
+          //   New code: rate=619.05 + 5% GST → ₹650.00 (matches folio)
+          const taxablePerUnit = (e.taxable_amount != null && qty > 0)
+            ? (Number(e.taxable_amount) / qty)
+            : (Number(e.unit_price) || Number(e.rate) || 0);
+          const price = +taxablePerUnit.toFixed(2);
           // GST per line: from server if present, else from category default
           const lineGst = (e.gst_rate != null)
             ? Number(e.gst_rate)
