@@ -61,6 +61,7 @@ function sbpY(){return sbpToday().slice(0,4);}
 <script src="lang.js"></script>
 <!-- BATCH 1B-C/F-Scale: smart sidebar engine -->
 <script src="lib/sidebar-engine.js"></script>
+<script src="lib/loyalty.js"></script>
 <script src="conversion.js"></script>
 
 
@@ -1192,6 +1193,17 @@ async function _doVoidBill(billId){
       }
     }
   }
+
+  // BUG carryover (Batch 018): Reverse loyalty points (earn + redeem) on void.
+  // Defensive — silently no-ops if loyalty module not loaded or not active for shop.
+  try {
+    if (window.SBPLoyalty && typeof SBPLoyalty.reverseBill === 'function') {
+      const lr = await SBPLoyalty.reverseBill(billId);
+      if (lr && lr.ok && (lr.points_earned || lr.points_redeemed)) {
+        console.log('[loyalty void hook] reversed', lr);
+      }
+    }
+  } catch (e) { console.warn('[loyalty void hook] non-fatal:', e.message); }
 
   _bills[idx].status='Voided';
   _bills[idx].voided_at=new Date().toISOString();

@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en" translate="no" class="notranslate">
+<head>
+  <meta charset="UTF-8">
+  <meta name="google" content="notranslate">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png?v=2">
+  <title>Company Details — Admin</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Outfit',sans-serif;background:#0A0A12;color:#F0EFF8}
+    .layout{display:flex;min-height:100vh}
+    .sidebar{width:280px;background:rgba(19,19,28,.8);backdrop-filter:blur(10px);border-right:1px solid rgba(124,58,237,.2);padding:24px;position:fixed;height:100vh;overflow-y:auto;left:0;top:0}
+    .main{flex:1;margin-left:280px;padding:32px;max-width:980px}
+    .logo{display:flex;align-items:center;gap:12px;margin-bottom:32px}
+    .logo-icon{width:40px;height:40px;background:linear-gradient(135deg,#F5A623,#FF8A00);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px}
+    .logo-text{font-size:18px;font-weight:700}
+    .nav-section{margin-bottom:24px}
+    .nav-label{font-size:11px;font-weight:600;color:#5A5A78;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+    .nav-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;cursor:pointer;color:#8A8AA8;font-size:14px;font-weight:500;transition:all .2s}
+    .nav-item:hover{background:rgba(124,58,237,.1);color:#F0EFF8}
+    .nav-item.active{background:rgba(245,166,35,.15);color:#F5A623}
+    .header h1{font-size:30px;font-weight:800;background:linear-gradient(135deg,#F5A623,#FF8A00);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:4px}
+    .header p{font-size:14px;color:#8A8AA8;margin-bottom:24px}
+    .section{background:rgba(20,18,32,.6);border:1px solid rgba(124,58,237,.2);border-radius:12px;padding:24px;margin-bottom:20px}
+    .section h2{font-size:18px;font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:10px}
+    .section .desc{font-size:13px;color:#8A8AA8;margin-bottom:18px}
+    .field{margin-bottom:16px}
+    .field label{display:block;font-size:13px;font-weight:600;color:#F0EFF8;margin-bottom:6px}
+    .field .hint{font-size:11px;color:#8A8AA8;margin-top:4px}
+    .field input,.field textarea,.field select{width:100%;padding:11px 14px;background:rgba(10,14,20,.6);border:1px solid rgba(124,58,237,.3);border-radius:8px;color:#F0EFF8;font-family:inherit;font-size:14px}
+    .field textarea{min-height:64px;resize:vertical}
+    .field input:focus,.field textarea:focus{outline:none;border-color:#F5A623}
+    .field input:disabled,.field input[readonly]{opacity:.7;background:rgba(10,14,20,.4);cursor:not-allowed}
+    .field-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    .save-bar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:16px;background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.3);border-radius:10px;margin-bottom:20px;position:sticky;top:0;z-index:10;backdrop-filter:blur(10px)}
+    .save-status{font-size:13px;color:#8A8AA8}
+    .btn{padding:11px 24px;border-radius:8px;border:none;cursor:pointer;font-family:inherit;font-size:14px;font-weight:700}
+    .btn-primary{background:linear-gradient(135deg,#F5A623,#FF8A00);color:#0A0E1A}
+    .btn-secondary{background:rgba(124,58,237,.1);color:#F0EFF8;border:1px solid rgba(124,58,237,.3)}
+    .btn:disabled{opacity:.5;cursor:not-allowed}
+    .pill{display:inline-block;padding:3px 10px;border-radius:12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-left:8px}
+    .pill.locked{background:rgba(99,102,241,.2);color:#818CF8}
+    .pill.editable{background:rgba(16,185,129,.2);color:#10B981}
+    .pill.pending{background:rgba(245,158,11,.2);color:#F59E0B}
+    .info{background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.3);color:#818CF8;padding:14px;border-radius:10px;font-size:13px;margin-top:10px}
+    .danger{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);color:#FCA5A5;padding:14px;border-radius:10px;font-size:13px;margin-top:10px}
+    .toast{position:fixed;bottom:24px;right:24px;background:rgba(20,18,32,.95);border:1px solid #10B981;color:#fff;padding:14px 20px;border-radius:10px;font-weight:600;z-index:9999;max-width:400px}
+    .toast.err{border-color:#EF4444}
+    .legal-strip{display:flex;align-items:center;gap:8px;padding:6px 12px;background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.3);border-radius:8px;font-size:12px;color:#818CF8;margin-bottom:14px}
+    @media(max-width:900px){.sidebar{display:none}.main{margin-left:0;padding:18px}.field-row{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="logo">
+        <div class="logo-icon">🛡️</div>
+        <div class="logo-text">Admin</div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">Main</div>
+        <div class="nav-item" onclick="goTo('admin-dashboard.html')"><span>📊</span><span>Dashboard</span></div>
+        <div class="nav-item" onclick="goTo('admin-subscriptions.html')"><span>💳</span><span>Subscriptions</span></div>
+        <div class="nav-item" onclick="goTo('admin-users.html')"><span>👥</span><span>Users</span></div>
+        <div class="nav-item" onclick="goTo('admin-revenue.html')"><span>💰</span><span>Revenue</span></div>
+        <div class="nav-item" onclick="goTo('admin-analytics.html')"><span>📈</span><span>Analytics</span></div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">Configuration</div>
+        <div class="nav-item" onclick="goTo('admin-settings.html')"><span>⚙️</span><span>Settings</span></div>
+        <div class="nav-item active"><span>🏢</span><span>Company Details</span></div>
+        <div class="nav-item" onclick="goTo('admin-features.html')"><span>🚀</span><span>Features</span></div>
+        <div class="nav-item" onclick="goTo('admin-categories.html')"><span>📂</span><span>Categories</span></div>
+        <div class="nav-item" onclick="goTo('admin-technical.html')"><span>🛠️</span><span>Tech Health</span></div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">Content</div>
+        <div class="nav-item" onclick="goTo('admin-blog.html')"><span>📝</span><span>Blog</span></div>
+        <div class="nav-item" onclick="goTo('admin-seo-global.html')"><span>🔍</span><span>SEO Global</span></div>
+        <div class="nav-item" onclick="goTo('admin-seo-pages.html')"><span>📄</span><span>SEO Pages</span></div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">System</div>
+        <div class="nav-item" onclick="goTo('admin-notifications.html')"><span>🔔</span><span>Notifications</span></div>
+        <div class="nav-item" onclick="goTo('admin-audit.html')"><span>📋</span><span>Audit Logs</span></div>
+        <div class="nav-item" onclick="logout()" style="color:#EF4444"><span>🚪</span><span>Sign Out</span></div>
+      </div>
+    </div>
+
+    <!-- Main -->
+    <div class="main">
+      <div class="header">
+        <h1>🏢 Company Details</h1>
+        <p>Legal entity, registered office, contact channels. Used by footers, T&C, Privacy Policy, bills, and Schema.org markup.</p>
+      </div>
+
+      <div class="legal-strip">
+        🔒 Fields marked <span class="pill locked">LOCKED</span> are MCA-issued and cannot be edited from this panel. To change them, file the appropriate ROC form first.
+      </div>
+
+      <div class="save-bar">
+        <div class="save-status" id="save-status">Loading…</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-secondary" onclick="loadDetails()">↻ Reload</button>
+          <button class="btn btn-primary" id="save-btn" onclick="saveDetails()" disabled>💾 Save Changes</button>
+        </div>
+      </div>
+
+      <!-- Section 1 — Legal Identity -->
+      <div class="section">
+        <h2>📜 Legal Identity</h2>
+        <div class="desc">From Certificate of Incorporation. MCA-issued — locked fields cannot be edited here.</div>
+
+        <div class="field">
+          <label>Legal Entity Name <span class="pill editable">EDITABLE</span></label>
+          <input type="text" id="legal_name" />
+          <div class="hint">Edit only if you've filed a name change with ROC.</div>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Brand Name <span class="pill editable">EDITABLE</span></label>
+            <input type="text" id="brand_name" />
+          </div>
+          <div class="field">
+            <label>Legal Form <span class="pill editable">EDITABLE</span></label>
+            <input type="text" id="legal_form" />
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>CIN <span class="pill locked">LOCKED</span></label>
+            <input type="text" id="cin" readonly />
+          </div>
+          <div class="field">
+            <label>Date of Incorporation <span class="pill locked">LOCKED</span></label>
+            <input type="text" id="date_of_incorp" readonly />
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>PAN <span class="pill locked">LOCKED</span></label>
+            <input type="text" id="pan" readonly />
+          </div>
+          <div class="field">
+            <label>TAN <span class="pill locked">LOCKED</span></label>
+            <input type="text" id="tan" readonly />
+          </div>
+        </div>
+
+        <div class="field">
+          <label>GSTIN <span class="pill pending" id="gstin-pill">PENDING</span></label>
+          <input type="text" id="gstin" placeholder="Will be filled once GST registration is approved" />
+          <div class="hint">15-digit GSTIN. Leave blank until your GST application is approved.</div>
+        </div>
+      </div>
+
+      <!-- Section 2 — Registered Office -->
+      <div class="section">
+        <h2>📍 Registered Office</h2>
+        <div class="desc">Address on MCA records. Must match what's filed via INC-22.</div>
+
+        <div class="field">
+          <label>Registered Address</label>
+          <textarea id="registered_address"></textarea>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>State</label>
+            <input type="text" id="state" />
+          </div>
+          <div class="field">
+            <label>State Code (GST)</label>
+            <input type="text" id="state_code" maxlength="2" />
+            <div class="hint">2-digit GST state code (e.g. 09 = UP, 27 = MH).</div>
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Country</label>
+            <input type="text" id="country" />
+          </div>
+          <div class="field">
+            <label>Pincode</label>
+            <input type="text" id="pincode" maxlength="6" />
+          </div>
+        </div>
+
+        <div class="field">
+          <label>ROC Office</label>
+          <input type="text" id="roc_office" />
+        </div>
+      </div>
+
+      <!-- Section 3 — Capital -->
+      <div class="section">
+        <h2>💼 Capital Structure</h2>
+        <div class="desc">Authorized & paid-up capital. Edit only after filing the ROC alteration form.</div>
+        <div class="field-row">
+          <div class="field">
+            <label>Authorized Capital (₹)</label>
+            <input type="number" id="authorized_capital" />
+          </div>
+          <div class="field">
+            <label>Paid-Up Capital (₹)</label>
+            <input type="number" id="paid_up_capital" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 4 — Contact Channels -->
+      <div class="section">
+        <h2>📧 Contact Channels</h2>
+        <div class="desc">Email & phone shown on bills, footers, legal pages, and used for outbound communication.</div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Support Email <span class="pill editable">EDITABLE</span></label>
+            <input type="email" id="support_email" />
+            <div class="hint">Shown on bills, in-app help, marketing site, /s/[slug] pages.</div>
+          </div>
+          <div class="field">
+            <label>Support Phone <span class="pill editable">EDITABLE</span></label>
+            <input type="text" id="support_phone" />
+            <div class="hint">Shown to customers. Founder personal until business line is set up.</div>
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>General / Hello Email</label>
+            <input type="email" id="general_email" />
+          </div>
+          <div class="field">
+            <label>Billing Email</label>
+            <input type="email" id="billing_email" />
+            <div class="hint">Razorpay merchant + invoice copies.</div>
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Legal Email</label>
+            <input type="email" id="legal_email" />
+            <div class="hint">For T&C, contracts, DMCA.</div>
+          </div>
+          <div class="field">
+            <label>Privacy / DPDP Email</label>
+            <input type="email" id="privacy_email" />
+            <div class="hint">DPDP Act 2023 mandatory contact.</div>
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Security Email</label>
+            <input type="email" id="security_email" />
+            <div class="hint">For security disclosures and bug reports.</div>
+          </div>
+          <div class="field">
+            <label>System (no-reply) Email</label>
+            <input type="email" id="system_email" />
+            <div class="hint">Used by app for transactional emails.</div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Founder Email</label>
+          <input type="email" id="founder_email" />
+          <div class="hint">Direct line for press, partnerships, investors.</div>
+        </div>
+
+        <div class="field">
+          <label>Registered Email <span class="pill editable">EDITABLE</span></label>
+          <input type="email" id="registered_email" />
+          <div class="hint">The email on MCA records. Where ROC, NSDL, ESIC, PF send notifications.</div>
+        </div>
+
+        <div class="field">
+          <label>Registered Phone <span class="pill editable">EDITABLE</span></label>
+          <input type="text" id="registered_phone" />
+          <div class="hint">The phone on MCA records.</div>
+        </div>
+      </div>
+
+      <!-- Section 5 — Web Presence -->
+      <div class="section">
+        <h2>🌐 Web Presence</h2>
+        <div class="desc">Domain & URLs used in Schema.org Organization markup, email signatures, and absolute links.</div>
+        <div class="field-row">
+          <div class="field">
+            <label>Primary Domain</label>
+            <input type="text" id="primary_domain" />
+          </div>
+          <div class="field">
+            <label>Marketing URL</label>
+            <input type="text" id="marketing_url" />
+          </div>
+        </div>
+        <div class="field">
+          <label>App URL</label>
+          <input type="text" id="app_url" />
+        </div>
+      </div>
+
+      <div class="info">
+        💡 Changes apply immediately to the admin panel and propagate to all surfaces (footers, legal pages, Schema.org) within 24 hours due to client-side caching. Hard refresh on a page to see changes faster.
+      </div>
+    </div>
+  </div>
+
+  <script src="admin-auth.js"></script>
+  <script>
+    if(!auth.isAuthenticated()){ window.location.href = 'admin-login.html'; }
+
+    const SB_URL = 'https://jfqeirfrkjdkqqixivru.supabase.co';
+    const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmcWVpcmZya2pka3FxaXhpdnJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzNzQ4MzgsImV4cCI6MjA4OTk1MDgzOH0.akd4E0nil8ypLR4WOykkeYIL8g4uuNU6XdSVh_Y1utk';
+    const sb = supabase.createClient(SB_URL, SB_KEY);
+
+    // Editable fields (must match the migration's update RPC whitelist)
+    const EDITABLE = [
+      'legal_name','brand_name','gstin','legal_form',
+      'registered_address','state','state_code','country','pincode',
+      'authorized_capital','paid_up_capital','roc_office',
+      'registered_email','registered_phone',
+      'support_email','support_phone','billing_email','legal_email',
+      'privacy_email','security_email','general_email','system_email','founder_email',
+      'primary_domain','app_url','marketing_url'
+    ];
+
+    // Read-only fields (locked)
+    const LOCKED = ['cin','pan','tan','date_of_incorp'];
+
+    let _loaded = null;  // last loaded data (to compute diff)
+
+    function goTo(p){ window.location.href = p; }
+    function logout(){ auth.logout(); window.location.href='admin-login.html'; }
+
+    function toast(msg, isErr){
+      const t = document.createElement('div');
+      t.className = 'toast' + (isErr ? ' err' : '');
+      t.textContent = msg;
+      document.body.appendChild(t);
+      setTimeout(() => t.remove(), 3500);
+    }
+
+    function setStatus(text, color){
+      const el = document.getElementById('save-status');
+      el.textContent = text;
+      if(color) el.style.color = color;
+    }
+
+    async function loadDetails(){
+      setStatus('Loading…', '#8A8AA8');
+      const token = sessionStorage.getItem('sbp_admin_token') || '';
+      try {
+        const { data, error } = await sb.rpc('sbp_admin_get_company_details', { p_token: token });
+        if(error) throw new Error(error.message);
+        if(!data || !data.ok) throw new Error(data?.error || 'load_failed');
+
+        _loaded = data.data;
+
+        // Populate fields
+        EDITABLE.concat(LOCKED).forEach(f => {
+          const el = document.getElementById(f);
+          if(!el) return;
+          el.value = _loaded[f] != null ? _loaded[f] : '';
+        });
+
+        // Update GSTIN pill
+        const gstinPill = document.getElementById('gstin-pill');
+        if(_loaded.gstin){
+          gstinPill.textContent = 'Active';
+          gstinPill.className = 'pill editable';
+        } else {
+          gstinPill.textContent = 'Pending';
+          gstinPill.className = 'pill pending';
+        }
+
+        document.getElementById('save-btn').disabled = false;
+        setStatus('Loaded · Last updated: ' + (_loaded.updated_at ? new Date(_loaded.updated_at).toLocaleString('en-IN') : '—'), '#10B981');
+      } catch(e){
+        setStatus('❌ ' + e.message, '#EF4444');
+        toast('Failed to load: ' + e.message, true);
+      }
+    }
+
+    async function saveDetails(){
+      const token = sessionStorage.getItem('sbp_admin_token') || '';
+      const payload = {};
+      EDITABLE.forEach(f => {
+        const el = document.getElementById(f);
+        if(!el) return;
+        const v = el.value.trim();
+        // Send empty string as null for nullable fields, EXCEPT for required ones.
+        if(v === '' && f !== 'legal_name' && f !== 'brand_name'){
+          payload[f] = null;
+        } else if(v !== '' || _loaded[f] != null){
+          payload[f] = v === '' ? null : v;
+        }
+      });
+
+      // Validate required
+      if(!payload.legal_name) { toast('Legal Name is required', true); return; }
+      if(!payload.brand_name) { toast('Brand Name is required', true); return; }
+
+      setStatus('Saving…', '#F5A623');
+      document.getElementById('save-btn').disabled = true;
+
+      try {
+        const { data, error } = await sb.rpc('sbp_admin_update_company_details', {
+          p_token:   token,
+          p_payload: payload
+        });
+        if(error) throw new Error(error.message);
+        if(!data || !data.ok) throw new Error(data?.error || 'save_failed');
+
+        toast('✅ Saved');
+        // Bust the public cache so footers fetch fresh data on next load
+        try { localStorage.removeItem('sbp_company_cache'); } catch(e){}
+        await loadDetails();
+      } catch(e){
+        setStatus('❌ ' + e.message, '#EF4444');
+        toast('Save failed: ' + e.message, true);
+        document.getElementById('save-btn').disabled = false;
+      }
+    }
+
+    loadDetails();
+  </script>
+</body>
+</html>

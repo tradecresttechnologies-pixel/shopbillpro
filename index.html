@@ -611,6 +611,48 @@ async function doLogin(prefix){
       localStorage.setItem('sbp_shop_id',shops[0].id);
       localStorage.setItem('sbp_role',data.user.user_metadata?.role||'Admin');
     } else {
+      // BUG-013 (Batch 018): Resume signup from email-confirm flow.
+      // If signup hit the email-confirm branch, the shop was never created.
+      // Read sbp_pending_shop from localStorage and create the shop now.
+      let resumed = false;
+      try {
+        const pendingRaw = localStorage.getItem('sbp_pending_shop');
+        if(pendingRaw){
+          const pending = JSON.parse(pendingRaw);
+          if(pending && pending.name){
+            console.log('[BUG-013] Resuming pending shop creation post email-confirm');
+            const insertPayload = {
+              owner_id: data.user.id,
+              name: pending.name,
+              owner_name: pending.owner_name || (data.user.user_metadata?.name || ''),
+              phone: pending.phone || '',
+              email: pending.email || emailFmt,
+              invoice_prefix: pending.invoice_prefix || 'INV',
+              invoice_counter: pending.invoice_counter || 1,
+              shop_type: pending.shop_type || 'general_retail'
+            };
+            const { data: newShop, error: insErr } = await _sb.from('shops').insert(insertPayload).select().single();
+            if(!insErr && newShop){
+              let shopRow = newShop;
+              // Apply beta plan if active
+              try {
+                const { data: betaShop, error: betaErr } = await _sb.rpc('apply_beta_plan', { p_shop_id: newShop.id });
+                if(!betaErr && betaShop) shopRow = betaShop;
+              } catch(e){ console.warn('[BUG-013] apply_beta_plan threw (non-fatal):', e); }
+              localStorage.setItem('sbp_shop', JSON.stringify(shopRow));
+              localStorage.setItem('sbp_shop_id', shopRow.id);
+              localStorage.setItem('sbp_role', pending.role || 'Admin');
+              localStorage.removeItem('sbp_pending_shop');
+              resumed = true;
+              toast(_lang==='hi'?'✅ खाता तैयार! आपका शॉप setup हो गया।':'✅ Account ready! Your shop is set up.','s');
+            } else {
+              console.warn('[BUG-013] resume insert failed:', insErr?.message);
+            }
+          }
+        }
+      } catch(e){ console.warn('[BUG-013] resume hook threw:', e); }
+
+      if(!resumed){
       // 2. Check if user is a staff member via shop_users table
       const meta=data.user.user_metadata||{};
       let staffShopId=meta.shop_id||null;
@@ -656,6 +698,7 @@ async function doLogin(prefix){
         }
       }
     }
+    } // end if(!resumed)
     
     localStorage.setItem('sbp_last_activity',Date.now().toString());
     toast(_lang==='hi'?'✅ स्वागत है!':'✅ Welcome back!','s');
