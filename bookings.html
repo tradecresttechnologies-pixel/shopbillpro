@@ -642,14 +642,37 @@ async function doCancel(){
 
 async function doCheckOut(){
   if(!confirm('Check out this guest and generate the final bill?'))return;
+
+  // BATCH 019.1 — Snapshot folio BEFORE server checkout so billing.html
+  // doesn't have to re-fetch (which was failing because the bookings list
+  // RPC filter didn't include just-checked-out bookings).
+  let _folioExtras = [];
+  try {
+    const ex = await SBPHotel.extras.list(_shopId, _currentBooking.id);
+    if (ex.ok) _folioExtras = ex.extras || [];
+    console.log('[doCheckOut] pre-fetched extras:', _folioExtras.length);
+  } catch(e){ console.warn('[doCheckOut] extras pre-fetch failed:', e); }
+
   const res=await SBPHotel.bookings.checkOut(_shopId, _currentBooking.id);
   if(!res.ok){toast(res.error||'Check-out failed','e');return}
+
+  // Stash full folio for billing.html to consume directly
+  try {
+    sessionStorage.setItem('sbp_pending_folio', JSON.stringify({
+      booking:    _currentBooking,
+      extras:     _folioExtras,
+      folio:      res.folio || null,
+      stashed_at: Date.now()
+    }));
+    console.log('[doCheckOut] folio stashed for booking', _currentBooking.id);
+  } catch(e){ console.warn('[doCheckOut] sessionStorage stash failed:', e); }
+
   // Server returned folio summary — encode as URL params and bounce to billing.html
   const f=res.folio||{};
   const params=new URLSearchParams({
     booking_id: _currentBooking.id,
-    cust: f.customer_name||'',
-    wa: f.customer_wa||f.customer_phone||'',
+    cust: f.customer_name||_currentBooking.customer_name||'',
+    wa: f.customer_wa||f.customer_phone||_currentBooking.customer_phone||'',
     auto: '1'
   });
   toast('✅ Checked out — generating bill…','s');

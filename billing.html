@@ -3170,6 +3170,90 @@ function loadFromTemplateParams(){
     banner.innerHTML = '<span style="font-size:18px">🏨</span><div>Hotel checkout — folio loaded as bill items. Review and save.</div>';
     document.querySelector('#app .topbar')?.insertAdjacentElement('afterend', banner);
 
+    // ── Helper: populate items from a booking + extras pair ──
+    function _sbpPopulateFolio(b, extras){
+      console.log('[FolioPopulate] booking=', b, 'extras=', extras);
+      const wrap = document.getElementById('items-wrap');
+      if(wrap) wrap.innerHTML = '';
+
+      window._currentBooking = b;
+      window._currentBookingExtras = extras;
+
+      const roomLabel = `Room ${b.room_number||'TBD'}${b.room_type_name?' · '+b.room_type_name:''} (${b.check_in_date||''} → ${b.check_out_date||''})`;
+      const nights = b.num_nights || b.nights || 1;
+      const rate = b.rate_per_night || b.room_rate || 0;
+
+      addItem();
+      let rows = document.querySelectorAll('#items-wrap .item-row');
+      let row = rows[rows.length-1];
+      if(row){
+        row.dataset.kind = 'room';
+        if(b.room_type_id) row.dataset.roomTypeId = b.room_type_id;
+        row.dataset.bookingId = b.id || bookingId;
+        row.dataset.unit = 'night';
+        row.dataset.qtyUnitLabel = nights + ' night' + (nights>1?'s':'');
+        const nmEl = row.querySelector('.it-nm'); if(nmEl) nmEl.value = roomLabel;
+        const qEl  = row.querySelector('.it-qty'); if(qEl)  qEl.value  = nights;
+        const rEl  = row.querySelector('.it-rt');  if(rEl)  rEl.value  = rate;
+        const gEl  = row.querySelector('.it-gst'); if(gEl)  gEl.value  = '0';
+      }
+
+      (extras||[]).forEach(e => {
+        addItem();
+        rows = document.querySelectorAll('#items-wrap .item-row');
+        const r2 = rows[rows.length-1];
+        if(r2){
+          // Map folio extra category → kind. Service-y categories → service, otherwise → product
+          const cat = String(e.category||'').toLowerCase();
+          const isService = ['service','spa','laundry','salon','massage','transport','tour'].some(s=>cat.includes(s));
+          r2.dataset.kind = isService ? 'service' : 'product';
+          r2.dataset.bookingId = b.id || bookingId;
+          const desc = e.description || e.name || 'Extra';
+          const qty  = e.qty || e.quantity || 1;
+          const price = e.unit_price || e.rate || e.amount || 0;
+          const nm = r2.querySelector('.it-nm'); if(nm) nm.value = `${desc}${e.category?' ('+e.category+')':''}`;
+          const q  = r2.querySelector('.it-qty'); if(q)  q.value  = qty;
+          const rt = r2.querySelector('.it-rt');  if(rt) rt.value  = price;
+          const g  = r2.querySelector('.it-gst'); if(g)  g.value  = '0';
+        }
+      });
+
+      if(typeof calcTotals === 'function') setTimeout(calcTotals, 100);
+      console.log('[FolioPopulate] done — rows now:', document.querySelectorAll('#items-wrap .item-row').length);
+    }
+
+    // ── PRIMARY PATH: read folio stashed by bookings.html (Batch 019.1) ──
+    let _stashed = null;
+    try {
+      const raw = sessionStorage.getItem('sbp_pending_folio');
+      if(raw){
+        const parsed = JSON.parse(raw);
+        if(parsed && parsed.booking && parsed.booking.id === bookingId){
+          _stashed = parsed;
+          console.log('[BookingCheckout] using stashed folio from sessionStorage');
+        } else {
+          console.log('[BookingCheckout] stashed folio booking_id mismatch, ignoring');
+        }
+        sessionStorage.removeItem('sbp_pending_folio');     // one-shot
+      } else {
+        console.log('[BookingCheckout] no stashed folio in sessionStorage');
+      }
+    } catch(e){ console.warn('[BookingCheckout] sessionStorage read failed:', e); }
+
+    if(_stashed){
+      try {
+        _sbpPopulateFolio(_stashed.booking, _stashed.extras || []);
+        toast('🏨 Folio loaded — review items and save bill', 's', 3500);
+      } catch(e){
+        console.error('[BookingCheckout] stashed populate failed:', e);
+        // fall through to async fallback below
+        _stashed = null;
+      }
+    }
+
+    if(_stashed) return;     // we're done — skip async fallback
+
+    // ── FALLBACK PATH: async fetch via SBPHotel ──
     // Async: fetch booking + extras, populate items
     (async function(){
       try {
@@ -3181,63 +3265,84 @@ function loadFromTemplateParams(){
           await new Promise(r => setTimeout(r, 100));
           waited += 100;
         }
-        if(!window.SBPHotel || !window._sb){ toast('⚠️ Hospitality module not loaded — refresh page','e',4000); return }
+        if(!window.SBPHotel || !window._sb){
+          toast('⚠️ Hospitality module not loaded — refresh page','e',4000);
+          _sbpFolioFatalError('Hospitality module not loaded'); return;
+        }
         const shopId = localStorage.getItem('sbp_shop_id') || (JSON.parse(localStorage.getItem('sbp_shop')||'{}').id);
-        if(!shopId){ toast('⚠️ Shop not loaded','e'); return }
+        if(!shopId){
+          toast('⚠️ Shop not loaded','e');
+          _sbpFolioFatalError('Shop not loaded'); return;
+        }
 
-        // Get all bookings to find this one (cheap — small list)
-        const list = await SBPHotel.bookings.list(shopId, 'all', null);
-        if(!list.ok){ toast('⚠️ Could not load booking: '+(list.error||'unknown'),'e'); return }
-        const b = (list.bookings||[]).find(x=>x.id===bookingId);
-        if(!b){ toast('⚠️ Booking not found','e'); return }
+        // BATCH 019.1 — try valid filter values in order. The older code used
+        // 'all' which is NOT a valid p_filter — sbp_bookings_list expects
+        // 'upcoming' | 'today' | 'in_house' | 'checked_out' | 'cancelled'.
+        // Just-checked-out bookings live in 'checked_out'; before checkout
+        // they're in 'in_house'. Try both.
+        let b = null;
+        for(const flt of ['checked_out', 'in_house', 'today', 'upcoming']){
+          try {
+            const list = await SBPHotel.bookings.list(shopId, flt, null);
+            console.log('[BookingCheckout] filter='+flt+' ok='+list.ok+' n='+((list.bookings||[]).length));
+            if(list && list.ok){
+              const found = (list.bookings||[]).find(x=>x.id===bookingId);
+              if(found){ b = found; break; }
+            }
+          } catch(e){ console.warn('[BookingCheckout] list('+flt+') threw:', e); }
+        }
+        if(!b){
+          // Last-ditch: direct Supabase query (bypasses the filter RPC entirely)
+          try {
+            const { data, error } = await window._sb
+              .from('sbp_bookings')
+              .select('*, sbp_room_types(name), sbp_rooms(room_number)')
+              .eq('id', bookingId)
+              .eq('shop_id', shopId)
+              .maybeSingle();
+            if(!error && data){
+              b = {
+                ...data,
+                room_type_name: data.sbp_room_types?.name,
+                room_number:    data.sbp_rooms?.room_number || data.room_number
+              };
+              console.log('[BookingCheckout] recovered booking via direct query');
+            }
+          } catch(e){ console.warn('[BookingCheckout] direct query failed:', e); }
+        }
+        if(!b){
+          toast('⚠️ Booking not found','e');
+          _sbpFolioFatalError('Booking '+bookingId+' not found in any filter or via direct query');
+          return;
+        }
 
         // Load folio extras
         const exRes = await SBPHotel.extras.list(shopId, bookingId);
         const extras = exRes.ok ? (exRes.extras||[]) : [];
+        console.log('[BookingCheckout] async path — booking found, extras:', extras.length);
 
-        // Stash for any later flow (e.g., Print Folio button)
-        window._currentBooking = b;
-        window._currentBookingExtras = extras;
-
-        // Clear existing items, add room line + each extra
-        const wrap = document.getElementById('items-wrap');
-        if(wrap) wrap.innerHTML = '';
-
-        // Build label like: "Room 101 · Standard AC (2026-05-06 → 2026-05-08)"
-        const roomLabel = `Room ${b.room_number||'TBD'}${b.room_type_name?' · '+b.room_type_name:''} (${b.check_in_date} → ${b.check_out_date})`;
-        if(typeof addItem === 'function'){
-          addItem();
-          const rows = document.querySelectorAll('#items-wrap .item-row');
-          const row = rows[rows.length-1];
-          if(row){
-            const nmEl = row.querySelector('.it-nm'); if(nmEl) nmEl.value = roomLabel;
-            const qEl  = row.querySelector('.it-qty'); if(qEl)  qEl.value  = b.num_nights || 1;
-            const rEl  = row.querySelector('.it-rt');  if(rEl)  rEl.value  = b.rate_per_night || 0;
-            const gEl  = row.querySelector('.it-gst'); if(gEl)  gEl.value  = '0';  // Hotel rooms — shopkeeper sets GST manually if applicable
-          }
-
-          // Each extra as its own line
-          extras.forEach(e => {
-            addItem();
-            const rs = document.querySelectorAll('#items-wrap .item-row');
-            const r2 = rs[rs.length-1];
-            if(r2){
-              const nm = r2.querySelector('.it-nm'); if(nm) nm.value = `${e.description} (${e.category})`;
-              const q  = r2.querySelector('.it-qty'); if(q)  q.value  = e.qty || 1;
-              const rt = r2.querySelector('.it-rt');  if(rt) rt.value  = e.unit_price || 0;
-              const g  = r2.querySelector('.it-gst'); if(g)  g.value  = '0';
-            }
-          });
-        }
-
-        if(typeof calcTotals === 'function') setTimeout(calcTotals, 100);
+        _sbpPopulateFolio(b, extras);
         toast('🏨 Folio loaded — review items and save bill', 's', 3500);
       } catch(e) {
         console.error('[BookingCheckout] load error:', e);
         toast('⚠️ Could not load folio: '+(e.message||e), 'e');
+        _sbpFolioFatalError(e.message || String(e));
       }
     })();
     return;
+  }
+
+  // Helper used by both stashed and async paths to render a visible failure
+  function _sbpFolioFatalError(reason){
+    try {
+      const banner = document.getElementById('booking-checkout-banner');
+      if(banner){
+        banner.style.background = 'linear-gradient(135deg,rgba(239,68,68,.18),rgba(239,68,68,.05))';
+        banner.style.borderColor = '#EF4444';
+        banner.style.color = '#FCA5A5';
+        banner.innerHTML = '<span style="font-size:18px">⚠️</span><div>Folio could not be loaded: '+ String(reason||'unknown') +'. <br>Open DevTools console for details, or build the bill manually.</div>';
+      }
+    } catch(e){}
   }
 
   // FIX #39 — Support sessionStorage payload for large templates
