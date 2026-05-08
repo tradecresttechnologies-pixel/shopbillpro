@@ -9,12 +9,6 @@
 <title>Technical Health — Admin Dashboard</title>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js">
-    function goTo(p){ window.location.href = p; }
-    function logout(){
-      try { sessionStorage.removeItem('sbp_admin_token'); } catch(e){}
-      try { sessionStorage.removeItem('sbp_admin_logged_in'); } catch(e){}
-      window.location.href = 'admin-login.html';
-    }
 </script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -475,6 +469,21 @@
     // Refresh health every 30 seconds
     loadHealth();
     setInterval(loadHealth, 30000);
+  </script>
+
+  <script>
+    /* Batch 018.1 hotfix — sidebar nav helpers (must define before any nav click) */
+    if (typeof window.goTo !== 'function') {
+      window.goTo = function(p){ window.location.href = p; };
+    }
+    if (typeof window.logout !== 'function') {
+      window.logout = function(){
+        try { sessionStorage.removeItem('sbp_admin_token'); } catch(e){}
+        try { sessionStorage.removeItem('sbp_admin_session'); } catch(e){}
+        try { sessionStorage.removeItem('sbp_admin_logged_in'); } catch(e){}
+        window.location.href = 'admin-login.html';
+      };
+    }
   </script>
 </body>
 </html>

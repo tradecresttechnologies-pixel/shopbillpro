@@ -415,12 +415,6 @@
   </div>
 
   <script src="admin-auth.js">
-    function goTo(p){ window.location.href = p; }
-    function logout(){
-      try { sessionStorage.removeItem('sbp_admin_token'); } catch(e){}
-      try { sessionStorage.removeItem('sbp_admin_logged_in'); } catch(e){}
-      window.location.href = 'admin-login.html';
-    }
 </script>
   <script src="admin-db.js"></script>
   <script>
@@ -511,6 +505,21 @@
     }
 
     loadNotifications();
+  </script>
+
+  <script>
+    /* Batch 018.1 hotfix — sidebar nav helpers (must define before any nav click) */
+    if (typeof window.goTo !== 'function') {
+      window.goTo = function(p){ window.location.href = p; };
+    }
+    if (typeof window.logout !== 'function') {
+      window.logout = function(){
+        try { sessionStorage.removeItem('sbp_admin_token'); } catch(e){}
+        try { sessionStorage.removeItem('sbp_admin_session'); } catch(e){}
+        try { sessionStorage.removeItem('sbp_admin_logged_in'); } catch(e){}
+        window.location.href = 'admin-login.html';
+      };
+    }
   </script>
 </body>
 </html>
