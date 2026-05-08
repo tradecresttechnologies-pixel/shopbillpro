@@ -1675,17 +1675,49 @@ async function confirmSettle(){
         if(!error){
           savedBill=data;
           if(b.items.length){
-            await _sb.from('bill_items').insert(b.items.map(it=>({
-              bill_id:data.id,item_name:it.nm,qty:it.q,rate:it.r,
-              gst_rate:it.rate,discount:it.disc||0,
-              line_total:parseFloat(it.tot),gst_amount:parseFloat(it.lineGST||0),
-              kind:           it.kind || 'product',
-              product_id:     it.productId   || null,
-              service_id:     it.serviceId   || null,
-              room_type_id:   it.roomTypeId  || null,
-              unit:           it.unit        || null,
-              qty_unit_label: it.qtyUnitLabel || null
-            })));
+            // Batch 021.3 — wrap insert in try-catch + alert on failure.
+            // Previously this could fail silently if migration 020 columns
+            // (kind/product_id/etc.) didn't exist, leaving bills with no items.
+            try {
+              const fullPayload = b.items.map(it=>({
+                bill_id:data.id,item_name:it.nm,qty:it.q,rate:it.r,
+                gst_rate:it.rate,discount:it.disc||0,
+                line_total:parseFloat(it.tot),gst_amount:parseFloat(it.lineGST||0),
+                kind:           it.kind || 'product',
+                product_id:     it.productId   || null,
+                service_id:     it.serviceId   || null,
+                room_type_id:   it.roomTypeId  || null,
+                booking_id:     it.bookingId   || null,
+                unit:           it.unit        || null,
+                qty_unit_label: it.qtyUnitLabel || null
+              }));
+              const { error: itemErr } = await _sb.from('bill_items').insert(fullPayload);
+              if (itemErr) {
+                // If it's a "column does not exist" error, fall back to legacy columns
+                // so at least the items save. Migration 023 should be run to fix permanently.
+                if (String(itemErr.message||'').match(/column .* does not exist|kind|product_id|service_id|room_type_id|qty_unit_label/i)) {
+                  console.warn('[bill_items] new columns missing — falling back to legacy. Run migration 023.', itemErr);
+                  const legacyPayload = b.items.map(it=>({
+                    bill_id:data.id,item_name:it.nm,qty:it.q,rate:it.r,
+                    gst_rate:it.rate,discount:it.disc||0,
+                    line_total:parseFloat(it.tot),gst_amount:parseFloat(it.lineGST||0)
+                  }));
+                  const { error: legacyErr } = await _sb.from('bill_items').insert(legacyPayload);
+                  if (legacyErr) {
+                    console.error('[bill_items] legacy insert also failed:', legacyErr);
+                    if(typeof toast==='function') toast('⚠️ Bill saved but items not stored: '+(legacyErr.message||'unknown error'),'e',6000);
+                  } else {
+                    if(typeof toast==='function') toast('⚠️ Bill saved (legacy mode — run migration 023)','w',4000);
+                  }
+                } else {
+                  console.error('[bill_items] insert failed:', itemErr);
+                  if(typeof toast==='function') toast('⚠️ Bill saved but items not stored: '+(itemErr.message||'unknown error'),'e',6000);
+                }
+              }
+            } catch(e) {
+              console.error('[bill_items] insert threw:', e);
+              if(typeof toast==='function') toast('⚠️ Bill items save failed: '+(e.message||'unknown'),'e',6000);
+            }
           }
           // FIX #23 — Counter was already incremented by next_invoice_no RPC at bill open.
           // Only bump locally if we're offline (no RPC was called).
