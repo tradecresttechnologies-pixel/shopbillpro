@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en" translate="no" class="notranslate">
+<head>
+  <meta charset="UTF-8">
+  <meta name="google" content="notranslate">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png?v=2">
+  <title>Reports — ShopBill Pro</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script>
+    (function(){
+      try{ const t = localStorage.getItem('sbp_theme'); if(t) document.documentElement.setAttribute('data-theme', t); }catch(e){}
+    })();
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    :root{
+      --acc:#F5A623; --acc2:#FF8A00; --acc3:#10B981;
+      --bg:#0A0A12; --surf:#13131c; --surf2:#0e0e1a; --bord:rgba(124,58,237,.2);
+      --text:#F0EFF8; --t2:#8A8AA8; --rs:10px;
+      --font-h:'Outfit',sans-serif;
+    }
+    [data-theme="light"]{
+      --bg:#F8F8FB; --surf:#FFFFFF; --surf2:#F2F2F7; --bord:rgba(124,58,237,.18);
+      --text:#181828; --t2:#5A5A78;
+    }
+    body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+    .layout{display:flex;min-height:100vh}
+    .main{flex:1;padding:18px;max-width:1200px;margin:0 auto;width:100%}
+    .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;gap:12px}
+    .back-btn{background:none;border:none;color:var(--t2);font-size:14px;font-family:inherit;cursor:pointer;display:flex;align-items:center;gap:6px}
+    .back-btn:hover{color:var(--text)}
+    .header h1{font-size:30px;font-weight:800;margin-bottom:6px;background:linear-gradient(135deg,var(--acc),var(--acc2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+    .header p{font-size:14px;color:var(--t2);margin-bottom:24px}
+    .reports-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;margin-bottom:24px}
+    .report-card{background:var(--surf);border:1px solid var(--bord);border-radius:14px;padding:18px;cursor:pointer;transition:all .15s;display:flex;flex-direction:column;gap:10px;text-align:left;font-family:inherit}
+    .report-card:hover{border-color:var(--acc);transform:translateY(-2px);box-shadow:0 6px 18px rgba(245,166,35,.12)}
+    .report-icon{font-size:32px;line-height:1}
+    .report-title{font-size:16px;font-weight:800;margin:0}
+    .report-desc{font-size:12.5px;color:var(--t2);line-height:1.45;margin:0}
+    .report-meta{font-size:10px;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;font-weight:700;display:flex;gap:6px;align-items:center;margin-top:auto}
+    .pill{display:inline-block;padding:2px 8px;background:rgba(245,166,35,.15);color:var(--acc);border-radius:8px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+    .legacy-link{margin-top:18px;background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.3);color:#A5B4FC;padding:14px 18px;border-radius:12px;font-size:13px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
+    .legacy-link a{color:inherit;font-weight:700;text-decoration:none;background:rgba(99,102,241,.18);padding:6px 14px;border-radius:8px}
+    .legacy-link a:hover{background:rgba(99,102,241,.28)}
+    .viewer-wrap{background:var(--surf);border:1px solid var(--bord);border-radius:14px;padding:18px}
+    .empty{text-align:center;padding:60px 20px;color:var(--t2);font-size:14px}
+    @media(max-width:640px){
+      .main{padding:14px}
+      .header h1{font-size:24px}
+      .reports-grid{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <div class="main">
+
+      <!-- LANDING VIEW (no hash) -->
+      <div id="landing-view">
+        <div class="topbar">
+          <button class="back-btn" onclick="window.location.href='dashboard.html'">← Dashboard</button>
+        </div>
+        <div class="header">
+          <h1>📊 Reports</h1>
+          <p>Sales summary, customer insights, payment breakdowns. All numbers update live as bills are saved.</p>
+        </div>
+
+        <div class="reports-grid" id="reports-grid"></div>
+
+        <div class="legacy-link">
+          <div>
+            <strong>Looking for GST returns?</strong><br>
+            <span style="opacity:.85">GSTR-1, GSTR-3B, P&L Statement and other regulatory reports are still on the legacy reports page.</span>
+          </div>
+          <a href="reports.html">Open Legacy Reports →</a>
+        </div>
+      </div>
+
+      <!-- VIEWER VIEW (with hash) -->
+      <div id="viewer-view" style="display:none">
+        <div class="topbar">
+          <button class="back-btn" onclick="goLanding()">← All Reports</button>
+        </div>
+        <div class="viewer-wrap" id="viewer-mount">
+          <div class="empty">Loading…</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="lib/report-viewer.js"></script>
+  <script>
+    // ── State ──
+    const _shop  = JSON.parse(localStorage.getItem('sbp_shop')||'{}');
+    const _shopId   = _shop && _shop.id || null;
+    const _shopType = _shop && (_shop.shop_type || 'general_retail');
+
+    if(!_shopId){
+      // Not logged in / no shop selected — punt to login
+      window.location.href = 'index.html';
+    }
+
+    // ── Reports list, filtered by shop_type ──
+    function listReportsForShop(){
+      const all = (window.SBPReportViewer && window.SBPReportViewer.configs) || {};
+      const out = [];
+      Object.keys(all).forEach(key => {
+        const c = all[key];
+        const allowed = !c.shopTypes || c.shopTypes.includes('*') || c.shopTypes.includes(_shopType);
+        if (allowed) out.push({key, ...c});
+      });
+      return out;
+    }
+
+    function renderLanding(){
+      const grid = document.getElementById('reports-grid');
+      const reports = listReportsForShop();
+      if(!reports.length){
+        grid.innerHTML = '<div class="empty">No reports available for your shop type.</div>';
+        return;
+      }
+      grid.innerHTML = reports.map(r => `
+        <button class="report-card" onclick="openReport('${r.key}')">
+          <div class="report-icon">${r.icon || '📊'}</div>
+          <h3 class="report-title">${r.title}</h3>
+          <p class="report-desc">${r.description||''}</p>
+          <div class="report-meta"><span class="pill">${r.key.replace(/_/g,' ')}</span></div>
+        </button>
+      `).join('');
+    }
+
+    function openReport(key){
+      window.location.hash = '#' + key;
+    }
+
+    function goLanding(){
+      window.location.hash = '';
+    }
+
+    async function renderViewer(reportKey){
+      const mount = document.getElementById('viewer-mount');
+      try{
+        await SBPReportViewer.render({
+          mountEl:   mount,
+          shopId:    _shopId,
+          reportKey: reportKey
+        });
+      }catch(e){
+        mount.innerHTML = '<div class="empty">⚠ '+ (e.message||e) +'</div>';
+      }
+    }
+
+    function route(){
+      const hash = (window.location.hash || '').replace(/^#/,'');
+      const landing = document.getElementById('landing-view');
+      const viewer  = document.getElementById('viewer-view');
+      if(hash && hash.length){
+        landing.style.display = 'none';
+        viewer.style.display  = 'block';
+        renderViewer(hash);
+      } else {
+        landing.style.display = 'block';
+        viewer.style.display  = 'none';
+        renderLanding();
+      }
+    }
+
+    window.addEventListener('hashchange', route);
+    route();
+  </script>
+</body>
+</html>
