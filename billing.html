@@ -3183,6 +3183,19 @@ function loadFromTemplateParams(){
       const nights = b.num_nights || b.nights || 1;
       const rate = b.rate_per_night || b.room_rate || 0;
 
+      // Batch 021: derive room GST from rate slab (statutory)
+      // ≤ ₹1,000 → 0%, ≤ ₹7,500 → 5%, > ₹7,500 → 18%
+      function _roomGstFor(r){
+        const v = parseFloat(r||0);
+        if (v <= 0)    return 0;
+        if (v <= 1000) return 0;
+        if (v <= 7500) return 5;
+        return 18;
+      }
+      const roomGstRate = (window.SBPHotel && SBPHotel.roomGstForRate)
+        ? SBPHotel.roomGstForRate(rate)
+        : _roomGstFor(rate);
+
       addItem();
       let rows = document.querySelectorAll('#items-wrap .item-row');
       let row = rows[rows.length-1];
@@ -3195,7 +3208,7 @@ function loadFromTemplateParams(){
         const nmEl = row.querySelector('.it-nm'); if(nmEl) nmEl.value = roomLabel;
         const qEl  = row.querySelector('.it-qty'); if(qEl)  qEl.value  = nights;
         const rEl  = row.querySelector('.it-rt');  if(rEl)  rEl.value  = rate;
-        const gEl  = row.querySelector('.it-gst'); if(gEl)  gEl.value  = '0';
+        const gEl  = row.querySelector('.it-gst'); if(gEl)  _setGstSelect(gEl, roomGstRate);
       }
 
       (extras||[]).forEach(e => {
@@ -3203,23 +3216,43 @@ function loadFromTemplateParams(){
         rows = document.querySelectorAll('#items-wrap .item-row');
         const r2 = rows[rows.length-1];
         if(r2){
-          // Map folio extra category → kind. Service-y categories → service, otherwise → product
+          // Map folio extra category → kind
           const cat = String(e.category||'').toLowerCase();
           const isService = ['service','spa','laundry','salon','massage','transport','tour'].some(s=>cat.includes(s));
           r2.dataset.kind = isService ? 'service' : 'product';
           r2.dataset.bookingId = b.id || bookingId;
           const desc = e.description || e.name || 'Extra';
           const qty  = e.qty || e.quantity || 1;
-          const price = e.unit_price || e.rate || e.amount || 0;
+          // Batch 021: prefer taxable_amount from folio; fall back to unit_price
+          const price = e.unit_price || e.rate || (e.taxable_amount ? (e.taxable_amount/qty) : 0) || 0;
+          // GST per line: from server if present, else from category default
+          const lineGst = (e.gst_rate != null)
+            ? Number(e.gst_rate)
+            : ((window.SBPHotel && SBPHotel.extraGstForCategory)
+                ? SBPHotel.extraGstForCategory(cat)
+                : 18);
           const nm = r2.querySelector('.it-nm'); if(nm) nm.value = `${desc}${e.category?' ('+e.category+')':''}`;
           const q  = r2.querySelector('.it-qty'); if(q)  q.value  = qty;
           const rt = r2.querySelector('.it-rt');  if(rt) rt.value  = price;
-          const g  = r2.querySelector('.it-gst'); if(g)  g.value  = '0';
+          const g  = r2.querySelector('.it-gst'); if(g)  _setGstSelect(g, lineGst);
         }
       });
 
       if(typeof calcTotals === 'function') setTimeout(calcTotals, 100);
-      console.log('[FolioPopulate] done — rows now:', document.querySelectorAll('#items-wrap .item-row').length);
+      console.log('[FolioPopulate] done — rows now:', document.querySelectorAll('#items-wrap .item-row').length, '· room GST:', roomGstRate+'%');
+    }
+
+    // Helper: set a GST <select> to the closest available option (5/12/18 etc.)
+    function _setGstSelect(selEl, rate){
+      if(!selEl) return;
+      const target = parseFloat(rate||0);
+      let bestIdx = 0, bestDiff = Infinity;
+      for(let i=0; i<selEl.options.length; i++){
+        const v = parseFloat(selEl.options[i].value);
+        const d = Math.abs(v - target);
+        if(d < bestDiff){ bestDiff = d; bestIdx = i; }
+      }
+      selEl.selectedIndex = bestIdx;
     }
 
     // ── PRIMARY PATH: read folio stashed by bookings.html (Batch 019.1) ──

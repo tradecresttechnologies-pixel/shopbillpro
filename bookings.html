@@ -218,7 +218,12 @@ body{background:var(--bg);color:var(--text);min-height:100dvh;overflow-x:hidden}
 
     <div class="tabs">
       <button class="tab on" data-tab="today"    onclick="switchTab('today')">📍 <span class="lang-en">Today</span><span class="lang-hi">आज</span></button>
+      <button class="tab"    data-tab="in_house" onclick="switchTab('in_house')">🛏️ <span class="lang-en">In-House</span><span class="lang-hi">ठहरे हुए</span></button>
+      <button class="tab"    data-tab="arrivals" onclick="switchTab('arrivals')">🛬 <span class="lang-en">Arrivals</span><span class="lang-hi">आगमन</span></button>
+      <button class="tab"    data-tab="departures" onclick="switchTab('departures')">🛫 <span class="lang-en">Departures</span><span class="lang-hi">प्रस्थान</span></button>
+      <button class="tab"    data-tab="checked_out_today" onclick="switchTab('checked_out_today')">🧾 <span class="lang-en">Checked-out</span><span class="lang-hi">चेक-आउट</span></button>
       <button class="tab"    data-tab="upcoming" onclick="switchTab('upcoming')">📆 <span class="lang-en">Upcoming</span><span class="lang-hi">आगामी</span></button>
+      <button class="tab"    data-tab="foreign"  onclick="switchTab('foreign')">🌐 <span class="lang-en">Foreign</span><span class="lang-hi">विदेशी</span></button>
       <button class="tab"    data-tab="past"     onclick="switchTab('past')">📜 <span class="lang-en">Past</span><span class="lang-hi">पिछले</span></button>
       <button class="tab"    data-tab="all"      onclick="switchTab('all')">🗂️ <span class="lang-en">All</span><span class="lang-hi">सभी</span></button>
     </div>
@@ -277,6 +282,43 @@ body{background:var(--bg);color:var(--text);min-height:100dvh;overflow-x:hidden}
     </div>
     <div class="ff"><label>ID Number</label><input type="text" id="nb-idnum"></div>
 
+    <!-- Batch 021: Advance payment -->
+    <div style="margin:14px 0 6px;font-size:11px;color:var(--t2);font-weight:700;text-transform:uppercase;letter-spacing:.5px">💰 Advance Payment (optional)</div>
+    <div class="row2">
+      <div class="ff"><label>Advance Amount ₹</label><input type="number" id="nb-adv-amt" min="0" step="100" placeholder="0"></div>
+      <div class="ff"><label>Mode</label>
+        <select id="nb-adv-mode">
+          <option value="">— None —</option>
+          <option value="cash">💵 Cash</option>
+          <option value="upi">📱 UPI</option>
+          <option value="card">💳 Card</option>
+          <option value="bank_transfer">🏦 Bank Transfer</option>
+          <option value="ota_prepaid">🌐 OTA Prepaid</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+    </div>
+    <div class="ff"><label>Reference / Transaction ID (optional)</label><input type="text" id="nb-adv-ref" placeholder="UPI ref, receipt #, etc."></div>
+
+    <!-- Batch 021: Foreign guest toggle -->
+    <div style="margin:14px 0 6px;font-size:11px;color:var(--t2);font-weight:700;text-transform:uppercase;letter-spacing:.5px">🌐 Foreign Guest (optional)</div>
+    <div class="ff" style="margin-bottom:6px">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:500">
+        <input type="checkbox" id="nb-foreign" onchange="toggleForeignFields()" style="width:auto"> This is a foreign guest (Form C will be required within 24h)
+      </label>
+    </div>
+    <div id="nb-foreign-fields" style="display:none;background:rgba(59,130,246,.05);border:1px solid rgba(59,130,246,.2);border-radius:10px;padding:10px;margin-bottom:10px">
+      <div class="row2">
+        <div class="ff"><label>Country</label><input type="text" id="nb-country" placeholder="e.g. United Kingdom"></div>
+        <div class="ff"><label>Passport #</label><input type="text" id="nb-passport"></div>
+      </div>
+      <div class="row2">
+        <div class="ff"><label>Visa #</label><input type="text" id="nb-visa"></div>
+        <div class="ff"><label>Visa Type</label><input type="text" id="nb-visa-type" placeholder="Tourist / Business / etc."></div>
+      </div>
+      <div style="font-size:10px;color:var(--t2);margin-top:4px">⚠️ Form C must be filed within 24 hours of check-in. Penalty: up to 5 years imprisonment. Full Form C generator coming in next release.</div>
+    </div>
+
     <div class="ff"><label>Notes</label><textarea id="nb-notes" placeholder="Special requests, arrival time, etc."></textarea></div>
 
     <div id="nb-total" style="text-align:center;padding:10px;background:rgba(245,166,35,.1);border:1px solid var(--acc);border-radius:10px;margin-bottom:12px;font-family:var(--font-h);font-weight:800">Total: ₹0</div>
@@ -299,7 +341,7 @@ body{background:var(--bg);color:var(--text);min-height:100dvh;overflow-x:hidden}
     <div class="sheet-title">➕ <span class="lang-en">Add Extra Charge</span><span class="lang-hi">अतिरिक्त शुल्क</span></div>
     <input type="hidden" id="ex-bid">
     <div class="ff"><label>Category</label>
-      <select id="ex-cat">
+      <select id="ex-cat" onchange="onExCategoryChange()">
         <option value="food">🍽️ Food / Restaurant</option>
         <option value="laundry">👕 Laundry</option>
         <option value="minibar">🥃 Mini-bar</option>
@@ -313,6 +355,23 @@ body{background:var(--bg);color:var(--text);min-height:100dvh;overflow-x:hidden}
     <div class="row2">
       <div class="ff"><label>Quantity</label><input type="number" id="ex-qty" min="1" value="1"></div>
       <div class="ff"><label>Unit Price ₹</label><input type="number" id="ex-unit" min="0" step="10"></div>
+    </div>
+    <div class="row2">
+      <div class="ff"><label>GST %</label>
+        <select id="ex-gst" onchange="recalcExtraAmt()">
+          <option value="0">0% (exempt)</option>
+          <option value="5">5%</option>
+          <option value="12">12%</option>
+          <option value="18" selected>18%</option>
+          <option value="28">28%</option>
+        </select>
+      </div>
+      <div class="ff"><label>HSN/SAC</label><input type="text" id="ex-hsn" placeholder="auto" style="font-size:13px"></div>
+    </div>
+    <div class="ff" style="margin-bottom:6px">
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:500">
+        <input type="checkbox" id="ex-incl" onchange="recalcExtraAmt()" style="width:auto"> Price includes GST
+      </label>
     </div>
     <div id="ex-amt" style="text-align:center;padding:8px;font-family:var(--font-h);font-weight:700;color:var(--acc);margin-bottom:10px">Total: ₹0</div>
     <button class="btn-pri" onclick="saveExtra()" id="ex-save">💾 Add to Folio</button>
@@ -412,11 +471,19 @@ function renderSummary(){
 function renderBookings(){
   const list=$('#bk-list');
   if(!_bookings.length){
-    const emptyMsg = _activeTab==='today' ? 'No check-ins or check-outs scheduled today.'
-                   : _activeTab==='upcoming' ? 'No upcoming bookings yet. Tap + to add one.'
-                   : _activeTab==='past' ? 'No past bookings yet.'
-                   : 'No bookings yet.';
-    list.innerHTML=`<div class="empty"><div class="empty-emoji">📭</div><div class="empty-title"><span class="lang-en">${_activeTab==='all'?'No bookings':'Nothing here'}</span></div><div class="empty-msg">${emptyMsg}</div>${_activeTab==='upcoming'||_activeTab==='all'?'<button class="btn-upgrade" onclick="openNewBooking()">+ New Booking</button>':''}</div>`;
+    const emptyMsg = ({
+      'today':              'No check-ins or check-outs scheduled today.',
+      'in_house':           'No guests currently in-house.',
+      'arrivals':           'No arrivals scheduled today.',
+      'departures':         'No departures scheduled today.',
+      'checked_out_today':  'No check-outs completed today yet.',
+      'upcoming':           'No upcoming bookings yet. Tap + to add one.',
+      'foreign':            'No foreign-guest bookings.',
+      'past':               'No past bookings yet.',
+      'all':                'No bookings yet.'
+    })[_activeTab] || 'No bookings yet.';
+    const showAddBtn = ['upcoming','all','today'].includes(_activeTab);
+    list.innerHTML=`<div class="empty"><div class="empty-emoji">📭</div><div class="empty-title"><span class="lang-en">${_activeTab==='all'?'No bookings':'Nothing here'}</span></div><div class="empty-msg">${emptyMsg}</div>${showAddBtn?'<button class="btn-upgrade" onclick="openNewBooking()">+ New Booking</button>':''}</div>`;
     return;
   }
   list.innerHTML=_bookings.map(b=>{
@@ -457,8 +524,22 @@ function openNewBooking(){
   $('#nb-room').innerHTML='<option value="">— Pick dates first —</option>';
   $('#nb-nights').textContent='1 night';
   $('#nb-total').textContent='Total: ₹0';
+  // Batch 021: advance + foreign reset
+  $('#nb-adv-amt').value='';$('#nb-adv-mode').value='';$('#nb-adv-ref').value='';
+  $('#nb-foreign').checked=false;
+  $('#nb-country').value='';$('#nb-passport').value='';$('#nb-visa').value='';$('#nb-visa-type').value='';
+  $('#nb-foreign-fields').style.display='none';
   openModal('new-modal');
   refreshAvailability();
+}
+
+function toggleForeignFields(){
+  const on = $('#nb-foreign').checked;
+  $('#nb-foreign-fields').style.display = on ? 'block' : 'none';
+  if(on && !$('#nb-idtype').value){
+    // Auto-set ID type to Passport for foreign guests
+    $('#nb-idtype').value = 'passport';
+  }
 }
 
 async function refreshAvailability(){
@@ -507,6 +588,9 @@ function recalcTotal(){
 }
 
 async function saveBooking(){
+  // Batch 021: gather advance + foreign-guest fields too
+  const isForeign = $('#nb-foreign').checked;
+  const advAmount = parseFloat($('#nb-adv-amt').value)||0;
   const data={
     customer_name: $('#nb-name').value.trim(),
     customer_phone: $('#nb-phone').value.trim(),
@@ -522,11 +606,24 @@ async function saveBooking(){
     id_proof_number: $('#nb-idnum').value.trim(),
     notes: $('#nb-notes').value.trim(),
     status: 'confirmed',
-    source: 'admin'
+    source: 'admin',
+    // Batch 021 — advance
+    advance_amount: advAmount,
+    advance_payment_mode: advAmount>0 ? ($('#nb-adv-mode').value || null) : null,
+    advance_reference: advAmount>0 ? ($('#nb-adv-ref').value.trim() || null) : null,
+    // Batch 021 — foreign guest
+    is_foreign: isForeign,
+    guest_country: isForeign ? ($('#nb-country').value.trim() || null) : null,
+    passport_number: isForeign ? ($('#nb-passport').value.trim() || null) : null,
+    visa_number: isForeign ? ($('#nb-visa').value.trim() || null) : null,
+    visa_type: isForeign ? ($('#nb-visa-type').value.trim() || null) : null
   };
   if(!data.customer_name){toast('Guest name required','e');return}
   if(!data.check_in_date || !data.check_out_date){toast('Dates required','e');return}
   if(!data.room_id){toast('Pick a room','e');return}
+  if(isForeign && !data.passport_number){
+    toast('Passport number required for foreign guests','e');return;
+  }
 
   $('#nb-save').disabled=true; $('#nb-save').textContent='⏳ Creating…';
   try{
@@ -559,9 +656,27 @@ async function renderDetail(){
   const exRes = await SBPHotel.extras.list(_shopId, b.id);
   const extras = exRes.ok ? (exRes.extras||[]) : [];
   const extrasTotal = exRes.ok ? (exRes.extras_total||0) : 0;
+  const extrasCgst  = exRes.ok ? (exRes.extras_cgst||0)  : 0;
+  const extrasSgst  = exRes.ok ? (exRes.extras_sgst||0)  : 0;
+
+  // Batch 021: room GST auto-derived from rate slab
+  const roomRate = Number(b.rate_per_night)||0;
+  const roomTaxable = Number(b.room_total)||0;
+  const roomGstRate = b.room_gst_rate != null
+    ? Number(b.room_gst_rate)
+    : (window.SBPHotel ? SBPHotel.roomGstForRate(roomRate) : 0);
+  const roomGstAmt = +(roomTaxable * roomGstRate / 100).toFixed(2);
+  const roomCgst = +(roomGstAmt / 2).toFixed(2);
+  const roomSgst = +(roomGstAmt - roomCgst).toFixed(2);
+  const roomTotalWithGst = roomTaxable + roomCgst + roomSgst;
+  const totalCgst = roomCgst + extrasCgst;
+  const totalSgst = roomSgst + extrasSgst;
+  const totalTax  = totalCgst + totalSgst;
 
   const sb=SBPHotel.statusBadgeColor(b.status);
-  const grandTotal = (Number(b.room_total)||0) + extrasTotal + (Number(b.tax_amount)||0) - (Number(b.discount_amount)||0);
+  const grandTotal = roomTotalWithGst + extrasTotal - (Number(b.discount_amount)||0);
+  const advance = Number(b.advance_amount)||0;
+  const balanceDue = Math.max(0, grandTotal - advance);
 
   const actionBtns = [];
   // BATCH 017 BUG-022b: Always show Print Folio (works in any state)
@@ -578,12 +693,18 @@ async function renderDetail(){
   }
 
   const extrasHtml = extras.length
-    ? extras.map(e=>`<div class="extra-item"><div class="x-name">${escHtml(e.description)} ${e.qty>1?`<span style="color:var(--t2)">× ${e.qty}</span>`:''}</div><div class="x-amt">${fINR(e.amount)}</div>${b.status==='checked_in'?`<button class="x-rm" onclick="event.stopPropagation();removeExtra('${e.id}')">✕</button>`:''}</div>`).join('')
+    ? extras.map(e=>{
+        const eg = Number(e.gst_rate)||0;
+        const gstChip = eg > 0
+          ? `<span style="display:inline-block;padding:1px 5px;background:rgba(124,58,237,.15);border-radius:6px;font-size:9px;font-weight:700;color:var(--acc4);margin-left:6px">GST ${eg}%</span>`
+          : '';
+        return `<div class="extra-item"><div class="x-name">${escHtml(e.description)} ${e.qty>1?`<span style="color:var(--t2)">× ${e.qty}</span>`:''}${gstChip}</div><div class="x-amt">${fINR(e.total_with_gst||e.amount)}</div>${b.status==='checked_in'?`<button class="x-rm" onclick="event.stopPropagation();removeExtra('${e.id}')">✕</button>`:''}</div>`;
+      }).join('')
     : `<div style="text-align:center;color:var(--t2);font-size:12px;padding:10px">No extras yet</div>`;
 
   $('#det-content').innerHTML=`
     <div class="handle"></div>
-    <div class="sheet-title">${escHtml(b.customer_name)} <span class="bk-tag ${b.status}" style="font-size:11px;margin-left:8px;vertical-align:middle">${sb.label}</span></div>
+    <div class="sheet-title">${escHtml(b.customer_name)} <span class="bk-tag ${b.status}" style="font-size:11px;margin-left:8px;vertical-align:middle">${sb.label}</span>${b.is_foreign?'<span style="background:rgba(59,130,246,.18);color:#3B82F6;padding:2px 7px;border-radius:6px;font-size:10px;font-weight:700;margin-left:6px">🌐 FOREIGN</span>':''}</div>
 
     <div class="det-section">
       <div class="det-h">📋 <span class="lang-en">Guest Details</span></div>
@@ -591,6 +712,7 @@ async function renderDetail(){
       <div class="det-row"><span class="k">WhatsApp</span><span class="v">${escHtml(b.customer_wa||'—')}</span></div>
       <div class="det-row"><span class="k">Guests</span><span class="v">${b.num_adults} adult${b.num_adults>1?'s':''}${b.num_children>0?', '+b.num_children+' child':''}</span></div>
       ${b.id_proof_type?`<div class="det-row"><span class="k">ID</span><span class="v">${escHtml(b.id_proof_type)}: ${escHtml(b.id_proof_number||'—')}</span></div>`:''}
+      ${b.is_foreign?`<div class="det-row"><span class="k">Country</span><span class="v">${escHtml(b.guest_country||'—')}</span></div><div class="det-row"><span class="k">Passport</span><span class="v">${escHtml(b.passport_number||'—')}</span></div>`:''}
       ${b.notes?`<div class="det-row"><span class="k">Notes</span><span class="v" style="font-size:11px;font-style:italic;text-align:right">"${escHtml(b.notes)}"</span></div>`:''}
     </div>
 
@@ -600,17 +722,21 @@ async function renderDetail(){
       <div class="det-row"><span class="k">Check-in</span><span class="v">${fmtDate(b.check_in_date)}</span></div>
       <div class="det-row"><span class="k">Check-out</span><span class="v">${fmtDate(b.check_out_date)}</span></div>
       <div class="det-row"><span class="k">Nights</span><span class="v">${b.num_nights}</span></div>
-      <div class="det-row"><span class="k">Rate</span><span class="v">${fINR(b.rate_per_night)}/night</span></div>
+      <div class="det-row"><span class="k">Rate</span><span class="v">${fINR(b.rate_per_night)}/night ${roomGstRate>0?`<span style="font-size:10px;color:var(--acc4);font-weight:600">+ ${roomGstRate}% GST</span>`:`<span style="font-size:10px;color:var(--t2);font-weight:600">(GST exempt)</span>`}</span></div>
+      ${advance>0?`<div class="det-row"><span class="k">Advance</span><span class="v" style="color:var(--acc3)">${fINR(advance)} ${b.advance_payment_mode?`<span style="font-size:10px;color:var(--t2);font-weight:600">via ${escHtml(b.advance_payment_mode)}</span>`:''}</span></div>`:''}
     </div>
 
     <div class="det-section">
       <div class="det-h">📒 <span class="lang-en">Folio</span></div>
-      <div class="det-row"><span class="k">Room (${b.num_nights} × ${fINR(b.rate_per_night)})</span><span class="v">${fINR(b.room_total)}</span></div>
+      <div class="det-row"><span class="k">Room (${b.num_nights} × ${fINR(b.rate_per_night)})</span><span class="v">${fINR(roomTaxable)}</span></div>
+      ${roomGstRate>0?`<div class="det-row" style="font-size:11px;color:var(--t2)"><span class="k">  Room GST ${roomGstRate}% (CGST + SGST)</span><span class="v">+${fINR(roomCgst+roomSgst)}</span></div>`:''}
       <div style="margin:10px 0 6px;font-size:11px;color:var(--t2);font-weight:700;text-transform:uppercase;letter-spacing:.4px">EXTRAS (${extras.length})</div>
       ${extrasHtml}
-      ${(Number(b.tax_amount)||0)>0?`<div class="det-row" style="margin-top:8px"><span class="k">Tax</span><span class="v">${fINR(b.tax_amount)}</span></div>`:''}
+      ${(extrasCgst+extrasSgst)>0?`<div class="det-row" style="font-size:11px;color:var(--t2);margin-top:6px"><span class="k">  Extras GST (CGST + SGST)</span><span class="v">+${fINR(extrasCgst+extrasSgst)}</span></div>`:''}
+      ${totalTax>0?`<div class="det-row" style="margin-top:8px;border-top:1px dashed var(--bord);padding-top:8px"><span class="k">Total Tax (CGST ${fINR(totalCgst)} + SGST ${fINR(totalSgst)})</span><span class="v">${fINR(totalTax)}</span></div>`:''}
       ${(Number(b.discount_amount)||0)>0?`<div class="det-row"><span class="k">Discount</span><span class="v" style="color:var(--rose)">−${fINR(b.discount_amount)}</span></div>`:''}
-      <div class="det-row total"><span class="k">Total</span><span class="v">${fINR(grandTotal)}</span></div>
+      <div class="det-row total"><span class="k">Grand Total</span><span class="v">${fINR(grandTotal)}</span></div>
+      ${advance>0?`<div class="det-row" style="font-size:12px;color:var(--acc3)"><span class="k">  − Advance paid</span><span class="v">−${fINR(advance)}</span></div><div class="det-row" style="font-weight:700;color:var(--acc)"><span class="k">Balance Due</span><span class="v">${fINR(balanceDue)}</span></div>`:''}
     </div>
 
     ${actionBtns.join('')}
@@ -681,12 +807,25 @@ async function doCheckOut(){
 }
 
 // ── Folio extras ───────────────────────────────────────
+function onExCategoryChange(){
+  // Auto-suggest GST and HSN when category changes
+  const cat = $('#ex-cat').value;
+  if (window.SBPHotel) {
+    $('#ex-gst').value = String(SBPHotel.extraGstForCategory(cat));
+    $('#ex-hsn').value = SBPHotel.hsnForCategory(cat) || '';
+  }
+  recalcExtraAmt();
+}
+
 function openAddExtra(){
   $('#ex-bid').value=_currentBooking.id;
   $('#ex-cat').value='food';
   $('#ex-desc').value='';
   $('#ex-qty').value=1;
   $('#ex-unit').value='';
+  $('#ex-incl').checked=false;
+  // Auto-set GST + HSN based on default category
+  onExCategoryChange();
   $('#ex-amt').textContent='Total: ₹0';
   openModal('extra-modal');
 }
@@ -694,7 +833,21 @@ function openAddExtra(){
 function recalcExtraAmt(){
   const q=parseInt($('#ex-qty').value,10)||0;
   const u=parseFloat($('#ex-unit').value)||0;
-  $('#ex-amt').textContent=`Total: ${fINR(q*u)}`;
+  const gst=parseFloat($('#ex-gst').value)||0;
+  const incl=$('#ex-incl').checked;
+  const lineAmt = q*u;
+  let breakdown;
+  if(gst <= 0){
+    breakdown = `Total: ${fINR(lineAmt)}`;
+  } else if(incl){
+    const taxable = lineAmt * 100 / (100+gst);
+    const tax = lineAmt - taxable;
+    breakdown = `Total: ${fINR(lineAmt)} <span style="font-size:11px;color:var(--t2);font-weight:500">(incl. ${fINR(tax)} GST)</span>`;
+  } else {
+    const tax = lineAmt * gst / 100;
+    breakdown = `${fINR(lineAmt)} + ${fINR(tax)} GST = <span style="color:var(--acc)">${fINR(lineAmt+tax)}</span>`;
+  }
+  $('#ex-amt').innerHTML=breakdown;
 }
 $('#ex-qty').addEventListener('input', recalcExtraAmt);
 $('#ex-unit').addEventListener('input', recalcExtraAmt);
@@ -705,7 +858,10 @@ async function saveExtra(){
     category: $('#ex-cat').value,
     description: $('#ex-desc').value.trim(),
     qty: parseInt($('#ex-qty').value,10)||1,
-    unit_price: parseFloat($('#ex-unit').value)||0
+    unit_price: parseFloat($('#ex-unit').value)||0,
+    gst_rate: parseFloat($('#ex-gst').value)||0,
+    gst_inclusive: $('#ex-incl').checked,
+    hsn_sac_code: $('#ex-hsn').value.trim() || null
   };
   if(!data.description){toast('Description required','e');return}
   if(data.unit_price<=0){toast('Price must be > 0','e');return}
