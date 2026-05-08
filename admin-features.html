@@ -8,8 +8,7 @@
 <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180x180.png?v=2">
 <title>Feature Flags — Admin Dashboard</title>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js">
-</script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -391,7 +390,7 @@
       </div>
 
       <div style="margin-top:32px;padding-top:18px;border-top:1px solid rgba(124,58,237,.2)">
-        <div class="nav-item" onclick="logout()" style="color:#EF4444"><span>🚪</span><span>Logout</span></div>
+        <div id="logoutBtn" class="nav-item" onclick="logout()" style="color:#EF4444"><span>🚪</span><span>Logout</span></div>
       </div>
     </div>
     
@@ -568,12 +567,16 @@
   </script>
 
   <script>
-    /* Batch 018.1 hotfix — sidebar nav helpers (must define before any nav click) */
+    /* Batch 018.2 — sidebar nav helpers + legacy compat */
     if (typeof window.goTo !== 'function') {
       window.goTo = function(p){ window.location.href = p; };
     }
     if (typeof window.logout !== 'function') {
       window.logout = function(){
+        if (window.AdminAuth && AdminAuth.getInstance && typeof AdminAuth.getInstance().logout === 'function') {
+          if (!confirm('Are you sure you want to logout?')) return;
+          try { AdminAuth.getInstance().logout(); } catch(e){}
+        }
         try { sessionStorage.removeItem('sbp_admin_token'); } catch(e){}
         try { sessionStorage.removeItem('sbp_admin_session'); } catch(e){}
         try { sessionStorage.removeItem('sbp_admin_logged_in'); } catch(e){}

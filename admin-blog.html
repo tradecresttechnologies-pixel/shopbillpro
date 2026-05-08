@@ -117,7 +117,7 @@
       </div>
 
       <div style="margin-top:32px;padding-top:18px;border-top:1px solid rgba(124,58,237,.2)">
-        <div class="nav-item" onclick="logout()" style="color:#EF4444"><span>🚪</span><span>Logout</span></div>
+        <div id="logoutBtn" class="nav-item" onclick="logout()" style="color:#EF4444"><span>🚪</span><span>Logout</span></div>
       </div>
     </div>
     
@@ -536,6 +536,25 @@
     });
 
     loadPosts();
+  </script>
+
+  <script>
+    /* Batch 018.2 — sidebar nav helpers + legacy compat */
+    if (typeof window.goTo !== 'function') {
+      window.goTo = function(p){ window.location.href = p; };
+    }
+    if (typeof window.logout !== 'function') {
+      window.logout = function(){
+        if (window.AdminAuth && AdminAuth.getInstance && typeof AdminAuth.getInstance().logout === 'function') {
+          if (!confirm('Are you sure you want to logout?')) return;
+          try { AdminAuth.getInstance().logout(); } catch(e){}
+        }
+        try { sessionStorage.removeItem('sbp_admin_token'); } catch(e){}
+        try { sessionStorage.removeItem('sbp_admin_session'); } catch(e){}
+        try { sessionStorage.removeItem('sbp_admin_logged_in'); } catch(e){}
+        window.location.href = 'admin-login.html';
+      };
+    }
   </script>
 </body>
 </html>
