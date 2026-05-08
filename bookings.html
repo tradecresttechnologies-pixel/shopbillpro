@@ -695,12 +695,31 @@ async function renderDetail(){
   const extrasHtml = extras.length
     ? extras.map(e=>{
         const eg = Number(e.gst_rate)||0;
+        const incl = !!e.gst_inclusive;
+        const taxable = Number(e.taxable_amount) || 0;
+        const lineGst = (Number(e.cgst_amount)||0) + (Number(e.sgst_amount)||0);
+        const lineTotal = Number(e.total_with_gst) || Number(e.amount) || 0;
         const gstChip = eg > 0
           ? `<span style="display:inline-block;padding:1px 5px;background:rgba(124,58,237,.15);border-radius:6px;font-size:9px;font-weight:700;color:var(--acc4);margin-left:6px">GST ${eg}%</span>`
           : '';
-        return `<div class="extra-item"><div class="x-name">${escHtml(e.description)} ${e.qty>1?`<span style="color:var(--t2)">× ${e.qty}</span>`:''}${gstChip}</div><div class="x-amt">${fINR(e.total_with_gst||e.amount)}</div>${b.status==='checked_in'?`<button class="x-rm" onclick="event.stopPropagation();removeExtra('${e.id}')">✕</button>`:''}</div>`;
+        // Per-line subtitle clarifying inclusive vs exclusive
+        let subtitle = '';
+        if (eg > 0) {
+          if (incl) {
+            subtitle = `<div style="font-size:10px;color:var(--t2);margin-top:2px;font-weight:500">incl. ${fINR(lineGst)} GST · base ${fINR(taxable)}</div>`;
+          } else {
+            subtitle = `<div style="font-size:10px;color:var(--t2);margin-top:2px;font-weight:500">${fINR(taxable)} + ${fINR(lineGst)} GST</div>`;
+          }
+        }
+        return `<div class="extra-item"><div class="x-name">${escHtml(e.description)} ${e.qty>1?`<span style="color:var(--t2)">× ${e.qty}</span>`:''}${gstChip}${subtitle}</div><div class="x-amt">${fINR(lineTotal)}</div>${b.status==='checked_in'?`<button class="x-rm" onclick="event.stopPropagation();removeExtra('${e.id}')">✕</button>`:''}</div>`;
       }).join('')
     : `<div style="text-align:center;color:var(--t2);font-size:12px;padding:10px">No extras yet</div>`;
+
+  // Batch 021.1 — clean rollup section
+  // Compute pure totals: taxable subtotal, total CGST, total SGST, grand total
+  const extrasTaxable = exRes.ok ? (exRes.extras_taxable || 0) : 0;
+  const allTaxable    = roomTaxable + extrasTaxable;     // pre-tax base across all lines
+  // (totalCgst, totalSgst, totalTax already computed above)
 
   $('#det-content').innerHTML=`
     <div class="handle"></div>
@@ -728,15 +747,25 @@ async function renderDetail(){
 
     <div class="det-section">
       <div class="det-h">📒 <span class="lang-en">Folio</span></div>
-      <div class="det-row"><span class="k">Room (${b.num_nights} × ${fINR(b.rate_per_night)})</span><span class="v">${fINR(roomTaxable)}</span></div>
-      ${roomGstRate>0?`<div class="det-row" style="font-size:11px;color:var(--t2)"><span class="k">  Room GST ${roomGstRate}% (CGST + SGST)</span><span class="v">+${fINR(roomCgst+roomSgst)}</span></div>`:''}
+
+      <!-- Room line -->
+      <div class="det-row" style="align-items:flex-start"><span class="k">Room (${b.num_nights} × ${fINR(b.rate_per_night)}) ${roomGstRate>0?`<span style="display:inline-block;padding:1px 5px;background:rgba(124,58,237,.15);border-radius:6px;font-size:9px;font-weight:700;color:var(--acc4);margin-left:4px">GST ${roomGstRate}%</span>`:''}<div style="font-size:10px;color:var(--t2);margin-top:2px;font-weight:500">${roomGstRate>0?`${fINR(roomTaxable)} + ${fINR(roomCgst+roomSgst)} GST`:'GST exempt'}</div></span><span class="v">${fINR(roomTotalWithGst)}</span></div>
+
+      <!-- Extras list -->
       <div style="margin:10px 0 6px;font-size:11px;color:var(--t2);font-weight:700;text-transform:uppercase;letter-spacing:.4px">EXTRAS (${extras.length})</div>
       ${extrasHtml}
-      ${(extrasCgst+extrasSgst)>0?`<div class="det-row" style="font-size:11px;color:var(--t2);margin-top:6px"><span class="k">  Extras GST (CGST + SGST)</span><span class="v">+${fINR(extrasCgst+extrasSgst)}</span></div>`:''}
-      ${totalTax>0?`<div class="det-row" style="margin-top:8px;border-top:1px dashed var(--bord);padding-top:8px"><span class="k">Total Tax (CGST ${fINR(totalCgst)} + SGST ${fINR(totalSgst)})</span><span class="v">${fINR(totalTax)}</span></div>`:''}
-      ${(Number(b.discount_amount)||0)>0?`<div class="det-row"><span class="k">Discount</span><span class="v" style="color:var(--rose)">−${fINR(b.discount_amount)}</span></div>`:''}
-      <div class="det-row total"><span class="k">Grand Total</span><span class="v">${fINR(grandTotal)}</span></div>
-      ${advance>0?`<div class="det-row" style="font-size:12px;color:var(--acc3)"><span class="k">  − Advance paid</span><span class="v">−${fINR(advance)}</span></div><div class="det-row" style="font-weight:700;color:var(--acc)"><span class="k">Balance Due</span><span class="v">${fINR(balanceDue)}</span></div>`:''}
+
+      <!-- Clean rollup -->
+      <div style="margin-top:10px;border-top:1px dashed var(--bord);padding-top:8px">
+        ${totalTax>0?`
+          <div class="det-row" style="font-size:12px;color:var(--t2)"><span class="k">Subtotal (taxable)</span><span class="v">${fINR(allTaxable)}</span></div>
+          <div class="det-row" style="font-size:12px;color:var(--t2)"><span class="k">  CGST</span><span class="v">+ ${fINR(totalCgst)}</span></div>
+          <div class="det-row" style="font-size:12px;color:var(--t2)"><span class="k">  SGST</span><span class="v">+ ${fINR(totalSgst)}</span></div>
+        `:''}
+        ${(Number(b.discount_amount)||0)>0?`<div class="det-row" style="font-size:12px"><span class="k">Discount</span><span class="v" style="color:var(--rose)">−${fINR(b.discount_amount)}</span></div>`:''}
+        <div class="det-row total" style="margin-top:6px"><span class="k">Grand Total</span><span class="v">${fINR(grandTotal)}</span></div>
+        ${advance>0?`<div class="det-row" style="font-size:12px;color:var(--acc3)"><span class="k">  − Advance paid</span><span class="v">−${fINR(advance)}</span></div><div class="det-row" style="font-weight:700;color:var(--acc)"><span class="k">Balance Due</span><span class="v">${fINR(balanceDue)}</span></div>`:''}
+      </div>
     </div>
 
     ${actionBtns.join('')}
