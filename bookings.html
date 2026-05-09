@@ -679,6 +679,8 @@ async function renderDetail(){
   const balanceDue = Math.max(0, grandTotal - advance);
 
   const actionBtns = [];
+  // BATCH 022A — prominent CTA to the dedicated folio page
+  actionBtns.push(`<button class="btn-pri" onclick="window.location.href='folio.html?id=${b.id}'" style="margin-bottom:10px;background:linear-gradient(135deg,var(--acc),#FF6B35);color:#0A0E1A;font-weight:800">📋 <span class="lang-en">Open Full Folio →</span><span class="lang-hi">पूरा फ़ोलियो खोलें →</span></button>`);
   // BATCH 017 BUG-022b: Always show Print Folio (works in any state)
   actionBtns.push(`<button class="btn-sec" onclick="printFolio()" style="margin-bottom:8px">🖨️ <span class="lang-en">Print Folio</span><span class="lang-hi">फोलियो प्रिंट करें</span></button>`);
   if(b.status==='pending' || b.status==='confirmed'){
