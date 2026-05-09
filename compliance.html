@@ -192,8 +192,11 @@ html[lang="hi"] .lang-en{display:none!important}
 @media print{
   @page{size:A4 landscape;margin:14mm 12mm}
   body{background:#fff!important;color:#000!important;font-family:'Noto Sans',sans-serif!important}
-  .topbar,.tabs,.toolbar,.statbar,.info-card,.locked,.toast-host,.bnav,.btn-pri,.btn-sec{display:none!important}
-  #app{max-width:100%;padding:0;margin:0}
+  /* Hide all app chrome: topbar, tabs, toolbars, sidebar, drawer, overlay, bottom nav, action buttons, locked banners, toasts */
+  .topbar,.tabs,.toolbar,.statbar,.info-card,.locked,.toast-host,.bnav,.bnav-drawer,.bnav-overlay,#dsb,.btn-pri,.btn-sec{display:none!important}
+  /* Reset #app — undo desktop sidebar margin shift so the report uses the full page width */
+  #app,#app *{box-shadow:none!important}
+  #app{max-width:100%!important;width:100%!important;padding:0!important;margin:0!important;min-height:0!important}
   .tbl-wrap{padding:0;overflow:visible}
   .print-only{display:block!important}
   .print-hd{margin-bottom:8mm;border-bottom:2px solid #000;padding-bottom:5mm}
