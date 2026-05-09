@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en" translate="no" class="notranslate">
+<head>
+<script>
+// Pre-paint theme — eliminates dark→light flash
+(function(){try{var t=localStorage.getItem('sbp_theme');if(t==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}})();
+</script>
+<meta charset="UTF-8">
+<meta name="google" content="notranslate">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#F5A623">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>ShopBill Pro — Front Desk</title>
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png?v=2">
+<link rel="apple-touch-icon" sizes="192x192" href="icons/icon-192x192.png">
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Noto+Sans:wght@300;400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+function _sbpPlanInfo(){const s=JSON.parse(localStorage.getItem('sbp_shop')||'{}');let plan=(s.plan||'free').toLowerCase();if(plan==='enterprise')plan='business';const exp=s.plan_expires_at;if(exp&&plan!=='free'&&new Date(exp)<new Date())plan='free';return{plan,expired:!!(exp&&new Date(exp)<new Date())}}
+function isPro(){const p=_sbpPlanInfo().plan;return p==='pro'||p==='business'}
+function isBiz(){return _sbpPlanInfo().plan==='business'}
+function isFree(){return _sbpPlanInfo().plan==='free'}
+</script>
+<script src="lang.js"></script>
+<script src="lib/sidebar-engine.js"></script>
+<script src="lib/hospitality.js"></script>
+<script src="conversion.js"></script>
+<script>
+const SB_URL='https://jfqeirfrkjdkqqixivru.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmcWVpcmZya2pka3FxaXhpdnJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzNzQ4MzgsImV4cCI6MjA4OTk1MDgzOH0.akd4E0nil8ypLR4WOykkeYIL8g4uuNU6XdSVh_Y1utk';
+const _sb=supabase.createClient(SB_URL,SB_KEY,{auth:{autoRefreshToken:true,persistSession:true,detectSessionInUrl:false}});
+window._sb=_sb;
+window.SBP=window.SBP||{};window.SBP.online=navigator.onLine;
+window.addEventListener('online',()=>{window.SBP.online=true});
+window.addEventListener('offline',()=>{window.SBP.online=false});
+</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{font-family:'Noto Sans','Noto Sans Devanagari',sans-serif;-webkit-font-smoothing:antialiased}
+:root{
+  --acc:#F5A623;--acc2:#FF6B35;--acc3:#10B981;--acc4:#3B82F6;
+  --bg:#0A0A12;--surf:#13131C;--surf2:#1C1C28;--surf3:#252535;--bord:#2A2A3A;
+  --text:#F0EFF8;--t2:#8A8AA8;--t3:#5A5A75;
+  --font-h:'Outfit',sans-serif;--font-mono:'JetBrains Mono',monospace;
+  --rs:14px;--tr:.2s ease;--rose:#F43F5E;--violet:#8B5CF6;--slate:#64748B;
+  --safe-bottom:env(safe-area-inset-bottom,0px);
+
+  /* Tile palettes — calibrated for both themes */
+  --arr-bg: rgba(245,166,35,.10);
+  --arr-fg: #F5A623;
+  --arr-bord: rgba(245,166,35,.25);
+  --dep-bg: rgba(59,130,246,.10);
+  --dep-fg: #3B82F6;
+  --dep-bord: rgba(59,130,246,.25);
+  --inh-bg: rgba(16,185,129,.10);
+  --inh-fg: #10B981;
+  --inh-bord: rgba(16,185,129,.25);
+  --vac-bg: rgba(100,116,139,.10);
+  --vac-fg: #94A3B8;
+  --vac-bord: rgba(100,116,139,.25);
+}
+[data-theme="light"]{
+  --bg:#FAFAFC;--surf:#FFFFFF;--surf2:#F2F2F8;--surf3:#E8E8F0;--bord:#E5E5EE;
+  --text:#0F0E18;--t2:#5E5A7A;--t3:#9090AA;
+  --vac-fg:#475569;
+}
+body{background:var(--bg);color:var(--text);min-height:100dvh;overflow-x:hidden}
+
+#app{max-width:560px;margin:0 auto;padding-bottom:80px;min-height:100dvh}
+
+/* ── Topbar ──────────────────────────────────────────────────── */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 14px 10px;background:var(--bg);position:sticky;top:0;z-index:50;border-bottom:1px solid var(--bord)}
+.tb-l{display:flex;align-items:center;gap:10px}
+.tb-r{display:flex;gap:8px;align-items:center}
+.back-btn{width:36px;height:36px;border-radius:10px;background:var(--surf);border:1px solid var(--bord);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:var(--text);transition:var(--tr)}
+.back-btn:hover{background:var(--surf2)}
+.tb-title{font-family:var(--font-h);font-size:17px;font-weight:800;letter-spacing:.2px}
+.ic-btn{width:36px;height:36px;border-radius:10px;background:var(--surf);border:1px solid var(--bord);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;color:var(--text);transition:var(--tr)}
+.ic-btn:hover{background:var(--surf2)}
+.ic-btn.spinning{animation:spin 1s linear infinite}
+
+/* ── Hero header ─────────────────────────────────────────────── */
+.hero{padding:18px 14px 6px;display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+.hero-left .hero-eyebrow{font-family:var(--font-mono);font-size:10px;font-weight:600;letter-spacing:1.2px;color:var(--t3);text-transform:uppercase;margin-bottom:4px}
+.hero-left .hero-date{font-family:var(--font-h);font-size:24px;font-weight:800;letter-spacing:-.5px;line-height:1.1}
+.hero-left .hero-day{font-size:12px;color:var(--t2);margin-top:3px;font-weight:500}
+.hero-right{text-align:right}
+.occ-ring{position:relative;width:54px;height:54px;display:inline-block}
+.occ-ring svg{transform:rotate(-90deg);width:54px;height:54px}
+.occ-ring .occ-track{fill:none;stroke:var(--surf2);stroke-width:5}
+.occ-ring .occ-fill{fill:none;stroke:url(#occGrad);stroke-width:5;stroke-linecap:round;transition:stroke-dashoffset 1s cubic-bezier(.4,.0,.2,1)}
+.occ-pct{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--font-h);font-size:13px;font-weight:800;letter-spacing:-.3px}
+.occ-label{font-size:9px;color:var(--t3);font-weight:600;letter-spacing:.6px;text-transform:uppercase;margin-top:3px}
+
+/* ── Live indicator ──────────────────────────────────────────── */
+.live-pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:11px;background:var(--surf);border:1px solid var(--bord);font-size:10px;font-weight:600;color:var(--t2);font-family:var(--font-mono);letter-spacing:.5px;text-transform:uppercase}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--acc3);animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.9)}}
+.live-pill.offline .live-dot{background:var(--rose);animation:none}
+.live-pill.offline{color:var(--rose)}
+
+/* ── 2x2 (mobile) → 1x4 (desktop ≥1024px) tile grid ─────────── */
+.tile-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px}
+@media (min-width:1024px){
+  #app{max-width:1280px}
+  .tile-grid{grid-template-columns:repeat(4,1fr);gap:14px;padding:18px 24px}
+}
+
+.tile{position:relative;background:var(--surf);border:1px solid var(--bord);border-radius:18px;padding:14px;overflow:hidden;cursor:pointer;transition:transform var(--tr), border-color var(--tr), box-shadow var(--tr);min-height:170px;display:flex;flex-direction:column}
+.tile::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--accent-stripe);opacity:.85}
+.tile:hover{transform:translateY(-1px)}
+.tile.arr{--accent-stripe:linear-gradient(90deg,var(--arr-fg),transparent)}
+.tile.dep{--accent-stripe:linear-gradient(90deg,var(--dep-fg),transparent)}
+.tile.inh{--accent-stripe:linear-gradient(90deg,var(--inh-fg),transparent)}
+.tile.vac{--accent-stripe:linear-gradient(90deg,var(--vac-fg),transparent)}
+.tile.arr:hover{border-color:var(--arr-bord);box-shadow:0 6px 24px var(--arr-bg)}
+.tile.dep:hover{border-color:var(--dep-bord);box-shadow:0 6px 24px var(--dep-bg)}
+.tile.inh:hover{border-color:var(--inh-bord);box-shadow:0 6px 24px var(--inh-bg)}
+.tile.vac:hover{border-color:var(--vac-bord);box-shadow:0 6px 24px var(--vac-bg)}
+
+.tile-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.tile-label{font-family:var(--font-mono);font-size:9px;font-weight:600;letter-spacing:1.4px;text-transform:uppercase;color:var(--t3)}
+.tile-icon{width:24px;height:24px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:12px}
+.tile.arr .tile-icon{background:var(--arr-bg);color:var(--arr-fg)}
+.tile.dep .tile-icon{background:var(--dep-bg);color:var(--dep-fg)}
+.tile.inh .tile-icon{background:var(--inh-bg);color:var(--inh-fg)}
+.tile.vac .tile-icon{background:var(--vac-bg);color:var(--vac-fg)}
+
+.tile-count{font-family:var(--font-h);font-size:38px;font-weight:800;letter-spacing:-1.5px;line-height:1;margin-bottom:2px;transition:color .3s ease}
+.tile.arr .tile-count{color:var(--arr-fg)}
+.tile.dep .tile-count{color:var(--dep-fg)}
+.tile.inh .tile-count{color:var(--inh-fg)}
+.tile.vac .tile-count{color:var(--vac-fg)}
+.tile-count.flash{animation:flash .6s ease}
+@keyframes flash{0%{transform:scale(1)}40%{transform:scale(1.08)}100%{transform:scale(1)}}
+
+.tile-sub{font-size:11px;color:var(--t2);font-weight:500;margin-bottom:10px}
+
+.tile-list{flex:1;display:flex;flex-direction:column;gap:5px;overflow:hidden}
+.tile-item{display:flex;align-items:center;gap:7px;padding:5px 7px;background:var(--surf2);border-radius:8px;font-size:11px;cursor:pointer;transition:background var(--tr);min-height:28px}
+.tile-item:hover{background:var(--surf3)}
+.ti-av{width:18px;height:18px;border-radius:5px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff;font-family:var(--font-h);letter-spacing:-.3px}
+.ti-nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;color:var(--text)}
+.ti-meta{flex-shrink:0;font-size:10px;color:var(--t2);font-family:var(--font-mono);font-weight:600}
+.tile-empty{flex:1;display:flex;align-items:center;justify-content:center;color:var(--t3);font-size:11px;font-style:italic;padding:8px}
+.tile-more{margin-top:auto;font-size:10px;color:var(--t3);text-align:center;padding-top:6px;border-top:1px dashed var(--bord);font-weight:600;letter-spacing:.3px}
+
+/* Vacant-room item shows room number prominently */
+.tile.vac .ti-av{background:var(--surf3);color:var(--text);font-family:var(--font-mono);font-size:10px}
+
+/* ── Quick actions row ──────────────────────────────────────── */
+.qa-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 14px 14px}
+@media (min-width:1024px){.qa-row{grid-template-columns:repeat(4,1fr);padding:0 24px 18px}}
+.qa-btn{display:flex;align-items:center;gap:10px;padding:14px;background:var(--surf);border:1px solid var(--bord);border-radius:14px;cursor:pointer;transition:var(--tr);text-decoration:none;color:var(--text);text-align:left;font-family:inherit;font-weight:600;font-size:13px}
+.qa-btn:hover{background:var(--surf2);border-color:var(--acc)}
+.qa-btn.primary{background:linear-gradient(135deg,var(--acc),var(--acc2));color:#0A0E1A;border-color:transparent;font-weight:800}
+.qa-btn.primary:hover{transform:translateY(-1px);box-shadow:0 8px 22px rgba(245,166,35,.35)}
+.qa-ic{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;background:var(--surf2)}
+.qa-btn.primary .qa-ic{background:rgba(255,255,255,.25)}
+.qa-lbl{flex:1;line-height:1.2}
+.qa-sub{font-size:10px;color:var(--t3);font-weight:500;margin-top:1px;letter-spacing:.2px}
+.qa-btn.primary .qa-sub{color:rgba(10,14,26,.6)}
+
+/* ── Loader / states ─────────────────────────────────────────── */
+.skeleton{background:linear-gradient(90deg,var(--surf2) 0%,var(--surf3) 50%,var(--surf2) 100%);background-size:200% 100%;animation:shim 1.4s ease-in-out infinite;border-radius:6px}
+@keyframes shim{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.sk-count{height:36px;width:60px;margin-bottom:6px}
+.sk-line{height:11px;width:80%;margin-bottom:4px}
+.sk-line.short{width:50%}
+
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.toast-host{position:fixed;top:70px;left:50%;transform:translateX(-50%);z-index:300;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{background:var(--surf3);color:var(--text);padding:10px 16px;border-radius:11px;font-size:13px;font-weight:600;border:1px solid var(--bord);box-shadow:0 6px 20px rgba(0,0,0,.18);animation:tin .25s ease;max-width:320px}
+.toast.s{border-color:var(--acc3);background:rgba(16,185,129,.12)}
+.toast.e{border-color:var(--rose);background:rgba(244,63,94,.12)}
+.toast.w{border-color:var(--acc);background:rgba(245,166,35,.12)}
+@keyframes tin{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+
+/* Bottom nav (mobile) */
+.bnav{position:fixed;bottom:0;left:0;right:0;z-index:60;background:var(--surf);border-top:1px solid var(--bord);display:flex;justify-content:space-around;padding:6px 8px calc(6px + var(--safe-bottom));box-shadow:0 -4px 12px rgba(0,0,0,.08)}
+@media (min-width:1024px){.bnav{display:none}}
+.bn-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px;text-decoration:none;color:var(--t2);font-size:10px;font-weight:600;letter-spacing:.2px}
+.bn-item.on{color:var(--acc)}
+.bn-ic{font-size:18px;line-height:1}
+.bn-fab{width:46px;height:46px;border-radius:14px;background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff;font-size:22px;font-weight:300;display:flex;align-items:center;justify-content:center;margin-top:-14px;box-shadow:0 4px 14px rgba(245,166,35,.45)}
+
+/* Locked banner (free plan) */
+.locked{margin:14px;background:linear-gradient(135deg,rgba(245,166,35,.12),rgba(255,107,53,.06));border:1.5px solid rgba(245,166,35,.35);border-radius:var(--rs);padding:18px;text-align:center}
+.locked h3{font-family:var(--font-h);font-size:15px;font-weight:800;color:var(--acc);margin-bottom:6px}
+.locked p{font-size:12px;color:var(--t2);line-height:1.5;margin-bottom:12px}
+.btn-pri{background:linear-gradient(135deg,#F5A623,#FF8A00);color:#0A0E1A;font-weight:800;font-size:13px;padding:10px 18px;border-radius:10px;border:none;cursor:pointer;font-family:var(--font-h)}
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- SVG defs (gradient for occupancy ring) -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <linearGradient id="occGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#F5A623"/>
+        <stop offset="100%" stop-color="#FF6B35"/>
+      </linearGradient>
+    </defs>
+  </svg>
+
+  <div class="topbar">
+    <div class="tb-l">
+      <button class="back-btn" onclick="window.location.href='dashboard.html'" aria-label="Back">←</button>
+      <span class="tb-title">Front Desk</span>
+    </div>
+    <div class="tb-r">
+      <span id="live-pill" class="live-pill"><span class="live-dot"></span><span id="live-txt">LIVE</span></span>
+      <button class="ic-btn" id="refresh-btn" onclick="refreshNow()" aria-label="Refresh">↻</button>
+    </div>
+  </div>
+
+  <!-- Free plan lock -->
+  <div id="locked" class="locked" style="display:none">
+    <h3><span class="lang-en">🏨 Front Desk is a Pro feature</span><span class="lang-hi">🏨 फ्रंट डेस्क प्रो फ़ीचर है</span></h3>
+    <p><span class="lang-en">Real-time arrivals, departures, and walk-in fast-path. Upgrade to unlock.</span><span class="lang-hi">रीयल-टाइम आगमन, प्रस्थान और वॉक-इन फ़ास्ट-पाथ। अनलॉक करने के लिए अपग्रेड करें।</span></p>
+    <button class="btn-pri" onclick="window.location.href='subscription.html'">⚡ Upgrade</button>
+  </div>
+
+  <!-- Hero -->
+  <div id="hero" class="hero" style="display:none">
+    <div class="hero-left">
+      <div class="hero-eyebrow"><span class="lang-en">TODAY</span><span class="lang-hi">आज</span></div>
+      <div class="hero-date" id="hero-date">—</div>
+      <div class="hero-day" id="hero-day"></div>
+    </div>
+    <div class="hero-right">
+      <div class="occ-ring">
+        <svg viewBox="0 0 54 54">
+          <circle class="occ-track" cx="27" cy="27" r="22"/>
+          <circle class="occ-fill"  cx="27" cy="27" r="22" id="occ-fill"
+                  stroke-dasharray="138.23" stroke-dashoffset="138.23"/>
+        </svg>
+        <div class="occ-pct" id="occ-pct">—</div>
+      </div>
+      <div class="occ-label"><span class="lang-en">OCCUPANCY</span><span class="lang-hi">अधिभोग</span></div>
+    </div>
+  </div>
+
+  <!-- 4-tile grid -->
+  <div id="tile-grid" class="tile-grid" style="display:none">
+    <!-- Tiles injected by render -->
+  </div>
+
+  <!-- Quick actions -->
+  <div id="qa-row" class="qa-row" style="display:none">
+    <button class="qa-btn primary" onclick="window.location.href='walk-in.html'">
+      <div class="qa-ic">⚡</div>
+      <div class="qa-lbl"><span class="lang-en">Walk-in</span><span class="lang-hi">वॉक-इन</span><div class="qa-sub"><span class="lang-en">Quick check-in</span><span class="lang-hi">त्वरित चेक-इन</span></div></div>
+    </button>
+    <button class="qa-btn" onclick="window.location.href='bookings.html'">
+      <div class="qa-ic">📋</div>
+      <div class="qa-lbl"><span class="lang-en">Bookings</span><span class="lang-hi">बुकिंग</span><div class="qa-sub"><span class="lang-en">All reservations</span><span class="lang-hi">सभी आरक्षण</span></div></div>
+    </button>
+    <button class="qa-btn" onclick="window.location.href='rooms.html'">
+      <div class="qa-ic">🏠</div>
+      <div class="qa-lbl"><span class="lang-en">Rooms</span><span class="lang-hi">कमरे</span><div class="qa-sub"><span class="lang-en">Inventory</span><span class="lang-hi">सूची</span></div></div>
+    </button>
+    <button class="qa-btn" onclick="window.location.href='reports.html'">
+      <div class="qa-ic">📊</div>
+      <div class="qa-lbl"><span class="lang-en">Reports</span><span class="lang-hi">रिपोर्ट</span><div class="qa-sub"><span class="lang-en">Analytics</span><span class="lang-hi">विश्लेषण</span></div></div>
+    </button>
+  </div>
+
+  <!-- Initial loading skeleton -->
+  <div id="skeleton-host" class="tile-grid">
+    <div class="tile arr"><div class="tile-head"><div class="skeleton sk-line short"></div></div><div class="skeleton sk-count"></div><div class="skeleton sk-line"></div><div class="skeleton sk-line short"></div></div>
+    <div class="tile dep"><div class="tile-head"><div class="skeleton sk-line short"></div></div><div class="skeleton sk-count"></div><div class="skeleton sk-line"></div><div class="skeleton sk-line short"></div></div>
+    <div class="tile inh"><div class="tile-head"><div class="skeleton sk-line short"></div></div><div class="skeleton sk-count"></div><div class="skeleton sk-line"></div><div class="skeleton sk-line short"></div></div>
+    <div class="tile vac"><div class="tile-head"><div class="skeleton sk-line short"></div></div><div class="skeleton sk-count"></div><div class="skeleton sk-line"></div><div class="skeleton sk-line short"></div></div>
+  </div>
+</div>
+
+<!-- Toast host -->
+<div class="toast-host" id="toast-host"></div>
+
+<!-- Bottom nav (mobile only) -->
+<nav class="bnav">
+  <a class="bn-item" href="dashboard.html"><span class="bn-ic">🏠</span><span><span class="lang-en">Home</span><span class="lang-hi">होम</span></span></a>
+  <a class="bn-item on" href="front-desk.html"><span class="bn-ic">🛎️</span><span><span class="lang-en">Front Desk</span><span class="lang-hi">डेस्क</span></span></a>
+  <a class="bn-item" href="walk-in.html"><span class="bn-fab">+</span></a>
+  <a class="bn-item" href="bookings.html"><span class="bn-ic">📋</span><span><span class="lang-en">Bookings</span><span class="lang-hi">बुकिंग</span></span></a>
+  <a class="bn-item" href="rooms.html"><span class="bn-ic">🏠</span><span><span class="lang-en">Rooms</span><span class="lang-hi">कमरे</span></span></a>
+</nav>
+
+<script>
+// ════════════════════════════════════════════════════════════════════
+// State
+// ════════════════════════════════════════════════════════════════════
+let _shopId = null;
+let _shop   = null;
+let _data   = null;            // last dashboard payload
+let _prevCounts = {};          // for flash animation
+let _refreshTimer = null;
+const REFRESH_MS = 30000;      // 30s auto-refresh
+
+// ════════════════════════════════════════════════════════════════════
+// Helpers
+// ════════════════════════════════════════════════════════════════════
+const $  = s => document.querySelector(s);
+
+function toast(msg, kind='', dur=3000){
+  const host = $('#toast-host');
+  const el = document.createElement('div');
+  el.className = 'toast ' + (kind||'');
+  el.style.pointerEvents = 'auto';
+  el.textContent = msg;
+  host.appendChild(el);
+  setTimeout(()=>{el.style.opacity='0';el.style.transform='translateY(-8px)';setTimeout(()=>el.remove(),250)}, dur);
+}
+
+function escHtml(s){return String(s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+
+function initials(name){
+  const n = String(name||'').trim();
+  if(!n) return '?';
+  const parts = n.split(/\s+/);
+  if(parts.length === 1) return parts[0].slice(0,2).toUpperCase();
+  return (parts[0][0]+parts[parts.length-1][0]).toUpperCase();
+}
+
+// Deterministic avatar color from name (for visual variety without randomness)
+function avColor(name){
+  const palette = ['#F5A623','#FF6B35','#10B981','#3B82F6','#8B5CF6','#EC4899','#14B8A6','#F59E0B'];
+  let h = 0;
+  const s = String(name||'?');
+  for(let i=0;i<s.length;i++) h = ((h<<5)-h + s.charCodeAt(i))|0;
+  return palette[Math.abs(h) % palette.length];
+}
+
+function fmtINR(n){
+  const v = Math.round(parseFloat(n||0));
+  return '₹' + v.toLocaleString('en-IN');
+}
+
+function fmtDateLong(d){
+  // d is YYYY-MM-DD; format "9 May 2026" + day name in IST
+  if(!d) return '—';
+  const dt = new Date(d + 'T00:00:00');
+  return dt.toLocaleDateString('en-IN', {day:'numeric', month:'long', year:'numeric'});
+}
+function fmtDayName(d){
+  if(!d) return '';
+  return new Date(d + 'T00:00:00').toLocaleDateString('en-IN', {weekday:'long'});
+}
+
+// ════════════════════════════════════════════════════════════════════
+// Online/offline live pill
+// ════════════════════════════════════════════════════════════════════
+function setLivePill(){
+  const p = $('#live-pill');
+  const t = $('#live-txt');
+  if(navigator.onLine){
+    p.classList.remove('offline');
+    t.textContent = 'LIVE';
+  } else {
+    p.classList.add('offline');
+    t.textContent = 'OFFLINE';
+  }
+}
+window.addEventListener('online',  setLivePill);
+window.addEventListener('offline', setLivePill);
+
+// ════════════════════════════════════════════════════════════════════
+// Render
+// ════════════════════════════════════════════════════════════════════
+function renderHero(payload){
+  $('#hero').style.display = 'flex';
+  $('#hero-date').textContent = fmtDateLong(payload.date);
+  $('#hero-day').textContent  = fmtDayName(payload.date);
+
+  const pct = parseInt(payload.counts?.occupancy_pct || 0, 10);
+  $('#occ-pct').textContent = pct + '%';
+  // Circle: r=22 → circumference ≈ 138.23
+  const C = 138.23;
+  const offset = C * (1 - pct/100);
+  $('#occ-fill').setAttribute('stroke-dashoffset', offset);
+}
+
+function renderTiles(payload){
+  const grid = $('#tile-grid');
+  grid.style.display = 'grid';
+  $('#skeleton-host').style.display = 'none';
+  $('#qa-row').style.display = 'grid';
+
+  const c = payload.counts || {};
+  const tiles = [
+    {
+      key:'arr', cls:'arr', icon:'→', label:'ARRIVALS', labelHi:'आगमन',
+      count: c.arrivals_today, sub:'Expected today', subHi:'आज अपेक्षित',
+      list: payload.arrivals || [],
+      onClick:`window.location.href='bookings.html?filter=today'`,
+      itemRender: (b)=>`
+        <div class="tile-item" onclick="event.stopPropagation();openBooking('${b.id}')">
+          <div class="ti-av" style="background:${avColor(b.customer_name)}">${initials(b.customer_name)}</div>
+          <div class="ti-nm">${escHtml(b.customer_name||'Guest')}</div>
+          <div class="ti-meta">${escHtml(b.room_number||'—')}</div>
+        </div>`
+    },
+    {
+      key:'dep', cls:'dep', icon:'←', label:'DEPARTURES', labelHi:'प्रस्थान',
+      count: c.departures_today, sub:'Checking out today', subHi:'आज चेक-आउट',
+      list: payload.departures || [],
+      onClick:`window.location.href='bookings.html?filter=in_house'`,
+      itemRender: (b)=>`
+        <div class="tile-item" onclick="event.stopPropagation();openBooking('${b.id}')">
+          <div class="ti-av" style="background:${avColor(b.customer_name)}">${initials(b.customer_name)}</div>
+          <div class="ti-nm">${escHtml(b.customer_name||'Guest')}</div>
+          <div class="ti-meta">${escHtml(b.room_number||'—')}</div>
+        </div>`
+    },
+    {
+      key:'inh', cls:'inh', icon:'●', label:'IN-HOUSE', labelHi:'मौजूद',
+      count: c.in_house, sub:'Currently checked-in', subHi:'अभी चेक-इन',
+      list: payload.in_house || [],
+      onClick:`window.location.href='bookings.html?filter=in_house'`,
+      itemRender: (b)=>{
+        const dr = b.days_remaining;
+        const drTxt = dr === 0 ? 'today' : (dr === 1 ? '1d' : (dr+'d'));
+        return `
+        <div class="tile-item" onclick="event.stopPropagation();openBooking('${b.id}')">
+          <div class="ti-av" style="background:${avColor(b.customer_name)}">${initials(b.customer_name)}</div>
+          <div class="ti-nm">${escHtml(b.customer_name||'Guest')}</div>
+          <div class="ti-meta">${escHtml(b.room_number||'—')} · ${drTxt}</div>
+        </div>`;
+      }
+    },
+    {
+      key:'vac', cls:'vac', icon:'○', label:'VACANT', labelHi:'खाली',
+      count: c.vacant_rooms, sub:`of ${c.total_rooms||0} total`, subHi:`${c.total_rooms||0} में से`,
+      list: payload.vacant_rooms || [],
+      onClick:`window.location.href='rooms.html'`,
+      itemRender: (r)=>`
+        <div class="tile-item" onclick="event.stopPropagation();window.location.href='walk-in.html?room=${r.id}'">
+          <div class="ti-av">${escHtml(r.room_number||'—')}</div>
+          <div class="ti-nm">${escHtml(r.room_type_name||'Room')}</div>
+          <div class="ti-meta">${fmtINR(r.base_price)}</div>
+        </div>`
+    }
+  ];
+
+  // Build HTML
+  grid.innerHTML = tiles.map(t => {
+    const items = t.list.slice(0,3);
+    const itemsHtml = items.length
+      ? items.map(t.itemRender).join('')
+      : `<div class="tile-empty">${t.key==='arr'?'No arrivals scheduled':t.key==='dep'?'No departures today':t.key==='inh'?'No guests in-house':'All rooms occupied'}</div>`;
+    const moreCount = Math.max(0, t.list.length - 3);
+    const moreHtml = moreCount > 0
+      ? `<div class="tile-more">+${moreCount} more · tap to view all</div>`
+      : (t.list.length > 0 ? `<div class="tile-more">Tap to view all</div>` : '');
+    return `
+      <div class="tile ${t.cls}" onclick="${t.onClick}" role="button" tabindex="0">
+        <div class="tile-head">
+          <span class="tile-label">${t.label}</span>
+          <span class="tile-icon">${t.icon}</span>
+        </div>
+        <div class="tile-count" data-key="${t.key}">${t.count||0}</div>
+        <div class="tile-sub">${t.sub}</div>
+        <div class="tile-list">${itemsHtml}</div>
+        ${moreHtml}
+      </div>`;
+  }).join('');
+
+  // Flash animation on count changes (compares against previous render)
+  ['arr','dep','inh','vac'].forEach(k=>{
+    const cur = c[ {arr:'arrivals_today',dep:'departures_today',inh:'in_house',vac:'vacant_rooms'}[k] ] || 0;
+    const prev = _prevCounts[k];
+    if(prev !== undefined && prev !== cur){
+      const el = grid.querySelector(`.tile-count[data-key="${k}"]`);
+      if(el){
+        el.classList.remove('flash');
+        void el.offsetWidth; // force reflow
+        el.classList.add('flash');
+      }
+    }
+    _prevCounts[k] = cur;
+  });
+}
+
+function openBooking(id){
+  // Navigate to bookings.html with the booking id; bookings.html
+  // already supports opening detail via ?id= via existing init flow.
+  window.location.href = 'bookings.html?id=' + encodeURIComponent(id);
+}
+
+// ════════════════════════════════════════════════════════════════════
+// Fetch + refresh
+// ════════════════════════════════════════════════════════════════════
+async function fetchDashboard(){
+  if(!_sb || !_shopId) return null;
+  try {
+    const { data, error } = await _sb.rpc('sbp_front_desk_dashboard', { p_shop_id: _shopId });
+    if(error){
+      console.error('[front-desk] RPC error:', error);
+      return { ok:false, error: error.message || 'rpc_error' };
+    }
+    return data;
+  } catch(e){
+    console.error('[front-desk] fetch threw:', e);
+    return { ok:false, error: e.message || 'network' };
+  }
+}
+
+async function refreshNow(silent=false){
+  const btn = $('#refresh-btn');
+  if(btn) btn.classList.add('spinning');
+  const res = await fetchDashboard();
+  if(btn) btn.classList.remove('spinning');
+
+  if(!res || !res.ok){
+    if(!silent) toast('Could not refresh: ' + (res?.error||'unknown'), 'e');
+    return;
+  }
+  _data = res;
+  renderHero(res);
+  renderTiles(res);
+}
+
+function startAutoRefresh(){
+  if(_refreshTimer) clearInterval(_refreshTimer);
+  _refreshTimer = setInterval(()=>{
+    if(navigator.onLine && document.visibilityState === 'visible'){
+      refreshNow(true);
+    }
+  }, REFRESH_MS);
+}
+
+// Refresh when tab becomes visible again
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState === 'visible' && _shopId){
+    refreshNow(true);
+  }
+});
+
+// ════════════════════════════════════════════════════════════════════
+// Init
+// ════════════════════════════════════════════════════════════════════
+async function init(){
+  setLivePill();
+  if(typeof langInit === 'function') try { langInit(); } catch(e){}
+
+  if(!_sb){
+    toast('Network library not loaded — refresh', 'e', 5000);
+    return;
+  }
+
+  _shopId = localStorage.getItem('sbp_shop_id');
+  _shop   = JSON.parse(localStorage.getItem('sbp_shop') || '{}');
+
+  if(!_shopId){
+    toast('Shop not loaded', 'e');
+    setTimeout(()=>{window.location.href='dashboard.html'}, 1500);
+    return;
+  }
+
+  // Pro/Business gate — hospitality is paid
+  if(!isPro()){
+    $('#skeleton-host').style.display = 'none';
+    $('#locked').style.display = 'block';
+    return;
+  }
+
+  // First load
+  await refreshNow(false);
+
+  // Auto-refresh every 30s
+  startAutoRefresh();
+}
+
+init();
+</script>
+</body>
+</html>
