@@ -1455,7 +1455,10 @@ async function init(){
       }
       if(isPro()&&navigator.onLine&&_shopId){
         try{
-          const{data}=await _sb.from('bills').select('*,bill_items(item_name,qty,rate,gst_rate,line_total,gst_amount)').eq('shop_id',_shopId).order('created_at',{ascending:false}).limit(300);
+          // Batch 021.5 — bill_items(*) so kind/product_id/booking_id/unit/
+          // qty_unit_label come through. Previous explicit list missed `kind`
+          // so ROOM/SERVICE badges never rendered after the cache refresh.
+          const{data}=await _sb.from('bills').select('*,bill_items(*)').eq('shop_id',_shopId).order('created_at',{ascending:false}).limit(300);
           if(data){_bills=data;localStorage.setItem('sbp_bills',JSON.stringify(_bills));applyFilters();}
         }catch(e){console.warn('Supabase fetch failed:',e)}
       }

@@ -1731,7 +1731,11 @@ async function init(){
     try{
       const[custRes,billRes,expRes]=await Promise.all([
         _sb.from('customers').select('*').eq('shop_id',_shopId).order('name'),
-        _sb.from('bills').select('*,bill_items(item_name)').eq('shop_id',_shopId).order('created_at',{ascending:false}).limit(200),
+        // Batch 021.5 — bill_items(*) to preserve qty/rate/gst/kind/etc.
+        // Previously fetched only item_name, which poisoned the localStorage
+        // cache and caused bill-view from Customer→Bill path to render ₹0
+        // and lose ROOM/SERVICE kind badges.
+        _sb.from('bills').select('*,bill_items(*)').eq('shop_id',_shopId).order('created_at',{ascending:false}).limit(200),
         _sb.from('expenses').select('*').eq('shop_id',_shopId).order('expense_date',{ascending:false}).limit(200)
       ]);
       if(custRes.data){_custs=custRes.data;localStorage.setItem('sbp_customers',JSON.stringify(_custs))}

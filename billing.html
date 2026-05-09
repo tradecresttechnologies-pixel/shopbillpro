@@ -1530,6 +1530,41 @@ function previewAndSave(){
   document.getElementById('partial-amt-row').style.display='none';
   document.getElementById('settle-note').textContent='Full amount will be marked as Paid.';
   document.getElementById('confirm-settle-btn').textContent='✅ Confirm & Save — Cash';
+
+  // ── Batch 021.5 (d cont.) — Advance pre-fill ──
+  // When the booking carried an advance, default the settle to PARTIAL
+  // with paid_amount = advance. paid_amount in DB then reflects what's
+  // actually been collected up to this checkpoint (just the advance).
+  // If user is also collecting the balance now, they bump partial-amt
+  // up to grand_total before saving. Bill grand_total stays full
+  // (correct for the GST tax invoice).
+  try {
+    const _adv = window._currentBookingAdvance;
+    if(_adv && _adv.amount > 0){
+      const advAmt = Math.min(_adv.amount, parseFloat(b.grand)||0);
+      // Switch to Partial mode
+      _settleType = 'partial';
+      const fullBtn = document.getElementById('bm-full-btn');
+      const partBtn = document.getElementById('bm-part-btn');
+      fullBtn.style.borderColor='var(--bord)';
+      fullBtn.style.background='var(--surf2)';
+      fullBtn.style.color='var(--t2)';
+      partBtn.style.borderColor='var(--acc)';
+      partBtn.style.background='rgba(245,166,35,.1)';
+      partBtn.style.color='var(--acc)';
+      const partRow = document.getElementById('partial-amt-row');
+      if(partRow) partRow.style.display = 'block';
+      const partInp = document.getElementById('partial-amt');
+      if(partInp){
+        partInp.value = advAmt.toFixed(2);
+        partInp.placeholder = 'Total received so far (advance + balance now)';
+      }
+      const balanceNow = Math.max(0, (parseFloat(b.grand)||0) - advAmt);
+      document.getElementById('settle-note').textContent =
+        'Advance ₹'+ advAmt.toLocaleString('en-IN') +' already received'+ (_adv.mode?' ('+_adv.mode+')':'') +'. Balance ₹'+ balanceNow.toLocaleString('en-IN') +' due. Bump amount up if collecting balance now.';
+    }
+  } catch(e){ console.warn('[previewBill] advance pre-fill failed:', e); }
+
   openModal('bill-preview-modal');
 }
 
@@ -1572,8 +1607,75 @@ async function confirmSettle(){
   btn.disabled=true;btn.textContent='⏳ Saving...';
 
   try{
+    // ── Batch 021.5 (a) — At-save invoice reservation guard ──
+    // If form-open RPC succeeded, window._reservedInvoiceNo is set and
+    // matches the inv-no field. If form-open failed (or we're a new
+    // session), retry RPC here. If still failing AND online, BLOCK
+    // save — better to refuse than to save with a stale colliding
+    // counter. Offline mode keeps the device-tagged fallback (safe).
+    const onlineNow = navigator.onLine;
+    const isEditModePre = !!window._editBillId;
+    if(!isEditModePre && onlineNow && _sb && _shopId && !window._reservedInvoiceNo){
+      try {
+        const { data, error } = await _sb.rpc('next_invoice_no', { p_shop_id: _shopId });
+        if(error){
+          console.error('[next_invoice_no] at-save RPC error:', error);
+          btn.disabled=false; btn.textContent='✅ Confirm & Save — '+_payMethod;
+          toast('⚠️ Cannot reserve invoice number: '+(error.message||'RPC failed')+'. Save blocked. Check console.','e',6500);
+          return;
+        }
+        if(data && data.length){
+          const row = Array.isArray(data) ? data[0] : data;
+          const reservedNo = (row.invoice_prefix||'INV')+'-'+String(row.invoice_counter).padStart(4,'0');
+          window._reservedInvoiceNo = reservedNo;
+          b.invno = reservedNo;
+          document.getElementById('inv-no').value = reservedNo;
+          _shop.invoice_counter = row.invoice_counter;
+          localStorage.setItem('sbp_shop', JSON.stringify(_shop));
+          console.log('[next_invoice_no] reserved', reservedNo, 'at save');
+        } else {
+          console.error('[next_invoice_no] at-save RPC returned empty:', data);
+          btn.disabled=false; btn.textContent='✅ Confirm & Save — '+_payMethod;
+          toast('⚠️ Invoice reservation returned no data. Save blocked.','e',6000);
+          return;
+        }
+      } catch(e){
+        console.error('[next_invoice_no] at-save threw:', e);
+        btn.disabled=false; btn.textContent='✅ Confirm & Save — '+_payMethod;
+        toast('⚠️ Cannot reserve invoice number ('+(e.message||'network')+'). Save blocked.','e',6500);
+        return;
+      }
+    }
+
+    // ── Batch 021.5 (b) — Resolve customer_id at save ──
+    // Bills were inserted with customer_id=NULL forever, breaking
+    // sbp_get_customer_timeline (which filters strictly on customer_id).
+    // Resolve via the existing 024 RPC; safe to fail (we just leave
+    // customer_id NULL and the timeline RPC's name fallback covers it).
+    let _resolvedCustomerId = null;
+    if(onlineNow && _sb && _shopId && b.nm && String(b.nm).trim().length > 0){
+      try {
+        const { data: cidData, error: cidErr } = await _sb.rpc('sbp_resolve_customer_for_booking', {
+          p_shop_id: _shopId,
+          p_name:    String(b.nm).trim(),
+          p_phone:   b.wa || null,
+          p_wa:      b.wa || null,
+          p_email:   null
+        });
+        if(cidErr){
+          console.warn('[customer_id] resolve RPC error (non-fatal):', cidErr);
+        } else if(cidData){
+          _resolvedCustomerId = cidData;
+          console.log('[customer_id] resolved', _resolvedCustomerId, 'for', b.nm);
+        }
+      } catch(e){
+        console.warn('[customer_id] resolve threw (non-fatal):', e);
+      }
+    }
+
     const billData={
       shop_id:_shopId,invoice_no:b.invno,invoice_date:b.invdate,due_date:b.duedate||null,
+      customer_id:_resolvedCustomerId,
       customer_name:b.nm,customer_wa:b.wa,customer_gstin:b.custGSTIN||b.gst||'',
       payment_mode:_payMethod,status,
       subtotal:b.sub,gst_amount:b.gstAmt,discount:b.discAmt,
@@ -1738,6 +1840,28 @@ async function confirmSettle(){
       cached.unshift({...savedBill,bill_items:b.items});
       localStorage.setItem('sbp_bills',JSON.stringify(cached));
       toast('✅ Bill saved!','s');
+
+      // ── Batch 021.5 (c) — Direct booking → bill linkage ──
+      // The polling-based linkBill at the bottom of this file (line ~4180)
+      // is fragile (1.5s poll, kills on tab-close, picks first detected
+      // bill). Call it directly here with the just-inserted bill id and
+      // the URL-param booking_id. Synchronous, deterministic, idempotent.
+      try {
+        const _bookingIdFromUrl = new URLSearchParams(window.location.search).get('booking_id')
+                              || window._currentBookingId;
+        if(_bookingIdFromUrl && savedBill.id && !String(savedBill.id).startsWith('local_')
+           && window.SBPHotel && _shopId){
+          const _linkRes = await SBPHotel.bookings.linkBill(_shopId, _bookingIdFromUrl, savedBill.id);
+          if(_linkRes && _linkRes.ok){
+            console.log('[BookingCheckout] direct-linked bill', savedBill.id, '→ booking', _bookingIdFromUrl);
+            // Disable the polling fallback now that we've linked
+            window._currentBookingId = null;
+          } else {
+            console.warn('[BookingCheckout] direct linkBill returned non-ok:', _linkRes);
+          }
+        }
+      } catch(e){ console.warn('[BookingCheckout] direct linkBill threw:', e); }
+
       // Loyalty hook (009_loyalty) — apply redemption + award earn
       if(typeof _loyaltyHookAfterBillSave === 'function') _loyaltyHookAfterBillSave(savedBill);
     }
@@ -2792,8 +2916,27 @@ async function confirmPOSCheckout(){
   btn.disabled=true;btn.textContent='⏳ Saving...';
 
   try{
+    // ── Batch 021.5 (b) — Resolve customer_id at POS save too ──
+    // Same fix as confirmSettle: avoid leaving customer_id NULL forever,
+    // which breaks sbp_get_customer_timeline. Best-effort, non-fatal.
+    let _resolvedCustomerId = null;
+    if(isPro() && navigator.onLine && _sb && _shopId && custName && String(custName).trim().length > 0){
+      try {
+        const { data: cidData, error: cidErr } = await _sb.rpc('sbp_resolve_customer_for_booking', {
+          p_shop_id: _shopId,
+          p_name:    String(custName).trim(),
+          p_phone:   custWA || null,
+          p_wa:      custWA || null,
+          p_email:   null
+        });
+        if(cidErr) console.warn('[customer_id/pos] resolve error (non-fatal):', cidErr);
+        else if(cidData) _resolvedCustomerId = cidData;
+      } catch(e){ console.warn('[customer_id/pos] resolve threw (non-fatal):', e); }
+    }
+
     const billData={
       shop_id:_shopId,invoice_no:invNo,invoice_date:todayISO(),
+      customer_id:_resolvedCustomerId,
       customer_name:custName,customer_wa:custWA,
       payment_mode:_pcoPayMethod,status,
       subtotal:sub,gst_amount:gstTotal,discount:billDisc,
@@ -2955,18 +3098,31 @@ async function init(){
   }
   document.getElementById('inv-no').value = initialInvNo;
   document.getElementById('inv-date').value=todayISO();
-  // Try atomic counter (online only) — replaces the naive counter we just showed
+  // Batch 021.5 — RPC fixed in migration 025 (was failing with PG 42702
+  // ambiguous_column). Track the authoritative reservation on window
+  // state so confirmSettle() can verify the number is reserved before
+  // inserting. If reservation is missing at save time, save retries
+  // (or blocks if still failing online).
+  window._reservedInvoiceNo = null;
   if(navigator.onLine && _sb && _shopId){
     try {
       const { data, error } = await _sb.rpc('next_invoice_no', { p_shop_id: _shopId });
-      if(!error && data && data.length){
+      if(error){
+        console.error('[next_invoice_no] form-open RPC error:', error);
+      } else if(data && data.length){
         const row = Array.isArray(data) ? data[0] : data;
         const newNo = (row.invoice_prefix||'INV')+'-'+String(row.invoice_counter).padStart(4,'0');
         document.getElementById('inv-no').value = newNo;
         _shop.invoice_counter = row.invoice_counter;
         localStorage.setItem('sbp_shop', JSON.stringify(_shop));
+        window._reservedInvoiceNo = newNo;
+        console.log('[next_invoice_no] reserved', newNo, 'at form-open');
+      } else {
+        console.error('[next_invoice_no] form-open RPC returned empty data:', data);
       }
-    } catch(e){ /* RPC not deployed yet — fall back silently */ }
+    } catch(e){
+      console.error('[next_invoice_no] form-open threw:', e);
+    }
   }
 
   // Add first item row
@@ -3002,12 +3158,13 @@ async function init(){
       }
     }
 
-    // Refresh shop (updated invoice counter)
-    const{data:shops}=await _sb.from('shops').select('*').eq('id',_shopId).single();
-    if(shops){
-      _shop=shops;localStorage.setItem('sbp_shop',JSON.stringify(shops));
-      document.getElementById('inv-no').value=(shops.invoice_prefix||'INV')+'-'+String(shops.invoice_counter||1).padStart(4,'0');
-    }
+    // Batch 021.5 — DROPPED the redundant `_sb.from('shops').select('*')`
+    // re-fetch + inv-no overwrite that used to live here. It was
+    // re-reading the (already-bumped) counter and re-displaying it,
+    // which had no effect when the form-open RPC succeeded but DID
+    // overwrite a fresh reservation if the RPC bumped between two
+    // browser tabs. The form-open RPC is now the single source of
+    // truth; if it failed we retry at save time (see confirmSettle).
   }
 
   // ── Run AFTER init is fully done (items-wrap ready, data loaded) ──
@@ -3284,6 +3441,37 @@ function loadFromTemplateParams(){
 
       if(typeof calcTotals === 'function') setTimeout(calcTotals, 100);
       console.log('[FolioPopulate] done — rows now:', document.querySelectorAll('#items-wrap .item-row').length, '· room GST:', roomGstRate+'%');
+
+      // ── Batch 021.5 (d) — Advance payment handoff ──
+      // Hotel checkouts can carry an advance the guest paid at booking
+      // time. The folio RPC returns it in b.advance_amount; previously
+      // _sbpPopulateFolio dropped it on the floor, so settle modals
+      // ignored the prepayment and the bill saved with paid_amount=0
+      // (or full grand_total via "Full" default — also wrong) instead
+      // of paid_amount=advance. Fix: stash advance on window state +
+      // surface a banner. previewBill() reads this and pre-sets the
+      // settle modal so paid_amount reflects what's actually been
+      // collected at this point in the booking lifecycle.
+      const _advAmt   = parseFloat(b.advance_amount || 0) || 0;
+      const _advMode  = b.advance_payment_mode || '';
+      const _advAt    = b.advance_paid_at || '';
+      if(_advAmt > 0){
+        window._currentBookingAdvance = { amount: _advAmt, mode: _advMode, paid_at: _advAt };
+        console.log('[FolioPopulate] advance ₹'+_advAmt+' via '+(_advMode||'?')+' on '+(_advAt||'?'));
+        // Banner — append below the existing checkout banner
+        try {
+          const banner = document.getElementById('booking-checkout-banner');
+          if(banner && !document.getElementById('advance-banner')){
+            const advB = document.createElement('div');
+            advB.id = 'advance-banner';
+            advB.style.cssText = 'margin-top:8px;padding:10px 12px;border-radius:10px;background:linear-gradient(135deg,rgba(16,185,129,.12),rgba(16,185,129,.04));border:1px solid rgba(16,185,129,.35);color:#059669;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px';
+            advB.innerHTML = '<span style="font-size:16px">💰</span><span>Advance ₹'+ _advAmt.toLocaleString('en-IN') +' already received'+(_advMode?' via '+_advMode:'')+(_advAt?' on '+String(_advAt).slice(0,10):'')+' — settle modal will pre-fill accordingly.</span>';
+            banner.parentNode.insertBefore(advB, banner.nextSibling);
+          }
+        } catch(e){ console.warn('[FolioPopulate] advance banner failed:', e); }
+      } else {
+        window._currentBookingAdvance = null;
+      }
     }
 
     // Helper: set a GST <select> to the closest available option (5/12/18 etc.)
