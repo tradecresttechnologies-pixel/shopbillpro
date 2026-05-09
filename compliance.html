@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="en" translate="no" class="notranslate">
+<head>
+<script>
+(function(){try{var t=localStorage.getItem('sbp_theme');if(t==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}})();
+</script>
+<meta charset="UTF-8">
+<meta name="google" content="notranslate">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#F5A623">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>ShopBill Pro — Compliance Reports</title>
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png?v=2">
+<link rel="apple-touch-icon" sizes="192x192" href="icons/icon-192x192.png">
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Noto+Sans:wght@300;400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+function _sbpPlanInfo(){const s=JSON.parse(localStorage.getItem('sbp_shop')||'{}');let plan=(s.plan||'free').toLowerCase();if(plan==='enterprise')plan='business';const exp=s.plan_expires_at;if(exp&&plan!=='free'&&new Date(exp)<new Date())plan='free';return{plan,expired:!!(exp&&new Date(exp)<new Date())}}
+function isPro(){const p=_sbpPlanInfo().plan;return p==='pro'||p==='business'}
+function isBiz(){return _sbpPlanInfo().plan==='business'}
+function isFree(){return _sbpPlanInfo().plan==='free'}
+</script>
+<script src="lang.js"></script>
+<script src="lib/sidebar-engine.js"></script>
+<script src="lib/hospitality.js"></script>
+<script src="conversion.js"></script>
+<script>
+const SB_URL='https://jfqeirfrkjdkqqixivru.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmcWVpcmZya2pka3FxaXhpdnJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzNzQ4MzgsImV4cCI6MjA4OTk1MDgzOH0.akd4E0nil8ypLR4WOykkeYIL8g4uuNU6XdSVh_Y1utk';
+const _sb=supabase.createClient(SB_URL,SB_KEY,{auth:{autoRefreshToken:true,persistSession:true,detectSessionInUrl:false}});
+window._sb=_sb;
+window.SBP=window.SBP||{};window.SBP.online=navigator.onLine;
+</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{font-family:'Noto Sans','Noto Sans Devanagari',sans-serif;-webkit-font-smoothing:antialiased}
+:root{
+  --acc:#F5A623;--acc2:#FF6B35;--acc3:#10B981;--acc4:#3B82F6;
+  --bg:#0A0A12;--surf:#13131C;--surf2:#1C1C28;--surf3:#252535;--bord:#2A2A3A;
+  --text:#F0EFF8;--t2:#8A8AA8;--t3:#5A5A75;
+  --font-h:'Outfit',sans-serif;--font-mono:'JetBrains Mono',monospace;
+  --rs:14px;--tr:.2s ease;--rose:#F43F5E;
+  --safe-bottom:env(safe-area-inset-bottom,0px);
+}
+[data-theme="light"]{
+  --bg:#FAFAFC;--surf:#FFFFFF;--surf2:#F2F2F8;--surf3:#E8E8F0;--bord:#E5E5EE;
+  --text:#0F0E18;--t2:#5E5A7A;--t3:#9090AA;
+}
+body{background:var(--bg);color:var(--text);min-height:100dvh;overflow-x:hidden}
+
+/* Bilingual visibility */
+.lang-hi{display:none!important}
+.lang-en{display:inline!important}
+html[lang="hi"] .lang-hi{display:inline!important}
+html[lang="hi"] .lang-en{display:none!important}
+
+#app{max-width:1100px;margin:0 auto;padding-bottom:80px;min-height:100dvh}
+
+/* ── Topbar ──────────────────────────────────────────────────── */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 14px 10px;background:var(--bg);position:sticky;top:0;z-index:50;border-bottom:1px solid var(--bord)}
+.tb-l{display:flex;align-items:center;gap:10px}
+.tb-r{display:flex;gap:8px;align-items:center}
+.back-btn{width:36px;height:36px;border-radius:10px;background:var(--surf);border:1px solid var(--bord);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:var(--text);transition:var(--tr)}
+.back-btn:hover{background:var(--surf2)}
+.tb-eyebrow{font-family:var(--font-mono);font-size:9px;color:var(--t3);font-weight:600;letter-spacing:1.2px;display:block;margin-bottom:1px}
+.tb-title{font-family:var(--font-h);font-size:17px;font-weight:800;letter-spacing:.2px}
+
+/* ── Tabs ────────────────────────────────────────────────────── */
+.tabs{display:flex;gap:6px;padding:14px 14px 0;border-bottom:1px solid var(--bord);overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex-shrink:0;padding:11px 16px;background:transparent;border:none;border-bottom:2.5px solid transparent;font-size:13px;font-weight:700;color:var(--t2);cursor:pointer;font-family:var(--font-h);letter-spacing:.2px;transition:var(--tr);display:flex;align-items:center;gap:8px}
+.tab:hover{color:var(--text)}
+.tab.on{color:var(--acc);border-bottom-color:var(--acc)}
+.tab-badge{font-family:var(--font-mono);font-size:10px;font-weight:700;background:var(--surf2);color:var(--t2);padding:2px 7px;border-radius:5px;letter-spacing:.3px}
+.tab.on .tab-badge{background:rgba(245,166,35,.15);color:var(--acc)}
+
+/* ── Toolbar (date range + actions) ──────────────────────────── */
+.toolbar{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px;padding:14px;background:var(--surf);border-bottom:1px solid var(--bord)}
+.tb-field{display:flex;flex-direction:column;gap:4px}
+.tb-lbl{font-family:var(--font-mono);font-size:9px;font-weight:700;color:var(--t3);letter-spacing:1px;text-transform:uppercase}
+.tb-inp{padding:8px 11px;background:var(--bg);border:1.5px solid var(--bord);border-radius:9px;color:var(--text);font-size:13px;font-family:inherit;font-weight:600;outline:none;min-width:140px}
+.tb-inp:focus{border-color:var(--acc)}
+.tb-presets{display:flex;gap:5px;flex-wrap:wrap}
+.tb-preset{padding:5px 10px;background:var(--surf2);border:1px solid var(--bord);border-radius:7px;font-size:11px;font-weight:700;color:var(--t2);cursor:pointer;font-family:inherit;transition:var(--tr)}
+.tb-preset:hover{color:var(--text);border-color:var(--acc)}
+.tb-preset.on{background:var(--acc);color:#0A0E1A;border-color:var(--acc)}
+.tb-spacer{flex:1;min-width:8px}
+.tb-actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn-sec{padding:9px 14px;background:var(--surf2);border:1.5px solid var(--bord);border-radius:9px;color:var(--text);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;transition:var(--tr)}
+.btn-sec:hover{border-color:var(--acc);color:var(--acc)}
+.btn-pri{padding:9px 14px;background:linear-gradient(135deg,var(--acc),var(--acc2));border:none;border-radius:9px;color:#0A0E1A;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;letter-spacing:.2px;transition:var(--tr);box-shadow:0 3px 10px rgba(245,166,35,.3)}
+.btn-pri:hover{transform:translateY(-1px);box-shadow:0 5px 14px rgba(245,166,35,.4)}
+.btn-pri:disabled,.btn-sec:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
+
+/* ── Status bar ──────────────────────────────────────────────── */
+.statbar{padding:10px 14px;background:var(--surf2);border-bottom:1px solid var(--bord);font-size:12px;color:var(--t2);font-weight:600;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.statbar strong{color:var(--text);font-family:var(--font-h);font-weight:800}
+.stat-pill{font-family:var(--font-mono);font-size:10px;background:var(--bg);padding:4px 10px;border-radius:6px;border:1px solid var(--bord);letter-spacing:.4px}
+
+/* ── Table area ──────────────────────────────────────────────── */
+.tbl-wrap{padding:14px;overflow-x:auto}
+.tbl{width:100%;border-collapse:collapse;background:var(--surf);border:1px solid var(--bord);border-radius:12px;overflow:hidden;font-size:12px;min-width:780px}
+.tbl thead th{background:var(--surf2);padding:10px 9px;text-align:left;font-weight:700;font-size:10px;letter-spacing:.6px;text-transform:uppercase;color:var(--t2);border-bottom:1px solid var(--bord);white-space:nowrap;font-family:var(--font-mono)}
+.tbl tbody td{padding:10px 9px;border-bottom:1px solid var(--bord);vertical-align:top;color:var(--text);font-weight:500}
+.tbl tbody tr:last-child td{border-bottom:none}
+.tbl tbody tr:hover{background:var(--surf2)}
+.tbl .num{font-family:var(--font-mono);font-weight:700;color:var(--t2)}
+.tbl .nm{font-weight:700;font-family:var(--font-h)}
+.tbl .nodata{color:var(--t3);font-style:italic;font-weight:500}
+.tbl .empty-row td{text-align:center;padding:50px 14px;color:var(--t2);font-size:13px}
+.tbl .ic-foreign{display:inline-block;font-size:10px;background:rgba(59,130,246,.15);color:var(--acc4);padding:2px 6px;border-radius:5px;font-weight:700;margin-left:4px;letter-spacing:.3px}
+
+/* Status pill in rows */
+.st-pill{display:inline-block;font-size:9px;font-weight:700;padding:2px 7px;border-radius:5px;border:1px solid;letter-spacing:.3px;font-family:var(--font-mono);text-transform:uppercase}
+.st-pill.checked_in{background:rgba(16,185,129,.12);color:var(--acc3);border-color:var(--acc3)}
+.st-pill.checked_out{background:var(--surf3);color:var(--t2);border-color:var(--bord)}
+.st-pill.confirmed{background:rgba(59,130,246,.12);color:var(--acc4);border-color:var(--acc4)}
+.st-pill.pending{background:rgba(245,166,35,.12);color:var(--acc);border-color:var(--acc)}
+.st-pill.no_show{background:rgba(244,63,94,.12);color:var(--rose);border-color:var(--rose)}
+
+/* Loading skeleton */
+.sk-row td{padding:12px 9px}
+.sk-bar{background:linear-gradient(90deg,var(--surf2) 0%,var(--surf3) 50%,var(--surf2) 100%);background-size:200% 100%;animation:shim 1.4s ease-in-out infinite;border-radius:6px;height:14px}
+@keyframes shim{0%{background-position:200% 0}100%{background-position:-200% 0}}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Locked banner */
+.locked{margin:14px;background:linear-gradient(135deg,rgba(245,166,35,.12),rgba(255,107,53,.06));border:1.5px solid rgba(245,166,35,.35);border-radius:var(--rs);padding:18px;text-align:center}
+.locked h3{font-family:var(--font-h);font-size:15px;font-weight:800;color:var(--acc);margin-bottom:6px}
+.locked p{font-size:12px;color:var(--t2);line-height:1.5;margin-bottom:12px}
+
+/* Toasts */
+.toast-host{position:fixed;top:70px;left:50%;transform:translateX(-50%);z-index:300;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{background:var(--surf3);color:var(--text);padding:10px 16px;border-radius:11px;font-size:13px;font-weight:600;border:1px solid var(--bord);box-shadow:0 6px 20px rgba(0,0,0,.18);max-width:320px;animation:tin .25s ease}
+.toast.s{border-color:var(--acc3);background:rgba(16,185,129,.12)}
+.toast.e{border-color:var(--rose);background:rgba(244,63,94,.12)}
+.toast.w{border-color:var(--acc);background:rgba(245,166,35,.12)}
+@keyframes tin{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+
+/* Info card (above table) */
+.info-card{margin:14px 14px 0;padding:13px 16px;background:linear-gradient(135deg,rgba(59,130,246,.08),rgba(16,185,129,.04));border:1px solid rgba(59,130,246,.25);border-radius:11px;font-size:12px;color:var(--text);line-height:1.55;display:flex;gap:10px;align-items:flex-start}
+.info-card .ic-emoji{font-size:18px;flex-shrink:0;line-height:1.2}
+.info-card .ic-body strong{color:var(--acc4);font-weight:700}
+
+/* ── PRINT VIEW ──────────────────────────────────────────────── */
+.print-only{display:none}
+@media print{
+  @page{size:A4 landscape;margin:14mm 12mm}
+  body{background:#fff!important;color:#000!important;font-family:'Noto Sans',sans-serif!important}
+  .topbar,.tabs,.toolbar,.statbar,.info-card,.locked,.toast-host,.bnav,.btn-pri,.btn-sec{display:none!important}
+  #app{max-width:100%;padding:0;margin:0}
+  .tbl-wrap{padding:0;overflow:visible}
+  .print-only{display:block!important}
+  .print-hd{margin-bottom:8mm;border-bottom:2px solid #000;padding-bottom:5mm}
+  .print-hd .ph-shop{font-size:18pt;font-weight:800;font-family:var(--font-h);letter-spacing:.2px}
+  .print-hd .ph-sub{font-size:9pt;color:#333;margin-top:1mm}
+  .print-hd .ph-meta{display:flex;justify-content:space-between;margin-top:4mm;font-size:10pt;font-weight:600}
+  .print-hd .ph-title{font-size:14pt;font-weight:800;text-align:center;text-decoration:underline;margin-bottom:2mm;letter-spacing:.5px;text-transform:uppercase}
+  .tbl{font-size:9pt!important;background:#fff!important;border:1px solid #000!important;border-radius:0!important;min-width:0!important}
+  .tbl thead th{background:#f0f0f0!important;color:#000!important;border:1px solid #000!important;font-size:8pt!important;letter-spacing:.3px;font-family:'Noto Sans',sans-serif!important;padding:5pt 4pt!important;text-transform:uppercase;font-weight:700}
+  .tbl tbody td{color:#000!important;border:1px solid #000!important;padding:6pt 4pt!important;font-size:9pt!important;font-weight:500}
+  .tbl .num{color:#000!important}
+  .tbl .nodata{color:#666!important;font-style:italic}
+  .tbl .ic-foreign{background:#000!important;color:#fff!important}
+  .st-pill{border:1px solid #000!important;color:#000!important;background:transparent!important}
+  .print-foot{margin-top:8mm;display:flex;justify-content:space-between;font-size:9pt;color:#444}
+  .print-sig{display:flex;justify-content:space-between;margin-top:14mm;font-size:9pt;font-weight:700}
+  .print-sig div{width:30%;border-top:1px solid #000;padding-top:2mm;text-align:center}
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- Print-only header (hidden on screen, shown on print) -->
+  <div class="print-only print-hd" id="print-hd"></div>
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="tb-l">
+      <button class="back-btn" onclick="history.length>1?history.back():window.location.href='front-desk.html'" aria-label="Back">←</button>
+      <div>
+        <span class="tb-eyebrow">COMPLIANCE · अनुपालन</span>
+        <span class="tb-title"><span class="lang-en">Hotel Reports</span><span class="lang-hi">होटल रिपोर्ट</span></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Free plan lock -->
+  <div id="locked" class="locked" style="display:none">
+    <h3>📋 Compliance Reports — Pro feature</h3>
+    <p>Generate Hotel Register (Form B) and FRRO Form C for foreign guests. Required by Indian hotel regulations. Upgrade to unlock.</p>
+    <button class="btn-pri" onclick="window.location.href='subscription.html'">⚡ Upgrade</button>
+  </div>
+
+  <!-- Tabs + content -->
+  <div id="content" style="display:none">
+
+    <div class="tabs">
+      <button class="tab on" data-tab="form-b" onclick="setTab('form-b')">
+        📒 <span><span class="lang-en">Guest Register</span><span class="lang-hi">अतिथि रजिस्टर</span></span>
+        <span class="tab-badge">Form B</span>
+      </button>
+      <button class="tab" data-tab="form-c" onclick="setTab('form-c')">
+        🛂 <span><span class="lang-en">Foreign Guests</span><span class="lang-hi">विदेशी अतिथि</span></span>
+        <span class="tab-badge">Form C · FRRO</span>
+      </button>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="toolbar">
+      <div class="tb-field">
+        <label class="tb-lbl"><span class="lang-en">From</span><span class="lang-hi">से</span></label>
+        <input type="date" class="tb-inp" id="d-from" onchange="onDateChange()"/>
+      </div>
+      <div class="tb-field">
+        <label class="tb-lbl"><span class="lang-en">To</span><span class="lang-hi">तक</span></label>
+        <input type="date" class="tb-inp" id="d-to" onchange="onDateChange()"/>
+      </div>
+      <div class="tb-field">
+        <label class="tb-lbl"><span class="lang-en">Quick</span><span class="lang-hi">त्वरित</span></label>
+        <div class="tb-presets">
+          <button class="tb-preset" onclick="setPreset(0)">Today</button>
+          <button class="tb-preset" onclick="setPreset(7)">7d</button>
+          <button class="tb-preset on" onclick="setPreset(30)" id="preset-default">30d</button>
+          <button class="tb-preset" onclick="setPreset(90)">90d</button>
+          <button class="tb-preset" onclick="setPresetMonth()">This month</button>
+        </div>
+      </div>
+      <div class="tb-spacer"></div>
+      <div class="tb-actions">
+        <button class="btn-sec" id="btn-csv" onclick="exportCsv()" disabled>⤓ CSV</button>
+        <button class="btn-pri" id="btn-print" onclick="printReport()" disabled>🖨️ <span><span class="lang-en">Print</span><span class="lang-hi">प्रिंट</span></span></button>
+      </div>
+    </div>
+
+    <!-- Form B info -->
+    <div id="info-form-b" class="info-card">
+      <div class="ic-emoji">📒</div>
+      <div class="ic-body">
+        <strong>Hotel Register (Form B)</strong> — required under Indian Police Act / state Hotel Rules. Captures every arrival in the date range. Print on A4 landscape; bind into the official register. Fields not stored digitally (father's/husband's name, occupation, last/next destination) are left blank for handwritten entry at the desk.
+      </div>
+    </div>
+    <!-- Form C info -->
+    <div id="info-form-c" class="info-card" style="display:none">
+      <div class="ic-emoji">🛂</div>
+      <div class="ic-body">
+        <strong>FRRO Form C</strong> — Bureau of Immigration requires every hotel to register foreign guests within 24 hours of arrival via <a href="https://indianfrro.gov.in" target="_blank" rel="noopener" style="color:var(--acc4);font-weight:700;text-decoration:none">indianfrro.gov.in</a>. This view shows foreign guests only. Use <strong>CSV</strong> for portal upload, <strong>Print</strong> for the in-house copy. Fields not collected digitally (sex, DOB, passport place/date of issue, port of arrival) remain blank.
+      </div>
+    </div>
+
+    <!-- Status bar -->
+    <div class="statbar">
+      <div>
+        <span><span class="lang-en">Showing</span><span class="lang-hi">दिखा रहे हैं</span></span>
+        <strong id="st-count">—</strong>
+        <span><span class="lang-en">records</span><span class="lang-hi">रिकॉर्ड</span></span>
+        <span id="st-period" style="margin-left:8px"></span>
+      </div>
+      <div>
+        <span class="stat-pill" id="st-shop">—</span>
+      </div>
+    </div>
+
+    <!-- Form B table -->
+    <div id="tbl-form-b" class="tbl-wrap">
+      <table class="tbl">
+        <thead>
+          <tr>
+            <th>Sl</th>
+            <th>Arrival</th>
+            <th>Guest Name</th>
+            <th>Father / Husband</th>
+            <th>Address</th>
+            <th>Nationality</th>
+            <th>Occupation</th>
+            <th>Coming From</th>
+            <th>Going To</th>
+            <th>Departure</th>
+            <th>Room</th>
+            <th>ID Proof</th>
+            <th>Phone</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-b">
+          <!-- rendered -->
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Form C table -->
+    <div id="tbl-form-c" class="tbl-wrap" style="display:none">
+      <table class="tbl">
+        <thead>
+          <tr>
+            <th>Sl</th>
+            <th>Name</th>
+            <th>Nationality</th>
+            <th>Sex</th>
+            <th>DOB</th>
+            <th>Passport No</th>
+            <th>Pp Issued At</th>
+            <th>Pp Issue Date</th>
+            <th>Pp Expiry</th>
+            <th>Visa No</th>
+            <th>Visa Type</th>
+            <th>Visa Issued At</th>
+            <th>Visa Issue Date</th>
+            <th>Visa Expiry</th>
+            <th>Arrived in India</th>
+            <th>Port of Arrival</th>
+            <th>Check-in</th>
+            <th>Check-out</th>
+            <th>Address Abroad</th>
+            <th>Next Address (India)</th>
+            <th>Purpose</th>
+            <th>Email</th>
+            <th>Phone</th>
+            <th>Room</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-c">
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Print-only signature block -->
+    <div class="print-only print-foot">
+      <div>Generated by ShopBill Pro · TradeCrest Technologies Pvt. Ltd.</div>
+      <div id="print-ts"></div>
+    </div>
+    <div class="print-only print-sig">
+      <div>Manager / Receptionist</div>
+      <div>Owner / Authorised Signatory</div>
+      <div>Date &amp; Stamp</div>
+    </div>
+  </div>
+</div>
+
+<div class="toast-host" id="toast-host"></div>
+
+<script>
+// ════════════════════════════════════════════════════════════════════
+// State
+// ════════════════════════════════════════════════════════════════════
+let _shopId = null;
+let _shop   = null;
+let _tab    = 'form-b';     // 'form-b' | 'form-c'
+let _data   = null;          // last fetched payload
+let _loading = false;
+
+// ════════════════════════════════════════════════════════════════════
+// Helpers
+// ════════════════════════════════════════════════════════════════════
+const $ = s => document.querySelector(s);
+
+function toast(msg, kind='', dur=3000){
+  const host = $('#toast-host');
+  const el = document.createElement('div');
+  el.className = 'toast ' + (kind||'');
+  el.style.pointerEvents='auto';
+  el.textContent = msg;
+  host.appendChild(el);
+  setTimeout(()=>{el.style.opacity='0';el.style.transform='translateY(-8px)';setTimeout(()=>el.remove(),250)}, dur);
+}
+
+function escHtml(s){return String(s==null?'':s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+
+function todayIST(){
+  const fmt = new Intl.DateTimeFormat('en-CA', {timeZone:'Asia/Kolkata', year:'numeric', month:'2-digit', day:'2-digit'});
+  return fmt.format(new Date());
+}
+function fmtDate(d){
+  if(!d) return '—';
+  const dt = new Date(d + (String(d).length===10 ? 'T00:00:00' : ''));
+  if(isNaN(dt)) return '—';
+  return dt.toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'});
+}
+function nodataHtml(){return '<span class="nodata">—</span>'}
+
+function renderShopPill(){
+  const nm = (_shop && _shop.name) || 'Shop';
+  $('#st-shop').textContent = nm;
+}
+
+// ════════════════════════════════════════════════════════════════════
+// Date controls
+// ════════════════════════════════════════════════════════════════════
+function setPreset(days){
+  document.querySelectorAll('.tb-preset').forEach(b=>b.classList.remove('on'));
+  if(event && event.target) event.target.classList.add('on');
+  const today = todayIST();
+  const fromDt = new Date(today + 'T00:00:00');
+  fromDt.setDate(fromDt.getDate() - days);
+  $('#d-from').value = fromDt.toISOString().slice(0,10);
+  $('#d-to').value   = today;
+  fetchData();
+}
+function setPresetMonth(){
+  document.querySelectorAll('.tb-preset').forEach(b=>b.classList.remove('on'));
+  if(event && event.target) event.target.classList.add('on');
+  const today = todayIST();
+  const ymd = today.split('-');
+  $('#d-from').value = `${ymd[0]}-${ymd[1]}-01`;
+  $('#d-to').value   = today;
+  fetchData();
+}
+function onDateChange(){
+  document.querySelectorAll('.tb-preset').forEach(b=>b.classList.remove('on'));
+  fetchData();
+}
+
+// ════════════════════════════════════════════════════════════════════
+// Tabs
+// ════════════════════════════════════════════════════════════════════
+function setTab(t){
+  if(_loading) return;
+  _tab = t;
+  document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('on', b.dataset.tab===t));
+  $('#info-form-b').style.display = (t==='form-b')?'flex':'none';
+  $('#info-form-c').style.display = (t==='form-c')?'flex':'none';
+  $('#tbl-form-b').style.display  = (t==='form-b')?'block':'none';
+  $('#tbl-form-c').style.display  = (t==='form-c')?'block':'none';
+  fetchData();
+}
+
+// ════════════════════════════════════════════════════════════════════
+// Fetch
+// ════════════════════════════════════════════════════════════════════
+function setLoadingRows(targetId, cols){
+  const tbody = document.getElementById(targetId);
+  let h = '';
+  for(let i=0;i<5;i++){
+    h += '<tr class="sk-row">';
+    for(let j=0;j<cols;j++) h += '<td><div class="sk-bar"></div></td>';
+    h += '</tr>';
+  }
+  tbody.innerHTML = h;
+}
+
+async function fetchData(){
+  if(!_sb || !_shopId) return;
+  const from = $('#d-from').value;
+  const to   = $('#d-to').value;
+  if(!from || !to) return;
+
+  // Update period chip
+  $('#st-period').textContent = `· ${fmtDate(from)} → ${fmtDate(to)}`;
+
+  // Show loading skeleton in active tab
+  if(_tab === 'form-b'){
+    setLoadingRows('tbody-b', 14);
+  } else {
+    setLoadingRows('tbody-c', 24);
+  }
+  $('#st-count').textContent = '…';
+  $('#btn-print').disabled = true;
+  $('#btn-csv').disabled = true;
+  _loading = true;
+
+  const rpc = _tab === 'form-b' ? 'sbp_hotel_form_b_register' : 'sbp_hotel_form_c_data';
+  try {
+    const { data, error } = await _sb.rpc(rpc, { p_shop_id: _shopId, p_from: from, p_to: to });
+    if(error){
+      console.error('[compliance]', rpc, 'error:', error);
+      toast('Could not load: ' + (error.message || 'rpc_error'), 'e');
+      _data = null;
+      $('#st-count').textContent = '0';
+      const tbId = _tab === 'form-b' ? 'tbody-b' : 'tbody-c';
+      const cols = _tab === 'form-b' ? 14 : 24;
+      document.getElementById(tbId).innerHTML = `<tr class="empty-row"><td colspan="${cols}">Failed to load data — ${escHtml(error.message||'unknown')}</td></tr>`;
+      return;
+    }
+    if(!data || !data.ok){
+      const errCode = data?.error || 'unknown';
+      toast('Error: ' + errCode, 'e');
+      return;
+    }
+    _data = data;
+    if(data.shop && data.shop.name){
+      _shop = Object.assign({}, _shop || {}, data.shop);
+      renderShopPill();
+    }
+    $('#st-count').textContent = data.total || 0;
+    if(_tab === 'form-b') renderFormB(data);
+    else renderFormC(data);
+    const hasRows = (data.total||0) > 0;
+    $('#btn-print').disabled = !hasRows;
+    $('#btn-csv').disabled   = !hasRows;
+  } catch(e){
+    console.error('[compliance] threw:', e);
+    toast('Network error: ' + (e.message||'unknown'), 'e');
+  } finally {
+    _loading = false;
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════
+// Render — Form B
+// ════════════════════════════════════════════════════════════════════
+function renderFormB(data){
+  const tbody = $('#tbody-b');
+  const rows = data.rows || [];
+  if(!rows.length){
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="14">📭 No arrivals in this date range.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = rows.map(r => {
+    const idStr = r.id_proof_type
+      ? `${escHtml(r.id_proof_type)}${r.id_proof_number?': '+escHtml(r.id_proof_number):''}`
+      : nodataHtml();
+    return `
+      <tr>
+        <td class="num">${r.serial}</td>
+        <td>${fmtDate(r.arrival_date)}${r.arrival_time?` <span class="num" style="font-size:10px;color:var(--t3)">${escHtml(r.arrival_time)}</span>`:''}</td>
+        <td class="nm">${escHtml(r.guest_name||'—')}${r.is_foreign?'<span class="ic-foreign">FOREIGN</span>':''}</td>
+        <td>${r.father_husband_name?escHtml(r.father_husband_name):nodataHtml()}</td>
+        <td>${r.address?escHtml(r.address):nodataHtml()}</td>
+        <td>${escHtml(r.nationality||'—')}</td>
+        <td>${r.occupation?escHtml(r.occupation):nodataHtml()}</td>
+        <td>${r.coming_from?escHtml(r.coming_from):nodataHtml()}</td>
+        <td>${r.going_to?escHtml(r.going_to):nodataHtml()}</td>
+        <td>${fmtDate(r.departure_date)}</td>
+        <td class="num">${escHtml(r.room_number||'—')}</td>
+        <td>${idStr}</td>
+        <td class="num">${escHtml(r.phone||'—')}</td>
+        <td><span class="st-pill ${escHtml(r.status||'')}">${escHtml(r.status||'—')}</span></td>
+      </tr>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════════════════════════════════
+// Render — Form C
+// ════════════════════════════════════════════════════════════════════
+function renderFormC(data){
+  const tbody = $('#tbody-c');
+  const rows = data.rows || [];
+  if(!rows.length){
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="24">🌍 No foreign guests in this date range.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = rows.map(r => `
+    <tr>
+      <td class="num">${r.serial}</td>
+      <td class="nm">${escHtml(r.name||'—')}</td>
+      <td>${escHtml(r.nationality||'—')}</td>
+      <td>${r.sex?escHtml(r.sex):nodataHtml()}</td>
+      <td>${r.dob?fmtDate(r.dob):nodataHtml()}</td>
+      <td class="num">${escHtml(r.passport_number||'—')}</td>
+      <td>${r.passport_place_issue?escHtml(r.passport_place_issue):nodataHtml()}</td>
+      <td>${r.passport_date_issue?fmtDate(r.passport_date_issue):nodataHtml()}</td>
+      <td>${r.passport_expiry?fmtDate(r.passport_expiry):nodataHtml()}</td>
+      <td class="num">${escHtml(r.visa_number||'—')}</td>
+      <td>${escHtml(r.visa_type||'—')}</td>
+      <td>${r.visa_place_issue?escHtml(r.visa_place_issue):nodataHtml()}</td>
+      <td>${r.visa_date_issue?fmtDate(r.visa_date_issue):nodataHtml()}</td>
+      <td>${r.visa_expiry?fmtDate(r.visa_expiry):nodataHtml()}</td>
+      <td>${r.arrival_in_india_date?fmtDate(r.arrival_in_india_date):nodataHtml()}</td>
+      <td>${r.place_of_arrival_in_india?escHtml(r.place_of_arrival_in_india):nodataHtml()}</td>
+      <td>${fmtDate(r.check_in_date)}</td>
+      <td>${fmtDate(r.check_out_date)}</td>
+      <td>${r.address_abroad?escHtml(r.address_abroad):nodataHtml()}</td>
+      <td>${r.next_address_in_india?escHtml(r.next_address_in_india):nodataHtml()}</td>
+      <td>${r.purpose_of_visit?escHtml(r.purpose_of_visit):nodataHtml()}</td>
+      <td>${escHtml(r.email||'—')}</td>
+      <td class="num">${escHtml(r.phone||'—')}</td>
+      <td class="num">${escHtml(r.room_number||'—')}</td>
+    </tr>`).join('');
+}
+
+// ════════════════════════════════════════════════════════════════════
+// Print
+// ════════════════════════════════════════════════════════════════════
+function printReport(){
+  if(!_data || !_data.ok || (_data.total||0) === 0) return;
+  const shopName  = (_data.shop && _data.shop.name)    || 'Hotel';
+  const shopAddr  = (_data.shop && _data.shop.address) || '';
+  const shopGstin = (_data.shop && _data.shop.gstin)   || '';
+  const shopPhone = (_data.shop && _data.shop.phone)   || '';
+  const period    = `${fmtDate(_data.period.from)}  to  ${fmtDate(_data.period.to)}`;
+  const total     = _data.total || 0;
+  const title     = _tab === 'form-b'
+    ? 'Hotel Guest Register · Form B'
+    : 'Foreign Guests Form C · FRRO';
+
+  $('#print-hd').innerHTML = `
+    <div class="ph-shop">${escHtml(shopName)}</div>
+    <div class="ph-sub">${escHtml(shopAddr)}${shopPhone?' · ☎ '+escHtml(shopPhone):''}${shopGstin?' · GSTIN '+escHtml(shopGstin):''}</div>
+    <div class="ph-meta">
+      <div>Period: <strong>${escHtml(period)}</strong></div>
+      <div>Total Records: <strong>${total}</strong></div>
+      <div>Generated: ${new Date().toLocaleString('en-IN', {timeZone:'Asia/Kolkata'})}</div>
+    </div>
+    <div style="height:4mm"></div>
+    <div class="ph-title">${escHtml(title)}</div>`;
+  $('#print-ts').textContent = 'Generated ' + new Date().toLocaleString('en-IN', {timeZone:'Asia/Kolkata'});
+
+  // Trigger
+  setTimeout(()=>window.print(), 100);
+}
+
+// ════════════════════════════════════════════════════════════════════
+// CSV export
+// ════════════════════════════════════════════════════════════════════
+function exportCsv(){
+  if(!_data || !_data.ok || (_data.total||0) === 0) return;
+  const rows = _data.rows || [];
+
+  // Define columns per tab
+  const cols = (_tab === 'form-b')
+    ? [
+      ['serial','Sl No'],
+      ['arrival_date','Arrival Date'],
+      ['arrival_time','Arrival Time'],
+      ['guest_name','Guest Name'],
+      ['father_husband_name','Father / Husband Name'],
+      ['address','Address'],
+      ['nationality','Nationality'],
+      ['occupation','Occupation'],
+      ['coming_from','Coming From'],
+      ['going_to','Going To'],
+      ['departure_date','Departure Date'],
+      ['room_number','Room No'],
+      ['num_adults','Adults'],
+      ['num_children','Children'],
+      ['id_proof_type','ID Type'],
+      ['id_proof_number','ID Number'],
+      ['phone','Phone'],
+      ['purpose','Purpose'],
+      ['status','Status'],
+      ['is_foreign','Foreign?']
+    ]
+    : [
+      ['serial','Sl No'],
+      ['name','Name'],
+      ['nationality','Nationality'],
+      ['sex','Sex'],
+      ['dob','Date of Birth'],
+      ['passport_number','Passport Number'],
+      ['passport_place_issue','Passport Place of Issue'],
+      ['passport_date_issue','Passport Date of Issue'],
+      ['passport_expiry','Passport Expiry'],
+      ['visa_number','Visa Number'],
+      ['visa_type','Visa Type'],
+      ['visa_place_issue','Visa Place of Issue'],
+      ['visa_date_issue','Visa Date of Issue'],
+      ['visa_expiry','Visa Valid Till'],
+      ['arrival_in_india_date','Date of Arrival in India'],
+      ['place_of_arrival_in_india','Port of Arrival'],
+      ['check_in_date','Check-in Date'],
+      ['check_out_date','Check-out Date'],
+      ['address_abroad','Address Abroad'],
+      ['next_address_in_india','Next Address (India)'],
+      ['purpose_of_visit','Purpose of Visit'],
+      ['email','Email'],
+      ['phone','Phone'],
+      ['room_number','Room No']
+    ];
+
+  // CSV with BOM for Excel UTF-8
+  function csvEscape(v){
+    if(v == null) return '';
+    let s = String(v);
+    if(/[",\n\r]/.test(s)){
+      s = '"' + s.replace(/"/g,'""') + '"';
+    }
+    return s;
+  }
+  const header = cols.map(c => csvEscape(c[1])).join(',');
+  const lines = rows.map(r => cols.map(c => csvEscape(r[c[0]])).join(',')).join('\r\n');
+  const csv = '\uFEFF' + header + '\r\n' + lines;
+
+  const shopSafe = ((_data.shop && _data.shop.name) || 'shop').replace(/[^A-Za-z0-9]+/g,'_').replace(/^_+|_+$/g,'').toLowerCase() || 'shop';
+  const fname = `${shopSafe}_${_tab.replace('-','')}_${_data.period.from}_${_data.period.to}.csv`;
+
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = fname;
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{URL.revokeObjectURL(url); a.remove()}, 200);
+  toast('✓ Exported '+(_data.total||0)+' records', 's');
+}
+
+// ════════════════════════════════════════════════════════════════════
+// Init
+// ════════════════════════════════════════════════════════════════════
+async function init(){
+  if(typeof langInit === 'function') try { langInit(); } catch(e){}
+  if(!_sb){ toast('Network library not loaded — refresh', 'e'); return }
+
+  _shopId = localStorage.getItem('sbp_shop_id');
+  _shop   = JSON.parse(localStorage.getItem('sbp_shop') || '{}');
+  if(!_shopId){
+    toast('Shop not loaded', 'e');
+    setTimeout(()=>window.location.href='dashboard.html', 1500);
+    return;
+  }
+  if(!isPro()){
+    $('#locked').style.display = 'block';
+    return;
+  }
+  $('#content').style.display = 'block';
+  renderShopPill();
+
+  // Default range: last 30 days
+  setPreset(30);
+  // setPreset uses event.target — give the default preset its 'on' look
+  document.querySelectorAll('.tb-preset').forEach(b=>b.classList.remove('on'));
+  $('#preset-default').classList.add('on');
+}
+
+init();
+</script>
+</body>
+</html>
