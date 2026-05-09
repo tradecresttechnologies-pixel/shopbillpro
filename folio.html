@@ -632,7 +632,7 @@ html[lang="hi"] .lang-en{display:none!important}
   <button class="sa-checkout" id="sa-checkout-btn" onclick="checkOutAndBill()" style="display:none">Check Out &amp; Bill →</button>
 </div>
 
-<!-- Custom extra modal -->
+<!-- Custom extra / Catalog edit modal (shared) -->
 <div class="overlay" id="extra-modal">
   <div class="sheet">
     <div class="sh-handle"></div>
@@ -670,7 +670,11 @@ html[lang="hi"] .lang-en{display:none!important}
         <input type="number" class="finp" id="ex-amt" placeholder="0" readonly style="opacity:.7"/>
       </div>
     </div>
-    <button class="btn-pri-md" id="ex-save-btn" onclick="saveExtra()">💾 Add to Folio</button>
+
+    <!-- Mode-aware action buttons (set by openCustomExtraModal / openCatalogEditModal) -->
+    <div id="ex-action-host">
+      <button class="btn-pri-md" id="ex-save-btn" onclick="saveExtra()">💾 Add to Folio</button>
+    </div>
     <button class="btn-sec-md" onclick="closeModal('extra-modal')">Cancel</button>
   </div>
 </div>
@@ -1132,13 +1136,23 @@ async function addFromCatalog(id){
 function editFromCatalog(id){
   const c = _catalog.find(x => x.id === id);
   if(!c) return;
-  $('#extra-modal-title').textContent = '＋ Add: ' + c.description;
-  $('#extra-modal-sub').textContent = 'Adjust qty/rate before adding';
+  // ── CATALOG EDIT MODE ─────────────────────────────────────────────
+  // Repurpose the same modal: instead of "Add to Folio", offer
+  // "Save to Catalog" (persistent) and "Save & Add to Folio Now"
+  // (persistent + adds the line in one tap).
+  $('#extra-modal-title').textContent = '✎ Edit catalog item';
+  $('#extra-modal-sub').textContent = 'Changes are saved to the catalog so future adds use these defaults.';
   $('#ex-desc').value = c.description;
   $('#ex-cat').value  = c.category;
   $('#ex-qty').value  = c.default_qty;
   $('#ex-rate').value = c.default_unit_price;
   recalcExAmount();
+
+  // Swap in edit-mode buttons
+  $('#ex-action-host').innerHTML = `
+    <button class="btn-pri-md" id="ex-save-btn" onclick="saveCatalogEdit('${c.id}', false)">💾 Save to Catalog</button>
+    <button class="btn-sec-md" id="ex-save-add-btn" onclick="saveCatalogEdit('${c.id}', true)" style="margin-top:7px;background:linear-gradient(135deg,var(--acc3),#059669);color:#fff;border:none">💾 Save &amp; Add to Folio Now</button>`;
+
   openModal('extra-modal');
 }
 
@@ -1150,6 +1164,8 @@ function openCustomExtraModal(){
   $('#ex-qty').value = 1;
   $('#ex-rate').value = '';
   $('#ex-amt').value = '';
+  // Swap in custom-extra-mode button (single Add to Folio)
+  $('#ex-action-host').innerHTML = `<button class="btn-pri-md" id="ex-save-btn" onclick="saveExtra()">💾 Add to Folio</button>`;
   openModal('extra-modal');
   setTimeout(()=>$('#ex-desc').focus(), 100);
 }
@@ -1205,6 +1221,57 @@ async function removeExtra(id){
     toast('Remove failed: ' + (e.message||'unknown'), 'e');
   } finally {
     _busy = false;
+  }
+}
+
+// ── Catalog edit (persistent) ─────────────────────────────────────
+// Updates the catalog item. If alsoAddToFolio=true, adds a folio line
+// with the new values immediately after saving the catalog change.
+async function saveCatalogEdit(catalogId, alsoAddToFolio){
+  if(_busy) return;
+  const desc = $('#ex-desc').value.trim();
+  const cat  = $('#ex-cat').value;
+  const qty  = parseInt($('#ex-qty').value||1, 10) || 1;
+  const rate = parseFloat($('#ex-rate').value||0) || 0;
+  if(!desc){ toast('Description required', 'e'); $('#ex-desc').focus(); return; }
+  if(rate < 0){ toast('Rate must be ≥ 0', 'e'); $('#ex-rate').focus(); return; }
+
+  _busy = true;
+  const btn = $('#ex-save-btn');
+  const btn2 = $('#ex-save-add-btn');
+  if(btn) { btn.disabled = true; btn.textContent = '⏳ Saving…'; }
+  if(btn2){ btn2.disabled = true }
+
+  try {
+    // 1. Persist to catalog
+    const upd = await _sb.rpc('sbp_folio_extras_catalog_update', {
+      p_shop_id: _shopId,
+      p_id: catalogId,
+      p_data: { description: desc, category: cat, default_qty: qty, default_unit_price: rate }
+    });
+    if(upd.error){ throw new Error(upd.error.message||'rpc_error') }
+    if(!upd.data || !upd.data.ok){ throw new Error(upd.data?.error||'save_failed') }
+
+    // 2. Optionally add a folio line in the same flow
+    if(alsoAddToFolio){
+      const add = await SBPHotel.extras.add(_shopId, _bookingId, {
+        category: cat, description: desc, qty: qty, unit_price: rate
+      });
+      if(!add.ok){ throw new Error(add.error||'add_failed') }
+    }
+
+    toast(alsoAddToFolio ? '✓ Catalog updated · added to folio' : '✓ Catalog updated', 's');
+    closeModal('extra-modal');
+
+    // Refresh both catalog (for new defaults) and folio (in case we added)
+    await Promise.all([loadCatalog(), alsoAddToFolio ? loadFolio() : Promise.resolve()]);
+
+  } catch(e){
+    toast('Could not save: ' + (e.message||'unknown'), 'e');
+  } finally {
+    _busy = false;
+    if(btn) { btn.disabled = false; btn.textContent = '💾 Save to Catalog'; }
+    if(btn2){ btn2.disabled = false }
   }
 }
 

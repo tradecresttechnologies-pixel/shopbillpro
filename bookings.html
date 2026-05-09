@@ -449,6 +449,41 @@ async function init(){
   $('#loader').style.display='none';
   $('#main').style.display='block';
   $('#fab').style.display='flex';
+
+  // BATCH 022A — Handle deep-link from folio.html: ?id=<booking_id>[&action=checkout]
+  // folio.html navigates here for the "Check Out & Generate Bill" flow since
+  // bookings.html owns the existing tested checkout logic.
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const wantId = params.get('id');
+    const wantAction = params.get('action');
+    if(wantId){
+      // Make sure we have it loaded (fallback: fetch the 'all' filter)
+      let booking = _bookings.find(b => b.id === wantId);
+      if(!booking){
+        const allRes = await SBPHotel.bookings.list(_shopId, 'all', null);
+        if(allRes.ok){
+          _bookings = allRes.bookings || [];
+          booking = _bookings.find(b => b.id === wantId);
+        }
+      }
+      if(booking){
+        await openDetail(wantId);
+        if(wantAction === 'checkout'){
+          // Give the modal a tick to finish painting before triggering
+          setTimeout(()=>{
+            if(typeof doCheckOut === 'function') doCheckOut();
+          }, 300);
+        }
+      } else {
+        console.warn('[bookings] deep-link id not found:', wantId);
+      }
+      // Strip the params from URL so a refresh doesn't re-trigger
+      try { history.replaceState({}, '', 'bookings.html'); } catch(e){}
+    }
+  } catch(e){
+    console.warn('[bookings] deep-link handler failed:', e);
+  }
 }
 
 async function loadBookings(){
