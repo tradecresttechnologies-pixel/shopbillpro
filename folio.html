@@ -300,6 +300,78 @@ html[lang="hi"] .lang-en{display:none!important}
 .locked h3{font-family:var(--font-h);font-size:15px;font-weight:800;color:var(--acc);margin-bottom:6px}
 .locked p{font-size:12px;color:var(--t2);line-height:1.5;margin-bottom:12px}
 
+/* ── Picker (when no ?id= param — landing on folio.html via sidebar) ─── */
+.picker{padding:18px 14px}
+@media (min-width:1024px){.picker{padding:24px}}
+.picker-hero{margin-bottom:18px}
+.picker-eyebrow{font-family:var(--font-mono);font-size:10px;font-weight:600;letter-spacing:1.2px;color:var(--t3);text-transform:uppercase;margin-bottom:5px}
+.picker-title{font-family:var(--font-h);font-size:24px;font-weight:800;letter-spacing:-.4px;line-height:1.1}
+.picker-sub{font-size:13px;color:var(--t2);font-weight:500;margin-top:4px}
+.picker-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.picker-tabs::-webkit-scrollbar{display:none}
+.picker-tab{flex-shrink:0;padding:9px 16px;background:var(--surf);border:1.5px solid var(--bord);border-radius:11px;font-size:13px;font-weight:700;cursor:pointer;color:var(--t2);font-family:inherit;display:inline-flex;align-items:center;gap:6px;transition:var(--tr)}
+.picker-tab:hover{color:var(--text)}
+.picker-tab.on{background:var(--acc);color:#0A0E1A;border-color:var(--acc)}
+.picker-tab .pt-count{font-family:var(--font-mono);font-size:10px;font-weight:800;background:rgba(255,255,255,.25);padding:1px 6px;border-radius:4px;letter-spacing:.3px}
+.picker-tab.on .pt-count{background:rgba(10,14,26,.18);color:#0A0E1A}
+
+.picker-search{position:relative;margin-bottom:14px}
+.picker-search input{width:100%;padding:11px 14px 11px 38px;background:var(--surf);border:1.5px solid var(--bord);border-radius:11px;font-size:13px;color:var(--text);font-family:inherit;font-weight:500;outline:none;transition:var(--tr)}
+.picker-search input:focus{border-color:var(--acc);background:var(--surf2)}
+.picker-search::before{content:'🔍';position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:13px;opacity:.6}
+
+.picker-grid{display:grid;grid-template-columns:1fr;gap:10px}
+@media (min-width:768px){.picker-grid{grid-template-columns:repeat(2,1fr);gap:12px}}
+@media (min-width:1280px){.picker-grid{grid-template-columns:repeat(3,1fr)}}
+
+.pcard{background:var(--surf);border:1.5px solid var(--bord);border-radius:14px;padding:14px;cursor:pointer;transition:var(--tr);display:flex;flex-direction:column;gap:10px;text-align:left;font-family:inherit;color:var(--text);text-decoration:none;position:relative;overflow:hidden}
+.pcard:hover{border-color:var(--acc);transform:translateY(-1px);box-shadow:0 8px 22px rgba(245,166,35,.12)}
+.pcard::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--accent-stripe);opacity:.85}
+.pcard.s-checked_in{--accent-stripe:linear-gradient(90deg,var(--acc3),transparent)}
+.pcard.s-confirmed{--accent-stripe:linear-gradient(90deg,var(--acc4),transparent)}
+.pcard.s-pending{--accent-stripe:linear-gradient(90deg,var(--acc),transparent)}
+.pcard.s-checked_out{--accent-stripe:linear-gradient(90deg,var(--t3),transparent)}
+.pcard.s-cancelled{--accent-stripe:linear-gradient(90deg,var(--rose),transparent)}
+.pcard.s-no_show{--accent-stripe:linear-gradient(90deg,var(--rose),transparent)}
+
+.pcard-top{display:flex;align-items:flex-start;gap:10px}
+.pcard-av{width:42px;height:42px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-family:var(--font-h);font-size:15px;font-weight:800;color:#0A0E1A;flex-shrink:0;letter-spacing:-.3px}
+.pcard-info{flex:1;min-width:0}
+.pcard-name{font-family:var(--font-h);font-size:15px;font-weight:800;line-height:1.2;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pcard-name .for-mini{display:inline-block;font-size:9px;background:var(--acc4);color:#fff;padding:1px 5px;border-radius:4px;font-weight:700;letter-spacing:.4px;margin-left:5px;vertical-align:middle;font-family:var(--font-mono)}
+.pcard-meta{font-size:11px;color:var(--t2);font-weight:500;margin-top:2px;line-height:1.35}
+.pcard-status{flex-shrink:0;font-family:var(--font-mono);font-size:9px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;padding:3px 8px;border-radius:5px;border:1px solid;line-height:1.2;white-space:nowrap}
+.pcard-status.checked_in{background:rgba(16,185,129,.12);color:var(--acc3);border-color:var(--acc3)}
+.pcard-status.confirmed{background:rgba(59,130,246,.12);color:var(--acc4);border-color:var(--acc4)}
+.pcard-status.pending{background:rgba(245,166,35,.12);color:var(--acc);border-color:var(--acc)}
+.pcard-status.checked_out{background:rgba(100,116,139,.18);color:var(--t2);border-color:var(--t3)}
+.pcard-status.cancelled,.pcard-status.no_show{background:rgba(244,63,94,.12);color:var(--rose);border-color:var(--rose)}
+
+.pcard-stay{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--surf2);border-radius:9px;font-size:12px;color:var(--t2);font-weight:600}
+.pcard-stay strong{color:var(--text);font-weight:700;font-family:var(--font-mono)}
+
+.pcard-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;padding-top:10px;border-top:1px dashed var(--bord)}
+.pcard-tot{display:flex;flex-direction:column;gap:1px;min-width:0}
+.pcard-tot-l{font-family:var(--font-mono);font-size:9px;color:var(--t3);font-weight:700;letter-spacing:.6px;text-transform:uppercase}
+.pcard-tot-v{font-family:var(--font-h);font-size:16px;font-weight:800;color:var(--text);letter-spacing:-.3px;line-height:1.1}
+.pcard-tot.due .pcard-tot-v{color:var(--rose)}
+.pcard-tot.clear .pcard-tot-v{color:var(--acc3)}
+.pcard-cta{font-family:var(--font-h);font-size:12px;font-weight:800;color:var(--acc);letter-spacing:.2px;flex-shrink:0;display:inline-flex;align-items:center;gap:4px}
+.pcard:hover .pcard-cta{transform:translateX(2px)}
+
+.picker-empty{grid-column:1/-1;text-align:center;padding:40px 20px;background:var(--surf);border:1px dashed var(--bord);border-radius:14px;color:var(--t2)}
+.picker-empty .pe-emoji{font-size:36px;margin-bottom:10px}
+.picker-empty .pe-title{font-family:var(--font-h);font-size:15px;font-weight:800;color:var(--text);margin-bottom:5px}
+.picker-empty .pe-sub{font-size:12px;line-height:1.5;margin-bottom:14px}
+
+.picker-loading{grid-column:1/-1;display:grid;grid-template-columns:1fr;gap:10px}
+@media (min-width:768px){.picker-loading{grid-template-columns:repeat(2,1fr);gap:12px}}
+@media (min-width:1280px){.picker-loading{grid-template-columns:repeat(3,1fr)}}
+.pcard-sk{background:var(--surf);border:1px solid var(--bord);border-radius:14px;padding:14px;height:140px}
+
+/* Inline error state (when ?id= is invalid) */
+.picker-err{margin:14px;padding:14px;background:rgba(244,63,94,.08);border:1.5px solid rgba(244,63,94,.3);border-radius:11px;color:var(--rose);font-size:13px;font-weight:600;text-align:center}
+
 /* ── PRINT VIEW ──────────────────────────────────────────────── */
 .print-only{display:none}
 
@@ -307,7 +379,7 @@ html[lang="hi"] .lang-en{display:none!important}
   @page{size:A4 portrait;margin:14mm 12mm}
   html,body{background:#fff!important;color:#000!important;font-family:'Noto Sans',sans-serif!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 
-  .topbar,#dsb,.bnav,.bnav-drawer,.bnav-overlay,.toast-host,.action-bar,.qa-tabs,.qa-grid,.qa-custom-btn,.btn-record-pay,.pay-void-btn,.li-del,.sticky-actions,.lit thead th.li-act,.lit tbody td.li-act,.locked{display:none!important}
+  .topbar,#dsb,.bnav,.bnav-drawer,.bnav-overlay,.toast-host,.action-bar,.qa-tabs,.qa-grid,.qa-custom-btn,.btn-record-pay,.pay-void-btn,.li-del,.sticky-actions,.lit thead th.li-act,.lit tbody td.li-act,.locked,.picker{display:none!important}
 
   #app,#app *{box-shadow:none!important}
   #app{max-width:100%!important;width:100%!important;padding:0!important;margin:0!important;min-height:0!important}
@@ -495,6 +567,50 @@ html[lang="hi"] .lang-en{display:none!important}
     </div>
   </div>
 
+  <!-- Folio picker (shown when no ?id= in URL) -->
+  <div id="picker" class="picker" style="display:none">
+    <div class="picker-hero">
+      <div class="picker-eyebrow"><span class="lang-en">HOTEL FOLIOS</span><span class="lang-hi">होटल फ़ोलियो</span></div>
+      <div class="picker-title"><span class="lang-en">Pick a folio to manage</span><span class="lang-hi">प्रबंधित करने के लिए फ़ोलियो चुनें</span></div>
+      <div class="picker-sub" id="picker-sub"><span class="lang-en">Select a guest below to view their full folio</span><span class="lang-hi">पूरा फ़ोलियो देखने के लिए नीचे से अतिथि चुनें</span></div>
+    </div>
+
+    <div class="picker-tabs" id="picker-tabs">
+      <button class="picker-tab on" data-pf="in_house" onclick="setPickerFilter('in_house')">
+        <span class="lang-en">In-House</span><span class="lang-hi">मौजूद</span>
+        <span class="pt-count" id="pf-cnt-in_house">0</span>
+      </button>
+      <button class="picker-tab" data-pf="today" onclick="setPickerFilter('today')">
+        <span class="lang-en">Today</span><span class="lang-hi">आज</span>
+        <span class="pt-count" id="pf-cnt-today">0</span>
+      </button>
+      <button class="picker-tab" data-pf="upcoming" onclick="setPickerFilter('upcoming')">
+        <span class="lang-en">Upcoming</span><span class="lang-hi">आगामी</span>
+        <span class="pt-count" id="pf-cnt-upcoming">0</span>
+      </button>
+      <button class="picker-tab" data-pf="past" onclick="setPickerFilter('past')">
+        <span class="lang-en">Past</span><span class="lang-hi">पिछले</span>
+        <span class="pt-count" id="pf-cnt-past">0</span>
+      </button>
+      <button class="picker-tab" data-pf="all" onclick="setPickerFilter('all')">
+        <span class="lang-en">All</span><span class="lang-hi">सभी</span>
+        <span class="pt-count" id="pf-cnt-all">0</span>
+      </button>
+    </div>
+
+    <div class="picker-search">
+      <input type="text" id="picker-q" placeholder="Search by name, room, phone…" oninput="renderPicker()" autocomplete="off"/>
+    </div>
+
+    <div class="picker-grid" id="picker-grid">
+      <div class="picker-loading">
+        <div class="pcard-sk sk"></div>
+        <div class="pcard-sk sk"></div>
+        <div class="pcard-sk sk"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- Bnav placeholders -->
   <div class="bnav"></div>
   <div class="bnav-overlay" onclick="if(window.SBPSidebar)SBPSidebar._closeDrawer()"></div>
@@ -616,6 +732,11 @@ let _catalog   = [];       // extras catalog
 let _qaTab     = 'all';
 let _payMode   = 'cash';
 let _busy      = false;
+
+// Picker state
+let _pickerMode    = false;     // true = no booking id, show picker
+let _pickerFilter  = 'in_house'; // 'in_house' | 'today' | 'upcoming' | 'past' | 'all'
+let _pickerAll     = [];        // all bookings cached
 
 // ════════════════════════════════════════════════════════════════════
 // Helpers
@@ -1202,6 +1323,136 @@ function printFolio(){
 }
 
 // ════════════════════════════════════════════════════════════════════
+// Picker (when folio.html is opened without ?id=)
+// ════════════════════════════════════════════════════════════════════
+async function loadPickerData(){
+  // Pull all bookings; we'll bucket client-side per filter. Cheaper
+  // than 4 round trips and the dataset is small (<200 rows typically).
+  try {
+    const { data, error } = await _sb.rpc('sbp_bookings_list', {
+      p_shop_id: _shopId,
+      p_filter: 'all',
+      p_status_filter: null
+    });
+    if(error){ throw new Error(error.message||'rpc_error') }
+    if(!data || !data.ok){ throw new Error(data?.error||'load_failed') }
+    _pickerAll = data.bookings || data.rows || [];
+    updatePickerCounts();
+    renderPicker();
+  } catch(e){
+    console.error('[picker] load:', e);
+    $('#picker-grid').innerHTML = `<div class="picker-empty"><div class="pe-emoji">⚠️</div><div class="pe-title">Could not load bookings</div><div class="pe-sub">${escHtml(e.message||'unknown')}</div></div>`;
+  }
+}
+
+function _todayIST(){
+  const fmt = new Intl.DateTimeFormat('en-CA', {timeZone:'Asia/Kolkata', year:'numeric', month:'2-digit', day:'2-digit'});
+  return fmt.format(new Date());
+}
+
+function _matchesFilter(b, filter){
+  const today = _todayIST();
+  const ci = b.check_in_date;
+  const co = b.check_out_date;
+  switch(filter){
+    case 'in_house':  return b.status === 'checked_in';
+    case 'today':     return (ci === today || co === today || b.status === 'checked_in');
+    case 'upcoming':  return ci >= today && (b.status === 'pending' || b.status === 'confirmed');
+    case 'past':      return co < today || ['checked_out','cancelled','no_show'].includes(b.status);
+    case 'all':       return true;
+    default:          return true;
+  }
+}
+
+function updatePickerCounts(){
+  const filters = ['in_house','today','upcoming','past','all'];
+  filters.forEach(f => {
+    const count = _pickerAll.filter(b => _matchesFilter(b, f)).length;
+    const el = document.getElementById('pf-cnt-' + f);
+    if(el) el.textContent = count;
+  });
+}
+
+function setPickerFilter(f){
+  _pickerFilter = f;
+  document.querySelectorAll('.picker-tab').forEach(t => t.classList.toggle('on', t.dataset.pf === f));
+  renderPicker();
+}
+
+function renderPicker(){
+  const q = ($('#picker-q')?.value || '').trim().toLowerCase();
+  const grid = $('#picker-grid');
+
+  let rows = _pickerAll.filter(b => _matchesFilter(b, _pickerFilter));
+
+  if(q){
+    rows = rows.filter(b => {
+      const hay = [
+        b.customer_name, b.customer_phone, b.customer_wa,
+        b.room_number_snapshot, b.room_number,
+        b.id_proof_number, b.passport_number, b.guest_country
+      ].filter(Boolean).join(' ').toLowerCase();
+      return hay.includes(q);
+    });
+  }
+
+  // Sort: in-house first, then by check-in date desc
+  rows.sort((a,b) => {
+    if(a.status === 'checked_in' && b.status !== 'checked_in') return -1;
+    if(a.status !== 'checked_in' && b.status === 'checked_in') return 1;
+    return String(b.check_in_date||'').localeCompare(String(a.check_in_date||''));
+  });
+
+  if(rows.length === 0){
+    let msg, sub;
+    if(q){
+      msg = 'No bookings match';
+      sub = `Nothing matched "${escHtml(q)}". Try a different search.`;
+    } else if(_pickerFilter === 'in_house'){
+      msg = 'No guests in-house right now';
+      sub = 'Folios appear here as guests check in. Walk-ins from Front Desk land here too.';
+    } else {
+      msg = 'Nothing here yet';
+      sub = 'No bookings match the current filter.';
+    }
+    grid.innerHTML = `<div class="picker-empty"><div class="pe-emoji">📭</div><div class="pe-title">${msg}</div><div class="pe-sub">${sub}</div><a class="btn-pri-md" href="walk-in.html" style="display:inline-block;text-decoration:none;width:auto;padding:10px 20px">⚡ New Walk-in</a></div>`;
+    return;
+  }
+
+  grid.innerHTML = rows.map(b => {
+    const grand = parseFloat(b.grand_total || 0);
+    const advance = parseFloat(b.advance_amount || 0);
+    const balance = Math.max(0, grand - advance);
+    const isClear = balance < 0.005;
+    const room = b.room_number_snapshot || b.room_number || '—';
+    const type = b.room_type_snapshot || '';
+    const stay = `${fmtDateShort(b.check_in_date)} → ${fmtDateShort(b.check_out_date)}`;
+    const nights = b.num_nights || 1;
+    const phone = b.customer_phone || b.customer_wa || '';
+
+    return `
+      <a class="pcard s-${escHtml(b.status||'')}" href="folio.html?id=${encodeURIComponent(b.id)}">
+        <div class="pcard-top">
+          <div class="pcard-av" style="background:${avColor(b.customer_name)}">${initials(b.customer_name)}</div>
+          <div class="pcard-info">
+            <div class="pcard-name">${escHtml(b.customer_name||'Guest')}${b.is_foreign?'<span class="for-mini">FOREIGN</span>':''}</div>
+            <div class="pcard-meta">Room ${escHtml(room)}${type?' · '+escHtml(type):''}${phone?' · '+escHtml(phone):''}</div>
+          </div>
+          <span class="pcard-status ${escHtml(b.status||'')}">${escHtml((b.status||'').replace('_',' '))}</span>
+        </div>
+        <div class="pcard-stay">📅 <strong>${stay}</strong> · ${nights}n</div>
+        <div class="pcard-foot">
+          <div class="pcard-tot ${isClear?'clear':(balance>0?'due':'')}">
+            <span class="pcard-tot-l">${isClear?'Total':'Balance Due'}</span>
+            <span class="pcard-tot-v">${isClear?fmtINR2(grand):fmtINR2(balance)}</span>
+          </div>
+          <span class="pcard-cta">Open Folio →</span>
+        </div>
+      </a>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════════════════════════════════
 // Init
 // ════════════════════════════════════════════════════════════════════
 async function init(){
@@ -1233,12 +1484,20 @@ async function init(){
 
   const params = new URLSearchParams(window.location.search);
   _bookingId = params.get('id');
+
   if(!_bookingId){
-    toast('No booking id in URL', 'e');
-    setTimeout(()=>window.location.href='bookings.html', 1500);
+    // ── PICKER MODE ─────────────────────────────────────────────────
+    // No booking id in URL → show the folio picker (list of bookings as cards)
+    _pickerMode = true;
+    $('#picker').style.display = 'block';
+    // Update topbar to reflect picker mode
+    const tbF = document.getElementById('tb-folio-id');
+    if(tbF) tbF.textContent = 'Pick';
+    await loadPickerData();
     return;
   }
 
+  // ── FOLIO DETAIL MODE ─────────────────────────────────────────────
   $('#workspace').style.display = 'grid';
 
   // Load folio + catalog in parallel
