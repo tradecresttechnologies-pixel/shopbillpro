@@ -189,31 +189,99 @@ html[lang="hi"] .lang-en{display:none!important}
 
 /* ── PRINT VIEW ──────────────────────────────────────────────── */
 .print-only{display:none}
+
 @media print{
-  @page{size:A4 landscape;margin:14mm 12mm}
-  body{background:#fff!important;color:#000!important;font-family:'Noto Sans',sans-serif!important}
-  /* Hide all app chrome: topbar, tabs, toolbars, sidebar, drawer, overlay, bottom nav, action buttons, locked banners, toasts */
+  /* Tighter A4 margins so the table has more usable width */
+  @page{size:A4 landscape;margin:10mm 8mm}
+
+  html,body{background:#fff!important;color:#000!important;font-family:'Noto Sans','Noto Sans Devanagari',sans-serif!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+
+  /* Hide all app chrome */
   .topbar,.tabs,.toolbar,.statbar,.info-card,.locked,.toast-host,.bnav,.bnav-drawer,.bnav-overlay,#dsb,.btn-pri,.btn-sec{display:none!important}
-  /* Reset #app — undo desktop sidebar margin shift so the report uses the full page width */
+
+  /* Reset #app — undo desktop sidebar margin shift */
   #app,#app *{box-shadow:none!important}
   #app{max-width:100%!important;width:100%!important;padding:0!important;margin:0!important;min-height:0!important}
-  .tbl-wrap{padding:0;overflow:visible}
+  .tbl-wrap{padding:0!important;overflow:visible!important;margin:0!important}
+
+  /* ── Letterhead ─────────────────────────────────────────────── */
   .print-only{display:block!important}
-  .print-hd{margin-bottom:8mm;border-bottom:2px solid #000;padding-bottom:5mm}
-  .print-hd .ph-shop{font-size:18pt;font-weight:800;font-family:var(--font-h);letter-spacing:.2px}
-  .print-hd .ph-sub{font-size:9pt;color:#333;margin-top:1mm}
-  .print-hd .ph-meta{display:flex;justify-content:space-between;margin-top:4mm;font-size:10pt;font-weight:600}
-  .print-hd .ph-title{font-size:14pt;font-weight:800;text-align:center;text-decoration:underline;margin-bottom:2mm;letter-spacing:.5px;text-transform:uppercase}
-  .tbl{font-size:9pt!important;background:#fff!important;border:1px solid #000!important;border-radius:0!important;min-width:0!important}
-  .tbl thead th{background:#f0f0f0!important;color:#000!important;border:1px solid #000!important;font-size:8pt!important;letter-spacing:.3px;font-family:'Noto Sans',sans-serif!important;padding:5pt 4pt!important;text-transform:uppercase;font-weight:700}
-  .tbl tbody td{color:#000!important;border:1px solid #000!important;padding:6pt 4pt!important;font-size:9pt!important;font-weight:500}
-  .tbl .num{color:#000!important}
-  .tbl .nodata{color:#666!important;font-style:italic}
-  .tbl .ic-foreign{background:#000!important;color:#fff!important}
-  .st-pill{border:1px solid #000!important;color:#000!important;background:transparent!important}
-  .print-foot{margin-top:8mm;display:flex;justify-content:space-between;font-size:9pt;color:#444}
-  .print-sig{display:flex;justify-content:space-between;margin-top:14mm;font-size:9pt;font-weight:700}
-  .print-sig div{width:30%;border-top:1px solid #000;padding-top:2mm;text-align:center}
+  .print-hd{margin:0 0 6mm 0;border-bottom:2.5pt solid #000;padding-bottom:4mm}
+  .print-hd .ph-shop{font-size:18pt;font-weight:900;font-family:'Outfit','Noto Sans',sans-serif;letter-spacing:.3px;line-height:1.1}
+  .print-hd .ph-sub{font-size:9pt;color:#222;margin-top:1.5mm;line-height:1.45;font-weight:500}
+  .print-hd .ph-meta{display:flex;justify-content:space-between;margin-top:3.5mm;font-size:9pt;font-weight:600;gap:8mm;flex-wrap:wrap}
+  .print-hd .ph-meta div strong{font-weight:800}
+  .print-hd .ph-title{font-size:13pt;font-weight:900;text-align:center;letter-spacing:1.5px;text-transform:uppercase;margin:5mm 0 0 0;font-family:'Outfit','Noto Sans',sans-serif;border:1.5pt solid #000;padding:2.5mm 4mm;display:inline-block;width:auto;background:#000;color:#fff!important}
+  .print-hd .ph-title-wrap{text-align:center;margin-top:4mm}
+
+  /* ── Table base ─────────────────────────────────────────────── */
+  .tbl{width:100%!important;background:#fff!important;border:1.2pt solid #000!important;border-radius:0!important;border-collapse:collapse!important;table-layout:fixed!important;font-size:8.5pt!important;min-width:0!important}
+  .tbl thead{display:table-header-group}
+  .tbl tbody tr{page-break-inside:avoid;break-inside:avoid}
+  .tbl thead th{background:#e8e8e8!important;color:#000!important;border:0.6pt solid #000!important;padding:3.5pt 3pt!important;font-size:7.5pt!important;font-weight:800!important;letter-spacing:.4px;text-transform:uppercase;font-family:'Outfit','Noto Sans',sans-serif!important;text-align:center!important;white-space:normal!important;word-break:break-word;line-height:1.15}
+  .tbl tbody td{color:#000!important;border:0.6pt solid #000!important;padding:3.5pt 3pt!important;font-size:8.5pt!important;font-weight:500!important;word-break:break-word;overflow-wrap:anywhere;line-height:1.3;vertical-align:top}
+  .tbl tbody tr:nth-child(even) td{background:#fafafa!important}
+
+  .tbl .num{font-family:'JetBrains Mono','Noto Sans',sans-serif!important;color:#000!important;font-weight:700!important;font-size:8pt!important}
+  .tbl .nm{font-weight:800!important;font-family:'Outfit','Noto Sans',sans-serif!important;font-size:9pt!important}
+  .tbl .nodata{color:#888!important;font-style:italic;font-size:9pt!important}
+  .tbl .ic-foreign{display:inline-block;background:#000!important;color:#fff!important;padding:1pt 4pt;border-radius:2pt;font-size:6.5pt!important;font-weight:800;letter-spacing:.5px;margin-left:3pt}
+
+  /* Status pill: in print, render as a tight uppercase tag (no rounded pill) */
+  .st-pill{border:0.6pt solid #000!important;color:#000!important;background:transparent!important;padding:1pt 3pt!important;border-radius:0!important;font-family:'JetBrains Mono','Noto Sans',sans-serif!important;font-size:6.5pt!important;font-weight:800;letter-spacing:.4px;text-transform:uppercase;display:inline-block;white-space:nowrap;line-height:1.2}
+
+  /* ── Form B column widths (14 cols, sum to 100%) ─────────────── */
+  .tbl-b .c-sl{width:2.8%}
+  .tbl-b .c-arrival{width:7.5%}
+  .tbl-b .c-name{width:11%}
+  .tbl-b .c-father{width:8.5%}
+  .tbl-b .c-address{width:9%}
+  .tbl-b .c-nat{width:6%}
+  .tbl-b .c-occ{width:6.5%}
+  .tbl-b .c-from{width:6.5%}
+  .tbl-b .c-to{width:6.5%}
+  .tbl-b .c-departure{width:7%}
+  .tbl-b .c-room{width:4%}
+  .tbl-b .c-id{width:11%}
+  .tbl-b .c-phone{width:7.7%}
+  .tbl-b .c-status{width:6%}
+
+  /* ── Form C column widths (24 cols, smaller font) ───────────── */
+  .tbl-c{font-size:7pt!important}
+  .tbl-c thead th{font-size:6.5pt!important;padding:3pt 2pt!important}
+  .tbl-c tbody td{font-size:7pt!important;padding:3pt 2pt!important;line-height:1.25}
+  .tbl-c .num{font-size:6.5pt!important}
+  .tbl-c .nm{font-size:7.5pt!important}
+  .tbl-c .nodata{font-size:7.5pt!important}
+  .tbl-c .cc-sl{width:2.5%}
+  .tbl-c .cc-name{width:7%}
+  .tbl-c .cc-nat{width:5%}
+  .tbl-c .cc-sex{width:2.8%}
+  .tbl-c .cc-dob{width:5%}
+  .tbl-c .cc-pp{width:6%}
+  .tbl-c .cc-ppplace{width:4.5%}
+  .tbl-c .cc-ppdate{width:4.5%}
+  .tbl-c .cc-ppexp{width:4.5%}
+  .tbl-c .cc-visa{width:5%}
+  .tbl-c .cc-visatype{width:4%}
+  .tbl-c .cc-visaplace{width:4%}
+  .tbl-c .cc-visadate{width:4%}
+  .tbl-c .cc-visaexp{width:4%}
+  .tbl-c .cc-arrindia{width:4.5%}
+  .tbl-c .cc-port{width:4%}
+  .tbl-c .cc-cin{width:4.5%}
+  .tbl-c .cc-cout{width:4.5%}
+  .tbl-c .cc-addrabroad{width:5%}
+  .tbl-c .cc-addrnext{width:4%}
+  .tbl-c .cc-purpose{width:3.5%}
+  .tbl-c .cc-email{width:4.5%}
+  .tbl-c .cc-phone{width:3.5%}
+  .tbl-c .cc-room{width:2.5%}
+
+  /* ── Footer + signature block ───────────────────────────────── */
+  .print-foot{margin-top:5mm;display:flex;justify-content:space-between;font-size:8pt;color:#444;font-weight:500;border-top:0.6pt solid #ccc;padding-top:2mm}
+  .print-sig{margin-top:14mm;display:flex;justify-content:space-between;font-size:9pt;font-weight:700;page-break-inside:avoid}
+  .print-sig div{width:30%;border-top:1pt solid #000;padding-top:2mm;text-align:center;font-family:'Outfit','Noto Sans',sans-serif}
 }
 </style>
 </head>
@@ -312,7 +380,23 @@ html[lang="hi"] .lang-en{display:none!important}
 
     <!-- Form B table -->
     <div id="tbl-form-b" class="tbl-wrap">
-      <table class="tbl">
+      <table class="tbl tbl-b">
+        <colgroup>
+          <col class="c-sl">
+          <col class="c-arrival">
+          <col class="c-name">
+          <col class="c-father">
+          <col class="c-address">
+          <col class="c-nat">
+          <col class="c-occ">
+          <col class="c-from">
+          <col class="c-to">
+          <col class="c-departure">
+          <col class="c-room">
+          <col class="c-id">
+          <col class="c-phone">
+          <col class="c-status">
+        </colgroup>
         <thead>
           <tr>
             <th>Sl</th>
@@ -339,7 +423,33 @@ html[lang="hi"] .lang-en{display:none!important}
 
     <!-- Form C table -->
     <div id="tbl-form-c" class="tbl-wrap" style="display:none">
-      <table class="tbl">
+      <table class="tbl tbl-c">
+        <colgroup>
+          <col class="cc-sl">
+          <col class="cc-name">
+          <col class="cc-nat">
+          <col class="cc-sex">
+          <col class="cc-dob">
+          <col class="cc-pp">
+          <col class="cc-ppplace">
+          <col class="cc-ppdate">
+          <col class="cc-ppexp">
+          <col class="cc-visa">
+          <col class="cc-visatype">
+          <col class="cc-visaplace">
+          <col class="cc-visadate">
+          <col class="cc-visaexp">
+          <col class="cc-arrindia">
+          <col class="cc-port">
+          <col class="cc-cin">
+          <col class="cc-cout">
+          <col class="cc-addrabroad">
+          <col class="cc-addrnext">
+          <col class="cc-purpose">
+          <col class="cc-email">
+          <col class="cc-phone">
+          <col class="cc-room">
+        </colgroup>
         <thead>
           <tr>
             <th>Sl</th>
@@ -643,10 +753,9 @@ function printReport(){
     <div class="ph-meta">
       <div>Period: <strong>${escHtml(period)}</strong></div>
       <div>Total Records: <strong>${total}</strong></div>
-      <div>Generated: ${new Date().toLocaleString('en-IN', {timeZone:'Asia/Kolkata'})}</div>
+      <div>Generated: <strong>${new Date().toLocaleString('en-IN', {timeZone:'Asia/Kolkata'})}</strong></div>
     </div>
-    <div style="height:4mm"></div>
-    <div class="ph-title">${escHtml(title)}</div>`;
+    <div class="ph-title-wrap"><div class="ph-title">${escHtml(title)}</div></div>`;
   $('#print-ts').textContent = 'Generated ' + new Date().toLocaleString('en-IN', {timeZone:'Asia/Kolkata'});
 
   // Trigger
