@@ -1429,7 +1429,12 @@ async function checkOutAndBill(){
       p_booking_id: _bookingId
     });
     if(error){ throw new Error(error.message || 'rpc_error'); }
-    if(!data || !data.ok){ throw new Error(data?.error || 'finalize_failed'); }
+    if(!data || !data.ok){
+      // BATCH 022C hotfix 2 — surface SQL detail so failures are diagnosable
+      const msg = data?.error || 'finalize_failed';
+      const detail = data?.detail ? ` (${data.detail})` : '';
+      throw new Error(msg + detail);
+    }
 
     if(data.already_done){
       toast('✓ Already finalized · Invoice ' + (data.invoice_no || ''), 's', 3000);
