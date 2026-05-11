@@ -547,7 +547,7 @@ html[lang="hi"] .lang-en{display:none!important}
         <div class="qa-grid" id="qa-grid">
           <div class="qa-empty">Loading…</div>
         </div>
-        <button class="qa-custom-btn" onclick="openCustomExtraModal()">＋ Custom extra (anything else)</button>
+        <button class="qa-custom-btn" id="qa-custom-btn" onclick="openCustomExtraModal()">＋ Custom extra (anything else)</button>
       </div>
 
       <!-- Payments ledger -->
@@ -628,8 +628,9 @@ html[lang="hi"] .lang-en{display:none!important}
 <!-- Sticky bottom action bar (mobile) -->
 <div class="sticky-actions" id="sticky-actions" style="display:none">
   <button class="sa-sec" onclick="printFolio()">🖨️</button>
-  <button class="sa-pri" onclick="openRecordPaymentModal()">＋ Pay</button>
-  <button class="sa-checkout" id="sa-checkout-btn" onclick="checkOutAndBill()" style="display:none">Check Out &amp; Bill →</button>
+  <button class="sa-pri" id="sa-pay-btn" onclick="openRecordPaymentModal()">＋ Pay</button>
+  <button class="sa-checkout" id="sa-checkout-btn" onclick="checkOutAndBill()" style="display:none">✓ Finalize →</button>
+  <button class="sa-checkout" id="sa-viewinv-btn" style="display:none">🧾 Invoice →</button>
 </div>
 
 <!-- Custom extra / Catalog edit modal (shared) -->
@@ -847,6 +848,20 @@ async function loadFolio(){
       return;
     }
     _folio = data;
+
+    // BATCH 022C — if bill linked, lookup invoice_no for the topbar badge
+    const billId = _folio.booking?.bill_id;
+    if(billId){
+      try {
+        const { data: bd, error: be } = await _sb
+          .from('bills')
+          .select('invoice_no')
+          .eq('id', billId)
+          .maybeSingle();
+        if(!be && bd) _folio._billInvoiceNo = bd.invoice_no;
+      } catch(e){ /* non-fatal — topbar falls back to short id */ }
+    }
+
     render();
   } catch(e){
     console.error('[folio] threw:', e);
@@ -879,12 +894,31 @@ function render(){
   renderActionBar();
   renderPayments();
   renderStickyActions();
+  // BATCH 022C — apply locked-state UI tweaks (must run LAST after children render)
+  applyLockedState();
+}
+
+// Toggle UI elements that should disappear once the folio is finalized
+// (line items locked, no more extras can be added, only payments allowed).
+function applyLockedState(){
+  const locked = _isLocked();
+  const customBtn = $('#qa-custom-btn');
+  if(customBtn) customBtn.style.display = locked ? 'none' : '';
+  const tabs = $('#qa-tabs');
+  if(tabs) tabs.style.display = locked ? 'none' : '';
+  // Quick-add panel itself is handled by renderQuickAdd (shows locked message)
+  if(locked) renderQuickAdd();
 }
 
 function renderTopbar(){
   const b = _folio.booking || {};
   const t = _folio.totals  || {};
-  $('#tb-folio-id').textContent = (b.id || '').slice(0,8).toUpperCase();
+  // BATCH 022C — when finalized, show the invoice number not the short id
+  if(b.bill_id && _folio._billInvoiceNo){
+    $('#tb-folio-id').textContent = _folio._billInvoiceNo;
+  } else {
+    $('#tb-folio-id').textContent = (b.id || '').slice(0,8).toUpperCase();
+  }
   const sp = $('#tb-status');
   if(sp){
     sp.style.display = 'inline-block';
@@ -976,7 +1010,7 @@ function renderLineItems(){
         <td class="li-num">${e.qty||1}</td>
         <td class="li-num">${fmtINR(e.unit_price)}</td>
         <td class="li-amt">${fmtINR2(e.amount)}</td>
-        <td class="li-act"><button class="li-del" onclick="removeExtra('${e.id}')" title="Remove">✕</button></td>
+        <td class="li-act">${_isLocked() ? '' : `<button class="li-del" onclick="removeExtra('${e.id}')" title="Remove">✕</button>`}</td>
       </tr>`);
   });
 
@@ -1016,11 +1050,11 @@ function renderActionBar(){
     <button onclick="printFolio()">🖨️ <span><span class="lang-en">Print</span><span class="lang-hi">प्रिंट</span></span></button>
     ${waUrl ? `<a class="btn-wa" href="${waUrl}" target="_blank" rel="noopener">📱 WhatsApp</a>` : ''}`;
 
-  // Check Out & Generate Bill — only when in-house and no bill yet
+  // BATCH 022C — Check Out & Finalize (silent bill generation)
   if(b.status === 'checked_in' && !b.bill_id){
-    actions += `<button class="btn-checkout" onclick="checkOutAndBill()">✓ <span><span class="lang-en">Check Out &amp; Generate Bill</span><span class="lang-hi">चेक-आउट और बिल बनाएं</span></span></button>`;
+    actions += `<button class="btn-checkout" onclick="checkOutAndBill()">✓ <span><span class="lang-en">Check Out &amp; Finalize</span><span class="lang-hi">चेक-आउट और अंतिम करें</span></span></button>`;
   } else if(b.bill_id){
-    actions += `<button class="btn-bill" onclick="window.location.href='bills.html?id=${encodeURIComponent(b.bill_id)}'">🧾 View Bill</button>`;
+    actions += `<button class="btn-bill" onclick="window.location.href='bills.html?id=${encodeURIComponent(b.bill_id)}'">🧾 <span><span class="lang-en">View Invoice</span><span class="lang-hi">चालान देखें</span></span></button>`;
   }
 
   bar.innerHTML = actions;
@@ -1028,6 +1062,11 @@ function renderActionBar(){
 
 function renderQuickAdd(){
   const grid = $('#qa-grid');
+  // BATCH 022C — locked once bill is generated; refunds/corrections via payments only
+  if(_isLocked()){
+    grid.innerHTML = `<div class="qa-empty" style="color:var(--t3);font-style:normal">🔒 Folio finalized — line items are locked. Record refund payments below if needed.</div>`;
+    return;
+  }
   if(_catalog.length === 0){
     grid.innerHTML = `<div class="qa-empty">No catalog items yet. Use Custom extra below to add one-off charges.</div>`;
     return;
@@ -1100,11 +1139,18 @@ function renderPayments(){
 function renderStickyActions(){
   const b = _folio.booking || {};
   $('#sticky-actions').style.display = 'flex';
-  const co = $('#sa-checkout-btn');
+  const co  = $('#sa-checkout-btn');
+  const inv = $('#sa-viewinv-btn');
   if(b.status === 'checked_in' && !b.bill_id){
-    co.style.display = 'block';
+    co.style.display  = 'block';
+    inv.style.display = 'none';
+  } else if(b.bill_id){
+    co.style.display  = 'none';
+    inv.style.display = 'block';
+    inv.onclick = ()=> { window.location.href = 'bills.html?id=' + encodeURIComponent(b.bill_id); };
   } else {
-    co.style.display = 'none';
+    co.style.display  = 'none';
+    inv.style.display = 'none';
   }
 }
 
@@ -1353,11 +1399,60 @@ async function voidPayment(id){
 }
 
 // ════════════════════════════════════════════════════════════════════
-// Check Out & Generate Bill
+// Check Out & Finalize  (Batch 022C — silent bill generation)
 // ════════════════════════════════════════════════════════════════════
-function checkOutAndBill(){
-  // Hand-off to bookings.html which already has the full check-out flow
-  window.location.href = 'bookings.html?id=' + encodeURIComponent(_bookingId) + '&action=checkout';
+async function checkOutAndBill(){
+  if(_busy) return;
+  if(!_folio || !_folio.booking){ toast('Folio not loaded', 'e'); return; }
+
+  const t = _folio.totals || {};
+  const balance = parseFloat(t.balance_due || 0);
+
+  // Confirm if there's a balance still owed
+  if(balance > 0.005){
+    const ok = confirm(
+      'Balance still due: ' + fmtINR2(balance) + '\n\n' +
+      'Finalizing now will mark the bill as Partial (not Paid). ' +
+      'Continue anyway, or click Cancel to record the remaining payment first?'
+    );
+    if(!ok) return;
+  }
+
+  _busy = true;
+  // Lock the CTA buttons immediately so double-clicks don't fire twice
+  const btns = document.querySelectorAll('.btn-checkout, .sa-checkout');
+  btns.forEach(b => { b.disabled = true; b.style.opacity = '.55'; });
+
+  try {
+    const { data, error } = await _sb.rpc('sbp_folio_finalize_to_bill', {
+      p_shop_id:    _shopId,
+      p_booking_id: _bookingId
+    });
+    if(error){ throw new Error(error.message || 'rpc_error'); }
+    if(!data || !data.ok){ throw new Error(data?.error || 'finalize_failed'); }
+
+    if(data.already_done){
+      toast('✓ Already finalized · Invoice ' + (data.invoice_no || ''), 's', 3000);
+    } else {
+      toast('✓ Invoice ' + (data.invoice_no || '') + ' generated', 's', 3500);
+    }
+
+    // Refresh folio — the RPC has updated booking.bill_id, status, room.status
+    await loadFolio();
+
+  } catch(e){
+    toast('Could not finalize: ' + (e.message || 'unknown error'), 'e', 4500);
+    console.error('[022C] finalize threw:', e);
+  } finally {
+    _busy = false;
+    btns.forEach(b => { b.disabled = false; b.style.opacity = ''; });
+  }
+}
+
+// Returns true when the folio is locked (bill already generated).
+// Used to disable line-item edits and CTAs after finalization.
+function _isLocked(){
+  return !!(_folio && _folio.booking && _folio.booking.bill_id);
 }
 
 // ════════════════════════════════════════════════════════════════════
