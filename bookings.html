@@ -722,8 +722,11 @@ async function renderDetail(){
     actionBtns.push(`<button class="btn-success" onclick="doCheckIn()" style="margin-bottom:8px">✅ Check In Now</button>`);
     actionBtns.push(`<button class="btn-danger" onclick="doCancel()" style="margin-bottom:8px">❌ Cancel Booking</button>`);
   }else if(b.status==='checked_in'){
-    actionBtns.push(`<button class="btn-pri" onclick="openAddExtra()" style="margin-bottom:8px">➕ Add Extra Charge</button>`);
-    actionBtns.push(`<button class="btn-success" onclick="doCheckOut()" style="margin-bottom:8px">🧾 Check Out & Generate Bill</button>`);
+    // BATCH 022C — "Add Extra Charge" and "Check Out & Generate Bill" buttons
+    // are deprecated here. folio.html owns both flows now (quick-add catalog
+    // + ✓ Check Out & Finalize). The "Open Full Folio →" CTA above gets the
+    // operator there in one tap. Keeping only Cancel as a destructive admin
+    // affordance accessible from the modal.
     actionBtns.push(`<button class="btn-danger" onclick="doCancel()" style="margin-bottom:8px">❌ Cancel</button>`);
   }else if(b.status==='checked_out' && b.bill_id){
     actionBtns.push(`<button class="btn-pri" onclick="window.location.href='bills.html?id=${b.bill_id}'" style="margin-bottom:8px">🧾 View Bill</button>`);
