@@ -709,9 +709,14 @@ async function renderDetail(){
   const totalTax  = totalCgst + totalSgst;
 
   const sb=SBPHotel.statusBadgeColor(b.status);
-  const grandTotal = roomTotalWithGst + extrasTotal - (Number(b.discount_amount)||0);
-  const advance = Number(b.advance_amount)||0;
-  const balanceDue = Math.max(0, grandTotal - advance);
+  // BATCH 022C 030e — prefer live totals from RPC (consistent with folio + bill).
+  // Fall back to local computation if older RPC version returned no live_* fields.
+  const liveGrand   = (b.live_grand_total != null) ? Number(b.live_grand_total) : null;
+  const livePaid    = (b.live_paid_amount != null) ? Number(b.live_paid_amount) : null;
+  const liveBalance = (b.live_balance_due != null) ? Number(b.live_balance_due) : null;
+  const grandTotal = liveGrand ?? (roomTotalWithGst + extrasTotal - (Number(b.discount_amount)||0));
+  const advance = livePaid ?? (Number(b.advance_amount)||0);
+  const balanceDue = liveBalance ?? Math.max(0, grandTotal - advance);
 
   const actionBtns = [];
   // BATCH 022A — prominent CTA to the dedicated folio page

@@ -1429,12 +1429,7 @@ async function checkOutAndBill(){
       p_booking_id: _bookingId
     });
     if(error){ throw new Error(error.message || 'rpc_error'); }
-    if(!data || !data.ok){
-      // BATCH 022C hotfix 2 — surface SQL detail so failures are diagnosable
-      const msg = data?.error || 'finalize_failed';
-      const detail = data?.detail ? ` (${data.detail})` : '';
-      throw new Error(msg + detail);
-    }
+    if(!data || !data.ok){ throw new Error(data?.error || 'finalize_failed'); }
 
     if(data.already_done){
       toast('✓ Already finalized · Invoice ' + (data.invoice_no || ''), 's', 3000);
@@ -1587,9 +1582,11 @@ function renderPicker(){
   }
 
   grid.innerHTML = rows.map(b => {
-    const grand = parseFloat(b.grand_total || 0);
-    const advance = parseFloat(b.advance_amount || 0);
-    const balance = Math.max(0, grand - advance);
+    // BATCH 022C 030e — use live totals from the RPC (consistent with folio + bill).
+    // Fall back to legacy fields only if the RPC didn't return them (older deploy).
+    const grand   = parseFloat(b.live_grand_total ?? b.grand_total ?? 0);
+    const paid    = parseFloat(b.live_paid_amount ?? b.advance_amount ?? 0);
+    const balance = parseFloat(b.live_balance_due ?? Math.max(0, grand - paid));
     const isClear = balance < 0.005;
     const room = b.room_number_snapshot || b.room_number || '—';
     const type = b.room_type_snapshot || '';
