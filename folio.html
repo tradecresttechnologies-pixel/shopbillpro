@@ -809,13 +809,13 @@ function statusLabel(s){
 function modeIcon(m){
   return ({
     cash: '💵', upi: '📱', card: '💳', bank_transfer: '🏦',
-    cheque: '📝', other: '📦'
+    cheque: '📝', ota_prepaid: '🌐', other: '📦'
   })[m] || '💼';
 }
 function modeLabel(m){
   return ({
     cash: 'Cash', upi: 'UPI', card: 'Card', bank_transfer: 'Bank Transfer',
-    cheque: 'Cheque', other: 'Other'
+    cheque: 'Cheque', ota_prepaid: 'OTA Prepaid', other: 'Other'
   })[m] || (m||'—');
 }
 

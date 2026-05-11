@@ -1530,41 +1530,6 @@ function previewAndSave(){
   document.getElementById('partial-amt-row').style.display='none';
   document.getElementById('settle-note').textContent='Full amount will be marked as Paid.';
   document.getElementById('confirm-settle-btn').textContent='✅ Confirm & Save — Cash';
-
-  // ── Batch 021.5 (d cont.) — Advance pre-fill ──
-  // When the booking carried an advance, default the settle to PARTIAL
-  // with paid_amount = advance. paid_amount in DB then reflects what's
-  // actually been collected up to this checkpoint (just the advance).
-  // If user is also collecting the balance now, they bump partial-amt
-  // up to grand_total before saving. Bill grand_total stays full
-  // (correct for the GST tax invoice).
-  try {
-    const _adv = window._currentBookingAdvance;
-    if(_adv && _adv.amount > 0){
-      const advAmt = Math.min(_adv.amount, parseFloat(b.grand)||0);
-      // Switch to Partial mode
-      _settleType = 'partial';
-      const fullBtn = document.getElementById('bm-full-btn');
-      const partBtn = document.getElementById('bm-part-btn');
-      fullBtn.style.borderColor='var(--bord)';
-      fullBtn.style.background='var(--surf2)';
-      fullBtn.style.color='var(--t2)';
-      partBtn.style.borderColor='var(--acc)';
-      partBtn.style.background='rgba(245,166,35,.1)';
-      partBtn.style.color='var(--acc)';
-      const partRow = document.getElementById('partial-amt-row');
-      if(partRow) partRow.style.display = 'block';
-      const partInp = document.getElementById('partial-amt');
-      if(partInp){
-        partInp.value = advAmt.toFixed(2);
-        partInp.placeholder = 'Total received so far (advance + balance now)';
-      }
-      const balanceNow = Math.max(0, (parseFloat(b.grand)||0) - advAmt);
-      document.getElementById('settle-note').textContent =
-        'Advance ₹'+ advAmt.toLocaleString('en-IN') +' already received'+ (_adv.mode?' ('+_adv.mode+')':'') +'. Balance ₹'+ balanceNow.toLocaleString('en-IN') +' due. Bump amount up if collecting balance now.';
-    }
-  } catch(e){ console.warn('[previewBill] advance pre-fill failed:', e); }
-
   openModal('bill-preview-modal');
 }
 
@@ -1607,75 +1572,8 @@ async function confirmSettle(){
   btn.disabled=true;btn.textContent='⏳ Saving...';
 
   try{
-    // ── Batch 021.5 (a) — At-save invoice reservation guard ──
-    // If form-open RPC succeeded, window._reservedInvoiceNo is set and
-    // matches the inv-no field. If form-open failed (or we're a new
-    // session), retry RPC here. If still failing AND online, BLOCK
-    // save — better to refuse than to save with a stale colliding
-    // counter. Offline mode keeps the device-tagged fallback (safe).
-    const onlineNow = navigator.onLine;
-    const isEditModePre = !!window._editBillId;
-    if(!isEditModePre && onlineNow && _sb && _shopId && !window._reservedInvoiceNo){
-      try {
-        const { data, error } = await _sb.rpc('next_invoice_no', { p_shop_id: _shopId });
-        if(error){
-          console.error('[next_invoice_no] at-save RPC error:', error);
-          btn.disabled=false; btn.textContent='✅ Confirm & Save — '+_payMethod;
-          toast('⚠️ Cannot reserve invoice number: '+(error.message||'RPC failed')+'. Save blocked. Check console.','e',6500);
-          return;
-        }
-        if(data && data.length){
-          const row = Array.isArray(data) ? data[0] : data;
-          const reservedNo = (row.invoice_prefix||'INV')+'-'+String(row.invoice_counter).padStart(4,'0');
-          window._reservedInvoiceNo = reservedNo;
-          b.invno = reservedNo;
-          document.getElementById('inv-no').value = reservedNo;
-          _shop.invoice_counter = row.invoice_counter;
-          localStorage.setItem('sbp_shop', JSON.stringify(_shop));
-          console.log('[next_invoice_no] reserved', reservedNo, 'at save');
-        } else {
-          console.error('[next_invoice_no] at-save RPC returned empty:', data);
-          btn.disabled=false; btn.textContent='✅ Confirm & Save — '+_payMethod;
-          toast('⚠️ Invoice reservation returned no data. Save blocked.','e',6000);
-          return;
-        }
-      } catch(e){
-        console.error('[next_invoice_no] at-save threw:', e);
-        btn.disabled=false; btn.textContent='✅ Confirm & Save — '+_payMethod;
-        toast('⚠️ Cannot reserve invoice number ('+(e.message||'network')+'). Save blocked.','e',6500);
-        return;
-      }
-    }
-
-    // ── Batch 021.5 (b) — Resolve customer_id at save ──
-    // Bills were inserted with customer_id=NULL forever, breaking
-    // sbp_get_customer_timeline (which filters strictly on customer_id).
-    // Resolve via the existing 024 RPC; safe to fail (we just leave
-    // customer_id NULL and the timeline RPC's name fallback covers it).
-    let _resolvedCustomerId = null;
-    if(onlineNow && _sb && _shopId && b.nm && String(b.nm).trim().length > 0){
-      try {
-        const { data: cidData, error: cidErr } = await _sb.rpc('sbp_resolve_customer_for_booking', {
-          p_shop_id: _shopId,
-          p_name:    String(b.nm).trim(),
-          p_phone:   b.wa || null,
-          p_wa:      b.wa || null,
-          p_email:   null
-        });
-        if(cidErr){
-          console.warn('[customer_id] resolve RPC error (non-fatal):', cidErr);
-        } else if(cidData){
-          _resolvedCustomerId = cidData;
-          console.log('[customer_id] resolved', _resolvedCustomerId, 'for', b.nm);
-        }
-      } catch(e){
-        console.warn('[customer_id] resolve threw (non-fatal):', e);
-      }
-    }
-
     const billData={
       shop_id:_shopId,invoice_no:b.invno,invoice_date:b.invdate,due_date:b.duedate||null,
-      customer_id:_resolvedCustomerId,
       customer_name:b.nm,customer_wa:b.wa,customer_gstin:b.custGSTIN||b.gst||'',
       payment_mode:_payMethod,status,
       subtotal:b.sub,gst_amount:b.gstAmt,discount:b.discAmt,
@@ -1840,28 +1738,6 @@ async function confirmSettle(){
       cached.unshift({...savedBill,bill_items:b.items});
       localStorage.setItem('sbp_bills',JSON.stringify(cached));
       toast('✅ Bill saved!','s');
-
-      // ── Batch 021.5 (c) — Direct booking → bill linkage ──
-      // The polling-based linkBill at the bottom of this file (line ~4180)
-      // is fragile (1.5s poll, kills on tab-close, picks first detected
-      // bill). Call it directly here with the just-inserted bill id and
-      // the URL-param booking_id. Synchronous, deterministic, idempotent.
-      try {
-        const _bookingIdFromUrl = new URLSearchParams(window.location.search).get('booking_id')
-                              || window._currentBookingId;
-        if(_bookingIdFromUrl && savedBill.id && !String(savedBill.id).startsWith('local_')
-           && window.SBPHotel && _shopId){
-          const _linkRes = await SBPHotel.bookings.linkBill(_shopId, _bookingIdFromUrl, savedBill.id);
-          if(_linkRes && _linkRes.ok){
-            console.log('[BookingCheckout] direct-linked bill', savedBill.id, '→ booking', _bookingIdFromUrl);
-            // Disable the polling fallback now that we've linked
-            window._currentBookingId = null;
-          } else {
-            console.warn('[BookingCheckout] direct linkBill returned non-ok:', _linkRes);
-          }
-        }
-      } catch(e){ console.warn('[BookingCheckout] direct linkBill threw:', e); }
-
       // Loyalty hook (009_loyalty) — apply redemption + award earn
       if(typeof _loyaltyHookAfterBillSave === 'function') _loyaltyHookAfterBillSave(savedBill);
     }
@@ -2916,27 +2792,8 @@ async function confirmPOSCheckout(){
   btn.disabled=true;btn.textContent='⏳ Saving...';
 
   try{
-    // ── Batch 021.5 (b) — Resolve customer_id at POS save too ──
-    // Same fix as confirmSettle: avoid leaving customer_id NULL forever,
-    // which breaks sbp_get_customer_timeline. Best-effort, non-fatal.
-    let _resolvedCustomerId = null;
-    if(isPro() && navigator.onLine && _sb && _shopId && custName && String(custName).trim().length > 0){
-      try {
-        const { data: cidData, error: cidErr } = await _sb.rpc('sbp_resolve_customer_for_booking', {
-          p_shop_id: _shopId,
-          p_name:    String(custName).trim(),
-          p_phone:   custWA || null,
-          p_wa:      custWA || null,
-          p_email:   null
-        });
-        if(cidErr) console.warn('[customer_id/pos] resolve error (non-fatal):', cidErr);
-        else if(cidData) _resolvedCustomerId = cidData;
-      } catch(e){ console.warn('[customer_id/pos] resolve threw (non-fatal):', e); }
-    }
-
     const billData={
       shop_id:_shopId,invoice_no:invNo,invoice_date:todayISO(),
-      customer_id:_resolvedCustomerId,
       customer_name:custName,customer_wa:custWA,
       payment_mode:_pcoPayMethod,status,
       subtotal:sub,gst_amount:gstTotal,discount:billDisc,
@@ -3098,31 +2955,18 @@ async function init(){
   }
   document.getElementById('inv-no').value = initialInvNo;
   document.getElementById('inv-date').value=todayISO();
-  // Batch 021.5 — RPC fixed in migration 025 (was failing with PG 42702
-  // ambiguous_column). Track the authoritative reservation on window
-  // state so confirmSettle() can verify the number is reserved before
-  // inserting. If reservation is missing at save time, save retries
-  // (or blocks if still failing online).
-  window._reservedInvoiceNo = null;
+  // Try atomic counter (online only) — replaces the naive counter we just showed
   if(navigator.onLine && _sb && _shopId){
     try {
       const { data, error } = await _sb.rpc('next_invoice_no', { p_shop_id: _shopId });
-      if(error){
-        console.error('[next_invoice_no] form-open RPC error:', error);
-      } else if(data && data.length){
+      if(!error && data && data.length){
         const row = Array.isArray(data) ? data[0] : data;
         const newNo = (row.invoice_prefix||'INV')+'-'+String(row.invoice_counter).padStart(4,'0');
         document.getElementById('inv-no').value = newNo;
         _shop.invoice_counter = row.invoice_counter;
         localStorage.setItem('sbp_shop', JSON.stringify(_shop));
-        window._reservedInvoiceNo = newNo;
-        console.log('[next_invoice_no] reserved', newNo, 'at form-open');
-      } else {
-        console.error('[next_invoice_no] form-open RPC returned empty data:', data);
       }
-    } catch(e){
-      console.error('[next_invoice_no] form-open threw:', e);
-    }
+    } catch(e){ /* RPC not deployed yet — fall back silently */ }
   }
 
   // Add first item row
@@ -3158,13 +3002,12 @@ async function init(){
       }
     }
 
-    // Batch 021.5 — DROPPED the redundant `_sb.from('shops').select('*')`
-    // re-fetch + inv-no overwrite that used to live here. It was
-    // re-reading the (already-bumped) counter and re-displaying it,
-    // which had no effect when the form-open RPC succeeded but DID
-    // overwrite a fresh reservation if the RPC bumped between two
-    // browser tabs. The form-open RPC is now the single source of
-    // truth; if it failed we retry at save time (see confirmSettle).
+    // Refresh shop (updated invoice counter)
+    const{data:shops}=await _sb.from('shops').select('*').eq('id',_shopId).single();
+    if(shops){
+      _shop=shops;localStorage.setItem('sbp_shop',JSON.stringify(shops));
+      document.getElementById('inv-no').value=(shops.invoice_prefix||'INV')+'-'+String(shops.invoice_counter||1).padStart(4,'0');
+    }
   }
 
   // ── Run AFTER init is fully done (items-wrap ready, data loaded) ──
@@ -3441,37 +3284,6 @@ function loadFromTemplateParams(){
 
       if(typeof calcTotals === 'function') setTimeout(calcTotals, 100);
       console.log('[FolioPopulate] done — rows now:', document.querySelectorAll('#items-wrap .item-row').length, '· room GST:', roomGstRate+'%');
-
-      // ── Batch 021.5 (d) — Advance payment handoff ──
-      // Hotel checkouts can carry an advance the guest paid at booking
-      // time. The folio RPC returns it in b.advance_amount; previously
-      // _sbpPopulateFolio dropped it on the floor, so settle modals
-      // ignored the prepayment and the bill saved with paid_amount=0
-      // (or full grand_total via "Full" default — also wrong) instead
-      // of paid_amount=advance. Fix: stash advance on window state +
-      // surface a banner. previewBill() reads this and pre-sets the
-      // settle modal so paid_amount reflects what's actually been
-      // collected at this point in the booking lifecycle.
-      const _advAmt   = parseFloat(b.advance_amount || 0) || 0;
-      const _advMode  = b.advance_payment_mode || '';
-      const _advAt    = b.advance_paid_at || '';
-      if(_advAmt > 0){
-        window._currentBookingAdvance = { amount: _advAmt, mode: _advMode, paid_at: _advAt };
-        console.log('[FolioPopulate] advance ₹'+_advAmt+' via '+(_advMode||'?')+' on '+(_advAt||'?'));
-        // Banner — append below the existing checkout banner
-        try {
-          const banner = document.getElementById('booking-checkout-banner');
-          if(banner && !document.getElementById('advance-banner')){
-            const advB = document.createElement('div');
-            advB.id = 'advance-banner';
-            advB.style.cssText = 'margin-top:8px;padding:10px 12px;border-radius:10px;background:linear-gradient(135deg,rgba(16,185,129,.12),rgba(16,185,129,.04));border:1px solid rgba(16,185,129,.35);color:#059669;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px';
-            advB.innerHTML = '<span style="font-size:16px">💰</span><span>Advance ₹'+ _advAmt.toLocaleString('en-IN') +' already received'+(_advMode?' via '+_advMode:'')+(_advAt?' on '+String(_advAt).slice(0,10):'')+' — settle modal will pre-fill accordingly.</span>';
-            banner.parentNode.insertBefore(advB, banner.nextSibling);
-          }
-        } catch(e){ console.warn('[FolioPopulate] advance banner failed:', e); }
-      } else {
-        window._currentBookingAdvance = null;
-      }
     }
 
     // Helper: set a GST <select> to the closest available option (5/12/18 etc.)
@@ -4399,6 +4211,258 @@ function showCollectPayment(billId) {
 
   // Poll every 1.5s; cheap, only runs when booking_id was in URL
   setInterval(checkForNewBill, 1500);
+})();
+</script>
+
+
+<!-- ════════════════════════════════════════════════════════════════════
+     BATCH 022B — Unified Payment Architecture
+     Renders payment-history panel + overrides settle defaults & flow
+     when billing.html is opened with ?booking_id=X (hotel checkout).
+     Pure additive: existing non-hotel flow is untouched.
+     ════════════════════════════════════════════════════════════════════ -->
+<script>
+(function(){
+  const _params = new URLSearchParams(window.location.search);
+  const _bookingId = _params.get('booking_id');
+  if(!_bookingId) return;   // Only active for hotel checkout flows
+
+  let _payHistory = null;   // last fetched summary { ok, total_paid, by_mode, rows }
+  let _historyFetchInflight = false;
+
+  function _fmtINR2(n){
+    const v = parseFloat(n||0);
+    if(Math.abs(v - Math.round(v)) < 0.005) return '₹' + Math.round(v).toLocaleString('en-IN');
+    return '₹' + v.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
+  }
+  function _esc(s){return String(s==null?'':s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+  function _modeIcon(m){
+    return ({cash:'💵', upi:'📱', card:'💳', bank_transfer:'🏦', cheque:'📝', ota_prepaid:'🌐', other:'📦'})[String(m||'').toLowerCase()] || '💼';
+  }
+  function _modeLabel(m){
+    return ({cash:'Cash', upi:'UPI', card:'Card', bank_transfer:'Bank Transfer', cheque:'Cheque', ota_prepaid:'OTA Prepaid', other:'Other'})[String(m||'').toLowerCase()] || (m||'—');
+  }
+  function _fmtDateTime(d){
+    if(!d) return '';
+    const dt = new Date(d);
+    if(isNaN(dt)) return '';
+    return dt.toLocaleString('en-IN', {timeZone:'Asia/Kolkata', day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit'});
+  }
+
+  async function fetchPayHistory(){
+    if(_historyFetchInflight || !window._sb) return;
+    _historyFetchInflight = true;
+    try {
+      const shopId = localStorage.getItem('sbp_shop_id') || (JSON.parse(localStorage.getItem('sbp_shop')||'{}').id);
+      if(!shopId) return;
+      const { data, error } = await window._sb.rpc('sbp_folio_payment_summary', {
+        p_shop_id: shopId, p_booking_id: _bookingId
+      });
+      if(error){ console.warn('[022B] summary error:', error); return; }
+      if(data && data.ok){
+        _payHistory = data;
+        console.log('[022B] payment history loaded:', data);
+      }
+    } catch(e){
+      console.warn('[022B] summary threw:', e);
+    } finally {
+      _historyFetchInflight = false;
+    }
+  }
+
+  // Inject the "Payment history" panel into the settlement section.
+  // Called every time the bill-preview-modal opens (idempotent).
+  function injectHistoryPanel(){
+    if(!_payHistory || !_payHistory.ok) return;
+    const settleSection = document.querySelector('#bill-preview-modal .fsec');
+    if(!settleSection) return;
+
+    // Remove any prior panel (re-render fresh each open)
+    document.getElementById('sbp-pay-history-panel')?.remove();
+
+    const total = parseFloat(_payHistory.total_paid || 0);
+    if(total <= 0) return;
+
+    const byMode = _payHistory.by_mode || [];
+    const rows   = _payHistory.rows || [];
+
+    const panel = document.createElement('div');
+    panel.id = 'sbp-pay-history-panel';
+    panel.style.cssText = 'background:linear-gradient(135deg,rgba(16,185,129,.10),rgba(16,185,129,.03));border:1.5px solid rgba(16,185,129,.35);border-radius:12px;padding:12px 14px;margin-bottom:12px';
+
+    let html = ''
+      + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px">'
+      +   '<div style="font-family:\'Outfit\',sans-serif;font-size:13px;font-weight:800;color:var(--acc3);letter-spacing:.2px;display:flex;align-items:center;gap:6px">'
+      +     '✓ <span>Already Received</span>'
+      +   '</div>'
+      +   '<div style="font-family:\'Outfit\',sans-serif;font-size:18px;font-weight:800;color:var(--acc3);letter-spacing:-.3px">' + _fmtINR2(total) + '</div>'
+      + '</div>';
+
+    if(byMode.length > 0){
+      html += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">';
+      byMode.forEach(m => {
+        html += ''
+          + '<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 9px;background:var(--surf);border:1px solid var(--bord);border-radius:8px;font-size:11px;font-weight:700;color:var(--text)">'
+          +   '<span>' + _modeIcon(m.mode) + '</span>'
+          +   '<span>' + _esc(_modeLabel(m.mode)) + '</span>'
+          +   '<span style="color:var(--acc3);font-family:\'JetBrains Mono\',monospace">' + _fmtINR2(m.amount) + '</span>'
+          +   (m.count > 1 ? '<span style="color:var(--t3);font-size:9px">×' + m.count + '</span>' : '')
+          + '</span>';
+      });
+      html += '</div>';
+    }
+
+    if(rows.length > 0){
+      html += ''
+        + '<details style="margin-top:4px">'
+        +   '<summary style="cursor:pointer;font-size:11px;color:var(--t2);font-weight:600;letter-spacing:.3px;outline:none;user-select:none">'
+        +     'Show all ' + rows.length + ' payment' + (rows.length>1?'s':'') + ' ▾'
+        +   '</summary>'
+        +   '<div style="margin-top:8px;background:var(--surf);border:1px solid var(--bord);border-radius:8px;overflow:hidden">';
+      rows.forEach((r, i) => {
+        const voided = r.is_voided;
+        html += ''
+          + '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;' + (i>0?'border-top:1px dashed var(--bord);':'') + (voided?'opacity:.5':'') + '">'
+          +   '<span style="font-size:12px">' + _modeIcon(r.payment_mode) + '</span>'
+          +   '<div style="flex:1;min-width:0;font-size:11px;color:var(--text);font-weight:600">'
+          +     _esc(_modeLabel(r.payment_mode))
+          +     (r.is_advance ? ' <span style="font-family:\'JetBrains Mono\',monospace;font-size:8px;background:rgba(245,166,35,.18);color:var(--acc);padding:1px 5px;border-radius:3px;font-weight:700;letter-spacing:.4px;margin-left:4px">ADVANCE</span>' : '')
+          +     (voided ? ' <span style="font-family:\'JetBrains Mono\',monospace;font-size:8px;background:rgba(244,63,94,.18);color:#F43F5E;padding:1px 5px;border-radius:3px;font-weight:700;letter-spacing:.4px;margin-left:4px">VOIDED</span>' : '')
+          +     '<div style="font-size:10px;color:var(--t2);font-weight:500;margin-top:1px">'
+          +       _esc(_fmtDateTime(r.recorded_at))
+          +       (r.reference ? ' · Ref: ' + _esc(r.reference) : '')
+          +     '</div>'
+          +   '</div>'
+          +   '<div style="font-family:\'JetBrains Mono\',monospace;font-size:12px;font-weight:800;color:' + (voided?'var(--t3)':'var(--acc3)') + ';' + (voided?'text-decoration:line-through':'') + '">'
+          +     _fmtINR2(r.amount)
+          +   '</div>'
+          + '</div>';
+      });
+      html += '</div></details>';
+    }
+
+    panel.innerHTML = html;
+
+    const payGrid = document.getElementById('bm-pay-grid');
+    if(payGrid){
+      settleSection.insertBefore(panel, payGrid);
+    } else {
+      settleSection.appendChild(panel);
+    }
+  }
+
+  // Override settle defaults when there's prior payment history
+  function applyHotelSettleDefaults(){
+    if(!_payHistory || !_payHistory.ok) return;
+    if(!window._billSnap) return;
+
+    const totalPaid = parseFloat(_payHistory.total_paid || 0);
+    const grand     = parseFloat(window._billSnap.grand || 0);
+    const balance   = Math.max(0, grand - totalPaid);
+
+    if(totalPaid <= 0) return;   // no prior payments — leave defaults
+
+    if(typeof window.setPartial === 'function'){
+      window.setPartial('partial');
+    }
+    const partialInput = document.getElementById('partial-amt');
+    if(partialInput){
+      partialInput.value = balance > 0 ? balance.toFixed(2).replace(/\.00$/,'') : '0';
+    }
+
+    const note = document.getElementById('settle-note');
+    if(note){
+      note.innerHTML = ''
+        + '<div style="display:flex;justify-content:space-between;margin-bottom:3px"><span>Total bill</span><strong>' + _fmtINR2(grand) + '</strong></div>'
+        + '<div style="display:flex;justify-content:space-between;margin-bottom:3px;color:var(--acc3)"><span>− Already paid</span><strong>−' + _fmtINR2(totalPaid) + '</strong></div>'
+        + '<div style="display:flex;justify-content:space-between;padding-top:5px;border-top:1px dashed var(--bord);font-weight:800;font-size:13px;color:' + (balance>0?'#F43F5E':'var(--acc3)') + '"><span>' + (balance>0?'Balance due now':'Settled · ✓ Clear') + '</span><strong>' + (balance>0?_fmtINR2(balance):'—') + '</strong></div>';
+    }
+  }
+
+  function wrapPreviewAndSave(){
+    if(typeof window.previewAndSave !== 'function') return;
+    if(window.previewAndSave.__sbp022B) return;
+    const orig = window.previewAndSave;
+    window.previewAndSave = function(){
+      orig.apply(this, arguments);
+      setTimeout(()=>{
+        injectHistoryPanel();
+        applyHotelSettleDefaults();
+      }, 50);
+    };
+    window.previewAndSave.__sbp022B = true;
+    console.log('[022B] previewAndSave wrapped');
+  }
+
+  function wrapConfirmSettle(){
+    if(typeof window.confirmSettle !== 'function') return;
+    if(window.confirmSettle.__sbp022B) return;
+    const orig = window.confirmSettle;
+    window.confirmSettle = async function(){
+      // Snapshot user picks BEFORE original fires (it resets after save)
+      const settleType = window._settleType || 'full';
+      const method     = window._payMethod  || 'Cash';
+      const grand      = parseFloat(window._billSnap?.grand || 0);
+      let partAmt = grand;
+      if(settleType === 'partial'){
+        partAmt = parseFloat(document.getElementById('partial-amt')?.value || 0) || 0;
+      }
+      if(method === 'Credit') partAmt = 0;
+
+      const result = await orig.apply(this, arguments);
+
+      try {
+        await new Promise(r => setTimeout(r, 800));  // let cloud sync finish
+        const shopId = localStorage.getItem('sbp_shop_id') || (JSON.parse(localStorage.getItem('sbp_shop')||'{}').id);
+
+        const bills = JSON.parse(localStorage.getItem('sbp_bills') || '[]');
+        const newest = bills.find(b => b && b.id && b.booking_id === _bookingId) || bills[0];
+        if(!newest || !newest.id){
+          console.warn('[022B] could not find just-created bill to settle');
+          return result;
+        }
+
+        const modeNormalized = String(method||'').toLowerCase()
+          .replace('upi/qr','upi')
+          .replace(/^bank$/,'bank_transfer');
+
+        const { data, error } = await window._sb.rpc('sbp_bill_settle_with_history', {
+          p_shop_id:    shopId,
+          p_bill_id:    newest.id,
+          p_booking_id: _bookingId,
+          p_amount:     partAmt,
+          p_mode:       modeNormalized,
+          p_reference:  null,
+          p_note:       'Bill settlement via billing.html'
+        });
+        if(error){
+          console.warn('[022B] settle_with_history error:', error);
+        } else if(data && data.ok){
+          console.log('[022B] unified ledger updated:', data.bill);
+        }
+      } catch(e){
+        console.warn('[022B] post-settle hook threw:', e);
+      }
+
+      return result;
+    };
+    window.confirmSettle.__sbp022B = true;
+    console.log('[022B] confirmSettle wrapped');
+  }
+
+  async function boot(){
+    let waited = 0;
+    while ((!window._sb || typeof window.previewAndSave !== 'function') && waited < 5000) {
+      await new Promise(r => setTimeout(r, 100));
+      waited += 100;
+    }
+    if(!window._sb){ console.warn('[022B] _sb not ready, aborting'); return; }
+    await fetchPayHistory();
+    wrapPreviewAndSave();
+    wrapConfirmSettle();
+    console.log('[022B] hooks installed for booking', _bookingId);
+  }
+  boot();
 })();
 </script>
 
