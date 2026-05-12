@@ -611,16 +611,47 @@ async function loadDetail(){
   // ── Render with whatever we have ──
   renderDetail();
 
-  // Show informational toast about why timeline is missing (only when fallback used)
+  // Show informational toast about why timeline is missing (only when fallback used).
+  //
+  // Previously this used substring-matching on the error string ("does not exist"
+  // / "schema cache" / etc.) to guess that migration 013 was missing. That guess
+  // was wrong every time the cause was actually something else — most recently
+  // mig 040/041 column-mismatch bugs, where "column X does not exist" matched
+  // the regex but had nothing to do with migration 013. Result: confusing
+  // banner that sent debugging down the wrong path.
+  //
+  // New rule (mirrors lib/auth-pin.js fix): surface the real server error
+  // verbatim. Console gets the full diagnostic. Toast gets a short readable
+  // version. No more guessing-at-cause messages.
   if (!rpcOk) {
-    const lcLast = lastError.toLowerCase();
-    const isMissingFn = lcLast.includes('does not exist') || lcLast.includes('schema cache') || lcLast.includes('function sbp_get_customer_timeline') || lcLast.includes('not found in schema');
-    const msg = isMissingFn
-      ? 'Activity timeline needs migration 013. Basic info shown.'
-      : foundInLocal && !foundInSupabase
-      ? 'Showing offline data. Sync customer to see full activity.'
-      : 'Showing basic info — activity history unavailable.';
-    setTimeout(() => toast(msg, 'i', 4500), 300);
+    // Full diagnostic to console — F12 surfaces this for any support / dev
+    console.warn('[CustomerHistory] Timeline unavailable for customer', _customerId, {
+      rpcOk,
+      foundInSupabase,
+      foundInLocal,
+      lastError: lastError || '(none)',
+      online: navigator.onLine
+    });
+
+    const lc = (lastError || '').toLowerCase();
+    let msg;
+    if (foundInLocal && !foundInSupabase) {
+      msg = '📡 Showing offline data. Sync to see full activity.';
+    } else if (!navigator.onLine) {
+      msg = '🌐 You are offline. Connect to load full activity.';
+    } else if (lc.includes('unauthorized') || lc.includes('not_owner') || lc.includes('no_supabase_client')) {
+      // Defensive — earlier bounce branch usually catches these, but log
+      // a clear hint if one slips through.
+      msg = '🔒 Authorization issue — try refreshing or re-login.';
+    } else if (lastError) {
+      // Surface the actual server error so it's reportable / debuggable.
+      // Toast truncates long strings; the full text is already in console.
+      const short = lastError.length > 110 ? lastError.slice(0, 107) + '…' : lastError;
+      msg = '⚠️ Timeline unavailable: ' + short;
+    } else {
+      msg = 'Showing basic info — activity history unavailable.';
+    }
+    setTimeout(() => toast(msg, 'i', 5000), 300);
   }
 
   $('#loader').style.display = 'none';
