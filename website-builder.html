@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Create Your AI Website - ShopBill Pro</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --primary: #FF6B35;
+      --primary-light: #FFE5D9;
+      --secondary: #333;
+      --border: #E0E0E0;
+      --success: #4CAF50;
+      --error: #F44336;
+      --text-primary: #1a1a1a;
+      --text-secondary: #666;
+      --bg: #fff;
+      --overlay: rgba(0,0,0,0.1);
+    }
+
+    [data-theme="dark"] {
+      --primary: #FF6B35;
+      --secondary: #f0f0f0;
+      --text-primary: #fff;
+      --text-secondary: #aaa;
+      --bg: #1a1a1a;
+      --border: #333;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+      background: var(--bg);
+      color: var(--text-primary);
+      line-height: 1.6;
+      transition: background 0.3s, color 0.3s;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    /* Header */
+    .wb-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 30px;
+      gap: 12px;
+    }
+
+    .wb-header h1 {
+      font-size: 28px;
+      font-weight: 700;
+    }
+
+    .wb-badge {
+      display: inline-block;
+      background: var(--primary);
+      color: white;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .wb-subtext {
+      color: var(--text-secondary);
+      font-size: 14px;
+      margin-top: 8px;
+    }
+
+    /* Form Layout */
+    .wb-form-wrapper {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 30px;
+      align-items: start;
+    }
+
+    .wb-form-left {
+      padding: 30px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 2px 8px var(--overlay);
+    }
+
+    .wb-preview {
+      position: sticky;
+      top: 20px;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px var(--overlay);
+      overflow: hidden;
+    }
+
+    /* Form Groups */
+    .wb-form-group {
+      margin-bottom: 24px;
+    }
+
+    .wb-form-group:last-child {
+      margin-bottom: 0;
+    }
+
+    .wb-label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 8px;
+      font-size: 14px;
+      color: var(--text-primary);
+    }
+
+    .wb-label span {
+      color: var(--error);
+    }
+
+    .wb-input,
+    .wb-textarea,
+    .wb-select {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 14px;
+      background: var(--bg);
+      color: var(--text-primary);
+      transition: border-color 0.2s;
+    }
+
+    .wb-input:focus,
+    .wb-textarea:focus,
+    .wb-select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
+    }
+
+    .wb-textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    .wb-helper {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 6px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .wb-helper::before {
+      content: "ℹ️";
+    }
+
+    /* Radio Groups */
+    .wb-radio-group {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .wb-radio-option {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px;
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .wb-radio-option input {
+      cursor: pointer;
+    }
+
+    .wb-radio-option input:checked ~ label {
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    .wb-radio-option:has(input:checked) {
+      border-color: var(--primary);
+      background: rgba(255, 107, 53, 0.05);
+    }
+
+    .wb-radio-option:hover {
+      border-color: var(--primary);
+    }
+
+    .wb-radio-option label {
+      cursor: pointer;
+      margin: 0;
+    }
+
+    /* Color Grid */
+    .wb-color-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .wb-color-option {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding: 12px 8px;
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+    }
+
+    .wb-color-option:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px var(--overlay);
+    }
+
+    .wb-color-option.recommended {
+      border-color: var(--primary);
+      background: rgba(255, 107, 53, 0.05);
+    }
+
+    .wb-color-option input {
+      display: none;
+    }
+
+    .wb-color-option input:checked ~ .wb-color-swatch {
+      border: 3px solid #333;
+      box-shadow: 0 0 0 2px white, 0 0 0 4px #333;
+    }
+
+    .wb-color-swatch {
+      width: 50px;
+      height: 50px;
+      border-radius: 8px;
+      border: 2px solid var(--border);
+      transition: all 0.2s;
+    }
+
+    .wb-color-name {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .wb-color-icon {
+      font-size: 20px;
+    }
+
+    /* Recommendation Message */
+    .wb-recommendation {
+      padding: 12px;
+      background: rgba(255, 107, 53, 0.1);
+      border-left: 3px solid var(--primary);
+      border-radius: 4px;
+      font-size: 13px;
+      margin-bottom: 12px;
+      color: var(--text-primary);
+    }
+
+    /* Color Info */
+    .wb-color-info {
+      padding: 12px;
+      background: var(--primary);
+      color: white;
+      border-radius: 8px;
+      font-size: 13px;
+      margin-top: 12px;
+      text-align: center;
+    }
+
+    /* Mobile Color Carousel */
+    @media (max-width: 767px) {
+      .wb-color-carousel {
+        display: flex;
+        gap: 8px;
+        overflow-x: auto;
+        padding: 8px 0;
+        margin-top: 12px;
+        scroll-behavior: smooth;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .wb-color-carousel::-webkit-scrollbar {
+        height: 4px;
+      }
+
+      .wb-color-carousel::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      .wb-color-carousel::-webkit-scrollbar-thumb {
+        background: var(--primary);
+        border-radius: 2px;
+      }
+
+      .wb-color-option {
+        min-width: 80px;
+        flex-shrink: 0;
+      }
+    }
+
+    /* Preview Section */
+    .wb-preview-inner {
+      background: var(--primary);
+      color: white;
+      padding: 30px 20px;
+      border-radius: 8px;
+      min-height: 400px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .wb-preview-content {
+      text-align: center;
+    }
+
+    .wb-preview-content h2 {
+      font-size: 24px;
+      margin-bottom: 12px;
+      font-weight: 700;
+    }
+
+    .wb-preview-content p {
+      font-size: 14px;
+      margin-bottom: 20px;
+      line-height: 1.5;
+      opacity: 0.9;
+    }
+
+    .wb-preview-buttons {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .wb-preview-btn {
+      padding: 10px 20px;
+      background: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 12px;
+      color: var(--primary);
+      transition: all 0.2s;
+    }
+
+    .wb-preview-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+
+    .wb-preview-info {
+      font-size: 12px;
+      text-align: center;
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(255,255,255,0.2);
+    }
+
+    .wb-preview-label {
+      font-size: 11px;
+      opacity: 0.8;
+      margin-bottom: 6px;
+    }
+
+    /* Buttons */
+    .wb-btn-group {
+      display: flex;
+      gap: 12px;
+      margin-top: 30px;
+    }
+
+    .wb-btn {
+      flex: 1;
+      padding: 14px 24px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .wb-btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+
+    .wb-btn-primary:hover:not(:disabled) {
+      background: #E5623C;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+    }
+
+    .wb-btn-secondary {
+      background: var(--border);
+      color: var(--text-primary);
+    }
+
+    .wb-btn-secondary:hover:not(:disabled) {
+      background: #d0d0d0;
+    }
+
+    .wb-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    /* Loading State */
+    .wb-loading {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .wb-loading.active {
+      display: flex;
+    }
+
+    .wb-spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Responsive */
+    @media (max-width: 1023px) {
+      .wb-form-wrapper {
+        grid-template-columns: 1fr;
+        gap: 20px;
+      }
+
+      .wb-preview {
+        position: relative;
+        top: 0;
+      }
+    }
+
+    @media (max-width: 767px) {
+      .container {
+        padding: 12px;
+      }
+
+      .wb-header h1 {
+        font-size: 22px;
+      }
+
+      .wb-form-left {
+        padding: 20px;
+      }
+
+      .wb-form-group {
+        margin-bottom: 18px;
+      }
+
+      .wb-radio-group {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .wb-color-grid {
+        display: none;
+      }
+
+      .wb-color-carousel {
+        display: flex !important;
+      }
+
+      .wb-preview-inner {
+        min-height: 300px;
+        padding: 20px 15px;
+      }
+
+      .wb-preview-content h2 {
+        font-size: 20px;
+      }
+
+      .wb-preview-content p {
+        font-size: 12px;
+      }
+
+      .wb-btn {
+        padding: 12px 16px;
+        font-size: 13px;
+      }
+    }
+
+    /* Error/Success Messages */
+    .wb-alert {
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      font-size: 13px;
+      display: none;
+    }
+
+    .wb-alert.error {
+      background: #FFEBEE;
+      color: #C62828;
+      border-left: 3px solid #F44336;
+      display: block;
+    }
+
+    .wb-alert.success {
+      background: #E8F5E9;
+      color: #2E7D32;
+      border-left: 3px solid #4CAF50;
+      display: block;
+    }
+
+    /* Tier Restriction */
+    .wb-tier-restriction {
+      padding: 16px;
+      background: #FFF3E0;
+      border: 2px solid #FF9800;
+      border-radius: 8px;
+      margin-top: 20px;
+      text-align: center;
+      font-size: 13px;
+    }
+
+    .wb-tier-restriction a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body data-theme="light">
+
+<div class="container">
+  <div class="wb-header">
+    <h1>✨ Create Your AI Website</h1>
+    <span class="wb-badge" id="tier-badge">FREE</span>
+  </div>
+  <p class="wb-subtext" id="plan-info">Your plan: Free (1 page, no regenerations)</p>
+
+  <div class="wb-alert" id="alert-message"></div>
+
+  <form id="website-builder-form" class="wb-form-wrapper">
+    <!-- LEFT SIDE: FORM -->
+    <div class="wb-form-left">
+
+      <!-- Step 1: Shop Details -->
+      <div class="wb-form-group">
+        <label class="wb-label">Shop Name <span>*</span></label>
+        <input type="text" id="shop-name" class="wb-input" placeholder="Your shop name" maxlength="100" required>
+        <div class="wb-helper">Auto-filled from your shop details</div>
+      </div>
+
+      <div class="wb-form-group">
+        <label class="wb-label">Business Type <span>*</span></label>
+        <select id="business-type" class="wb-select" required>
+          <option value="">Select your business type</option>
+          <option value="retail">Retail Shop</option>
+          <option value="food">Food & Restaurant</option>
+          <option value="salon">Salon & Beauty</option>
+          <option value="hospitality">Hotel & Hospitality</option>
+          <option value="healthcare">Healthcare & Medical</option>
+          <option value="services">Services & Plumbing</option>
+          <option value="education">Education & Courses</option>
+          <option value="online_brand">Online Brand (D2C)</option>
+        </select>
+      </div>
+
+      <!-- Step 2: Content -->
+      <div class="wb-form-group">
+        <label class="wb-label">Website Headline <span>*</span></label>
+        <input type="text" id="website-headline" class="wb-input" placeholder="Your main headline" maxlength="100" required>
+        <div class="wb-helper">This appears on your homepage</div>
+      </div>
+
+      <div class="wb-form-group">
+        <label class="wb-label">Website Description <span>*</span></label>
+        <textarea id="website-description" class="wb-textarea" placeholder="Brief description of your business..." maxlength="200" required></textarea>
+        <div class="wb-helper">Max 200 characters</div>
+      </div>
+
+      <!-- Step 3: Design -->
+      <div class="wb-form-group">
+        <label class="wb-label">Design Style <span>*</span></label>
+        <div class="wb-radio-group">
+          <label class="wb-radio-option">
+            <input type="radio" name="design_style" value="modern" checked required>
+            <label>Modern</label>
+          </label>
+          <label class="wb-radio-option">
+            <input type="radio" name="design_style" value="elegant" required>
+            <label>Elegant</label>
+          </label>
+          <label class="wb-radio-option">
+            <input type="radio" name="design_style" value="playful" required>
+            <label>Playful</label>
+          </label>
+          <label class="wb-radio-option">
+            <input type="radio" name="design_style" value="minimalist" required>
+            <label>Minimalist</label>
+          </label>
+        </div>
+      </div>
+
+      <!-- Step 4: Colors (18 Palette) -->
+      <div class="wb-form-group">
+        <label class="wb-label">Color Scheme <span>*</span></label>
+        <div class="wb-recommendation" id="color-recommendation">
+          Select a color for your website
+        </div>
+
+        <!-- Desktop Grid -->
+        <div class="wb-color-grid" id="color-grid-desktop"></div>
+
+        <!-- Mobile Carousel -->
+        <div class="wb-color-carousel" id="color-carousel-mobile"></div>
+
+        <div class="wb-color-info" id="color-info">
+          Select a color to see details
+        </div>
+      </div>
+
+      <!-- Form Buttons -->
+      <div class="wb-btn-group">
+        <button type="button" class="wb-btn wb-btn-secondary" onclick="window.history.back()">← Back</button>
+        <button type="submit" class="wb-btn wb-btn-primary" id="submit-btn">
+          Generate Website ✨
+        </button>
+      </div>
+
+    </div>
+
+    <!-- RIGHT SIDE: LIVE PREVIEW -->
+    <div class="wb-preview">
+      <h3 style="margin-bottom: 16px; font-size: 14px; color: var(--text-secondary);">Live Preview</h3>
+      <div class="wb-preview-inner" id="preview-inner" style="background: #FF6B35;">
+        <div class="wb-preview-content">
+          <h2 id="preview-name">Your Shop</h2>
+          <p id="preview-headline">Your website headline appears here</p>
+        </div>
+        <div class="wb-preview-buttons">
+          <button type="button" class="wb-preview-btn">Book</button>
+          <button type="button" class="wb-preview-btn">Info</button>
+          <button type="button" class="wb-preview-btn">Contact</button>
+        </div>
+        <div class="wb-preview-info">
+          <div class="wb-preview-label">Selected Colors:</div>
+          <div id="preview-colors">Orange + Navy</div>
+        </div>
+      </div>
+    </div>
+
+  </form>
+
+  <!-- Tier Restriction Message -->
+  <div class="wb-tier-restriction" id="tier-restriction" style="display: none;">
+    <strong>Upgrade to unlock more features</strong><br>
+    Pro: 2 pages + 2 regenerations/month • Business: Up to 10 pages + 5 regenerations/month<br>
+    <a href="#upgrade">View Plans →</a>
+  </div>
+
+</div>
+
+<!-- Loading Overlay -->
+<div class="wb-loading" id="loading-overlay">
+  <div class="wb-spinner"></div>
+</div>
+
+<script src="/lib/website-builder.js"></script>
+
+</body>
+</html>
