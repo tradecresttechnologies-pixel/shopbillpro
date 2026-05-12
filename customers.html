@@ -545,6 +545,17 @@ html,body{height:100%;overflow:hidden}
     <input type="hidden" id="nc-edit-id" value="">
     <button class="btn-pri" id="save-cust-btn" onclick="saveCustomer()">✅ Save Customer</button>
     <button class="btn-sec" onclick="closeModal('add-cust-modal')" style="margin-top:8px">Cancel</button>
+
+    <!-- Danger Zone — visible only in Edit mode (toggled in openEditCustomer / openAddCustomer).
+         Delete moved off the main Customer Detail surface to here so it can't be tapped
+         by mistake. Accidental customer deletion was the #1 data-loss risk on that screen. -->
+    <div id="cust-danger-zone" style="display:none;margin-top:18px;padding-top:14px;border-top:1px solid var(--bord)">
+      <div style="font-size:10px;font-weight:700;color:#ef4444;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">⚠️ Danger Zone</div>
+      <div style="font-size:11px;color:var(--t2);margin-bottom:10px;line-height:1.4">
+        Deleting a customer is permanent. Their past bills are preserved but will no longer be linked to a customer record.
+      </div>
+      <button class="btn-danger" id="cust-delete-trigger" onclick="deleteCustomerConfirm()" style="width:100%">🗑️ Delete this customer</button>
+    </div>
     <div style="height:8px"></div>
   </div>
 </div>
@@ -552,6 +563,27 @@ html,body{height:100%;overflow:hidden}
 <!-- ══ CUSTOMER DETAIL MODAL ══ -->
 <div class="overlay" id="cust-detail-modal">
   <div class="sheet" id="cust-detail-content"></div>
+</div>
+
+<!-- ══ DELETE CUSTOMER CONFIRMATION MODAL ══
+     Replaces the native confirm() dialog which was unreliable on PWA mobile
+     (sometimes blocked, sometimes silently dismissed). Uses the GitHub-style
+     "type the name to confirm" pattern so accidental taps can't destroy data.
+     The Delete Permanently button stays disabled until the typed name matches
+     exactly. -->
+<div class="overlay" id="confirm-delete-cust-modal">
+  <div class="sheet" style="max-width:380px">
+    <div class="handle"></div>
+    <div class="sheet-title" style="color:#ef4444">🗑️ Delete Customer?</div>
+    <div id="cdc-warning" style="font-size:13px;color:var(--t2);margin-bottom:14px;line-height:1.5"></div>
+    <div class="ff">
+      <label>Type <strong id="cdc-name-target" style="color:var(--text)"></strong> to confirm</label>
+      <input type="text" id="cdc-name-input" placeholder="Customer name" autocomplete="off" oninput="validateDeleteCustomerInput()">
+    </div>
+    <button class="btn-pri" id="cdc-confirm-btn" onclick="doDeleteCustomerConfirmed()" disabled style="background:#ef4444;border-color:#ef4444;opacity:.55">🗑️ Delete Permanently</button>
+    <button class="btn-sec" onclick="cancelDeleteCustomer()" style="margin-top:8px">Cancel</button>
+    <div style="height:8px"></div>
+  </div>
 </div>
 
 <!-- ══ ADD EXPENSE MODAL ══ -->
@@ -986,7 +1018,7 @@ function openCustDetail(custId){
     </button>`:''}
     <div class="btn-row col2" style="margin-top:8px">
       <button class="btn-sec" onclick="openEditCustomer('${c.id}')">✏️ Edit</button>
-      <button class="btn-danger" onclick="deleteCustomerConfirm('${c.id}','${c.name}')">🗑️ Delete</button>
+      <button class="btn-sec" onclick="closeModal('cust-detail-modal')">✕ Close</button>
     </div>
     <div style="height:10px"></div>
   `;
@@ -1250,6 +1282,8 @@ function openAddCustomer(){
   });
   document.getElementById('nc-type').value='Regular';
   document.getElementById('nc-edit-id').value='';
+  // Hide Danger Zone — we're adding, not editing
+  const dz=document.getElementById('cust-danger-zone');if(dz)dz.style.display='none';
   openModal('add-cust-modal');
   setTimeout(()=>document.getElementById('nc-name').focus(),300);
 }
@@ -1270,6 +1304,8 @@ function openEditCustomer(custId){
   document.getElementById('nc-type').value=c.customer_type||'Regular';
   document.getElementById('nc-credit').value=c.credit_limit||'';
   document.getElementById('nc-edit-id').value=custId;
+  // Show Danger Zone — Delete sits here, not on the customer detail screen
+  const dz=document.getElementById('cust-danger-zone');if(dz)dz.style.display='block';
   closeModal('cust-detail-modal');
   setTimeout(()=>openModal('add-cust-modal'),300);
 }
@@ -1327,9 +1363,59 @@ async function saveCustomer(){
   }
 }
 
-function deleteCustomerConfirm(custId,name){
-  if(!confirm('Delete '+name+'?\n\nThis will remove the customer but keep their bills.')){return}
-  deleteCustomer(custId,name);
+// ── DELETE CUSTOMER FLOW (typed-name confirmation) ──
+// Triggered from the Edit Customer modal's Danger Zone button. We use the
+// currently-edited customer (_editingCustId) as the target — no need to
+// pass it around. Native confirm() was previously used here and was
+// unreliable on PWA mobile (Chrome standalone mode sometimes blocks it).
+let _pendingDeleteCustName = null;
+
+function deleteCustomerConfirm(){
+  // Called from the Danger Zone button inside the Edit modal.
+  // Target customer is whoever is currently being edited.
+  const c = _custs.find(x => String(x.id) === String(_editingCustId));
+  if(!c){ toast('No customer selected','e'); return; }
+  _pendingDeleteCustName = c.name || '';
+  document.getElementById('cdc-name-target').textContent = c.name || '(unnamed)';
+  // textContent (not innerHTML) — safe against names containing < > & quotes
+  const warn = document.getElementById('cdc-warning');
+  warn.textContent = `This permanently deletes ${c.name || 'this customer'}. Their past bills will be kept but will no longer be linked to a customer record. This cannot be undone.`;
+  const inp = document.getElementById('cdc-name-input');
+  inp.value = '';
+  const btn = document.getElementById('cdc-confirm-btn');
+  btn.disabled = true;
+  btn.style.opacity = '.55';
+  // Close the Edit modal first so the confirm modal is the only thing on screen
+  closeModal('add-cust-modal');
+  setTimeout(()=>{
+    openModal('confirm-delete-cust-modal');
+    setTimeout(()=>inp.focus(), 250);
+  }, 200);
+}
+
+function validateDeleteCustomerInput(){
+  const target = (_pendingDeleteCustName || '').trim();
+  const typed = (document.getElementById('cdc-name-input').value || '').trim();
+  const match = typed.length > 0 && typed === target;
+  const btn = document.getElementById('cdc-confirm-btn');
+  btn.disabled = !match;
+  btn.style.opacity = match ? '1' : '.55';
+}
+
+function doDeleteCustomerConfirmed(){
+  if(!_editingCustId) return;
+  const id = _editingCustId;
+  const name = _pendingDeleteCustName || '';
+  closeModal('confirm-delete-cust-modal');
+  _pendingDeleteCustName = null;
+  deleteCustomer(id, name);
+}
+
+function cancelDeleteCustomer(){
+  closeModal('confirm-delete-cust-modal');
+  _pendingDeleteCustName = null;
+  // Re-open the Edit modal so the user is back where they started
+  setTimeout(()=>openModal('add-cust-modal'), 200);
 }
 
 async function deleteCustomer(custId,name){
@@ -1338,6 +1424,10 @@ async function deleteCustomer(custId,name){
   if(_online&&!String(custId).startsWith('local_')){
     await _sb.from('customers').delete().eq('id',custId);
   }
+  // Reset edit state — the customer we were editing no longer exists.
+  // Without this, Cancel-on-confirm-modal could try to re-open Edit
+  // with a deleted record.
+  _editingCustId = null;
   closeModal('cust-detail-modal');
   applyFilters();
   toast('🗑️ '+name+' deleted','i');
