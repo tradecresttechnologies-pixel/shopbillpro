@@ -25,6 +25,7 @@ function isFree(){return _sbpPlanInfo().plan==='free'}
 <script src="lang.js"></script>
 <script src="lib/sidebar-engine.js"></script>
 <script src="lib/hospitality.js"></script>
+<script src="lib/auth-pin.js"></script>
 <script src="conversion.js"></script>
 <script>
 const SB_URL='https://jfqeirfrkjdkqqixivru.supabase.co';
@@ -789,6 +790,54 @@ function initials(name){
   if(parts.length === 1) return parts[0].slice(0,2).toUpperCase();
   return (parts[0][0]+parts[parts.length-1][0]).toUpperCase();
 }
+
+/* ── Auth-pin helper for high-risk RPCs ──────────────────────────────
+   Wraps a high-risk RPC call with the optimistic-retry-with-PIN pattern.
+
+   1. Tries the RPC without a PIN first. If shop's
+      `require_auth_for_high_risk = false`, the call succeeds and we're
+      done — no modal, no extra UX.
+   2. If the RPC returns { ok:false, error:'requires_authorization' },
+      we show the SBPAuth.requirePIN modal. On submit, retry the RPC
+      with the entered PIN + reason.
+   3. If the PIN is wrong (`invalid_pin`), re-show the modal up to
+      3 times total before giving up.
+   4. If the user cancels the modal, we abort silently.
+
+   `caller(authPin, reason)` is your RPC invocation. Pass `authPin`
+   and `reason` through as `p_auth_pin` + `p_reason` to the RPC. The
+   first attempt is called with `(null, null)`.
+
+   `meta` is forwarded to the PIN modal: { action, detail, reason_hint }.
+
+   Returns the final RPC response (the parsed `.data` object). Caller
+   checks `.ok` and acts accordingly. Throws only on network/db errors
+   or user-cancelled modal (then `e.message === 'cancelled'`).
+─────────────────────────────────────────────────────────────────── */
+async function _callWithAuth(meta, caller){
+  // 1. Optimistic call
+  let res = await caller(null, null);
+
+  // 2. PIN gate engaged?
+  if(res && res.ok === false && res.error === 'requires_authorization'){
+    if(typeof window.SBPAuth === 'undefined' || !window.SBPAuth.requirePIN){
+      // Modal library missing — surface clear error rather than fail silently
+      toast('Manager PIN required, but auth-pin.js not loaded', 'e');
+      return res;
+    }
+    let auth;
+    try {
+      auth = await window.SBPAuth.requirePIN(meta);
+    } catch(e){
+      // 'cancelled' or 'too_many_attempts' — bubble up so caller can stop
+      throw e;
+    }
+    // 3. Retry with PIN + reason
+    res = await caller(auth.pin, auth.reason || null);
+  }
+
+  return res;
+}
 function avColor(name){
   const palette = ['#F5A623','#FF6B35','#10B981','#3B82F6','#8B5CF6','#EC4899','#14B8A6','#F59E0B'];
   let h = 0;
@@ -1259,11 +1308,26 @@ async function removeExtra(id){
   if(!confirm('Remove this charge from the folio?')) return;
   _busy = true;
   try {
-    const res = await SBPHotel.extras.remove(_shopId, id);
-    if(!res.ok){ toast('Remove failed: ' + (res.error||'unknown'), 'e'); return; }
+    const res = await _callWithAuth(
+      {
+        action: 'extras.remove',
+        detail: 'Authorize removal of this charge from the folio',
+        reason_hint: 'Why is this being removed? (e.g. duplicate, guest complaint)'
+      },
+      (authPin, reason) => SBPHotel.extras.remove(_shopId, id, reason, authPin)
+    );
+    if(!res || !res.ok){
+      toast('Remove failed: ' + (res?.error||'unknown'), 'e');
+      return;
+    }
     toast('✓ Removed', 's', 2000);
     await loadFolio();
   } catch(e){
+    if(e && e.message === 'cancelled') return;        // user dismissed PIN modal
+    if(e && e.message === 'too_many_attempts'){
+      toast('Too many wrong PIN attempts', 'e');
+      return;
+    }
     toast('Remove failed: ' + (e.message||'unknown'), 'e');
   } finally {
     _busy = false;
@@ -1380,18 +1444,37 @@ async function savePayment(){
 
 async function voidPayment(id){
   if(_busy) return;
-  const reason = prompt('Reason for voiding this payment? (optional)');
-  if(reason === null) return;  // user cancelled
+  if(!confirm('Void this payment?\n\nThe folio balance will increase. If a manager PIN is required for high-risk actions, you will be prompted to authorize.')) return;
   _busy = true;
   try {
-    const { data, error } = await _sb.rpc('sbp_folio_payment_void', {
-      p_shop_id: _shopId, p_payment_id: id, p_reason: reason || ''
-    });
-    if(error){ throw new Error(error.message||'rpc_error') }
-    if(!data || !data.ok){ throw new Error(data?.error||'void_failed') }
+    const res = await _callWithAuth(
+      {
+        action: 'payment.void',
+        detail: 'Authorize voiding of this payment',
+        reason_hint: 'Why is this payment being voided? (e.g. recorded in error, refund requested)'
+      },
+      (authPin, reason) => _sb.rpc('sbp_folio_payment_void', {
+        p_shop_id: _shopId,
+        p_payment_id: id,
+        p_reason: reason || '',
+        p_auth_pin: authPin || null
+      }).then(r => {
+        if(r.error) throw new Error(r.error.message || 'rpc_error');
+        return r.data;
+      })
+    );
+    if(!res || !res.ok){
+      toast('Could not void: ' + (res?.error||'unknown'), 'e');
+      return;
+    }
     toast('✓ Payment voided', 's');
     await loadFolio();
   } catch(e){
+    if(e && e.message === 'cancelled') return;
+    if(e && e.message === 'too_many_attempts'){
+      toast('Too many wrong PIN attempts', 'e');
+      return;
+    }
     toast('Could not void: ' + (e.message||'unknown'), 'e');
   } finally {
     _busy = false;
