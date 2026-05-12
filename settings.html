@@ -57,6 +57,11 @@ function isBiz(){return _sbpPlanInfo().plan==='business';}
 function isFree(){return _sbpPlanInfo().plan==='free';}
 
 // FIX — getStorageInfo helper (referenced by updateStorageBadge)
+// Returns BOTH raw stats AND the display-ready fields that
+// updateStorageBadge expects (icon, label, sublabel, color, isPro).
+// Earlier the function returned only raw stats and updateStorageBadge
+// rendered "undefined undefined" because it read keys that didn't
+// exist on the returned object.
 function getStorageInfo(){
   let total = 0;
   try {
@@ -66,16 +71,35 @@ function getStorageInfo(){
       total += k.length + v.length;
     }
   } catch(e){}
-  // Browsers typically allow ~5MB
+  // Browsers typically allow ~5MB for localStorage
   const maxKB = 5120;
   const usedKB = Math.round(total / 1024);
-  const pct = Math.round((usedKB / maxKB) * 100);
+  const pct = Math.min(100, Math.round((usedKB / maxKB) * 100));
+  const formatted = usedKB < 1024 ? usedKB + ' KB' : (usedKB/1024).toFixed(1) + ' MB';
+  // Resolve Pro/Free status — isPro() helper is global, defined in shared/auth.js
+  let pro = false;
+  try { pro = (typeof isPro === 'function') ? !!isPro() : false; } catch(_) {}
+  // Color thresholds (only meaningful for Free/Local mode):
+  //   < 60%  → green   (healthy)
+  //   60-80% → amber   (getting full)
+  //   > 80%  → red     (urgent — upgrade or backup)
+  // Pro/Cloud users always see green since storage is effectively unbounded
+  const color = pro ? '#10B981' : (pct > 80 ? '#EF4444' : pct > 60 ? '#F5A623' : '#10B981');
   return {
+    // Raw stats (kept for backward compat with any caller using these)
     used_bytes: total,
     used_kb: usedKB,
     max_kb: maxKB,
-    pct: Math.min(100, pct),
-    formatted: usedKB < 1024 ? usedKB + ' KB' : (usedKB/1024).toFixed(1) + ' MB'
+    pct: pct,
+    formatted: formatted,
+    // Display fields consumed by updateStorageBadge()
+    isPro: pro,
+    icon: pro ? '☁️' : '📱',
+    label: pro ? 'Cloud Storage' : 'Local Storage',
+    sublabel: pro
+      ? formatted + ' synced · Supabase Singapore'
+      : formatted + ' / ~5 MB · ' + pct + '% used',
+    color: color
   };
 }
 
@@ -255,6 +279,56 @@ body{background:var(--bg);color:var(--text)}
 .btn-sec:active{background:var(--surf3)}
 .btn-danger{width:100%;padding:12px;border-radius:var(--rs);background:rgba(239,68,68,.08);border:1.5px solid rgba(239,68,68,.2);color:var(--acc2);font-family:var(--font-h);font-size:14px;font-weight:700;cursor:pointer;transition:var(--tr)}
 .btn-danger:active{background:rgba(239,68,68,.16)}
+
+/* ── Settings v2 — Modern/SaaS layout (12 May 2026, batch #4+5) ──
+   Refines existing menu-sec / menu-it classes for cleaner hierarchy,
+   adds section-group wrappers with icon chips, supports 2-column grid
+   on desktop (≥1024px). Old menu-it onclick handlers continue to work
+   unchanged — this is a pure visual + structural refresh.
+   ─────────────────────────────────────────────────────────────── */
+
+/* Section group — wraps a labeled cluster of menu-it cards */
+.sec-group{margin:0 14px 24px}
+.sec-group-hd{display:flex;align-items:center;gap:10px;padding:0 4px;margin-bottom:10px}
+.sec-group-ic{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;background:var(--surf2);border:1px solid var(--bord)}
+.sec-group-t{font-family:var(--font-h);font-size:13px;font-weight:700;color:var(--text);letter-spacing:.2px}
+.sec-group-sub{font-size:11px;color:var(--t3);margin-left:auto;font-weight:500}
+
+/* Tighten the existing menu-it for SaaS density */
+.sec-group .menu-it{padding:12px;margin-bottom:6px;border-radius:10px;background:var(--surf);border:1px solid var(--bord)}
+.sec-group .menu-it:hover{background:var(--surf2);border-color:var(--surf3)}
+.sec-group .menu-it .mi-ic{width:32px;height:32px;border-radius:8px;font-size:15px}
+.sec-group .menu-it .mi-txt h4{font-size:13px;font-weight:600;letter-spacing:-.1px}
+.sec-group .menu-it .mi-txt p{font-size:11px;color:var(--t2);margin-top:1px;line-height:1.35}
+
+/* Pill badges next to menu-it titles (PRO/BIZ/NEW) — refined sizing */
+.sec-group .menu-it h4 .pill{display:inline-flex;align-items:center;font-size:9px;font-weight:800;padding:2px 6px;border-radius:5px;margin-left:5px;letter-spacing:.3px;vertical-align:middle;line-height:1}
+.pill-pro{background:rgba(245,166,35,.18);color:var(--acc)}
+.pill-biz{background:linear-gradient(135deg,#8B5CF6,#3B82F6);color:#fff}
+.pill-new{background:linear-gradient(135deg,#10B981,#059669);color:#fff}
+
+/* Desktop 2-column grid for menu items within sections (≥1024px viewport) */
+@media (min-width: 1024px) {
+  .sec-group-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .sec-group-grid .menu-it{margin-bottom:0}
+}
+
+/* Modernized Profile header — flatter, less gradient, more typography */
+.prof-hd-v2{display:flex;align-items:center;gap:14px;padding:20px 14px 16px;border-bottom:1px solid var(--bord)}
+.prof-hd-v2 .prof-pic{width:48px;height:48px;border-radius:14px;font-size:22px;background:linear-gradient(135deg,var(--acc),#FF8A00)}
+.prof-hd-v2 .prof-nm{font-size:17px;font-weight:800;letter-spacing:-.2px}
+.prof-hd-v2 .prof-shop{font-size:12px;color:var(--t2);margin-top:2px}
+.prof-hd-v2 .prof-badge{font-size:10px;padding:2px 8px;border-radius:6px;margin-top:6px}
+
+/* Storage card — flat surface, clean type */
+.storage-card{margin:0 14px 14px;padding:14px;background:var(--surf);border:1px solid var(--bord);border-radius:12px}
+.storage-card-hd{font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px}
+
+/* Logout block — give it some breathing room */
+.logout-block{padding:8px 14px 0;margin-bottom:14px}
+
+/* Subtle section divider for the lower (App + Plan + Data + About) area */
+.set-divider{height:1px;background:var(--bord);margin:6px 14px 18px}
 
 /* Overlays */
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:500;display:none;align-items:flex-end;backdrop-filter:blur(4px)}
@@ -493,8 +567,8 @@ html,body{height:100%;overflow:hidden}
 
   <div class="sb">
 
-    <!-- Profile Header -->
-    <div class="prof-hd">
+    <!-- Profile Header (v2 — Modern/SaaS, flatter, cleaner type) -->
+    <div class="prof-hd prof-hd-v2">
       <div class="prof-pic" id="prof-pic">👑</div>
       <div>
         <div class="prof-nm" id="prof-nm"></div>
@@ -503,26 +577,10 @@ html,body{height:100%;overflow:hidden}
       </div>
     </div>
 
-    <!-- Quick Access — Mobile shortcuts for Marketing, Plans, Team -->
-    <div style="padding:14px 14px 0">
-      <div style="font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">Quick Access</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:4px">
-        <div onclick="gatedGoTo('marketing.html','Marketing Center')" style="background:linear-gradient(135deg,rgba(139,92,246,.15),rgba(168,85,247,.1));border:1.5px solid rgba(139,92,246,.3);border-radius:14px;padding:14px 8px;text-align:center;cursor:pointer;position:relative">
-          <div style="position:absolute;top:6px;right:6px;font-size:8px;font-weight:800;background:linear-gradient(135deg,#F59E0B,#EF4444);color:#fff;border-radius:6px;padding:2px 5px;letter-spacing:.3px">BIZ</div>
-          <div style="font-size:24px;margin-bottom:5px">📢</div>
-          <div style="font-size:10px;font-weight:800;color:#8B5CF6">Marketing</div>
-        </div>
-        <div onclick="goTo('subscription.html')" style="background:linear-gradient(135deg,rgba(245,166,35,.15),rgba(255,138,0,.1));border:1.5px solid rgba(245,166,35,.3);border-radius:14px;padding:14px 8px;text-align:center;cursor:pointer">
-          <div style="font-size:24px;margin-bottom:5px">🚀</div>
-          <div style="font-size:10px;font-weight:800;color:var(--acc)">Plans</div>
-        </div>
-        <div onclick="gatedGoTo('team.html','Team & Users')" style="background:linear-gradient(135deg,rgba(6,182,212,.15),rgba(8,145,178,.1));border:1.5px solid rgba(6,182,212,.3);border-radius:14px;padding:14px 8px;text-align:center;cursor:pointer;position:relative">
-          <div style="position:absolute;top:6px;right:6px;font-size:8px;font-weight:800;background:linear-gradient(135deg,#F59E0B,#EF4444);color:#fff;border-radius:6px;padding:2px 5px;letter-spacing:.3px">BIZ</div>
-          <div style="font-size:24px;margin-bottom:5px">👥</div>
-          <div style="font-size:10px;font-weight:800;color:#06B6D4">Team</div>
-        </div>
-      </div>
-    </div>
+    <!-- Quick Access block REMOVED (Batch #4, 12 May 2026)
+         Marketing / Plans / Team buttons duplicated items already
+         present in the Shop Management menu below. Pure noise.
+         Reachable from sidebar + within the menu sections. -->
 
     <!-- BATCH PSP-MVP: Your Shop Website (Public Profile) -->
     <div style="padding:14px 14px 0">
@@ -551,134 +609,228 @@ html,body{height:100%;overflow:hidden}
       </div>
     </div>
 
-    <!-- Shop Management -->
+    <!-- ═══════════════════════════════════════════════════════════════
+         Shop Management — restructured into 5 logical sub-sections
+         (Batch #4+5, 12 May 2026). Each sec-group becomes a 2-column
+         grid on desktop (≥1024px) via .sec-group-grid. All onclick
+         handlers + IDs preserved exactly; only the wrapping HTML changed.
+    ═══════════════════════════════════════════════════════════════════ -->
     <div style="padding-top:14px">
-      <div class="menu-sec">
-        <div class="menu-sec-t">Shop Management</div>
-        <div class="menu-it" onclick="openModal('shop-settings-modal')">
-          <div class="mi-ic" style="background:rgba(245,166,35,.15)">🏪</div>
-          <div class="mi-txt"><h4>Shop Details</h4><p>Name, address, GSTIN, UPI ID</p></div>
-          <span class="mi-arr">›</span>
+
+      <!-- ─── Shop & Catalog ─── -->
+      <div class="sec-group">
+        <div class="sec-group-hd">
+          <div class="sec-group-ic">🏪</div>
+          <div class="sec-group-t"><span class="lang-en">Shop &amp; Catalog</span><span class="lang-hi">शॉप व कैटलॉग</span></div>
         </div>
-        <!-- BATCH 016: Change Business Type — opens SBPWizard in change-mode -->
-        <div class="menu-it" onclick="openChangeShopType()">
-          <div class="mi-ic" style="background:rgba(168,85,247,.15)">🔄</div>
-          <div class="mi-txt"><h4>Business Type <span id="bt-current-pill" style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:8px;margin-left:6px;background:var(--surf2);color:var(--t2);vertical-align:middle">…</span></h4><p id="bt-subtitle">Tap to change your shop category. Once per day.</p></div>
-          <span class="mi-arr">›</span>
-        </div>
-        <div class="menu-it" onclick="goTo('stock.html')">
-          <div class="mi-ic" style="background:rgba(34,211,238,.15)">📦</div>
-          <div class="mi-txt"><h4>Inventory & Stock</h4><p>Products, POS catalogue, stock levels</p></div>
-          <span class="mi-arr">›</span>
-        </div>
-        <div class="menu-it" onclick="goTo('services.html')">
-          <div class="mi-ic" style="background:rgba(168,85,247,.15)">✨</div>
-          <div class="mi-txt"><h4>Service Catalog <span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px;margin-left:4px;background:rgba(245,166,35,.18);color:var(--acc)">PRO</span></h4><p>Services, prices, durations · auto-shows on shop website</p></div>
-          <span class="mi-arr">›</span>
-        </div>
-        <div class="menu-it" onclick="goTo('appointments.html')">
-          <div class="mi-ic" style="background:rgba(139,92,246,.15)">📅</div>
-          <div class="mi-txt"><h4>Appointments <span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px;margin-left:4px;background:linear-gradient(135deg,#8B5CF6,#3B82F6);color:#fff">BIZ</span></h4><p>Online booking · staff schedules · time-slot management</p></div>
-          <span class="mi-arr">›</span>
-        </div>
-        <div class="menu-it" onclick="openWebsiteContentModal()">
-          <div class="mi-ic" style="background:rgba(99,102,241,.15)">🌐</div>
-          <div class="mi-txt"><h4>Website Content <span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px;margin-left:4px;background:rgba(245,166,35,.18);color:var(--acc)">PRO</span></h4><p>About text, gallery photos for your shop website</p></div>
-          <span class="mi-arr">›</span>
-        </div>
-        <div class="menu-it" onclick="goTo('pos-admin.html')"><div class="mi-ic" style="background:rgba(251,146,60,.15)">🏷️</div><div class="mi-txt"><h4>POS Admin Panel</h4><p>Products, categories, bulk import</p></div><span class="mi-arr">›</span></div>
-        <div class="menu-it" onclick="goTo('supplier.html')"><div class="mi-ic" style="background:rgba(251,146,60,.15)">🏭</div><div class="mi-txt"><h4>Supplier Book</h4><p>Vendors, payables, payment tracking</p></div><span class="mi-arr">›</span></div>
-        <div class="menu-it" onclick="goTo('cash-register.html')"><div class="mi-ic" style="background:rgba(34,197,94,.15)">🏦</div><div class="mi-txt"><h4>Cash Register</h4><p>Daily opening &amp; closing balance</p></div><span class="mi-arr">›</span></div>
-        <div class="menu-it" onclick="goTo('wa-center.html')">
-          <div class="mi-ic" style="background:rgba(37,211,102,.15)">📲</div>
-          <div class="mi-txt"><h4>WhatsApp Center</h4><p>Message templates, quick & bulk send</p></div>
-          <span class="mi-arr">›</span>
-        </div>
-        <!-- Hotel-polish (12 May 2026): Bill Templates removed from menu. Page file kept on disk, just unlinked. -->
-        <div class="menu-it" onclick="goTo('recurring.html')">
-          <div class="mi-ic" style="background:rgba(6,182,212,.15)">🔄</div>
-          <div class="mi-txt"><h4>Recurring Bills</h4><p>Auto-generate monthly / periodic bills</p></div>
-          <span class="mi-arr">›</span>
-        </div>
-        <div class="menu-it" onclick="goTo('reports.html')">
-          <div class="mi-ic" style="background:rgba(62,240,138,.15)">📊</div>
-          <div class="mi-txt"><h4>Reports & Analytics</h4><p>Sales, P&L, GST summary</p></div>
-          <span class="mi-arr">›</span>
-        </div>
-        <div class="menu-it" onclick="goTo('reports.html?tab=gst')">
-          <div class="mi-ic" style="background:rgba(245,200,66,.15)">🏛️</div>
-          <div class="mi-txt"><h4>GST Records</h4><p>GSTR-1, GSTR-3B summary</p></div>
-          <span class="mi-arr">›</span>
-        </div>
-        <div class="menu-it" onclick="openStaffGated()">
-          <div class="mi-ic" style="background:rgba(139,92,246,.15)">👥</div>
-          <div class="mi-txt"><h4>Staff & Roles</h4><p>Add staff, set permissions</p></div>
-          <span class="mi-arr">›</span>
-        </div>
-        <!-- 022D Link Wiring: Authorized Users + Audit Log (server-enforced owner-only) -->
-        <div class="menu-it" onclick="goTo('authorized-users.html')">
-          <div class="mi-ic" style="background:rgba(245,166,35,.15)">🔒</div>
-          <div class="mi-txt"><h4>Authorized Users</h4><p>Manager PINs · authorize void / cancel / refund</p></div>
-          <span class="mi-arr">›</span>
-        </div>
-        <div class="menu-it" onclick="goTo('audit-log.html')">
-          <div class="mi-ic" style="background:rgba(99,102,241,.15)">📋</div>
-          <div class="mi-txt"><h4>Audit Log</h4><p>Who did what · when · why</p></div>
-          <span class="mi-arr">›</span>
+        <div class="sec-group-grid">
+          <div class="menu-it" onclick="openModal('shop-settings-modal')">
+            <div class="mi-ic" style="background:rgba(245,166,35,.15)">🏪</div>
+            <div class="mi-txt"><h4>Shop Details</h4><p>Name, address, GSTIN, UPI ID</p></div>
+            <span class="mi-arr">›</span>
+          </div>
+          <div class="menu-it" onclick="openChangeShopType()">
+            <div class="mi-ic" style="background:rgba(168,85,247,.15)">🔄</div>
+            <div class="mi-txt"><h4>Business Type <span id="bt-current-pill" style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:8px;margin-left:6px;background:var(--surf2);color:var(--t2);vertical-align:middle">…</span></h4><p id="bt-subtitle">Tap to change shop category. Once per day.</p></div>
+            <span class="mi-arr">›</span>
+          </div>
+          <div class="menu-it" onclick="goTo('stock.html')">
+            <div class="mi-ic" style="background:rgba(34,211,238,.15)">📦</div>
+            <div class="mi-txt"><h4>Inventory &amp; Stock</h4><p>Products, POS catalogue, stock levels</p></div>
+            <span class="mi-arr">›</span>
+          </div>
+          <div class="menu-it" onclick="goTo('services.html')">
+            <div class="mi-ic" style="background:rgba(168,85,247,.15)">✨</div>
+            <div class="mi-txt"><h4>Service Catalog<span class="pill pill-pro">PRO</span></h4><p>Services, prices, durations · auto-shows on shop site</p></div>
+            <span class="mi-arr">›</span>
+          </div>
+          <div class="menu-it" onclick="goTo('pos-admin.html')">
+            <div class="mi-ic" style="background:rgba(251,146,60,.15)">🏷️</div>
+            <div class="mi-txt"><h4>POS Admin Panel</h4><p>Products, categories, bulk import</p></div>
+            <span class="mi-arr">›</span>
+          </div>
         </div>
       </div>
 
-      <!-- App Settings -->
-      <div class="menu-sec">
-        <div class="menu-sec-t">App Settings</div>
-        <div class="menu-it" onclick="toggleTheme()">
-          <div class="mi-ic" style="background:rgba(245,166,35,.15)">🌙</div>
-          <div class="mi-txt"><h4>Dark / Light Mode</h4><p>Switch app theme</p></div>
-          <label class="toggle-sw" onclick="event.stopPropagation()">
-            <input type="checkbox" id="theme-chk" onchange="toggleTheme()">
-            <span class="toggle-track"></span>
-          </label>
+      <!-- ─── Daily Operations ─── -->
+      <div class="sec-group">
+        <div class="sec-group-hd">
+          <div class="sec-group-ic">⚡</div>
+          <div class="sec-group-t"><span class="lang-en">Daily Operations</span><span class="lang-hi">दैनिक संचालन</span></div>
         </div>
-        <div class="menu-it" onclick="openModal('lang-modal')">
-          <div class="mi-ic" style="background:rgba(251,146,60,.15)">🌐</div>
-          <div class="mi-txt"><h4>Language / भाषा</h4><p>English / हिंदी</p></div>
-          <span class="mi-arr">›</span>
-        </div>
-        <div class="menu-it" onclick="openModal('session-modal')">
-          <div class="mi-ic" style="background:rgba(239,68,68,.15)">🔒</div>
-          <div class="mi-txt"><h4>Auto Logout</h4><p id="session-timeout-lbl">Session timeout: 30 min</p></div>
-          <span class="mi-arr">›</span>
-        </div>
-        <!-- 022D Link Wiring: Legacy Manager PIN modal redirected to authorized-users.html -->
-        <!-- The pin-modal still exists in DOM for backwards-compat but should not be opened anymore. -->
-        <div class="menu-it" onclick="goTo('authorized-users.html')">
-          <div class="mi-ic" style="background:rgba(239,68,68,.15)">🔐</div>
-          <div class="mi-txt"><h4>Manager PIN</h4><p id="pin-status-lbl">Manage cloud PINs &amp; authorization</p></div>
-          <span class="mi-arr">›</span>
-        </div>
-        <div class="menu-it" onclick="openModal('font-modal')">
-          <div class="mi-ic" style="background:rgba(251,146,60,.15)">🎨</div>
-          <div class="mi-txt"><h4>Font & Display Style</h4><p>Number style, font size & family</p></div>
-          <span class="mi-arr">›</span>
+        <div class="sec-group-grid">
+          <div class="menu-it" onclick="goTo('appointments.html')">
+            <div class="mi-ic" style="background:rgba(139,92,246,.15)">📅</div>
+            <div class="mi-txt"><h4>Appointments<span class="pill pill-biz">BIZ</span></h4><p>Online booking · staff schedules · time-slot management</p></div>
+            <span class="mi-arr">›</span>
+          </div>
+          <div class="menu-it" onclick="goTo('cash-register.html')">
+            <div class="mi-ic" style="background:rgba(34,197,94,.15)">🏦</div>
+            <div class="mi-txt"><h4>Cash Register</h4><p>Daily opening &amp; closing balance</p></div>
+            <span class="mi-arr">›</span>
+          </div>
+          <div class="menu-it" onclick="goTo('recurring.html')">
+            <div class="mi-ic" style="background:rgba(6,182,212,.15)">🔄</div>
+            <div class="mi-txt"><h4>Recurring Bills</h4><p>Auto-generate monthly / periodic bills</p></div>
+            <span class="mi-arr">›</span>
+          </div>
+          <div class="menu-it" onclick="goTo('supplier.html')">
+            <div class="mi-ic" style="background:rgba(251,146,60,.15)">🏭</div>
+            <div class="mi-txt"><h4>Supplier Book</h4><p>Vendors, payables, payment tracking</p></div>
+            <span class="mi-arr">›</span>
+          </div>
         </div>
       </div>
 
-      <!-- Printer Settings -->
-      <div class="menu-sec">
-        <div class="menu-sec-t">🖨️ Printer Settings</div>
+      <!-- ─── Customer-Facing (id="website" fixes broken sidebar anchor) ─── -->
+      <div class="sec-group" id="website">
+        <div class="sec-group-hd">
+          <div class="sec-group-ic">📲</div>
+          <div class="sec-group-t"><span class="lang-en">Customer-Facing</span><span class="lang-hi">ग्राहक के लिए</span></div>
+        </div>
+        <div class="sec-group-grid">
+          <div class="menu-it" onclick="openWebsiteContentModal()">
+            <div class="mi-ic" style="background:rgba(99,102,241,.15)">🌐</div>
+            <div class="mi-txt"><h4>Website Content<span class="pill pill-pro">PRO</span></h4><p>About text, gallery photos for your shop website</p></div>
+            <span class="mi-arr">›</span>
+          </div>
+          <div class="menu-it" onclick="goTo('wa-center.html')">
+            <div class="mi-ic" style="background:rgba(37,211,102,.15)">📲</div>
+            <div class="mi-txt"><h4>WhatsApp Center</h4><p>Message templates, quick &amp; bulk send</p></div>
+            <span class="mi-arr">›</span>
+          </div>
+        </div>
+      </div>
 
-        <!-- Enable Printing toggle -->
-        <div class="menu-it" onclick="togglePrinterEnabled()">
-          <div class="mi-ic" style="background:rgba(6,182,212,.15)">🖨️</div>
-          <div class="mi-txt"><h4>Enable Printing</h4><p id="printer-enabled-lbl">Auto-print when saving bill</p></div>
-          <label class="toggle-sw" onclick="event.stopPropagation()">
-            <input type="checkbox" id="printer-enabled-chk" onchange="togglePrinterEnabled()">
-            <span class="toggle-track"></span>
-          </label>
+      <!-- ─── Reports &amp; Compliance ─── -->
+      <div class="sec-group">
+        <div class="sec-group-hd">
+          <div class="sec-group-ic">📊</div>
+          <div class="sec-group-t"><span class="lang-en">Reports &amp; Compliance</span><span class="lang-hi">रिपोर्ट व अनुपालन</span></div>
+        </div>
+        <div class="sec-group-grid">
+          <div class="menu-it" onclick="goTo('reports.html')">
+            <div class="mi-ic" style="background:rgba(62,240,138,.15)">📊</div>
+            <div class="mi-txt"><h4>Reports &amp; Analytics</h4><p>Sales, P&amp;L, GST summary</p></div>
+            <span class="mi-arr">›</span>
+          </div>
+          <div class="menu-it" onclick="goTo('reports.html?tab=gst')">
+            <div class="mi-ic" style="background:rgba(245,200,66,.15)">🏛️</div>
+            <div class="mi-txt"><h4>GST Records</h4><p>GSTR-1, GSTR-3B summary</p></div>
+            <span class="mi-arr">›</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── Team &amp; Security ─── -->
+      <div class="sec-group">
+        <div class="sec-group-hd">
+          <div class="sec-group-ic">🔒</div>
+          <div class="sec-group-t"><span class="lang-en">Team &amp; Security</span><span class="lang-hi">टीम व सुरक्षा</span></div>
+        </div>
+        <div class="sec-group-grid">
+          <div class="menu-it" onclick="openStaffGated()">
+            <div class="mi-ic" style="background:rgba(139,92,246,.15)">👥</div>
+            <div class="mi-txt"><h4>Staff &amp; Roles</h4><p>Add staff, set permissions</p></div>
+            <span class="mi-arr">›</span>
+          </div>
+          <div class="menu-it" onclick="goTo('authorized-users.html')">
+            <div class="mi-ic" style="background:rgba(245,166,35,.15)">🔒</div>
+            <div class="mi-txt"><h4>Authorized Users</h4><p>Manager PINs · authorize void / cancel / refund</p></div>
+            <span class="mi-arr">›</span>
+          </div>
+          <div class="menu-it" onclick="goTo('audit-log.html')">
+            <div class="mi-ic" style="background:rgba(99,102,241,.15)">📋</div>
+            <div class="mi-txt"><h4>Audit Log</h4><p>Who did what · when · why</p></div>
+            <span class="mi-arr">›</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── App Preferences ─── -->
+      <div class="sec-group">
+        <div class="sec-group-hd">
+          <div class="sec-group-ic">⚙️</div>
+          <div class="sec-group-t"><span class="lang-en">App Preferences</span><span class="lang-hi">ऐप वरीयताएं</span></div>
+        </div>
+        <div class="sec-group-grid">
+          <div class="menu-it" onclick="toggleTheme()">
+            <div class="mi-ic" style="background:rgba(245,166,35,.15)">🌙</div>
+            <div class="mi-txt"><h4>Dark / Light Mode</h4><p>Switch app theme</p></div>
+            <label class="toggle-sw" onclick="event.stopPropagation()">
+              <input type="checkbox" id="theme-chk" onchange="toggleTheme()">
+              <span class="toggle-track"></span>
+            </label>
+          </div>
+          <div class="menu-it" onclick="openModal('lang-modal')">
+            <div class="mi-ic" style="background:rgba(251,146,60,.15)">🌐</div>
+            <div class="mi-txt"><h4>Language / भाषा</h4><p>English / हिंदी</p></div>
+            <span class="mi-arr">›</span>
+          </div>
+          <div class="menu-it" onclick="openModal('session-modal')">
+            <div class="mi-ic" style="background:rgba(239,68,68,.15)">🔒</div>
+            <div class="mi-txt"><h4>Auto Logout</h4><p id="session-timeout-lbl">Session timeout: 30 min</p></div>
+            <span class="mi-arr">›</span>
+          </div>
+          <!-- 022D Link Wiring: Legacy Manager PIN modal redirected to authorized-users.html -->
+          <!-- The pin-modal still exists in DOM for backwards-compat but should not be opened anymore. -->
+          <div class="menu-it" onclick="goTo('authorized-users.html')">
+            <div class="mi-ic" style="background:rgba(239,68,68,.15)">🔐</div>
+            <div class="mi-txt"><h4>Manager PIN</h4><p id="pin-status-lbl">Manage cloud PINs &amp; authorization</p></div>
+            <span class="mi-arr">›</span>
+          </div>
+          <div class="menu-it" onclick="openModal('font-modal')">
+            <div class="mi-ic" style="background:rgba(251,146,60,.15)">🎨</div>
+            <div class="mi-txt"><h4>Font &amp; Display Style</h4><p>Number style, font size &amp; family</p></div>
+            <span class="mi-arr">›</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── Bill Save Behavior (Printer + Auto-Send merged) ─── -->
+      <div class="sec-group">
+        <div class="sec-group-hd">
+          <div class="sec-group-ic">🖨️</div>
+          <div class="sec-group-t"><span class="lang-en">Bill Save Behavior</span><span class="lang-hi">बिल सेव व्यवहार</span></div>
+          <div class="sec-group-sub"><span class="lang-en">Print &amp; auto-send</span><span class="lang-hi">प्रिंट व ऑटो-सेंड</span></div>
+        </div>
+        <div class="sec-group-grid">
+          <div class="menu-it" onclick="togglePrinterEnabled()">
+            <div class="mi-ic" style="background:rgba(6,182,212,.15)">🖨️</div>
+            <div class="mi-txt"><h4>Enable Printing</h4><p id="printer-enabled-lbl">Auto-print when saving bill</p></div>
+            <label class="toggle-sw" onclick="event.stopPropagation()">
+              <input type="checkbox" id="printer-enabled-chk" onchange="togglePrinterEnabled()">
+              <span class="toggle-track"></span>
+            </label>
+          </div>
+          <div class="menu-it" onclick="toggleAutoSend('wa')">
+            <div class="mi-ic" style="background:rgba(37,211,102,.15)">💬</div>
+            <div class="mi-txt"><h4>Auto-send WhatsApp</h4><p>Open WhatsApp with bill text after saving (POS &amp; Manual)</p></div>
+            <label class="toggle-sw" onclick="event.stopPropagation()">
+              <input type="checkbox" id="auto-wa-chk" onchange="toggleAutoSend('wa')">
+              <span class="toggle-track"></span>
+            </label>
+          </div>
+          <div class="menu-it" onclick="toggleAutoSend('pdf')">
+            <div class="mi-ic" style="background:rgba(245,166,35,.15)">📎</div>
+            <div class="mi-txt"><h4>Auto-download PDF</h4><p>Generate &amp; download PDF bill on save (POS only)</p></div>
+            <label class="toggle-sw" onclick="event.stopPropagation()">
+              <input type="checkbox" id="auto-pdf-chk" onchange="toggleAutoSend('pdf')">
+              <span class="toggle-track"></span>
+            </label>
+          </div>
+          <div class="menu-it" onclick="toggleAutoSend('print')">
+            <div class="mi-ic" style="background:rgba(6,182,212,.15)">🖨️</div>
+            <div class="mi-txt"><h4>Auto-print</h4><p>Send bill to printer immediately after save (POS only)</p></div>
+            <label class="toggle-sw" onclick="event.stopPropagation()">
+              <input type="checkbox" id="auto-print-chk" onchange="toggleAutoSend('print')">
+              <span class="toggle-track"></span>
+            </label>
+          </div>
         </div>
 
-        <!-- Printer Type Selection -->
-        <div id="printer-type-section" style="padding:12px 14px;display:none">
+        <!-- Printer Type Selection — full-width below the grid (only shows when printing enabled) -->
+        <div id="printer-type-section" style="padding:12px 14px;display:none;margin-top:8px;background:var(--surf);border:1px solid var(--bord);border-radius:10px">
           <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Select Printer Type</div>
           <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px" id="printer-type-grid">
             <div class="printer-type-btn" data-type="58mm" onclick="setPrinterType('58mm',this)">
@@ -697,54 +849,28 @@ html,body{height:100%;overflow:hidden}
               <div style="font-size:9px;color:var(--t2);margin-top:2px">Standard</div>
             </div>
           </div>
-          <div style="margin-top:10px;font-size:11px;color:var(--t2);background:var(--surf2);border-radius:10px;padding:9px 12px;border:1px solid var(--bord)">
+          <div style="margin-top:10px;font-size:11px;color:var(--t2)">
             💡 <span id="printer-tip-text">Billing page will show only one Print button matching your printer type.</span>
           </div>
         </div>
-      </div>
 
-
-      <!-- Auto-Send on Bill Save -->
-      <div class="menu-sec">
-        <div class="menu-sec-t">📲 Auto-Send on Bill Save</div>
-
-        <div class="menu-it" onclick="toggleAutoSend('wa')">
-          <div class="mi-ic" style="background:rgba(37,211,102,.15)">💬</div>
-          <div class="mi-txt"><h4>Auto-send WhatsApp</h4><p>Open WhatsApp with bill text after saving (POS &amp; Manual)</p></div>
-          <label class="toggle-sw" onclick="event.stopPropagation()">
-            <input type="checkbox" id="auto-wa-chk" onchange="toggleAutoSend('wa')">
-            <span class="toggle-track"></span>
-          </label>
-        </div>
-
-        <div class="menu-it" onclick="toggleAutoSend('pdf')">
-          <div class="mi-ic" style="background:rgba(245,166,35,.15)">📎</div>
-          <div class="mi-txt"><h4>Auto-download PDF</h4><p>Generate &amp; download PDF bill on save (POS only)</p></div>
-          <label class="toggle-sw" onclick="event.stopPropagation()">
-            <input type="checkbox" id="auto-pdf-chk" onchange="toggleAutoSend('pdf')">
-            <span class="toggle-track"></span>
-          </label>
-        </div>
-
-        <div class="menu-it" onclick="toggleAutoSend('print')">
-          <div class="mi-ic" style="background:rgba(6,182,212,.15)">🖨️</div>
-          <div class="mi-txt"><h4>Auto-print</h4><p>Send bill to printer immediately after save (POS only)</p></div>
-          <label class="toggle-sw" onclick="event.stopPropagation()">
-            <input type="checkbox" id="auto-print-chk" onchange="toggleAutoSend('print')">
-            <span class="toggle-track"></span>
-          </label>
-        </div>
-
-        <div style="margin:0 14px 10px;font-size:11px;color:var(--t2);background:var(--surf2);border-radius:10px;padding:9px 12px;border:1px solid var(--bord)">
-          💡 Skipped automatically if customer has no phone number saved.
+        <div style="margin-top:10px;font-size:11px;color:var(--t2);background:var(--surf2);border-radius:10px;padding:9px 12px;border:1px solid var(--bord)">
+          💡 <span class="lang-en">Auto-send is skipped automatically if customer has no phone number saved.</span><span class="lang-hi">यदि ग्राहक का फ़ोन नंबर सेव नहीं है तो ऑटो-सेंड स्किप होगा।</span>
         </div>
       </div>
 
 
-      <!-- Plan & Subscription -->
-      <div class="menu-sec" id="plan-section">
-        <div class="menu-sec-t">Plan & Subscription</div>
-        <div id="plan-card" style="margin:0 14px 10px;background:linear-gradient(135deg,rgba(245,166,35,.15),rgba(255,138,0,.1));border:1.5px solid rgba(245,166,35,.35);border-radius:16px;padding:18px 16px">
+      <!-- Visual divider before the lower utility section -->
+      <div class="set-divider"></div>
+
+      <!-- ─── Your Plan (id="plan-section" PRESERVED for dashboard banner link) ─── -->
+      <div class="sec-group" id="plan-section">
+        <div class="sec-group-hd">
+          <div class="sec-group-ic">💎</div>
+          <div class="sec-group-t"><span class="lang-en">Your Plan</span><span class="lang-hi">आपका प्लान</span></div>
+        </div>
+        <!-- id="upgrade" — anchor target for in-app "Upgrade" links -->
+        <div id="plan-card" style="margin:0;background:linear-gradient(135deg,rgba(245,166,35,.15),rgba(255,138,0,.1));border:1.5px solid rgba(245,166,35,.35);border-radius:16px;padding:18px 16px">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
             <div style="font-size:28px" id="plan-icon">⚡</div>
             <div>
@@ -764,57 +890,69 @@ html,body{height:100%;overflow:hidden}
               <div id="bill-progress" style="height:100%;background:linear-gradient(90deg,var(--acc),#FF8A00);border-radius:4px;width:0%;transition:.4s ease"></div>
             </div>
           </div>
-          <button id="upgrade-btn" onclick="openUpgradeModal()" style="width:100%;padding:12px;border-radius:12px;background:linear-gradient(135deg,#F5A623,#FF8A00);border:none;color:#0A0E1A;font-family:var(--font-h);font-size:14px;font-weight:700;cursor:pointer">
+          <!-- id="upgrade" anchor so settings.html#upgrade scrolls/highlights this button -->
+          <button id="upgrade-btn" name="upgrade" onclick="openUpgradeModal()" style="width:100%;padding:12px;border-radius:12px;background:linear-gradient(135deg,#F5A623,#FF8A00);border:none;color:#0A0E1A;font-family:var(--font-h);font-size:14px;font-weight:700;cursor:pointer">
             🚀 Upgrade to Pro — ₹99/month
           </button>
+          <a id="upgrade" style="display:block;height:0;overflow:hidden" aria-hidden="true"></a>
         </div>
       </div>
 
-      <!-- Data & Sync -->
-      <div class="menu-sec">
-        <div class="menu-sec-t">Data & Cloud</div>
-    
-    <!-- Storage Location Badge -->
-    <div style="padding:12px 16px;background:var(--surf2);border-radius:14px;margin-bottom:10px;border:1px solid var(--bord)">
-      <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">Data Storage Location</div>
-      <div id="storage-location-badge" style="margin-bottom:6px"></div>
-      <div id="storage-location-detail" style="font-size:11px;color:var(--t2)"></div>
-    </div>
-    <div class="menu-it" onclick="openSyncModal()">
-          <div class="mi-ic" style="background:rgba(34,197,94,.15)">☁️</div>
-          <div class="mi-txt"><h4>Cloud Sync Status</h4><p>Supabase · Southeast Asia</p></div>
-          <div class="mi-badge on" id="sync-badge">🟢 Live</div>
+      <!-- ─── Data &amp; Cloud ─── -->
+      <div class="sec-group">
+        <div class="sec-group-hd">
+          <div class="sec-group-ic">☁️</div>
+          <div class="sec-group-t"><span class="lang-en">Data &amp; Cloud</span><span class="lang-hi">डेटा व क्लाउड</span></div>
         </div>
-        <div class="menu-it" onclick="exportAllData()">
-          <div class="mi-ic" style="background:rgba(62,240,138,.15)">💾</div>
-          <div class="mi-txt"><h4>Backup Data</h4><p>Download all data as JSON file</p></div>
-          <span class="mi-arr">›</span>
+        <!-- Storage Location card — flat, clean. Bug fixed: getStorageInfo now returns icon/label/sublabel/color. -->
+        <div class="storage-card" style="margin:0 0 8px">
+          <div class="storage-card-hd"><span class="lang-en">Data Storage Location</span><span class="lang-hi">डेटा संग्रहण</span></div>
+          <div id="storage-location-badge" style="margin-bottom:6px"></div>
+          <div id="storage-location-detail" style="font-size:11px;color:var(--t2)"></div>
         </div>
-        <div class="menu-it" onclick="importData()">
-          <div class="mi-ic" style="background:rgba(34,211,238,.15)">📂</div>
-          <div class="mi-txt"><h4>Restore Data</h4><p>Restore from backup file</p></div>
-          <span class="mi-arr">›</span>
+        <div class="sec-group-grid">
+          <div class="menu-it" onclick="openSyncModal()">
+            <div class="mi-ic" style="background:rgba(34,197,94,.15)">☁️</div>
+            <div class="mi-txt"><h4>Cloud Sync Status</h4><p>Supabase · Singapore region</p></div>
+            <div class="mi-badge on" id="sync-badge">🟢 Live</div>
+          </div>
+          <div class="menu-it" onclick="exportAllData()">
+            <div class="mi-ic" style="background:rgba(62,240,138,.15)">💾</div>
+            <div class="mi-txt"><h4>Backup Data</h4><p>Download all data as JSON file</p></div>
+            <span class="mi-arr">›</span>
+          </div>
+          <div class="menu-it" onclick="importData()">
+            <div class="mi-ic" style="background:rgba(34,211,238,.15)">📂</div>
+            <div class="mi-txt"><h4>Restore Data</h4><p>Restore from backup file</p></div>
+            <span class="mi-arr">›</span>
+          </div>
         </div>
       </div>
 
-      <!-- About -->
-      <div class="menu-sec">
-        <div class="menu-sec-t">About</div>
-        <div class="menu-it" onclick="sendFeedback()">
-          <div class="mi-ic" style="background:rgba(37,211,102,.15)">📲</div>
-          <div class="mi-txt"><h4>Send Feedback</h4><p>Share your suggestions via WhatsApp</p></div>
-          <span class="mi-arr">›</span>
+      <!-- ─── About ─── -->
+      <div class="sec-group">
+        <div class="sec-group-hd">
+          <div class="sec-group-ic">ℹ️</div>
+          <div class="sec-group-t"><span class="lang-en">About</span><span class="lang-hi">जानकारी</span></div>
         </div>
-        <div class="menu-it" onclick="openAboutModal()">
-          <div class="mi-ic" style="background:rgba(245,166,35,.15)">ℹ️</div>
-          <div class="mi-txt"><h4>About ShopBill Pro</h4><p>Version 1.0 · March 2026</p></div>
-          <span class="mi-arr">›</span>
+        <div class="sec-group-grid">
+          <div class="menu-it" onclick="sendFeedback()">
+            <div class="mi-ic" style="background:rgba(37,211,102,.15)">📲</div>
+            <div class="mi-txt"><h4>Send Feedback</h4><p>Share your suggestions via WhatsApp</p></div>
+            <span class="mi-arr">›</span>
+          </div>
+          <div class="menu-it" onclick="openAboutModal()">
+            <div class="mi-ic" style="background:rgba(245,166,35,.15)">ℹ️</div>
+            <div class="mi-txt"><h4>About ShopBill Pro</h4><p>Version 1.0 · March 2026</p></div>
+            <span class="mi-arr">›</span>
+          </div>
         </div>
       </div>
+      <!-- /About sec-group -->
 
       <!-- Logout -->
-      <div style="padding:0 14px;margin-bottom:14px">
-        <button class="btn-danger" onclick="doLogout()">🚪 Logout from ShopBill Pro</button>
+      <div class="logout-block">
+        <button class="btn-danger" onclick="doLogout()">🚪 <span class="lang-en">Logout from ShopBill Pro</span><span class="lang-hi">शॉपबिल प्रो से लॉगआउट</span></button>
       </div>
 
       <!-- Version footer -->
@@ -1927,8 +2065,20 @@ function updateStorageBadge() {
   const info = getStorageInfo();
   const badge = document.getElementById('storage-location-badge');
   const detail = document.getElementById('storage-location-detail');
-  if (badge) badge.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:'+info.color+'">'+info.icon+' '+info.label+'</span>';
-  if (detail) detail.textContent = info.sublabel;
+  // Badge: icon + label in colored chip
+  if (badge) {
+    badge.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:' + info.color + '">' + info.icon + ' ' + info.label + '</span>';
+  }
+  // Detail: sublabel + thin progress bar for free/local users (Pro is unbounded so no bar)
+  if (detail) {
+    let html = '<div>' + info.sublabel + '</div>';
+    if (!info.isPro) {
+      html += '<div style="margin-top:8px;height:4px;border-radius:2px;background:var(--surf3,#252534);overflow:hidden">' +
+              '<div style="height:100%;width:' + info.pct + '%;background:' + info.color + ';transition:.4s ease;border-radius:2px"></div>' +
+              '</div>';
+    }
+    detail.innerHTML = html;
+  }
   // Update sync badge in menu
   const sb = document.getElementById('sync-badge');
   if (sb) {
