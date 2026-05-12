@@ -1483,12 +1483,36 @@ function showPlanBanner() {
   if (statsGrid) statsGrid.parentNode.insertBefore(banner, statsGrid);
 }
 
-/* ══ Service Worker Registration ══ */
+/* ══ Service Worker Cleanup (was: Registration) ══════════════════════
+   Batch 12-May-26 — SW disabled. The earlier SW (v1.4.0) caused stale
+   asset bugs and the v1.5.0 kill-switch + register combo created an
+   infinite reload loop. We no longer register any SW. This block just
+   cleans up: unregisters any leftover SW from prior versions and
+   wipes all SW caches. Runs once per page load — after the first
+   load, getRegistrations() returns empty and this becomes a no-op.
+
+   Offline support is handled at the app layer via localStorage cache
+   of shop/customers/bills/products. If we ever need real SW caching
+   again, we add it back as a deliberate strategy with versioning.
+═══════════════════════════════════════════════════════════════════════ */
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/service-worker.js')
-      .then(reg => console.log('[App] SW registered:', reg.scope))
-      .catch(err => console.warn('[App] SW failed:', err));
+  window.addEventListener('load', async () => {
+    try {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      for (const reg of regs) {
+        await reg.unregister();
+        console.log('[App] SW cleanup — unregistered:', reg.scope);
+      }
+      if (window.caches) {
+        const cs = await caches.keys();
+        for (const c of cs) {
+          await caches.delete(c);
+          console.log('[App] SW cleanup — deleted cache:', c);
+        }
+      }
+    } catch (e) {
+      console.warn('[App] SW cleanup failed (non-fatal):', e);
+    }
   });
 }
 
