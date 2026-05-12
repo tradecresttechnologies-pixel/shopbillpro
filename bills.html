@@ -1187,82 +1187,35 @@ async function reopenBill(billId){
   }, 800);
 }
 
-// ── Void Bill (PIN Protected) ──
-function voidBill(billId){
-  requirePIN('void_bill',function(){_doVoidBill(billId)});
-}
-async function _doVoidBill(billId){
-  if(!confirm('⚠️ Void this entire bill?\n\nThis will mark it as CANCELLED.\nStock will be restored. Customer ledger (if credit) will be reversed.\nBill remains in records for audit.'))return;
-  const idx=_bills.findIndex(x=>x.id===billId||String(x.id)===String(billId));
-  if(idx<0)return;
-  const b=_bills[idx];
-  const oldStatus=b.status;
-  const oldGrand=parseFloat(b.grand_total||0);
-  const wasCreditOpen = (oldStatus==='Credit'||oldStatus==='Partial'||oldStatus==='Pending') && parseFloat(b.balance_due||0)>0;
+// ── Void Bill — server-verified PIN + soft-void (status='Voided') ──
+async function voidBill(billId){
+  if(!confirm('⚠️ Void this entire bill?\n\nThe bill will be marked as VOIDED but kept in records for audit.\nServer will restore stock and reverse customer ledger (if credit). This is reversible only by reopening the bill.')) return;
 
-  // FIX #16 — Restore stock on void
-  try {
-    const products = JSON.parse(localStorage.getItem('sbp_products')||'[]');
-    let changed=false;
-    for(const it of (b.bill_items||b.items||[])){
-      let pIdx=-1;
-      if(it.product_id||it.productId) pIdx=products.findIndex(p=>String(p.id)===String(it.product_id||it.productId));
-      if(pIdx<0 && (it.item_name||it.nm)) pIdx=products.findIndex(p=>(p.name||'').toLowerCase().trim()===String(it.item_name||it.nm).toLowerCase().trim());
-      if(pIdx<0) continue;
-      const cur=parseFloat(products[pIdx].stock_qty||0);
-      const restored=cur+parseFloat(it.qty||it.q||0);
-      products[pIdx].stock_qty=restored;
-      changed=true;
-      if(_online&&_sb&&products[pIdx].id&&!String(products[pIdx].id).startsWith('local_')){
-        try{await _sb.from('products').update({stock_qty:restored}).eq('id',products[pIdx].id);}catch(e){}
-      }
+  const r = await _doPinGatedRpc(
+    'sbp_bill_void',
+    { p_shop_id: _shopId, p_bill_id: billId },
+    {
+      action:      'bill.void',
+      detail:      'Void entire bill (soft-delete)',
+      reason_hint: 'Why are you voiding this bill?'
     }
-    if(changed) localStorage.setItem('sbp_products',JSON.stringify(products));
-  } catch(e){ console.warn('Void stock restore failed:', e.message); }
+  );
+  if(!r) return;
 
-  // FIX #11b — Reverse customer ledger if credit was open
-  if(wasCreditOpen && b.customer_name && b.customer_name!=='Walk-in Customer'){
-    const due = parseFloat(b.balance_due||0);
-    const custs=JSON.parse(localStorage.getItem('sbp_customers')||'[]');
-    let ci=-1;
-    if(b.customer_id) ci = custs.findIndex(c => String(c.id)===String(b.customer_id));
-    if(ci<0 && b.customer_phone) {
-      const p = String(b.customer_phone).replace(/\D/g,'').slice(-10);
-      if(p) ci = custs.findIndex(c => String(c.whatsapp||c.phone||'').replace(/\D/g,'').slice(-10)===p);
-    }
-    if(ci<0) ci = custs.findIndex(c => c.name===b.customer_name);
-    if(ci>=0){
-      const newBal=Math.max(0, parseFloat(custs[ci].balance||0) - due);
-      custs[ci].balance=newBal;
-      localStorage.setItem('sbp_customers',JSON.stringify(custs));
-      if(_online&&_sb&&custs[ci].id&&!String(custs[ci].id).startsWith('local_')){
-        try{await _sb.from('customers').update({balance:newBal}).eq('id',custs[ci].id);}catch(e){}
-      }
-    }
+  // Update local cache to match server
+  const idx = _bills.findIndex(x => x.id === billId || String(x.id) === String(billId));
+  if(idx >= 0){
+    _bills[idx].status      = r.new_status || 'Voided';
+    _bills[idx].voided_at   = new Date().toISOString();
+    _bills[idx].balance_due = 0;
+    localStorage.setItem('sbp_bills', JSON.stringify(_bills));
   }
 
-  _bills[idx].status='Voided';
-  _bills[idx].voided_at=new Date().toISOString();
-  _bills[idx].voided_by=localStorage.getItem('sbp_role')||'Manager';
-
-  // Per-bill audit
-  if(!_bills[idx].audit_log) _bills[idx].audit_log=[];
-  _bills[idx].audit_log.unshift({
-    action:'void_bill',ts:new Date().toISOString(),
-    user:getPinUser(),
-    before:{status:oldStatus,grand_total:oldGrand},
-    after:{status:'Voided'},
-    note:'Bill voided + stock restored' + (wasCreditOpen?' + ledger reversed':'')
-  });
-
-  localStorage.setItem('sbp_bills',JSON.stringify(_bills));
-  if(_online&&!String(billId).startsWith('local_')){
-    try{await _sb.from('bills').update({status:'Voided'}).eq('id',billId);}catch(e){console.warn(e);}
-  }
-  logAudit('void_bill',{bill_id:billId,invoice_no:_bills[idx].invoice_no,old_status:oldStatus,customer:_bills[idx].customer_name,amount:oldGrand,credit_reversed:wasCreditOpen});
   closeModal('bill-preview-modal');
   applyFilters();
-  toast('🚫 Bill voided — stock restored','i');
+  toast(r.credit_reversed
+    ? '🚫 Bill voided — stock + ledger reversed'
+    : '🚫 Bill voided — stock restored', 'i', 2500);
 }
 
 // ── Delete Bill — server-verified PIN + permanent delete ──
