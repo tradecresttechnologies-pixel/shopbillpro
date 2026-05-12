@@ -283,6 +283,102 @@ html[lang="hi"] .lang-en{display:none!important}
   .print-sig{margin-top:14mm;display:flex;justify-content:space-between;font-size:9pt;font-weight:700;page-break-inside:avoid}
   .print-sig div{width:30%;border-top:1pt solid #000;padding-top:2mm;text-align:center;font-family:'Outfit','Noto Sans',sans-serif}
 }
+
+/* ════════════════════════════════════════════════════════════════
+   021B-C Phase 1: KPIs, Daily Ops, DMR styling
+   ════════════════════════════════════════════════════════════════ */
+.panel-wrap{padding:14px}
+
+/* KPI cards (top row, 3 large cards) */
+.kpi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px}
+.kpi-card{background:var(--surf);border:1.5px solid var(--bord);border-radius:14px;padding:18px 16px}
+.kpi-card.kpi-occ   {background:linear-gradient(135deg,rgba(245,166,35,.10),rgba(245,166,35,.02));border-color:rgba(245,166,35,.35)}
+.kpi-card.kpi-adr   {background:linear-gradient(135deg,rgba(99,102,241,.10),rgba(99,102,241,.02));border-color:rgba(99,102,241,.35)}
+.kpi-card.kpi-revpar{background:linear-gradient(135deg,rgba(16,185,129,.10),rgba(16,185,129,.02));border-color:rgba(16,185,129,.35)}
+.kpi-lbl{font-family:var(--font-h);font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.kpi-val{font-family:var(--font-h);font-size:30px;font-weight:800;letter-spacing:-.5px;margin-bottom:4px;line-height:1.1}
+.kpi-occ    .kpi-val{color:var(--acc)}
+.kpi-adr    .kpi-val{color:var(--acc4)}
+.kpi-revpar .kpi-val{color:var(--acc3)}
+.kpi-sub{font-size:11px;color:var(--t2);font-weight:500}
+
+/* Supporting stat grid (4×2 mini cards) */
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:6px}
+.stat-cell{background:var(--surf);border:1px solid var(--bord);border-radius:10px;padding:10px 12px}
+.sc-lbl{font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.3px;margin-bottom:3px}
+.sc-val{font-family:var(--font-h);font-size:15px;font-weight:700;color:var(--text)}
+
+@media(max-width:768px){
+  .kpi-grid{grid-template-columns:1fr;gap:10px}
+  .kpi-val{font-size:26px}
+  .stat-grid{grid-template-columns:repeat(2,1fr)}
+}
+
+/* Sub-tabs for Daily Ops */
+.subtabs{display:flex;gap:4px;padding:0 0 12px;border-bottom:1px solid var(--bord);margin-bottom:14px;overflow-x:auto;scrollbar-width:none}
+.subtabs::-webkit-scrollbar{display:none}
+.subtab{flex-shrink:0;padding:9px 14px;background:transparent;border:1px solid var(--bord);border-radius:10px;font-size:12px;font-weight:700;color:var(--t2);cursor:pointer;font-family:var(--font-h);display:flex;align-items:center;gap:6px;transition:var(--tr)}
+.subtab:hover{background:var(--surf2);color:var(--text)}
+.subtab.on{background:rgba(245,166,35,.12);color:var(--acc);border-color:rgba(245,166,35,.45)}
+.subcount{font-family:var(--font-mono);font-size:10px;font-weight:700;background:var(--surf2);color:var(--t2);padding:1px 6px;border-radius:5px;letter-spacing:.3px}
+.subtab.on .subcount{background:rgba(245,166,35,.18);color:var(--acc)}
+
+/* DMR — Daily Manager Report layout (screen) */
+.dmr-wrap{padding:14px}
+.dmr-sheet{background:var(--surf);border:1.5px solid var(--bord);border-radius:14px;padding:22px}
+.dmr-hd{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid var(--acc);padding-bottom:14px;margin-bottom:18px}
+.dmr-hd-l h2{font-family:var(--font-h);font-size:20px;font-weight:800;margin:0 0 4px;color:var(--text)}
+.dmr-hd-l .dmr-date{font-size:13px;color:var(--t2);font-weight:600}
+.dmr-hd-r{text-align:right;font-size:12px;color:var(--t2)}
+.dmr-section{margin-bottom:18px}
+.dmr-section:last-child{margin-bottom:0}
+.dmr-section-t{font-family:var(--font-h);font-size:13px;font-weight:800;color:var(--acc);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;border-bottom:1px solid var(--bord);padding-bottom:5px}
+.dmr-kpi-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:6px}
+.dmr-kpi{padding:10px 12px;background:var(--surf2);border-radius:10px;border:1px solid var(--bord)}
+.dmr-kpi .l{font-size:10px;color:var(--t2);font-weight:700;text-transform:uppercase;margin-bottom:2px}
+.dmr-kpi .v{font-family:var(--font-h);font-size:20px;font-weight:800;color:var(--text);line-height:1.1}
+.dmr-kpi .s{font-size:10px;color:var(--t3);margin-top:2px}
+.dmr-list{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.dmr-list-block h4{font-family:var(--font-h);font-size:12px;font-weight:700;color:var(--text);margin:0 0 8px;display:flex;justify-content:space-between;align-items:center}
+.dmr-list-block h4 .count-pill{font-family:var(--font-mono);font-size:10px;background:var(--surf2);color:var(--t2);padding:2px 7px;border-radius:5px}
+.dmr-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dashed var(--bord);font-size:12px}
+.dmr-row:last-child{border-bottom:none}
+.dmr-row .n{font-weight:600;color:var(--text);max-width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dmr-row .d{color:var(--t2);font-family:var(--font-mono);font-size:11px;flex-shrink:0}
+.dmr-empty{color:var(--t3);font-style:italic;font-size:11px;padding:10px 0}
+.dmr-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;font-size:12px}
+.dmr-summary > div{padding:8px 10px;background:var(--surf2);border-radius:8px}
+.dmr-summary .l{font-size:10px;color:var(--t2);font-weight:600;text-transform:uppercase;margin-bottom:3px}
+.dmr-summary .v{font-family:var(--font-h);font-size:14px;font-weight:700;color:var(--text)}
+
+@media(max-width:768px){
+  .dmr-kpi-row{grid-template-columns:1fr 1fr}
+  .dmr-list{grid-template-columns:1fr}
+  .dmr-summary{grid-template-columns:1fr 1fr}
+}
+
+/* DMR — Print stylesheet (A4 portrait, single page) */
+@media print{
+  .topbar,.tabs,.toolbar,.statbar,.info-card,.subtabs,.bnav,.bnav-drawer,#dsb{display:none!important}
+  body{background:#fff!important;color:#000!important;font-family:'Outfit','Noto Sans',sans-serif!important}
+  #app{margin-left:0!important;max-width:100%!important;width:100%!important;padding:0!important}
+  .panel-wrap{padding:0!important}
+  .dmr-wrap{padding:0!important}
+  .dmr-sheet{background:#fff!important;border:none!important;border-radius:0!important;padding:10mm 12mm!important;color:#000!important;box-shadow:none!important}
+  .dmr-hd{border-bottom:1.5pt solid #000!important;margin-bottom:6mm!important;padding-bottom:3mm!important}
+  .dmr-hd-l h2{font-size:16pt!important;color:#000!important;margin-bottom:1mm!important}
+  .dmr-hd-l .dmr-date,.dmr-hd-r{font-size:9pt!important;color:#444!important}
+  .dmr-section{margin-bottom:5mm!important;page-break-inside:avoid}
+  .dmr-section-t{font-size:9pt!important;color:#000!important;border-color:#888!important;padding-bottom:1mm!important;margin-bottom:2mm!important}
+  .dmr-kpi{background:#fafafa!important;border:0.6pt solid #888!important;padding:2mm 3mm!important}
+  .dmr-kpi .v{font-size:13pt!important;color:#000!important}
+  .dmr-kpi .l,.dmr-kpi .s{color:#444!important}
+  .dmr-row{font-size:9pt!important;padding:1mm 0!important;border-color:#bbb!important}
+  .dmr-row .n,.dmr-row .d{color:#000!important}
+  .dmr-summary > div{background:#fafafa!important;border:0.6pt solid #888!important}
+  .dmr-summary .v{color:#000!important;font-size:11pt!important}
+  @page{size:A4 portrait;margin:0}
+}
 </style>
 </head>
 <body>
@@ -313,7 +409,19 @@ html[lang="hi"] .lang-en{display:none!important}
   <div id="content" style="display:none">
 
     <div class="tabs">
-      <button class="tab on" data-tab="form-b" onclick="setTab('form-b')">
+      <button class="tab on" data-tab="perf" onclick="setTab('perf')">
+        📊 <span><span class="lang-en">Performance</span><span class="lang-hi">प्रदर्शन</span></span>
+        <span class="tab-badge">KPIs</span>
+      </button>
+      <button class="tab" data-tab="ops" onclick="setTab('ops')">
+        📅 <span><span class="lang-en">Daily Ops</span><span class="lang-hi">दैनिक संचालन</span></span>
+        <span class="tab-badge">Arr / Dep / In-house</span>
+      </button>
+      <button class="tab" data-tab="dmr" onclick="setTab('dmr')">
+        📋 <span><span class="lang-en">Daily Manager Report</span><span class="lang-hi">दैनिक प्रबंधक रिपोर्ट</span></span>
+        <span class="tab-badge">DMR</span>
+      </button>
+      <button class="tab" data-tab="form-b" onclick="setTab('form-b')">
         📒 <span><span class="lang-en">Guest Register</span><span class="lang-hi">अतिथि रजिस्टर</span></span>
         <span class="tab-badge">Form B</span>
       </button>
@@ -350,8 +458,29 @@ html[lang="hi"] .lang-en{display:none!important}
       </div>
     </div>
 
+    <!-- Performance info -->
+    <div id="info-perf" class="info-card">
+      <div class="ic-emoji">📊</div>
+      <div class="ic-body">
+        <strong>Performance KPIs</strong> — the three numbers that matter for hotel revenue management: <strong>Occupancy %</strong> (room-nights sold ÷ available), <strong>ADR</strong> (avg daily rate — room revenue per night sold), and <strong>RevPAR</strong> (revenue per available room — occupancy × ADR). Excludes cancellations and no-shows. Room revenue is GST-exclusive.
+      </div>
+    </div>
+    <!-- Daily Ops info -->
+    <div id="info-ops" class="info-card" style="display:none">
+      <div class="ic-emoji">📅</div>
+      <div class="ic-body">
+        <strong>Daily Operations</strong> — arrivals expected to check in, departures expected to check out, and guests currently in-house. Use this for daily handover at shift change, or printed at the front desk for housekeeping coordination.
+      </div>
+    </div>
+    <!-- DMR info -->
+    <div id="info-dmr" class="info-card" style="display:none">
+      <div class="ic-emoji">📋</div>
+      <div class="ic-body">
+        <strong>Daily Manager Report</strong> — single-page executive summary for end-of-day handover or morning meeting. Combines KPIs, occupancy, arrivals/departures, and revenue summary for one specific date. Print on A4 portrait.
+      </div>
+    </div>
     <!-- Form B info -->
-    <div id="info-form-b" class="info-card">
+    <div id="info-form-b" class="info-card" style="display:none">
       <div class="ic-emoji">📒</div>
       <div class="ic-body">
         <strong>Hotel Register (Form B)</strong> — required under Indian Police Act / state Hotel Rules. Captures every arrival in the date range. Print on A4 landscape; bind into the official register. Fields not stored digitally (father's/husband's name, occupation, last/next destination) are left blank for handwritten entry at the desk.
@@ -378,8 +507,64 @@ html[lang="hi"] .lang-en{display:none!important}
       </div>
     </div>
 
+    <!-- ── 021B-C Phase 1: Performance / Daily Ops / DMR panels ── -->
+
+    <!-- Performance panel -->
+    <div id="panel-perf" class="panel-wrap">
+      <!-- KPI cards -->
+      <div class="kpi-grid">
+        <div class="kpi-card kpi-occ">
+          <div class="kpi-lbl"><span class="lang-en">Occupancy</span><span class="lang-hi">कब्जा</span></div>
+          <div class="kpi-val" id="kpi-occupancy">—</div>
+          <div class="kpi-sub" id="kpi-occupancy-sub">—</div>
+        </div>
+        <div class="kpi-card kpi-adr">
+          <div class="kpi-lbl"><span class="lang-en">ADR</span><span class="lang-hi">ADR</span></div>
+          <div class="kpi-val" id="kpi-adr">—</div>
+          <div class="kpi-sub"><span class="lang-en">Avg daily rate</span><span class="lang-hi">औसत दैनिक दर</span></div>
+        </div>
+        <div class="kpi-card kpi-revpar">
+          <div class="kpi-lbl"><span class="lang-en">RevPAR</span><span class="lang-hi">RevPAR</span></div>
+          <div class="kpi-val" id="kpi-revpar">—</div>
+          <div class="kpi-sub"><span class="lang-en">Revenue per available room</span><span class="lang-hi">उपलब्ध कक्ष आधार पर आय</span></div>
+        </div>
+      </div>
+
+      <!-- Supporting stats grid (smaller cards) -->
+      <div class="stat-grid">
+        <div class="stat-cell"><div class="sc-lbl">Room revenue</div><div class="sc-val" id="kpi-revenue">—</div></div>
+        <div class="stat-cell"><div class="sc-lbl">Room-nights sold</div><div class="sc-val" id="kpi-nights-sold">—</div></div>
+        <div class="stat-cell"><div class="sc-lbl">Available room-nights</div><div class="sc-val" id="kpi-nights-avail">—</div></div>
+        <div class="stat-cell"><div class="sc-lbl">Total rooms</div><div class="sc-val" id="kpi-total-rooms">—</div></div>
+        <div class="stat-cell"><div class="sc-lbl">Arrivals</div><div class="sc-val" id="kpi-arrivals">—</div></div>
+        <div class="stat-cell"><div class="sc-lbl">Departures</div><div class="sc-val" id="kpi-departures">—</div></div>
+        <div class="stat-cell"><div class="sc-lbl">Cancellations</div><div class="sc-val" id="kpi-cancel">—</div></div>
+        <div class="stat-cell"><div class="sc-lbl">No-shows</div><div class="sc-val" id="kpi-noshows">—</div></div>
+      </div>
+    </div>
+
+    <!-- Daily Ops panel -->
+    <div id="panel-ops" class="panel-wrap" style="display:none">
+      <!-- Sub-tabs for arrivals / departures / in-house -->
+      <div class="subtabs">
+        <button class="subtab on" data-sub="arrivals"   onclick="setOpsSub('arrivals')">📥 <span class="lang-en">Arrivals</span><span class="lang-hi">आगमन</span> <span class="subcount" id="sc-arrivals">—</span></button>
+        <button class="subtab"    data-sub="departures" onclick="setOpsSub('departures')">📤 <span class="lang-en">Departures</span><span class="lang-hi">प्रस्थान</span> <span class="subcount" id="sc-departures">—</span></button>
+        <button class="subtab"    data-sub="in-house"   onclick="setOpsSub('in-house')">🏠 <span class="lang-en">In-house</span><span class="lang-hi">अंदर</span> <span class="subcount" id="sc-inhouse">—</span></button>
+      </div>
+      <div id="ops-arrivals"   class="tbl-wrap"></div>
+      <div id="ops-departures" class="tbl-wrap" style="display:none"></div>
+      <div id="ops-in-house"   class="tbl-wrap" style="display:none"></div>
+    </div>
+
+    <!-- DMR panel — single A4-style page -->
+    <div id="panel-dmr" class="panel-wrap dmr-wrap" style="display:none">
+      <div id="dmr-content"><div class="empty-state" style="padding:48px 20px;text-align:center;color:var(--t2)">Loading…</div></div>
+    </div>
+
+    <!-- ── End Phase 1 panels ── -->
+
     <!-- Form B table -->
-    <div id="tbl-form-b" class="tbl-wrap">
+    <div id="tbl-form-b" class="tbl-wrap" style="display:none">
       <table class="tbl tbl-b">
         <colgroup>
           <col class="c-sl">
@@ -509,7 +694,7 @@ html[lang="hi"] .lang-en{display:none!important}
 // ════════════════════════════════════════════════════════════════════
 let _shopId = null;
 let _shop   = null;
-let _tab    = 'form-b';     // 'form-b' | 'form-c'
+let _tab    = 'perf';       // 'perf' | 'ops' | 'dmr' | 'form-b' | 'form-c'
 let _data   = null;          // last fetched payload
 let _loading = false;
 
@@ -539,6 +724,29 @@ function fmtDate(d){
   const dt = new Date(d + (String(d).length===10 ? 'T00:00:00' : ''));
   if(isNaN(dt)) return '—';
   return dt.toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'});
+}
+function fmtMoney(n){
+  const v = Number(n) || 0;
+  // Indian formatting (lakhs/crores) with rupee symbol
+  return '₹' + v.toLocaleString('en-IN', { maximumFractionDigits: 0 });
+}
+function _downloadCsv(name, headers, rows){
+  const esc = v => {
+    if(v == null) return '';
+    let s = String(v);
+    if(/[",\n]/.test(s)) s = '"' + s.replace(/"/g,'""') + '"';
+    return s;
+  };
+  const csv = headers.join(',') + '\n' + rows.map(r => r.map(esc).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url  = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name + '-' + (new Date()).toISOString().slice(0,10) + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 100);
+  toast('📥 Exported ' + rows.length + ' row' + (rows.length===1?'':'s'), 's');
 }
 function nodataHtml(){return '<span class="nodata">—</span>'}
 
@@ -581,10 +789,21 @@ function setTab(t){
   if(_loading) return;
   _tab = t;
   document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('on', b.dataset.tab===t));
+  // Info cards
+  $('#info-perf').style.display   = (t==='perf')?'flex':'none';
+  $('#info-ops').style.display    = (t==='ops')?'flex':'none';
+  $('#info-dmr').style.display    = (t==='dmr')?'flex':'none';
   $('#info-form-b').style.display = (t==='form-b')?'flex':'none';
   $('#info-form-c').style.display = (t==='form-c')?'flex':'none';
+  // Content panels
+  $('#panel-perf').style.display  = (t==='perf')?'block':'none';
+  $('#panel-ops').style.display   = (t==='ops')?'block':'none';
+  $('#panel-dmr').style.display   = (t==='dmr')?'block':'none';
   $('#tbl-form-b').style.display  = (t==='form-b')?'block':'none';
   $('#tbl-form-c').style.display  = (t==='form-c')?'block':'none';
+  // Hide statbar on non-form tabs (it's form-specific)
+  document.querySelector('.statbar').style.display = (t==='form-b'||t==='form-c')?'flex':'none';
+  // DMR uses a single date (today); other tabs use range. Adjust toolbar hint.
   fetchData();
 }
 
@@ -610,17 +829,25 @@ async function fetchData(){
 
   // Update period chip
   $('#st-period').textContent = `· ${fmtDate(from)} → ${fmtDate(to)}`;
-
-  // Show loading skeleton in active tab
-  if(_tab === 'form-b'){
-    setLoadingRows('tbody-b', 14);
-  } else {
-    setLoadingRows('tbody-c', 24);
-  }
-  $('#st-count').textContent = '…';
   $('#btn-print').disabled = true;
   $('#btn-csv').disabled = true;
   _loading = true;
+
+  try {
+    if      (_tab === 'perf')   await fetchPerf(from, to);
+    else if (_tab === 'ops')    await fetchOps(from, to);
+    else if (_tab === 'dmr')    await fetchDMR(to);   // DMR uses a single date — we use 'to'
+    else                        await fetchFormBC(from, to);
+  } finally {
+    _loading = false;
+  }
+}
+
+// ── Form B / Form C (existing behaviour, factored out) ─────────────
+async function fetchFormBC(from, to){
+  if(_tab === 'form-b') setLoadingRows('tbody-b', 14);
+  else                  setLoadingRows('tbody-c', 24);
+  $('#st-count').textContent = '…';
 
   const rpc = _tab === 'form-b' ? 'sbp_hotel_form_b_register' : 'sbp_hotel_form_c_data';
   try {
@@ -654,9 +881,67 @@ async function fetchData(){
   } catch(e){
     console.error('[compliance] threw:', e);
     toast('Network error: ' + (e.message||'unknown'), 'e');
-  } finally {
-    _loading = false;
   }
+}
+
+// ── Performance KPIs ───────────────────────────────────────────────
+async function fetchPerf(from, to){
+  $('#kpi-occupancy').textContent = '…';
+  $('#kpi-adr').textContent = '…';
+  $('#kpi-revpar').textContent = '…';
+  try {
+    const { data, error } = await _sb.rpc('sbp_hotel_kpis', { p_shop_id: _shopId, p_from: from, p_to: to });
+    if(error)            { toast('KPI load failed: ' + (error.message||'rpc_error'), 'e'); return; }
+    if(!data || !data.ok){ toast('Error: ' + (data?.error||'unknown'), 'e'); return; }
+    _data = data;
+    renderPerf(data);
+    $('#btn-print').disabled = false;
+    $('#btn-csv').disabled   = false;
+  } catch(e){ console.error(e); toast('Network error', 'e'); }
+}
+
+// ── Daily Ops (arrivals/departures + in-house) ─────────────────────
+async function fetchOps(from, to){
+  $('#sc-arrivals').textContent = '…';
+  $('#sc-departures').textContent = '…';
+  $('#sc-inhouse').textContent = '…';
+  $('#ops-arrivals').innerHTML   = '<div class="empty-state" style="padding:32px;text-align:center;color:var(--t2)">Loading…</div>';
+  $('#ops-departures').innerHTML = '<div class="empty-state" style="padding:32px;text-align:center;color:var(--t2)">Loading…</div>';
+  $('#ops-in-house').innerHTML   = '<div class="empty-state" style="padding:32px;text-align:center;color:var(--t2)">Loading…</div>';
+
+  try {
+    // Two parallel fetches: arrivals+departures (range), and in-house (today snapshot)
+    const today = (new Date()).toISOString().slice(0,10);
+    const [adRes, ihRes] = await Promise.all([
+      _sb.rpc('sbp_hotel_arrivals_departures', { p_shop_id: _shopId, p_from: from, p_to: to }),
+      _sb.rpc('sbp_hotel_in_house',            { p_shop_id: _shopId, p_as_of_date: today })
+    ]);
+    if(adRes.error || !adRes.data?.ok){ toast('Arrivals/Departures error: ' + (adRes.error?.message || adRes.data?.error || 'unknown'), 'e'); return; }
+    if(ihRes.error || !ihRes.data?.ok){ toast('In-house error: ' + (ihRes.error?.message || ihRes.data?.error || 'unknown'), 'e'); return; }
+    _data = { ad: adRes.data, ih: ihRes.data };
+    renderOps(adRes.data, ihRes.data);
+    $('#btn-print').disabled = false;
+    $('#btn-csv').disabled   = false;
+  } catch(e){ console.error(e); toast('Network error', 'e'); }
+}
+
+// ── DMR (composed from 3 RPCs, all single-date) ────────────────────
+async function fetchDMR(dateStr){
+  $('#dmr-content').innerHTML = '<div class="empty-state" style="padding:48px 20px;text-align:center;color:var(--t2)">Loading…</div>';
+  try {
+    const [kpiRes, adRes, ihRes] = await Promise.all([
+      _sb.rpc('sbp_hotel_kpis',                { p_shop_id: _shopId, p_from: dateStr, p_to: dateStr }),
+      _sb.rpc('sbp_hotel_arrivals_departures', { p_shop_id: _shopId, p_from: dateStr, p_to: dateStr }),
+      _sb.rpc('sbp_hotel_in_house',            { p_shop_id: _shopId, p_as_of_date: dateStr })
+    ]);
+    if(kpiRes.error || !kpiRes.data?.ok){ toast('KPI fail: ' + (kpiRes.error?.message || kpiRes.data?.error || 'unknown'), 'e'); return; }
+    if(adRes.error  || !adRes.data?.ok ){ toast('A/D fail: ' + (adRes.error?.message || adRes.data?.error || 'unknown'), 'e'); return; }
+    if(ihRes.error  || !ihRes.data?.ok ){ toast('In-house fail: ' + (ihRes.error?.message || ihRes.data?.error || 'unknown'), 'e'); return; }
+    _data = { date: dateStr, kpis: kpiRes.data, ad: adRes.data, ih: ihRes.data };
+    renderDMR(dateStr, kpiRes.data, adRes.data, ihRes.data);
+    $('#btn-print').disabled = false;
+    $('#btn-csv').disabled   = true;  // DMR doesn't really export to CSV — it's a printable summary
+  } catch(e){ console.error(e); toast('Network error', 'e'); }
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -733,9 +1018,207 @@ function renderFormC(data){
 }
 
 // ════════════════════════════════════════════════════════════════════
+// Render — Performance KPIs
+// ════════════════════════════════════════════════════════════════════
+function renderPerf(data){
+  const k = data.kpis || {};
+  const c = data.counts || {};
+  const p = data.period || {};
+  $('#kpi-occupancy').textContent     = (k.occupancy_pct != null) ? k.occupancy_pct.toFixed(1) + '%' : '—';
+  $('#kpi-occupancy-sub').innerHTML   = '<span class="lang-en">' + (k.room_nights_sold||0) + ' of ' + (k.available_nights||0) + ' room-nights</span>'
+                                      + '<span class="lang-hi">' + (k.room_nights_sold||0) + ' / ' + (k.available_nights||0) + ' कक्ष-रात्रि</span>';
+  $('#kpi-adr').textContent           = fmtMoney(k.adr || 0);
+  $('#kpi-revpar').textContent        = fmtMoney(k.revpar || 0);
+  $('#kpi-revenue').textContent       = fmtMoney(k.room_revenue || 0);
+  $('#kpi-nights-sold').textContent   = (k.room_nights_sold || 0);
+  $('#kpi-nights-avail').textContent  = (k.available_nights || 0);
+  $('#kpi-total-rooms').textContent   = (k.total_rooms || 0);
+  $('#kpi-arrivals').textContent      = (c.arrivals || 0);
+  $('#kpi-departures').textContent    = (c.departures || 0);
+  $('#kpi-cancel').textContent        = (c.cancellations || 0);
+  $('#kpi-noshows').textContent       = (c.no_shows || 0);
+}
+
+// ════════════════════════════════════════════════════════════════════
+// Render — Daily Ops (arrivals / departures / in-house)
+// ════════════════════════════════════════════════════════════════════
+function renderOps(adData, ihData){
+  const arrivals   = adData.arrivals   || [];
+  const departures = adData.departures || [];
+  const guests     = ihData.guests     || [];
+  $('#sc-arrivals').textContent   = arrivals.length;
+  $('#sc-departures').textContent = departures.length;
+  $('#sc-inhouse').textContent    = guests.length;
+  $('#ops-arrivals').innerHTML    = renderOpsTable(arrivals, 'arrivals');
+  $('#ops-departures').innerHTML  = renderOpsTable(departures, 'departures');
+  $('#ops-in-house').innerHTML    = renderInHouseTable(guests, ihData.as_of_date);
+}
+
+function renderOpsTable(rows, kind){
+  if(!rows.length){
+    return '<div class="empty-state" style="padding:48px 20px;text-align:center;color:var(--t2)">📭 No ' + kind + ' in this date range.</div>';
+  }
+  const isDep = (kind === 'departures');
+  const headEn = isDep
+    ? '<th>Departure</th><th>Guest</th><th>Phone</th><th>Room</th><th>Pax</th><th>Nights</th><th>Status</th><th class="num">Amount</th>'
+    : '<th>Arrival</th><th>Guest</th><th>Phone</th><th>Room</th><th>Pax</th><th>Nights</th><th>Status</th><th class="num">Amount</th>';
+  return '<table class="tbl"><thead><tr>' + headEn + '</tr></thead><tbody>' +
+    rows.map(r => {
+      const dateKey = isDep ? r.check_out_date : r.check_in_date;
+      const pax     = (r.num_adults || 0) + (r.num_children ? ' + ' + r.num_children + 'ch' : '');
+      const room    = r.current_room_number || r.room_number_snapshot || '—';
+      const status  = (r.status || '').replace('_',' ');
+      return '<tr>' +
+        '<td>' + fmtDate(dateKey) + '</td>' +
+        '<td><strong>' + escHtml(r.customer_name||'') + '</strong></td>' +
+        '<td>' + escHtml(r.customer_phone||'—') + '</td>' +
+        '<td>' + escHtml(room) + '</td>' +
+        '<td>' + pax + '</td>' +
+        '<td>' + (r.num_nights||0) + '</td>' +
+        '<td><span class="stat-pill">' + escHtml(status) + '</span></td>' +
+        '<td class="num">' + fmtMoney(r.grand_total||0) + '</td>' +
+      '</tr>';
+    }).join('') +
+  '</tbody></table>';
+}
+
+function renderInHouseTable(rows, asOfDate){
+  if(!rows.length){
+    return '<div class="empty-state" style="padding:48px 20px;text-align:center;color:var(--t2)">🛏️ No guests currently in-house as of ' + fmtDate(asOfDate) + '.</div>';
+  }
+  return '<table class="tbl"><thead><tr>' +
+    '<th>Room</th><th>Guest</th><th>Phone</th><th>Pax</th><th>Check-in</th><th>Check-out</th><th>Nights so far</th><th class="num">Rate/night</th><th class="num">Folio total</th>' +
+    '</tr></thead><tbody>' +
+    rows.map(r => {
+      const pax    = (r.num_adults || 0) + (r.num_children ? ' + ' + r.num_children + 'ch' : '');
+      const room   = r.room_number || '—';
+      return '<tr>' +
+        '<td><strong>' + escHtml(room) + '</strong>' + (r.floor ? '<br><span style="color:var(--t3);font-size:10px">Fl ' + escHtml(r.floor) + '</span>' : '') + '</td>' +
+        '<td><strong>' + escHtml(r.customer_name||'') + '</strong></td>' +
+        '<td>' + escHtml(r.customer_phone||'—') + '</td>' +
+        '<td>' + pax + '</td>' +
+        '<td>' + fmtDate(r.check_in_date) + '</td>' +
+        '<td>' + fmtDate(r.check_out_date) + '</td>' +
+        '<td>' + (r.nights_so_far||0) + ' / ' + (r.num_nights||0) + '</td>' +
+        '<td class="num">' + fmtMoney(r.rate_per_night||0) + '</td>' +
+        '<td class="num">' + fmtMoney(r.grand_total||0) + '</td>' +
+      '</tr>';
+    }).join('') +
+  '</tbody></table>';
+}
+
+function setOpsSub(sub){
+  document.querySelectorAll('#panel-ops .subtab').forEach(b => b.classList.toggle('on', b.dataset.sub === sub));
+  $('#ops-arrivals').style.display   = (sub === 'arrivals')   ? 'block' : 'none';
+  $('#ops-departures').style.display = (sub === 'departures') ? 'block' : 'none';
+  $('#ops-in-house').style.display   = (sub === 'in-house')   ? 'block' : 'none';
+}
+
+// ════════════════════════════════════════════════════════════════════
+// Render — Daily Manager Report (composed from KPIs + A/D + In-house)
+// ════════════════════════════════════════════════════════════════════
+function renderDMR(dateStr, kpiData, adData, ihData){
+  const k          = kpiData.kpis   || {};
+  const c          = kpiData.counts || {};
+  const arrivals   = adData.arrivals   || [];
+  const departures = adData.departures || [];
+  const inHouse    = ihData.guests     || [];
+  const shopName   = (_shop && _shop.name) || 'Hotel';
+  const shopAddr   = (_shop && _shop.address) || '';
+  const printedOn  = (new Date()).toLocaleString('en-IN', { dateStyle:'short', timeStyle:'short' });
+
+  // Revenue summary computed from arrivals+departures+in-house grand_totals
+  // (rough — server-side could compute this more precisely. For DMR, this is fine.)
+  const inHouseFolioTotal = inHouse.reduce((s,g)=> s + (Number(g.grand_total)||0), 0);
+  const departuresTotal   = departures.reduce((s,d)=> s + (Number(d.grand_total)||0), 0);
+
+  const arrList = arrivals.length
+    ? arrivals.slice(0, 12).map(r => '<div class="dmr-row"><span class="n">' + escHtml(r.customer_name||'') + (r.current_room_number||r.room_number_snapshot ? ' · Rm ' + escHtml(r.current_room_number||r.room_number_snapshot) : '') + '</span><span class="d">' + (r.num_nights||0) + 'n · ' + fmtMoney(r.grand_total||0) + '</span></div>').join('')
+        + (arrivals.length > 12 ? '<div class="dmr-row" style="color:var(--t3);font-style:italic">… +' + (arrivals.length - 12) + ' more</div>' : '')
+    : '<div class="dmr-empty">No arrivals.</div>';
+  const depList = departures.length
+    ? departures.slice(0, 12).map(r => '<div class="dmr-row"><span class="n">' + escHtml(r.customer_name||'') + (r.current_room_number||r.room_number_snapshot ? ' · Rm ' + escHtml(r.current_room_number||r.room_number_snapshot) : '') + '</span><span class="d">' + fmtMoney(r.grand_total||0) + '</span></div>').join('')
+        + (departures.length > 12 ? '<div class="dmr-row" style="color:var(--t3);font-style:italic">… +' + (departures.length - 12) + ' more</div>' : '')
+    : '<div class="dmr-empty">No departures.</div>';
+
+  $('#dmr-content').innerHTML =
+    '<div class="dmr-sheet">' +
+      // Header
+      '<div class="dmr-hd">' +
+        '<div class="dmr-hd-l">' +
+          '<h2>' + escHtml(shopName) + '</h2>' +
+          '<div class="dmr-date">Daily Manager Report · ' + fmtDate(dateStr) + '</div>' +
+          (shopAddr ? '<div style="font-size:10px;color:var(--t3);margin-top:3px">' + escHtml(shopAddr) + '</div>' : '') +
+        '</div>' +
+        '<div class="dmr-hd-r">Printed: ' + printedOn + '</div>' +
+      '</div>' +
+
+      // KPIs (3 cards)
+      '<div class="dmr-section">' +
+        '<div class="dmr-section-t">Performance</div>' +
+        '<div class="dmr-kpi-row">' +
+          '<div class="dmr-kpi"><div class="l">Occupancy</div><div class="v">' + ((k.occupancy_pct != null) ? k.occupancy_pct.toFixed(1) + '%' : '—') + '</div><div class="s">' + (k.room_nights_sold||0) + ' / ' + (k.available_nights||0) + ' rooms</div></div>' +
+          '<div class="dmr-kpi"><div class="l">ADR</div><div class="v">' + fmtMoney(k.adr||0) + '</div><div class="s">Avg daily rate</div></div>' +
+          '<div class="dmr-kpi"><div class="l">RevPAR</div><div class="v">' + fmtMoney(k.revpar||0) + '</div><div class="s">Revenue / avail room</div></div>' +
+        '</div>' +
+      '</div>' +
+
+      // Revenue Summary
+      '<div class="dmr-section">' +
+        '<div class="dmr-section-t">Revenue Summary</div>' +
+        '<div class="dmr-summary">' +
+          '<div><div class="l">Room revenue</div><div class="v">' + fmtMoney(k.room_revenue||0) + '</div></div>' +
+          '<div><div class="l">Departures (collected)</div><div class="v">' + fmtMoney(departuresTotal) + '</div></div>' +
+          '<div><div class="l">In-house folios</div><div class="v">' + fmtMoney(inHouseFolioTotal) + '</div></div>' +
+          '<div><div class="l">Rooms in-house</div><div class="v">' + inHouse.length + ' / ' + (k.total_rooms||0) + '</div></div>' +
+        '</div>' +
+      '</div>' +
+
+      // Arrivals + Departures (side by side)
+      '<div class="dmr-section">' +
+        '<div class="dmr-section-t">Movement</div>' +
+        '<div class="dmr-list">' +
+          '<div class="dmr-list-block">' +
+            '<h4>Arrivals <span class="count-pill">' + arrivals.length + '</span></h4>' +
+            arrList +
+          '</div>' +
+          '<div class="dmr-list-block">' +
+            '<h4>Departures <span class="count-pill">' + departures.length + '</span></h4>' +
+            depList +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+
+      // Exception counts
+      '<div class="dmr-section">' +
+        '<div class="dmr-section-t">Exceptions</div>' +
+        '<div class="dmr-summary">' +
+          '<div><div class="l">Cancellations</div><div class="v">' + (c.cancellations||0) + '</div></div>' +
+          '<div><div class="l">No-shows</div><div class="v">' + (c.no_shows||0) + '</div></div>' +
+          '<div><div class="l">Total bookings</div><div class="v">' + (c.bookings||0) + '</div></div>' +
+          '<div><div class="l">Available rooms</div><div class="v">' + (k.total_rooms||0) + '</div></div>' +
+        '</div>' +
+      '</div>' +
+
+      // Sign-off
+      '<div class="print-sig">' +
+        '<div>Manager Signature</div>' +
+        '<div>Auditor Signature</div>' +
+        '<div>Reviewed By</div>' +
+      '</div>' +
+    '</div>';
+}
+
+// ════════════════════════════════════════════════════════════════════
 // Print
 // ════════════════════════════════════════════════════════════════════
 function printReport(){
+  // For Performance / Daily Ops / DMR tabs — just window.print() and let CSS
+  // handle the layout. The @media print stylesheet shows DMR fullscreen.
+  if(_tab === 'perf' || _tab === 'ops' || _tab === 'dmr'){
+    window.print();
+    return;
+  }
   if(!_data || !_data.ok || (_data.total||0) === 0) return;
   const shopName  = (_data.shop && _data.shop.name)    || 'Hotel';
   const shopAddr  = (_data.shop && _data.shop.address) || '';
@@ -766,6 +1249,44 @@ function printReport(){
 // CSV export
 // ════════════════════════════════════════════════════════════════════
 function exportCsv(){
+  // Performance KPIs: single-row summary CSV
+  if(_tab === 'perf'){
+    if(!_data || !_data.kpis){ toast('Nothing to export', 'e'); return; }
+    const k = _data.kpis, c = _data.counts || {}, p = _data.period || {};
+    const headers = ['from','to','days','occupancy_pct','adr','revpar','room_nights_sold','available_nights','room_revenue','total_rooms','arrivals','departures','cancellations','no_shows'];
+    const row = [p.from, p.to, p.days, k.occupancy_pct, k.adr, k.revpar, k.room_nights_sold, k.available_nights, k.room_revenue, k.total_rooms, c.arrivals, c.departures, c.cancellations, c.no_shows];
+    _downloadCsv('hotel-performance', headers, [row]);
+    return;
+  }
+  // Daily Ops: export the currently-visible sub-tab
+  if(_tab === 'ops'){
+    if(!_data || !_data.ad || !_data.ih){ toast('Nothing to export', 'e'); return; }
+    // Detect which sub-tab is open
+    const visibleSub = document.querySelector('#panel-ops .subtab.on')?.dataset.sub || 'arrivals';
+    let rows, headers, name;
+    if(visibleSub === 'arrivals'){
+      rows = _data.ad.arrivals || [];
+      headers = ['check_in_date','customer_name','customer_phone','num_adults','num_children','num_nights','current_room_number','room_type_snapshot','status','source','grand_total'];
+      name = 'hotel-arrivals';
+    } else if(visibleSub === 'departures'){
+      rows = _data.ad.departures || [];
+      headers = ['check_out_date','customer_name','customer_phone','num_adults','num_children','num_nights','current_room_number','room_type_snapshot','status','source','grand_total'];
+      name = 'hotel-departures';
+    } else {
+      rows = _data.ih.guests || [];
+      headers = ['room_number','floor','customer_name','customer_phone','num_adults','num_children','check_in_date','check_out_date','num_nights','nights_so_far','rate_per_night','room_total','grand_total','id_proof_type','id_proof_number'];
+      name = 'hotel-in-house';
+    }
+    const csvRows = rows.map(r => headers.map(h => r[h] ?? ''));
+    _downloadCsv(name, headers, csvRows);
+    return;
+  }
+  // DMR: no CSV — it's a printable summary
+  if(_tab === 'dmr'){
+    toast('DMR is a printable summary — use Print', 'e');
+    return;
+  }
+  // ── Existing Form B / Form C path ──
   if(!_data || !_data.ok || (_data.total||0) === 0) return;
   const rows = _data.rows || [];
 
