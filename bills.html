@@ -611,7 +611,7 @@ function renderBills(list){
         </div>
         <div class="bc-actions" onclick="event.stopPropagation()">
           <span class="badge ${sc}">${b.status||'Pending'}</span>
-          ${b.status!=='Paid'?`<button class="card-btn settle" onclick="event.stopPropagation();openSettleModal('${b.id}')">💳 Settle</button>`:''}
+          ${b.status!=='Paid' && !voided?`<button class="card-btn settle" onclick="event.stopPropagation();openSettleModal('${b.id}')">💳 Settle</button>`:''}
           <button class="card-btn send" onclick="event.stopPropagation();quickSend('${b.id}')">📤</button>
         </div>
       </div>
@@ -838,6 +838,13 @@ function quickSend(billId){
 function openSettleModal(billId){
   const b=_bills.find(x=>x.id===billId||String(x.id)===String(billId));
   if(!b)return;
+  // Guard: voided bills cannot be settled. Defense-in-depth — the card
+  // Settle button is already hidden for voided bills, but this catches
+  // any other code path (programmatic, URL, console, future caller).
+  if((b.status||'').toLowerCase()==='voided'){
+    toast('🚫 Cannot settle a voided bill','e',3500);
+    return;
+  }
   _curSettleBill=b;_settlePayMethod='Cash';_settleType='full';
 
   document.getElementById('settle-bill-info').innerHTML=`
@@ -881,6 +888,14 @@ function updateSettleNote(){
 
 async function doSettle(){
   const b=_curSettleBill;if(!b)return;
+  // Last-line guard before any localStorage / Supabase write. Even if
+  // the user reached this far through some unforeseen path, no payment
+  // gets recorded against a voided bill.
+  if((b.status||'').toLowerCase()==='voided'){
+    toast('🚫 Cannot settle a voided bill','e',3500);
+    closeModal('settle-modal');
+    return;
+  }
   let paidNow=parseFloat(b.balance_due||b.grand_total||0);
   if(_settleType==='partial'){
     paidNow=parseFloat(document.getElementById('settle-amt-inp').value)||0;
