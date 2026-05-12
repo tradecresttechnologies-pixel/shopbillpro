@@ -619,6 +619,17 @@ html,body{height:100%;overflow:hidden}
           <div class="mi-txt"><h4>Staff & Roles</h4><p>Add staff, set permissions</p></div>
           <span class="mi-arr">›</span>
         </div>
+        <!-- 022D Link Wiring: Authorized Users + Audit Log (server-enforced owner-only) -->
+        <div class="menu-it" onclick="goTo('authorized-users.html')">
+          <div class="mi-ic" style="background:rgba(245,166,35,.15)">🔒</div>
+          <div class="mi-txt"><h4>Authorized Users</h4><p>Manager PINs · authorize void / cancel / refund</p></div>
+          <span class="mi-arr">›</span>
+        </div>
+        <div class="menu-it" onclick="goTo('audit-log.html')">
+          <div class="mi-ic" style="background:rgba(99,102,241,.15)">📋</div>
+          <div class="mi-txt"><h4>Audit Log</h4><p>Who did what · when · why</p></div>
+          <span class="mi-arr">›</span>
+        </div>
       </div>
 
       <!-- App Settings -->
@@ -642,9 +653,11 @@ html,body{height:100%;overflow:hidden}
           <div class="mi-txt"><h4>Auto Logout</h4><p id="session-timeout-lbl">Session timeout: 30 min</p></div>
           <span class="mi-arr">›</span>
         </div>
-        <div class="menu-it" onclick="openModal('pin-modal')">
+        <!-- 022D Link Wiring: Legacy Manager PIN modal redirected to authorized-users.html -->
+        <!-- The pin-modal still exists in DOM for backwards-compat but should not be opened anymore. -->
+        <div class="menu-it" onclick="goTo('authorized-users.html')">
           <div class="mi-ic" style="background:rgba(239,68,68,.15)">🔐</div>
-          <div class="mi-txt"><h4>Manager PIN</h4><p id="pin-status-lbl">Required for void/delete actions</p></div>
+          <div class="mi-txt"><h4>Manager PIN</h4><p id="pin-status-lbl">Manage cloud PINs &amp; authorization</p></div>
           <span class="mi-arr">›</span>
         </div>
         <div class="menu-it" onclick="openModal('font-modal')">
