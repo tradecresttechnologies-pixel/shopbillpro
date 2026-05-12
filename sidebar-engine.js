@@ -32,17 +32,43 @@
 window.SBPSidebar = (function() {
   'use strict';
 
+  // ── Vertical categories ────────────────────────────────────────────
+  // Single source of truth for which shop_type values count as
+  // "hospitality". Previously this list was duplicated inline in 4
+  // different `more_for_verticals` arrays (and was missing 5 of the 11
+  // hospitality sub-types — resort, guesthouse, service_apartment,
+  // hostel, dharamshala, boutique_hotel, camping — so those shops saw
+  // the retail-shaped sidebar by accident).
+  //
+  // To add another hospitality sub-type: add it here. To add a whole
+  // new vertical category (food, salon, healthcare, ...): add a Set + a
+  // _isXxxShop helper + use order_for_verticals: { <category>: N } per
+  // catalog entry.
+  const HOSPITALITY_VERTICALS = new Set([
+    'hotel', 'homestay', 'pg_hostel', 'banquet', 'hospitality', 'day_room',
+    'resort', 'guesthouse', 'service_apartment', 'hostel', 'dharamshala',
+    'boutique_hotel', 'camping'
+  ]);
+
+  function _isHospitalityShop(shopType) {
+    return HOSPITALITY_VERTICALS.has(shopType || '');
+  }
+
   // ── Universal core (always shown for every shop, every plan) ───
   const UNIVERSAL_CORE = [
     { code: 'dashboard', href: 'dashboard.html', icon: '🏠', label_en: 'Home',     label_hi: 'होम',       order: 0 },
-    { code: 'bills',     href: 'bills.html',     icon: '🧾', label_en: 'Bills',    label_hi: 'बिल',       order: 10 },
-    { code: 'billing',   href: 'billing.html',   icon: '＋', label_en: 'New Bill', label_hi: 'नया बिल',   order: 20, isFab: true },
+    // For hospitality shops, Bills + New Bill push BELOW the daily-flow block
+    // (front-desk, rooms, bookings, folio at 5–18). The folio finalize flow is
+    // the primary billing path in a hotel; the bills list is reference, not action.
+    { code: 'bills',     href: 'bills.html',     icon: '🧾', label_en: 'Bills',    label_hi: 'बिल',       order: 10, order_for_verticals: { hospitality: 45 } },
+    { code: 'billing',   href: 'billing.html',   icon: '＋', label_en: 'New Bill', label_hi: 'नया बिल',   order: 20, isFab: true, order_for_verticals: { hospitality: 48 } },
     { code: 'customers', href: 'customers.html', icon: '👥', label_en: 'Customers',label_hi: 'ग्राहक',    order: 30 },
-    { code: 'stock',     href: 'stock.html',     icon: '📦', label_en: 'Stock',    label_hi: 'स्टॉक',     order: 40 },
+    { code: 'stock',     href: 'stock.html',     icon: '📦', label_en: 'Stock',    label_hi: 'स्टॉक',     order: 40, more_for_verticals: ['hotel','homestay','pg_hostel','banquet','hospitality','day_room'] },
     { code: 'reports',   href: 'reports.html',   icon: '📊', label_en: 'Reports',  label_hi: 'रिपोर्ट',   order: 50 },
     // BATCH 1B-C-Pilot: POS Admin + Bill Templates promoted to universal core (every shop has these)
-    { code: 'pos-admin', href: 'pos-admin.html', icon: '🛒', label_en: 'POS Admin', label_hi: 'POS एडमिन', order: 55 },
-    { code: 'bill-templates', href: 'bill-templates.html', icon: '🗂️', label_en: 'Templates', label_hi: 'टेम्पलेट', order: 135 },
+    { code: 'pos-admin', href: 'pos-admin.html', icon: '🛒', label_en: 'POS Admin', label_hi: 'POS एडमिन', order: 55, more_for_verticals: ['hotel','homestay','pg_hostel','banquet','hospitality','day_room'] },
+    // Hotel-polish (12 May 2026): bill-templates removed from sidebar. Page file kept on disk; just unlinked.
+    // { code: 'bill-templates', href: 'bill-templates.html', icon: '🗂️', label_en: 'Templates', label_hi: 'टेम्पलेट', order: 135 },
     // BATCH 1B-C: 'settings' is "More" on mobile bnav (5-slot overflow), "Settings" on desktop side rail
     { code: 'settings',  href: 'settings.html',  icon: '⚙️', label_en: 'Settings', label_hi: 'सेटिंग्स',  order: 200, mobileLabel_en: 'More', mobileLabel_hi: 'अधिक', mobileIcon: '☰' },
   ];
@@ -52,11 +78,15 @@ window.SBPSidebar = (function() {
     'website':         { href: 'settings.html#website', icon: '🌐', label_en: 'Website',          label_hi: 'वेबसाइट',         order: 60 },
     'marketing':       { href: 'marketing.html',        icon: '📢', label_en: 'Marketing',        label_hi: 'मार्केटिंग',       order: 70 },
     'wa_center':       { href: 'wa-center.html',        icon: '💬', label_en: 'WhatsApp',         label_hi: 'व्हाट्सऐप',        order: 80 },
-    'recurring':       { href: 'recurring.html',        icon: '🔁', label_en: 'Recurring',        label_hi: 'रिकरिंग',         order: 90 },
+    'recurring':       { href: 'recurring.html',        icon: '🔁', label_en: 'Recurring',        label_hi: 'रिकरिंग',         order: 90,  more_for_verticals: ['hotel','homestay','pg_hostel','banquet','hospitality','day_room'] },
     'cash_register':   { href: 'cash-register.html',    icon: '💵', label_en: 'Cash Register',    label_hi: 'कैश रजिस्टर',     order: 100 },
-    'supplier':        { href: 'supplier.html',         icon: '🏭', label_en: 'Suppliers',        label_hi: 'सप्लायर',         order: 110 },
-    'team':            { href: 'team.html',             icon: '👨‍👩‍👧', label_en: 'Team',           label_hi: 'टीम',             order: 120 },
-    'subscription':    { href: 'subscription.html',     icon: '💎', label_en: 'Plans',            label_hi: 'प्लान',            order: 130 },
+    'supplier':        { href: 'supplier.html',         icon: '🏭', label_en: 'Suppliers',        label_hi: 'सप्लायर',         order: 110, more_for_verticals: ['hotel','homestay','pg_hostel','banquet','hospitality','day_room'] },
+    'team':            { href: 'team.html',             icon: '👨‍👩‍👧', label_en: 'Team',           label_hi: 'टीम',             order: 120, owner_only: true, more_group: true },
+    // 022D Link Wiring: Authorized Users + Audit Log (server-side enforces owner-only access)
+    // 022E: also flag client-side owner_only so non-owner accounts don't even see the menu entries.
+    'authorized_users':{ href: 'authorized-users.html', icon: '🔒', label_en: 'Authorized Users', label_hi: 'अधिकृत उपयोगकर्ता', order: 122, owner_only: true, more_group: true },
+    'audit_log':       { href: 'audit-log.html',        icon: '📋', label_en: 'Audit Log',        label_hi: 'ऑडिट लॉग',          order: 124, owner_only: true, more_group: true },
+    'subscription':    { href: 'subscription.html',     icon: '💎', label_en: 'Plans',            label_hi: 'प्लान',            order: 130, owner_only: true, more_group: true },
     // Universal add-ons (Batch 1B will create these pages)
     'services':        { href: 'services.html',         icon: '🛎️', label_en: 'Services',         label_hi: 'सेवाएं',           order: 140 },
     'appointments':    { href: 'appointments.html',     icon: '📅', label_en: 'Appointments',     label_hi: 'अपॉइंटमेंट',       order: 150 },
@@ -66,7 +96,7 @@ window.SBPSidebar = (function() {
     'online_orders':   { icon: '🛒', label_en: 'Online Orders',   label_hi: 'ऑनलाइन ऑर्डर',     order: 180 },
     'kitchen':         { icon: '👨‍🍳', label_en: 'Kitchen',        label_hi: 'किचन',             order: 190 },
     'stylists':        { icon: '✂️', label_en: 'Stylists',        label_hi: 'स्टाइलिस्ट',        order: 160 },
-    'customer_history':{ icon: '📋', label_en: 'History',         label_hi: 'इतिहास',           order: 170 },
+    'customer_history':{ href: 'customer-history.html', icon: '📋', label_en: 'History',         label_hi: 'इतिहास',           order: 170 },
     'drug_db':         { icon: '💊', label_en: 'Drug Database',   label_hi: 'दवा डेटाबेस',       order: 160 },
     'expiry_alerts':   { icon: '⏰', label_en: 'Expiry',           label_hi: 'समाप्ति',           order: 170 },
     'prescriptions':   { icon: '📝', label_en: 'Prescriptions',   label_hi: 'पर्ची',            order: 180 },
@@ -87,14 +117,25 @@ window.SBPSidebar = (function() {
     'credit_limits':   { icon: '💳', label_en: 'Credit Limits',   label_hi: 'क्रेडिट लिमिट',    order: 170 },
     'wa_catalog':      { icon: '🛍️', label_en: 'WA Catalog',      label_hi: 'WA कैटलॉग',       order: 160 },
     'home_delivery':   { icon: '🛵', label_en: 'Delivery',        label_hi: 'डिलीवरी',         order: 170 },
-    'loyalty':         { icon: '⭐', label_en: 'Loyalty',          label_hi: 'लॉयल्टी',         order: 180 },
+    'loyalty':         { href: 'loyalty.html', icon: '⭐', label_en: 'Loyalty',          label_hi: 'लॉयल्टी',         order: 180 },
     'courier':         { icon: '📮', label_en: 'Courier',         label_hi: 'कूरियर',           order: 180 },
     'members':         { icon: '🎟️', label_en: 'Members',         label_hi: 'सदस्य',           order: 160 },
     'listings':        { icon: '🏘️', label_en: 'Listings',        label_hi: 'लिस्टिंग',         order: 160 },
     'leads':           { icon: '📞', label_en: 'Leads',           label_hi: 'लीड्स',            order: 170 },
-    'rooms':           { icon: '🛏️', label_en: 'Rooms',           label_hi: 'कमरे',             order: 160 },
-    'bookings':        { icon: '📆', label_en: 'Bookings',        label_hi: 'बुकिंग',           order: 170 },
-    'folio':           { icon: '📒', label_en: 'Folio',           label_hi: 'फोलियो',           order: 180 },
+    'rooms':           { href: 'rooms.html',       icon: '🛏️', label_en: 'Rooms',           label_hi: 'कमरे',             order: 160, order_for_verticals: { hospitality: 12 } },
+    // Batch 022A — dedicated folio page
+    'folio':           { href: 'folio.html',       icon: '📋', label_en: 'Folio',           label_hi: 'फ़ोलियो',           order: 165, order_for_verticals: { hospitality: 18 } },
+    'bookings':        { href: 'bookings.html',    icon: '📆', label_en: 'Bookings',        label_hi: 'बुकिंग',           order: 170, order_for_verticals: { hospitality: 15 } },
+    // Batch 021B-A — front-desk dashboard + walk-in fast-path
+    'front_desk':      { href: 'front-desk.html',  icon: '🛎️', label_en: 'Front Desk',      label_hi: 'फ्रंट डेस्क',      order: 155, order_for_verticals: { hospitality: 5 } },
+    'walk_in':         { href: 'walk-in.html',     icon: '⚡', label_en: 'Walk-in',         label_hi: 'वॉक-इन',           order: 156, order_for_verticals: { hospitality: 8 } },
+    // Batch 021B-B — Form B + Form C compliance
+    'compliance':      { href: 'compliance.html',  icon: '📋', label_en: 'Compliance',     label_hi: 'अनुपालन',          order: 175, order_for_verticals: { hospitality: 22 } },
+    // BATCH 017 BUG-021 FIX: 'folio' menu item removed. It pointed to bookings.html
+    // (since folio is per-booking, not a standalone page) and confused users.
+    // Folio is accessed inline via Bookings → tap booking → folio section.
+    // Server-side module profile may still mark folio as 'active' for hospitality
+    // shops; sidebar engine simply ignores codes without a catalog entry now.
   };
 
   // ── Helpers ────────────────────────────────────────────────────
@@ -124,6 +165,9 @@ window.SBPSidebar = (function() {
     { module_code: 'cash_register', status: 'active', badge: null,   display_order: 100 },
     { module_code: 'supplier',      status: 'active', badge: null,   display_order: 110 },
     { module_code: 'team',          status: 'active', badge: null,   display_order: 120 },
+    // 022D Link Wiring: Security + audit are universal across all shops/verticals
+    { module_code: 'authorized_users', status: 'active', badge: null, display_order: 122 },
+    { module_code: 'audit_log',     status: 'active', badge: null,   display_order: 124 },
     { module_code: 'subscription',  status: 'active', badge: null,   display_order: 130 },
   ];
 
@@ -144,25 +188,101 @@ window.SBPSidebar = (function() {
     }
   }
 
+  // ── BATCH 1B-G-Hotfix: pending pages get forced to 'soon' until built ──
+  // These pages don't exist yet — clicking them would 404. Force 'soon' status
+  // so they show "Coming Soon" toast instead of navigating. As pages get built,
+  // remove from this set.
+  // ── BATCH 012 (6 May 2026): services + appointments BUILT and shipped.
+  // ── BATCH 013 (6 May 2026): customer_history BUILT and shipped.
+  //    Removed from PENDING_PAGES — they now navigate normally and show
+  //    their 'NEW' badge from sbp_module_profiles.
+  const PENDING_PAGES = new Set([
+    // 'services',          — built and shipped 5 May 2026 (Service Catalog)
+    // 'appointments',      — built and shipped 5 May 2026 (Universal Appointments)
+    // 'customer_history',  — built and shipped 6 May 2026 (Batch 013)
+    'stylists',          // stylists.html — placeholder (deeper salon feature, future batch)
+  ]);
+
+  // ── 022E: Owner detection ───────────────────────────────────────
+  // The single signal across the app is localStorage.sbp_is_staff === '1'.
+  // Any non-staff session is treated as owner-class (Admin/Owner).
+  // Used to filter out owner_only modules for cashier/manager/viewer accounts.
+  function _isOwner() {
+    try {
+      return localStorage.getItem('sbp_is_staff') !== '1';
+    } catch (e) {
+      return true;  // Safer default — RPCs still enforce server-side
+    }
+  }
+
   // ── Build the full ordered list (universal core + vertical) ────
   function _buildItems(verticalModules, currentPage) {
+    const isOwner = _isOwner();
+    // Hotel-polish (12 May 2026): read shop_type so we can route certain items into the
+    // "More" group on hospitality verticals (POS Admin, Stock, Recurring, Suppliers etc.
+    // don't fit a hotel's daily flow). The flag is `more_for_verticals` per catalog item.
+    //
+    // Batch 12-May-26 #3: also honor `order_for_verticals` for per-vertical ordering.
+    // This lets us push hotel-flow items (front_desk, rooms, etc.) above retail-flow
+    // items (bills, billing) WITHOUT changing the default order for retail shops.
+    const shopType = (_shop() || {}).shop_type || '';
+    const isHosp   = _isHospitalityShop(shopType);
+
+    function _inMoreForVertical(itemCat) {
+      if (!Array.isArray(itemCat.more_for_verticals)) return false;
+      // Exact shop_type match (legacy + still supported)
+      if (itemCat.more_for_verticals.indexOf(shopType) !== -1) return true;
+      // Category-aware: 'hospitality' in the array catches ALL hospitality sub-types
+      // (resort, dharamshala, etc.) without needing to enumerate every one. Fixes
+      // a latent bug where 5 of 11 hospitality sub-types were missing from arrays.
+      if (isHosp && itemCat.more_for_verticals.indexOf('hospitality') !== -1) return true;
+      return false;
+    }
+
+    function _orderFor(itemCat) {
+      // Per-shop override wins; category fallback next; default order last.
+      const map = itemCat.order_for_verticals;
+      if (map) {
+        if (map[shopType] !== undefined) return map[shopType];
+        if (isHosp && map['hospitality'] !== undefined) return map['hospitality'];
+      }
+      return itemCat.order;
+    }
+
     const items = [];
     UNIVERSAL_CORE.forEach(c => {
-      items.push({ ...c, status: 'active', active: c.code === currentPage });
+      // Universal items never get owner_only flag — they're always shown.
+      items.push({
+        ...c,
+        order: _orderFor(c),
+        status: 'active',
+        active: c.code === currentPage,
+        more_group: !!c.more_group || _inMoreForVertical(c),
+      });
     });
     (verticalModules || []).forEach(m => {
       const cat = MODULE_CATALOG[m.module_code];
       if (!cat) return;
+      // 022E: owner_only modules are hidden entirely for non-owner accounts.
+      // Server-side RPCs also enforce owner check, so hiding here is just UX —
+      // a non-owner can't reach the page even via direct URL.
+      if (cat.owner_only && !isOwner) return;
+      // BATCH 1B-G-Hotfix: force 'soon' for pages not yet built
+      const effectiveStatus = PENDING_PAGES.has(m.module_code) ? 'soon' : m.status;
+      // Order resolution: vertical override → catalog default → server display_order
+      const resolvedOrder = _orderFor(cat) !== undefined ? _orderFor(cat) : m.display_order;
       items.push({
         code: m.module_code,
-        href: m.status === 'active' ? (cat.href || '#') : '#',
+        href: effectiveStatus === 'active' ? (cat.href || '#') : '#',
         icon: cat.icon,
         label_en: cat.label_en,
         label_hi: cat.label_hi,
-        order: cat.order || m.display_order,
-        status: m.status,
+        order: resolvedOrder,
+        status: effectiveStatus,
         badge: m.badge || null,
         active: m.module_code === currentPage,
+        owner_only: !!cat.owner_only,  // propagated for potential downstream use
+        more_group: !!cat.more_group || _inMoreForVertical(cat),  // 022E + Hotel-polish
       });
     });
     // BATCH 1B-C-Pilot: fix falsy-0 bug — Home has order:0 which || treats as undefined
@@ -200,6 +320,27 @@ window.SBPSidebar = (function() {
         `</a>`;
     }
 
+    // BATCH 1B-F: mobile-drawer layout — full vertical list, all items, tap to navigate
+    if (layout === 'mobile-drawer') {
+      const cls = ['drawer-item'];
+      if (item.active) cls.push('active');
+      if (item.status === 'soon') cls.push('coming-soon');
+      const isSoon = item.status === 'soon';
+      // FAB (+New Bill) gets special treatment in drawer — visible like a normal nav item, not a floating button
+      const onclickAttr = isSoon
+        ? ` onclick="event.preventDefault(); SBPSidebar._closeDrawer(); SBPSidebar._showSoon('${esc(item.label_en)}'); return false;"`
+        : ` onclick="SBPSidebar._closeDrawer();"`;
+      const href = isSoon ? '#' : (item.href || '#');
+      const badgeHtml = item.badge
+        ? `<span class="drawer-badge" style="margin-left:auto;font-size:9px;font-weight:800;background:linear-gradient(135deg,#F59E0B,#EF4444);color:#fff;border-radius:4px;padding:2px 6px;letter-spacing:.3px">${esc(item.badge)}</span>`
+        : '';
+      return `<a class="${cls.join(' ')}" href="${esc(href)}"${onclickAttr}>` +
+        `<span class="drawer-ic">${item.icon}</span>` +
+        `<span class="drawer-lb"><span class="lang-en">${esc(item.label_en)}</span><span class="lang-hi">${esc(item.label_hi || item.label_en)}</span></span>` +
+        badgeHtml +
+        `</a>`;
+    }
+
     // Mobile bnav layout (existing — unchanged)
     const cls = ['ni'];
     if (item.active) cls.push('on');
@@ -215,10 +356,16 @@ window.SBPSidebar = (function() {
       return `<div class="${cls.join(' ')}" onclick="${onclick}" style="align-items:center;justify-content:center"><div class="nav-fab">${item.icon}</div></div>`;
     }
     // BATCH 1B-C: mobile uses mobileLabel_* + mobileIcon if defined (Settings → "More" on mobile)
+    // BATCH 1B-F: 'settings' becomes "More" on mobile and opens drawer instead of navigating
     const mobLabelEn = item.mobileLabel_en || item.label_en;
     const mobLabelHi = item.mobileLabel_hi || item.label_hi || item.label_en;
     const mobIcon    = item.mobileIcon    || item.icon;
-    return `<div class="${cls.join(' ')}" onclick="${onclick}" style="position:relative"><span class="ni-ic">${mobIcon}</span><span class="ni-lb"><span class="lang-en">${esc(mobLabelEn)}</span><span class="lang-hi">${esc(mobLabelHi)}</span></span>${badgeHtml}</div>`;
+    // BATCH 1B-F: if this is the "More" item (settings), override onclick to open drawer
+    const isMoreButton = item.code === 'settings';
+    const mobOnclick = isMoreButton
+      ? `SBPSidebar._openDrawer()`
+      : onclick;
+    return `<div class="${cls.join(' ')}" onclick="${mobOnclick}" style="position:relative"><span class="ni-ic">${mobIcon}</span><span class="ni-lb"><span class="lang-en">${esc(mobLabelEn)}</span><span class="lang-hi">${esc(mobLabelHi)}</span></span>${badgeHtml}</div>`;
   }
 
   // BATCH 1B-C: SVG logo (copied from existing inline sidebars in dashboard.html etc.)
@@ -238,10 +385,58 @@ window.SBPSidebar = (function() {
       const set = get('settings');       if (set) slots.push(set);
       return slots.map(i => _renderItem(i, layout)).join('');
     }
+    // BATCH 1B-F: mobile-drawer layout — full menu in slide-out panel
+    if (layout === 'mobile-drawer') {
+      // Header (close button + title) and footer (logout + version)
+      // Items themselves rendered by _renderItem with layout='mobile-drawer'
+      // Note: the bnav already shows Home/Bills/+/Marketing/More — drawer can omit those
+      // OR include them so users can see "everything in one place". We include them all.
+      return '<div class="drawer-header">' +
+          '<div class="drawer-title">' + _DSB_SVG + '<span class="drawer-brand">ShopBill Pro</span></div>' +
+          '<button class="drawer-close" type="button" onclick="SBPSidebar._closeDrawer()" aria-label="Close menu">✕</button>' +
+        '</div>' +
+        '<div class="drawer-nav">' + items.map(i => _renderItem(i, layout)).join('') + '</div>' +
+        '<div class="drawer-footer">' +
+          '<button class="drawer-item" id="drawer-logout" type="button">' +
+            '<span class="drawer-ic">🚪</span>' +
+            '<span class="drawer-lb"><span class="lang-en">Logout</span><span class="lang-hi">लॉगआउट</span></span>' +
+          '</button>' +
+          '<div class="drawer-ver">ShopBill Pro v1.0</div>' +
+        '</div>';
+    }
     // BATCH 1B-C: Desktop layout — full structure matching styles.css .dsb-* rules
+    // 022E: split items into primary (always visible) + collapsible "More" group.
+    //       Items flagged `more_group: true` (Team / Authorized Users / Audit Log /
+    //       Plans) are tucked behind a "More ⚙️" toggle to keep the sidebar tight.
+    //       Settings is part of universal core and stays at the very bottom.
     if (layout === 'desktop') {
+      const primary  = items.filter(i => !i.more_group);
+      const moreItems = items.filter(i => i.more_group);
+      // If "More" group has the active page, force it open on initial render
+      const anyMoreActive = moreItems.some(i => i.active);
+      const initiallyOpen = anyMoreActive
+        || (function(){ try { return localStorage.getItem('sbp_sidebar_more_open') === '1'; } catch(e){ return false; } })();
+      const moreHtml = moreItems.length === 0
+        ? ''
+        : (function(){
+            const groupClasses = ['dsb-more-group'];
+            if (initiallyOpen) groupClasses.push('open');
+            return '<div class="' + groupClasses.join(' ') + '" id="dsb-more-group">' +
+              '<button type="button" class="dsb-more-toggle" onclick="SBPSidebar._toggleMore()" aria-expanded="' + (initiallyOpen ? 'true' : 'false') + '">' +
+                '<span class="dsb-ic">⚙️</span>' +
+                '<span class="dsb-more-label">' +
+                  '<span class="lang-en">More</span>' +
+                  '<span class="lang-hi">अधिक</span>' +
+                '</span>' +
+                '<span class="dsb-more-arr">›</span>' +
+              '</button>' +
+              '<div class="dsb-more-list">' +
+                moreItems.map(i => _renderItem(i, layout)).join('') +
+              '</div>' +
+            '</div>';
+          })();
       return '<div class="dsb-logo">' + _DSB_SVG + '<span class="dsb-brand">ShopBill Pro</span></div>' +
-        '<div class="dsb-nav">' + items.map(i => _renderItem(i, layout)).join('') + '</div>' +
+        '<div class="dsb-nav">' + primary.map(i => _renderItem(i, layout)).join('') + moreHtml + '</div>' +
         '<div class="dsb-footer">' +
           '<button class="dsb-item" id="dsb-logout" type="button">' +
             '<span class="dsb-ic">🚪</span>' +
@@ -264,10 +459,43 @@ window.SBPSidebar = (function() {
     setTimeout(() => { t.remove(); }, 2200);
   }
 
+  // ── BATCH 1B-G-Hotfix: inject critical CSS rules at runtime ────
+  // Some pages have stray brace bugs in their <style> blocks that break
+  // .lang-en/.lang-hi rules. This injects them via a dynamic <style> tag at
+  // end of <head>, which lands AFTER any in-page CSS and applies regardless
+  // of broken-CSS pages. Idempotent (only injects once per page load).
+  function _injectStyles() {
+    if (document.getElementById('sbp-lib-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'sbp-lib-styles';
+    style.textContent =
+      '/* SBPSidebar lib runtime CSS — bilingual toggle (works even on pages with broken CSS) */' +
+      '.lang-hi{display:none!important}' +
+      '.lang-en{display:inline!important}' +
+      'html[lang="hi"] .lang-hi{display:inline!important}' +
+      'html[lang="hi"] .lang-en{display:none!important}' +
+      /* 022E: Collapsible "More" group in desktop sidebar */
+      '.dsb-more-group{display:flex;flex-direction:column;margin-top:4px}' +
+      '.dsb-more-toggle{display:flex;align-items:center;gap:12px;width:100%;padding:10px 12px;background:transparent;border:none;border-radius:10px;cursor:pointer;color:inherit;font:inherit;text-align:left;transition:background .15s}' +
+      '.dsb-more-toggle:hover{background:rgba(255,255,255,.04)}' +
+      '[data-theme="light"] .dsb-more-toggle:hover{background:rgba(0,0,0,.04)}' +
+      '.dsb-more-toggle .dsb-ic{font-size:18px;width:24px;text-align:center}' +
+      '.dsb-more-label{flex:1;font-weight:600;font-size:14px}' +
+      '.dsb-more-arr{font-size:18px;color:#8A8AA8;transition:transform .2s;line-height:1}' +
+      '.dsb-more-group.open .dsb-more-arr{transform:rotate(90deg)}' +
+      '.dsb-more-list{display:none;flex-direction:column;padding-left:14px;margin-top:2px;border-left:1.5px solid rgba(255,255,255,.06)}' +
+      '[data-theme="light"] .dsb-more-list{border-left-color:rgba(0,0,0,.08)}' +
+      '.dsb-more-group.open .dsb-more-list{display:flex}';
+    (document.head || document.documentElement).appendChild(style);
+  }
+
   // ── Public API ─────────────────────────────────────────────────
   async function render(opts) {
     opts = opts || {};
     const layout = opts.layout || 'desktop';
+
+    // BATCH 1B-G-Hotfix: ensure critical CSS rules exist on every page
+    _injectStyles();
 
     // BATCH 1B-C: Normalize currentPage. Accepts 'dashboard', 'dashboard.html', or auto-derives.
     let currentPage = opts.currentPage || '';
@@ -313,6 +541,8 @@ window.SBPSidebar = (function() {
     let items = _buildItems(cached, currentPage);
     containers.filter(Boolean).forEach(c => { c.innerHTML = _renderSidebar(items, layout); });
     _wireDesktopLogout(layout);
+    _wireScrollPersist(layout, containers);  // BATCH 013 HOTFIX: preserve scroll position
+    if (layout === 'mobile-drawer') _wireDrawerLogout();
 
     // 2. Async refresh from RPC if Supabase + shop_id available
     let sbClient = window._sb || window.SBP_SUPABASE;
@@ -332,8 +562,68 @@ window.SBPSidebar = (function() {
       if (oldKey !== newKey) {
         containers.filter(Boolean).forEach(c => { c.innerHTML = _renderSidebar(newItems, layout); });
         _wireDesktopLogout(layout);
+        _wireScrollPersist(layout, containers);  // re-wire after innerHTML replacement
+        if (layout === 'mobile-drawer') _wireDrawerLogout();
       }
     }
+  }
+
+  // ── BATCH 013 HOTFIX (6 May 2026): Preserve sidebar scroll position ──
+  // Problem: every page navigation re-renders the sidebar via innerHTML, which
+  // wipes the .dsb-nav scrollTop back to 0. For shops with many menu items
+  // (16+ vertical modules), users have to re-scroll to find their place every
+  // time they click around — feels broken vs. how desktop apps behave.
+  // Fix: persist .dsb-nav scrollTop to sessionStorage; restore on each render.
+  // sessionStorage (not localStorage) — it should reset between browser sessions.
+  //
+  // ── Hotel polish (12 May 2026): "few stable, few moving upward" fix ──
+  // The BATCH 013 fix preserves scroll, but it doesn't help in this case:
+  // User is on Page A (saved scroll = 0 because they didn't scroll), clicks
+  // "More ⚙️" which expands items at the BOTTOM of the sidebar, then clicks
+  // one of those More items. New page loads with scrollTop = 0 restored, but
+  // the active More item is below the visible area — feels like the sidebar
+  // jumped upward away from where they clicked.
+  // Fix: after restoring saved scroll, check if the active item is in view.
+  // If not (which happens when the active item is in the More group on a tall
+  // sidebar), scroll it into view explicitly. Uses 'block:nearest' so already-
+  // visible items don't trigger unnecessary scrolling.
+  function _wireScrollPersist(layout, containers) {
+    if (layout !== 'desktop') return;  // only the desktop side rail scrolls; bnav is fixed; drawer reopens fresh
+    const KEY = 'sbp_dsb_scroll';
+    containers.forEach(container => {
+      if (!container) return;
+      const navEl = container.querySelector('.dsb-nav');
+      if (!navEl) return;
+      // Restore (synchronously, before paint)
+      const saved = parseInt(sessionStorage.getItem(KEY) || '0', 10);
+      if (saved > 0) navEl.scrollTop = saved;
+      // Hotel polish: ensure active item is visible after restore.
+      // requestAnimationFrame defers the check until after the browser has
+      // computed layout, so getBoundingClientRect() returns final positions.
+      requestAnimationFrame(() => {
+        try {
+          const active = navEl.querySelector('.dsb-item.active');
+          if (!active) return;
+          const itemRect = active.getBoundingClientRect();
+          const navRect  = navEl.getBoundingClientRect();
+          // Visible if both top and bottom are within nav viewport
+          const isVisible = itemRect.top >= navRect.top && itemRect.bottom <= navRect.bottom;
+          if (!isVisible) {
+            // 'nearest' + 'auto' = instant scroll to the closest edge that brings
+            // the item fully into view; no animation, no surprise
+            active.scrollIntoView({ block: 'nearest', behavior: 'auto' });
+          }
+        } catch (_) {}
+      });
+      // Save on scroll (debounced so we don't thrash sessionStorage)
+      let scrollTimer = null;
+      navEl.addEventListener('scroll', () => {
+        if (scrollTimer) clearTimeout(scrollTimer);
+        scrollTimer = setTimeout(() => {
+          try { sessionStorage.setItem(KEY, String(navEl.scrollTop)); } catch(e) {}
+        }, 80);
+      }, { passive: true });
+    });
   }
 
   // BATCH 1B-C: Wire the logout button after each render (innerHTML wipes prior listeners)
@@ -351,10 +641,68 @@ window.SBPSidebar = (function() {
     };
   }
 
+  // BATCH 1B-F: drawer logout wiring (called after drawer renders since innerHTML wipes listeners)
+  function _wireDrawerLogout() {
+    const btn = document.getElementById('drawer-logout');
+    if (!btn) return;
+    btn.onclick = function() {
+      _closeDrawer();
+      const sbClient = window._sb;
+      if (sbClient && sbClient.auth && typeof sbClient.auth.signOut === 'function') {
+        sbClient.auth.signOut().then(function() { window.location.href = 'index.html'; });
+      } else {
+        window.location.href = 'index.html';
+      }
+    };
+  }
+
+  // BATCH 1B-F: Open the mobile drawer + show overlay
+  function _openDrawer() {
+    const drawer = document.querySelector('.bnav-drawer');
+    const overlay = document.querySelector('.bnav-overlay');
+    if (drawer) drawer.classList.add('open');
+    if (overlay) overlay.classList.add('open');
+    // Lock body scroll
+    document.body.style.overflow = 'hidden';
+  }
+
+  // BATCH 1B-F: Close the mobile drawer + hide overlay
+  function _closeDrawer() {
+    const drawer = document.querySelector('.bnav-drawer');
+    const overlay = document.querySelector('.bnav-overlay');
+    if (drawer) drawer.classList.remove('open');
+    if (overlay) overlay.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  // 022E: toggle the collapsible "More" group in the desktop sidebar.
+  // Persists state in localStorage so it stays open/closed across page nav.
+  function _toggleMore() {
+    const grp = document.getElementById('dsb-more-group');
+    if (!grp) return;
+    const isOpen = grp.classList.toggle('open');
+    const btn = grp.querySelector('.dsb-more-toggle');
+    if (btn) btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    try { localStorage.setItem('sbp_sidebar_more_open', isOpen ? '1' : '0'); } catch (e) {}
+  }
+
   return {
     render,
     _showSoon,
+    _openDrawer,
+    _closeDrawer,
+    _wireDrawerLogout,
+    _toggleMore,
     UNIVERSAL_CORE,
     MODULE_CATALOG,
+    // Vertical helpers — used by dashboard.html (and any future page) to
+    // adapt UI based on shop_type without duplicating the hospitality list.
+    // Call: SBPSidebar.isHospitality(localStorage.sbp_shop && JSON.parse(...).shop_type)
+    // Or with no arg, uses the currently-loaded shop's type.
+    isHospitality: function(shopType) {
+      const t = (shopType !== undefined) ? shopType : ((_shop() || {}).shop_type || '');
+      return _isHospitalityShop(t);
+    },
+    HOSPITALITY_VERTICALS,
   };
 })();

@@ -656,7 +656,12 @@ html,body{height:100%;overflow:hidden}
         </div>
       </div>
 
-      <!-- Quick Actions -->
+      <!-- Quick Actions
+           Wrapped in #qa-section so we can hide the whole block (header + grid)
+           for hospitality verticals where retail-flow actions (New Bill, POS,
+           Stock, GST Report) don't match the daily workflow. Hide logic runs
+           after sidebar init below — uses SBPSidebar.isHospitality(). -->
+      <div id="qa-section">
       <div class="sec-hd">
         <div class="sec-t"><span class="lang-en">Quick Actions</span><span class="lang-hi">त्वरित कार्य</span><span class="hi">त्वरित कार्य</span></div>
       </div>
@@ -694,6 +699,7 @@ html,body{height:100%;overflow:hidden}
           <div class="qa-lb">Stock<span class="hi">स्टॉक</span></div>
         </div>
       </div>
+      </div><!-- /#qa-section -->
 
       <!-- GST Summary -->
       <div class="gst-card fade-in" id="gst-card">
@@ -1271,6 +1277,19 @@ init();
 
   // Initial render
   renderForViewport();
+
+  // Vertical-aware Quick Actions visibility — for hospitality shops, the
+  // retail-flow buttons (New Bill, POS, Stock, GST Report) don't match
+  // a hotel's daily workflow. Front Desk in the sidebar is the natural
+  // daily landing instead. Hide the entire section to keep the dashboard
+  // focused. Other verticals get the standard Quick Actions row.
+  try {
+    if (window.SBPSidebar && typeof window.SBPSidebar.isHospitality === 'function'
+        && window.SBPSidebar.isHospitality()) {
+      var qaSection = document.getElementById('qa-section');
+      if (qaSection) qaSection.style.display = 'none';
+    }
+  } catch (e) { /* non-fatal — Quick Actions just stays visible */ }
 
   // Re-render on viewport crossing the 1024px threshold (rotate, resize, fold/unfold)
   var lastIsDesktop = window.innerWidth >= 1024;
