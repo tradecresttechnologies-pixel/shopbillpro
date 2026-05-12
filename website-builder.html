@@ -1,706 +1,318 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" translate="no" class="notranslate">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Create Your AI Website - ShopBill Pro</title>
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    :root {
-      --primary: #FF6B35;
-      --primary-light: #FFE5D9;
-      --secondary: #333;
-      --border: #E0E0E0;
-      --success: #4CAF50;
-      --error: #F44336;
-      --text-primary: #1a1a1a;
-      --text-secondary: #666;
-      --bg: #fff;
-      --overlay: rgba(0,0,0,0.1);
-    }
-
-    [data-theme="dark"] {
-      --primary: #FF6B35;
-      --secondary: #f0f0f0;
-      --text-primary: #fff;
-      --text-secondary: #aaa;
-      --bg: #1a1a1a;
-      --border: #333;
-    }
-
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
-      background: var(--bg);
-      color: var(--text-primary);
-      line-height: 1.6;
-      transition: background 0.3s, color 0.3s;
-    }
-
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 20px;
-    }
-
-    /* Header */
-    .wb-header {
-      display: flex;
-      align-items: center;
-      margin-bottom: 30px;
-      gap: 12px;
-    }
-
-    .wb-header h1 {
-      font-size: 28px;
-      font-weight: 700;
-    }
-
-    .wb-badge {
-      display: inline-block;
-      background: var(--primary);
-      color: white;
-      padding: 4px 12px;
-      border-radius: 20px;
-      font-size: 12px;
-      font-weight: 600;
-    }
-
-    .wb-subtext {
-      color: var(--text-secondary);
-      font-size: 14px;
-      margin-top: 8px;
-    }
-
-    /* Form Layout */
-    .wb-form-wrapper {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 30px;
-      align-items: start;
-    }
-
-    .wb-form-left {
-      padding: 30px;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      box-shadow: 0 2px 8px var(--overlay);
-    }
-
-    .wb-preview {
-      position: sticky;
-      top: 20px;
-      padding: 20px;
-      border-radius: 12px;
-      box-shadow: 0 2px 8px var(--overlay);
-      overflow: hidden;
-    }
-
-    /* Form Groups */
-    .wb-form-group {
-      margin-bottom: 24px;
-    }
-
-    .wb-form-group:last-child {
-      margin-bottom: 0;
-    }
-
-    .wb-label {
-      display: block;
-      font-weight: 600;
-      margin-bottom: 8px;
-      font-size: 14px;
-      color: var(--text-primary);
-    }
-
-    .wb-label span {
-      color: var(--error);
-    }
-
-    .wb-input,
-    .wb-textarea,
-    .wb-select {
-      width: 100%;
-      padding: 12px;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      font-family: inherit;
-      font-size: 14px;
-      background: var(--bg);
-      color: var(--text-primary);
-      transition: border-color 0.2s;
-    }
-
-    .wb-input:focus,
-    .wb-textarea:focus,
-    .wb-select:focus {
-      outline: none;
-      border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
-    }
-
-    .wb-textarea {
-      resize: vertical;
-      min-height: 80px;
-    }
-
-    .wb-helper {
-      font-size: 12px;
-      color: var(--text-secondary);
-      margin-top: 6px;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-    .wb-helper::before {
-      content: "ℹ️";
-    }
-
-    /* Radio Groups */
-    .wb-radio-group {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-      gap: 12px;
-      margin-top: 12px;
-    }
-
-    .wb-radio-option {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 12px;
-      border: 2px solid var(--border);
-      border-radius: 8px;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .wb-radio-option input {
-      cursor: pointer;
-    }
-
-    .wb-radio-option input:checked ~ label {
-      color: var(--primary);
-      font-weight: 600;
-    }
-
-    .wb-radio-option:has(input:checked) {
-      border-color: var(--primary);
-      background: rgba(255, 107, 53, 0.05);
-    }
-
-    .wb-radio-option:hover {
-      border-color: var(--primary);
-    }
-
-    .wb-radio-option label {
-      cursor: pointer;
-      margin: 0;
-    }
-
-    /* Color Grid */
-    .wb-color-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
-      gap: 10px;
-      margin-top: 12px;
-    }
-
-    .wb-color-option {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 6px;
-      padding: 12px 8px;
-      border: 2px solid var(--border);
-      border-radius: 8px;
-      cursor: pointer;
-      transition: all 0.2s;
-      text-align: center;
-    }
-
-    .wb-color-option:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px var(--overlay);
-    }
-
-    .wb-color-option.recommended {
-      border-color: var(--primary);
-      background: rgba(255, 107, 53, 0.05);
-    }
-
-    .wb-color-option input {
-      display: none;
-    }
-
-    .wb-color-option input:checked ~ .wb-color-swatch {
-      border: 3px solid #333;
-      box-shadow: 0 0 0 2px white, 0 0 0 4px #333;
-    }
-
-    .wb-color-swatch {
-      width: 50px;
-      height: 50px;
-      border-radius: 8px;
-      border: 2px solid var(--border);
-      transition: all 0.2s;
-    }
-
-    .wb-color-name {
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--text-primary);
-    }
-
-    .wb-color-icon {
-      font-size: 20px;
-    }
-
-    /* Recommendation Message */
-    .wb-recommendation {
-      padding: 12px;
-      background: rgba(255, 107, 53, 0.1);
-      border-left: 3px solid var(--primary);
-      border-radius: 4px;
-      font-size: 13px;
-      margin-bottom: 12px;
-      color: var(--text-primary);
-    }
-
-    /* Color Info */
-    .wb-color-info {
-      padding: 12px;
-      background: var(--primary);
-      color: white;
-      border-radius: 8px;
-      font-size: 13px;
-      margin-top: 12px;
-      text-align: center;
-    }
-
-    /* Mobile Color Carousel */
-    @media (max-width: 767px) {
-      .wb-color-carousel {
-        display: flex;
-        gap: 8px;
-        overflow-x: auto;
-        padding: 8px 0;
-        margin-top: 12px;
-        scroll-behavior: smooth;
-        -webkit-overflow-scrolling: touch;
-      }
-
-      .wb-color-carousel::-webkit-scrollbar {
-        height: 4px;
-      }
-
-      .wb-color-carousel::-webkit-scrollbar-track {
-        background: transparent;
-      }
-
-      .wb-color-carousel::-webkit-scrollbar-thumb {
-        background: var(--primary);
-        border-radius: 2px;
-      }
-
-      .wb-color-option {
-        min-width: 80px;
-        flex-shrink: 0;
-      }
-    }
-
-    /* Preview Section */
-    .wb-preview-inner {
-      background: var(--primary);
-      color: white;
-      padding: 30px 20px;
-      border-radius: 8px;
-      min-height: 400px;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-    }
-
-    .wb-preview-content {
-      text-align: center;
-    }
-
-    .wb-preview-content h2 {
-      font-size: 24px;
-      margin-bottom: 12px;
-      font-weight: 700;
-    }
-
-    .wb-preview-content p {
-      font-size: 14px;
-      margin-bottom: 20px;
-      line-height: 1.5;
-      opacity: 0.9;
-    }
-
-    .wb-preview-buttons {
-      display: flex;
-      gap: 10px;
-      justify-content: center;
-      flex-wrap: wrap;
-    }
-
-    .wb-preview-btn {
-      padding: 10px 20px;
-      background: white;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      font-weight: 600;
-      font-size: 12px;
-      color: var(--primary);
-      transition: all 0.2s;
-    }
-
-    .wb-preview-btn:hover {
-      transform: scale(1.05);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-    }
-
-    .wb-preview-info {
-      font-size: 12px;
-      text-align: center;
-      margin-top: 20px;
-      padding-top: 20px;
-      border-top: 1px solid rgba(255,255,255,0.2);
-    }
-
-    .wb-preview-label {
-      font-size: 11px;
-      opacity: 0.8;
-      margin-bottom: 6px;
-    }
-
-    /* Buttons */
-    .wb-btn-group {
-      display: flex;
-      gap: 12px;
-      margin-top: 30px;
-    }
-
-    .wb-btn {
-      flex: 1;
-      padding: 14px 24px;
-      border: none;
-      border-radius: 8px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-    }
-
-    .wb-btn-primary {
-      background: var(--primary);
-      color: white;
-    }
-
-    .wb-btn-primary:hover:not(:disabled) {
-      background: #E5623C;
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
-    }
-
-    .wb-btn-secondary {
-      background: var(--border);
-      color: var(--text-primary);
-    }
-
-    .wb-btn-secondary:hover:not(:disabled) {
-      background: #d0d0d0;
-    }
-
-    .wb-btn:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-
-    /* Loading State */
-    .wb-loading {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0,0,0,0.5);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 1000;
-    }
-
-    .wb-loading.active {
-      display: flex;
-    }
-
-    .wb-spinner {
-      width: 40px;
-      height: 40px;
-      border: 4px solid rgba(255,255,255,0.3);
-      border-top-color: white;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-    }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
-    /* Responsive */
-    @media (max-width: 1023px) {
-      .wb-form-wrapper {
-        grid-template-columns: 1fr;
-        gap: 20px;
-      }
-
-      .wb-preview {
-        position: relative;
-        top: 0;
-      }
-    }
-
-    @media (max-width: 767px) {
-      .container {
-        padding: 12px;
-      }
-
-      .wb-header h1 {
-        font-size: 22px;
-      }
-
-      .wb-form-left {
-        padding: 20px;
-      }
-
-      .wb-form-group {
-        margin-bottom: 18px;
-      }
-
-      .wb-radio-group {
-        grid-template-columns: repeat(2, 1fr);
-      }
-
-      .wb-color-grid {
-        display: none;
-      }
-
-      .wb-color-carousel {
-        display: flex !important;
-      }
-
-      .wb-preview-inner {
-        min-height: 300px;
-        padding: 20px 15px;
-      }
-
-      .wb-preview-content h2 {
-        font-size: 20px;
-      }
-
-      .wb-preview-content p {
-        font-size: 12px;
-      }
-
-      .wb-btn {
-        padding: 12px 16px;
-        font-size: 13px;
-      }
-    }
-
-    /* Error/Success Messages */
-    .wb-alert {
-      padding: 12px 16px;
-      border-radius: 8px;
-      margin-bottom: 16px;
-      font-size: 13px;
-      display: none;
-    }
-
-    .wb-alert.error {
-      background: #FFEBEE;
-      color: #C62828;
-      border-left: 3px solid #F44336;
-      display: block;
-    }
-
-    .wb-alert.success {
-      background: #E8F5E9;
-      color: #2E7D32;
-      border-left: 3px solid #4CAF50;
-      display: block;
-    }
-
-    /* Tier Restriction */
-    .wb-tier-restriction {
-      padding: 16px;
-      background: #FFF3E0;
-      border: 2px solid #FF9800;
-      border-radius: 8px;
-      margin-top: 20px;
-      text-align: center;
-      font-size: 13px;
-    }
-
-    .wb-tier-restriction a {
-      color: var(--primary);
-      text-decoration: none;
-      font-weight: 600;
-    }
-  </style>
+<script>
+// FIX — Pre-paint theme application (eliminates dark→light flash)
+(function(){
+  try {
+    var t = localStorage.getItem('sbp_theme');
+    if (t === 'light') document.documentElement.setAttribute('data-theme','light');
+  } catch(e) {}
+})();
+</script>
+
+<meta charset="UTF-8">
+<meta name="google" content="notranslate">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#F5A623">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png?v=2">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180x180.png?v=2">
+<title>ShopBill Pro — AI Website Builder</title>
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Noto+Sans:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+<script src="lang.js"></script>
+<script src="lib/sidebar-engine.js"></script>
+
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:'Noto Sans','Noto Sans Devanagari',sans-serif;-webkit-font-smoothing:antialiased;overscroll-behavior:none}
+:root{--acc:#F5A623;--acc2:#EF4444;--acc3:#10B981;--bg:#0A0A12;--surf:#13131C;--surf2:#1C1C28;--surf3:#252534;--bord:#2A2A3A;--text:#F0EFF8;--t2:#8A8AA8;--t3:#4A4A60;--font-h:'Outfit',sans-serif;--rs:12px;--rs2:18px;--tr:.18s ease}
+[data-theme="light"]{--bg:#F0EEFF;--surf:#FFF;--surf2:#F5F2FF;--surf3:#EDE9FF;--bord:#DDD8F5;--text:#0F0E18;--t2:#5E5A7A;--t3:#A09CC0}
+body{background:var(--bg);color:var(--text)}
+#app{display:flex;flex-direction:column;min-height:100vh}
+
+/* topbar */
+.tb{display:flex;align-items:center;gap:10px;padding:14px 16px;background:var(--surf);border-bottom:1px solid var(--bord);position:sticky;top:0;z-index:50}
+.tb-back{width:36px;height:36px;border-radius:10px;background:var(--surf2);border:1px solid var(--bord);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text);font-size:18px}
+.tb-title{font-family:var(--font-h);font-weight:700;font-size:17px;flex:1}
+.tb-badge{padding:4px 10px;border-radius:8px;background:var(--acc);color:#fff;font-size:11px;font-weight:700;letter-spacing:.3px}
+.tb-live{padding:6px 12px;border-radius:8px;background:var(--acc3);color:#fff;font-size:12px;font-weight:600;text-decoration:none;display:none}
+
+/* content */
+.wrap{flex:1;padding:16px 14px 80px;max-width:1200px;width:100%;margin:0 auto}
+.plan-info{font-size:13px;color:var(--t2);padding:10px 14px;background:var(--surf2);border-radius:10px;margin-bottom:14px;border:1px solid var(--bord);text-align:center}
+
+/* alert */
+.wb-alert{padding:12px 14px;border-radius:10px;margin-bottom:14px;font-size:13.5px;font-weight:500;display:none}
+.wb-alert.success{background:rgba(16,185,129,.15);color:var(--acc3);border:1px solid rgba(16,185,129,.3)}
+.wb-alert.error{background:rgba(239,68,68,.15);color:#FCA5A5;border:1px solid rgba(239,68,68,.3)}
+.wb-alert.info{background:rgba(245,166,35,.12);color:var(--acc);border:1px solid rgba(245,166,35,.25)}
+
+/* form layout */
+.wb-form-wrapper{display:grid;grid-template-columns:1fr;gap:18px}
+@media(min-width:900px){.wb-form-wrapper{grid-template-columns:1.3fr 1fr}}
+.wb-card{background:var(--surf);border:1px solid var(--bord);border-radius:var(--rs2);padding:18px}
+.wb-form-left,.wb-preview{background:var(--surf);border:1px solid var(--bord);border-radius:var(--rs2);padding:18px}
+
+/* form fields */
+.wb-form-group{margin-bottom:18px}
+.wb-label{display:block;font-weight:600;margin-bottom:6px;font-size:13.5px}
+.wb-label span{color:var(--acc2)}
+.wb-helper{font-size:11.5px;color:var(--t3);margin-top:4px}
+.wb-input,.wb-select,.wb-textarea{width:100%;padding:11px 13px;border:1px solid var(--bord);border-radius:10px;background:var(--surf2);color:var(--text);font:inherit;font-size:14px;transition:border-color var(--tr)}
+.wb-textarea{min-height:80px;resize:vertical}
+.wb-input:focus,.wb-select:focus,.wb-textarea:focus{outline:none;border-color:var(--acc)}
+
+/* radio chips */
+.wb-radio-group{display:flex;flex-wrap:wrap;gap:8px}
+.wb-radio-option{flex:1;min-width:80px;position:relative;cursor:pointer}
+.wb-radio-option input{position:absolute;opacity:0;pointer-events:none}
+.wb-radio-option span{display:block;text-align:center;padding:10px 8px;border:1.5px solid var(--bord);border-radius:10px;background:var(--surf2);font-size:13px;font-weight:500;transition:all var(--tr)}
+.wb-radio-option input:checked+span{border-color:var(--acc);background:rgba(245,166,35,.12);color:var(--acc);font-weight:600}
+
+/* color palette */
+.wb-recommendation{font-size:12.5px;color:var(--t2);background:var(--surf2);padding:9px 12px;border-radius:8px;margin-bottom:12px;border:1px dashed var(--bord)}
+.wb-color-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+@media(max-width:600px){.wb-color-grid{display:none}}
+.wb-color-carousel{display:none;overflow-x:auto;gap:8px;padding-bottom:4px;-webkit-overflow-scrolling:touch}
+@media(max-width:600px){.wb-color-carousel{display:flex}}
+.wb-color-carousel .wb-color-option{flex:0 0 80px}
+
+.wb-color-option{cursor:pointer;position:relative;padding:6px;border:2px solid transparent;border-radius:10px;transition:all var(--tr)}
+.wb-color-option input{position:absolute;opacity:0;pointer-events:none}
+.wb-color-option:hover{background:var(--surf2)}
+.wb-color-option.selected{border-color:var(--acc);background:rgba(245,166,35,.1)}
+.wb-color-option.recommended::after{content:'★';position:absolute;top:2px;right:4px;color:var(--acc);font-size:11px}
+.wb-color-swatch{width:100%;aspect-ratio:1;border-radius:8px;border:1px solid var(--bord)}
+.wb-color-name{font-size:10.5px;text-align:center;margin-top:4px;color:var(--t2);font-weight:500}
+.wb-color-info{margin-top:10px;font-size:12.5px;color:var(--t2);padding:8px 10px;background:var(--surf2);border-radius:8px;min-height:42px}
+
+/* buttons */
+.wb-btn-group{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap}
+.wb-btn{flex:1;min-width:120px;padding:13px 18px;border-radius:10px;font-weight:600;font-size:14px;cursor:pointer;border:none;transition:all var(--tr)}
+.wb-btn-primary{background:var(--acc);color:#fff}
+.wb-btn-primary:hover{filter:brightness(1.1)}
+.wb-btn-primary:disabled{opacity:.5;cursor:not-allowed}
+.wb-btn-secondary{background:var(--surf2);color:var(--text);border:1px solid var(--bord)}
+.wb-btn-secondary:hover{background:var(--surf3)}
+
+/* preview */
+.wb-preview{position:sticky;top:80px;align-self:start}
+.wb-preview h3{font-size:13px;color:var(--t2);margin-bottom:12px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.wb-preview-inner{border-radius:14px;padding:30px 20px;color:#fff;min-height:280px;display:flex;flex-direction:column;justify-content:space-between;transition:background .25s ease}
+.wb-preview-inner h2{font-family:var(--font-h);font-size:22px;font-weight:800;margin-bottom:8px;text-shadow:0 1px 2px rgba(0,0,0,.15)}
+.wb-preview-inner p{font-size:13.5px;opacity:.95;line-height:1.5}
+.wb-preview-buttons{display:flex;gap:8px;margin-top:18px}
+.wb-preview-btn{padding:8px 14px;border-radius:8px;background:#fff;color:var(--acc);border:none;font-size:12.5px;font-weight:600;cursor:default}
+.wb-preview-info{margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.25);font-size:11.5px}
+.wb-preview-label{opacity:.8;margin-bottom:3px}
+
+/* tier restriction */
+.wb-tier-restriction{padding:14px;background:rgba(245,166,35,.1);border:1.5px solid var(--acc);border-radius:12px;margin-top:14px;text-align:center;font-size:13px}
+.wb-tier-restriction a{color:var(--acc);font-weight:600;text-decoration:none}
+
+/* loading */
+.wb-loading{position:fixed;inset:0;background:rgba(0,0,0,.65);display:none;align-items:center;justify-content:center;z-index:1000;flex-direction:column;gap:14px}
+.wb-loading.active{display:flex}
+.wb-loading-text{color:#fff;font-size:14px;text-align:center;max-width:280px}
+.wb-spinner{width:48px;height:48px;border:4px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* bilingual — driven by lang.js (sbp_lang localStorage) */
+.lang-hi{display:none}
+html[lang="hi"] .lang-en, body.lang-hi .lang-en{display:none}
+html[lang="hi"] .lang-hi, body.lang-hi .lang-hi{display:inline}
+</style>
 </head>
-<body data-theme="light">
+<body data-theme="dark">
 
-<div class="container">
-  <div class="wb-header">
-    <h1>✨ Create Your AI Website</h1>
-    <span class="wb-badge" id="tier-badge">FREE</span>
-  </div>
-  <p class="wb-subtext" id="plan-info">Your plan: Free (1 page, no regenerations)</p>
+<div id="app">
 
-  <div class="wb-alert" id="alert-message"></div>
-
-  <form id="website-builder-form" class="wb-form-wrapper">
-    <!-- LEFT SIDE: FORM -->
-    <div class="wb-form-left">
-
-      <!-- Step 1: Shop Details -->
-      <div class="wb-form-group">
-        <label class="wb-label">Shop Name <span>*</span></label>
-        <input type="text" id="shop-name" class="wb-input" placeholder="Your shop name" maxlength="100" required>
-        <div class="wb-helper">Auto-filled from your shop details</div>
-      </div>
-
-      <div class="wb-form-group">
-        <label class="wb-label">Business Type <span>*</span></label>
-        <select id="business-type" class="wb-select" required>
-          <option value="">Select your business type</option>
-          <option value="retail">Retail Shop</option>
-          <option value="food">Food & Restaurant</option>
-          <option value="salon">Salon & Beauty</option>
-          <option value="hospitality">Hotel & Hospitality</option>
-          <option value="healthcare">Healthcare & Medical</option>
-          <option value="services">Services & Plumbing</option>
-          <option value="education">Education & Courses</option>
-          <option value="online_brand">Online Brand (D2C)</option>
-        </select>
-      </div>
-
-      <!-- Step 2: Content -->
-      <div class="wb-form-group">
-        <label class="wb-label">Website Headline <span>*</span></label>
-        <input type="text" id="website-headline" class="wb-input" placeholder="Your main headline" maxlength="100" required>
-        <div class="wb-helper">This appears on your homepage</div>
-      </div>
-
-      <div class="wb-form-group">
-        <label class="wb-label">Website Description <span>*</span></label>
-        <textarea id="website-description" class="wb-textarea" placeholder="Brief description of your business..." maxlength="200" required></textarea>
-        <div class="wb-helper">Max 200 characters</div>
-      </div>
-
-      <!-- Step 3: Design -->
-      <div class="wb-form-group">
-        <label class="wb-label">Design Style <span>*</span></label>
-        <div class="wb-radio-group">
-          <label class="wb-radio-option">
-            <input type="radio" name="design_style" value="modern" checked required>
-            <label>Modern</label>
-          </label>
-          <label class="wb-radio-option">
-            <input type="radio" name="design_style" value="elegant" required>
-            <label>Elegant</label>
-          </label>
-          <label class="wb-radio-option">
-            <input type="radio" name="design_style" value="playful" required>
-            <label>Playful</label>
-          </label>
-          <label class="wb-radio-option">
-            <input type="radio" name="design_style" value="minimalist" required>
-            <label>Minimalist</label>
-          </label>
-        </div>
-      </div>
-
-      <!-- Step 4: Colors (18 Palette) -->
-      <div class="wb-form-group">
-        <label class="wb-label">Color Scheme <span>*</span></label>
-        <div class="wb-recommendation" id="color-recommendation">
-          Select a color for your website
-        </div>
-
-        <!-- Desktop Grid -->
-        <div class="wb-color-grid" id="color-grid-desktop"></div>
-
-        <!-- Mobile Carousel -->
-        <div class="wb-color-carousel" id="color-carousel-mobile"></div>
-
-        <div class="wb-color-info" id="color-info">
-          Select a color to see details
-        </div>
-      </div>
-
-      <!-- Form Buttons -->
-      <div class="wb-btn-group">
-        <button type="button" class="wb-btn wb-btn-secondary" onclick="window.history.back()">← Back</button>
-        <button type="submit" class="wb-btn wb-btn-primary" id="submit-btn">
-          Generate Website ✨
-        </button>
-      </div>
-
+  <!-- Topbar -->
+  <div class="tb">
+    <a class="tb-back" href="dashboard.html" aria-label="Back">←</a>
+    <div class="tb-title">
+      <span class="lang-en">✨ AI Website Builder</span>
+      <span class="lang-hi">✨ AI वेबसाइट बिल्डर</span>
     </div>
-
-    <!-- RIGHT SIDE: LIVE PREVIEW -->
-    <div class="wb-preview">
-      <h3 style="margin-bottom: 16px; font-size: 14px; color: var(--text-secondary);">Live Preview</h3>
-      <div class="wb-preview-inner" id="preview-inner" style="background: #FF6B35;">
-        <div class="wb-preview-content">
-          <h2 id="preview-name">Your Shop</h2>
-          <p id="preview-headline">Your website headline appears here</p>
-        </div>
-        <div class="wb-preview-buttons">
-          <button type="button" class="wb-preview-btn">Book</button>
-          <button type="button" class="wb-preview-btn">Info</button>
-          <button type="button" class="wb-preview-btn">Contact</button>
-        </div>
-        <div class="wb-preview-info">
-          <div class="wb-preview-label">Selected Colors:</div>
-          <div id="preview-colors">Orange + Navy</div>
-        </div>
-      </div>
-    </div>
-
-  </form>
-
-  <!-- Tier Restriction Message -->
-  <div class="wb-tier-restriction" id="tier-restriction" style="display: none;">
-    <strong>Upgrade to unlock more features</strong><br>
-    Pro: 2 pages + 2 regenerations/month • Business: Up to 10 pages + 5 regenerations/month<br>
-    <a href="#upgrade">View Plans →</a>
+    <span class="tb-badge" id="tier-badge">FREE</span>
+    <a id="view-live" class="tb-live" target="_blank" rel="noopener">View Live ↗</a>
   </div>
 
+  <div class="wrap">
+
+    <div class="plan-info" id="plan-info">Loading…</div>
+
+    <div class="wb-alert" id="alert-message"></div>
+
+    <form id="website-builder-form" class="wb-form-wrapper">
+
+      <!-- LEFT — form -->
+      <div class="wb-form-left">
+
+        <div class="wb-form-group">
+          <label class="wb-label">
+            <span class="lang-en">Shop Name <span>*</span></span>
+            <span class="lang-hi">दुकान का नाम <span>*</span></span>
+          </label>
+          <input type="text" id="shop-name" class="wb-input" maxlength="100" required>
+          <div class="wb-helper">
+            <span class="lang-en">Auto-filled from your shop details</span>
+            <span class="lang-hi">आपकी दुकान से ऑटो-भरा गया</span>
+          </div>
+        </div>
+
+        <div class="wb-form-group">
+          <label class="wb-label">
+            <span class="lang-en">Business Type <span>*</span></span>
+            <span class="lang-hi">व्यवसाय प्रकार <span>*</span></span>
+          </label>
+          <select id="business-type" class="wb-select" required>
+            <option value="">— Select —</option>
+            <option value="retail">Retail Shop / दुकान</option>
+            <option value="food">Food &amp; Restaurant / खाना</option>
+            <option value="salon">Salon &amp; Beauty / सैलून</option>
+            <option value="hospitality">Hotel / होटल</option>
+            <option value="healthcare">Healthcare / स्वास्थ्य</option>
+            <option value="services">Services / सेवाएँ</option>
+            <option value="education">Education / शिक्षा</option>
+            <option value="online_brand">Online Brand / ऑनलाइन</option>
+          </select>
+        </div>
+
+        <div class="wb-form-group">
+          <label class="wb-label">
+            <span class="lang-en">Website Headline <span>*</span></span>
+            <span class="lang-hi">वेबसाइट हेडलाइन <span>*</span></span>
+          </label>
+          <input type="text" id="website-headline" class="wb-input" placeholder="e.g. Fresh groceries, daily home delivery" maxlength="100" required>
+          <div class="wb-helper">
+            <span class="lang-en">Appears on your homepage</span>
+            <span class="lang-hi">होमपेज पर दिखेगा</span>
+          </div>
+        </div>
+
+        <div class="wb-form-group">
+          <label class="wb-label">
+            <span class="lang-en">Description <span>*</span></span>
+            <span class="lang-hi">विवरण <span>*</span></span>
+          </label>
+          <textarea id="website-description" class="wb-textarea" maxlength="200" required placeholder="Brief description of your business…"></textarea>
+          <div class="wb-helper">
+            <span class="lang-en">Max 200 characters</span>
+            <span class="lang-hi">अधिकतम 200 अक्षर</span>
+          </div>
+        </div>
+
+        <div class="wb-form-group">
+          <label class="wb-label">
+            <span class="lang-en">Design Style <span>*</span></span>
+            <span class="lang-hi">डिज़ाइन स्टाइल <span>*</span></span>
+          </label>
+          <div class="wb-radio-group">
+            <label class="wb-radio-option">
+              <input type="radio" name="design_style" value="modern" checked>
+              <span>Modern</span>
+            </label>
+            <label class="wb-radio-option">
+              <input type="radio" name="design_style" value="elegant">
+              <span>Elegant</span>
+            </label>
+            <label class="wb-radio-option">
+              <input type="radio" name="design_style" value="playful">
+              <span>Playful</span>
+            </label>
+            <label class="wb-radio-option">
+              <input type="radio" name="design_style" value="minimalist">
+              <span>Minimal</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="wb-form-group">
+          <label class="wb-label">
+            <span class="lang-en">Color Scheme <span>*</span></span>
+            <span class="lang-hi">रंग योजना <span>*</span></span>
+          </label>
+          <div class="wb-recommendation" id="color-recommendation">…</div>
+          <div class="wb-color-grid" id="color-grid-desktop"></div>
+          <div class="wb-color-carousel" id="color-carousel-mobile"></div>
+          <div class="wb-color-info" id="color-info">—</div>
+        </div>
+
+        <div class="wb-btn-group">
+          <button type="button" class="wb-btn wb-btn-secondary" id="save-draft-btn">
+            <span class="lang-en">Save Draft</span>
+            <span class="lang-hi">ड्राफ़्ट सेव</span>
+          </button>
+          <button type="submit" class="wb-btn wb-btn-primary" id="submit-btn">
+            <span class="lang-en">Generate with AI ✨</span>
+            <span class="lang-hi">AI से बनाओ ✨</span>
+          </button>
+        </div>
+
+        <div class="wb-tier-restriction" id="tier-restriction" style="display:none">
+          <div id="tier-restriction-text"></div>
+          <div style="margin-top:8px"><a href="settings.html#plan-section">View Plans →</a></div>
+        </div>
+
+        <div id="publish-row" style="margin-top:14px;text-align:center">
+          <button type="button" class="wb-btn wb-btn-secondary" id="publish-toggle">Publish</button>
+        </div>
+
+      </div>
+
+      <!-- RIGHT — live preview -->
+      <div class="wb-preview">
+        <h3>
+          <span class="lang-en">Live Preview</span>
+          <span class="lang-hi">लाइव प्रिव्यू</span>
+        </h3>
+        <div class="wb-preview-inner" id="preview-inner" style="background:#FF6B35">
+          <div>
+            <h2 id="preview-name">Your Shop</h2>
+            <p id="preview-headline">Your website headline appears here</p>
+          </div>
+          <div class="wb-preview-buttons">
+            <button type="button" class="wb-preview-btn">Book</button>
+            <button type="button" class="wb-preview-btn">Info</button>
+            <button type="button" class="wb-preview-btn">Call</button>
+          </div>
+          <div class="wb-preview-info">
+            <div class="wb-preview-label">
+              <span class="lang-en">Selected Colors:</span>
+              <span class="lang-hi">चुने रंग:</span>
+            </div>
+            <div id="preview-colors">Orange + Navy</div>
+          </div>
+        </div>
+      </div>
+
+    </form>
+
+  </div>
 </div>
 
-<!-- Loading Overlay -->
 <div class="wb-loading" id="loading-overlay">
   <div class="wb-spinner"></div>
+  <div class="wb-loading-text">
+    <span class="lang-en">Generating your website with AI…<br>This takes 15–30 seconds.</span>
+    <span class="lang-hi">AI से वेबसाइट बन रही है…<br>15–30 सेकंड लगेंगे।</span>
+  </div>
 </div>
 
-<script src="/lib/website-builder.js"></script>
+<script>
+// ── Supabase init (REQUIRED — match every other SBP page) ──────────────
+const SB_URL='https://jfqeirfrkjdkqqixivru.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmcWVpcmZya2pka3FxaXhpdnJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzNzQ4MzgsImV4cCI6MjA4OTk1MDgzOH0.akd4E0nil8ypLR4WOykkeYIL8g4uuNU6XdSVh_Y1utk';
+const _sb=supabase.createClient(SB_URL,SB_KEY);
+window._sb=_sb;
+</script>
+<script src="lib/website-builder.js"></script>
 
 </body>
 </html>

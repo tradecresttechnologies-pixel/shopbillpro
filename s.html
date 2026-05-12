@@ -304,6 +304,26 @@ function renderEmpty(title, msg, ctaText) {
 }
 
 function renderShop(data) {
+  // ─── AI Website fork (Phase 5a v2) ──────────────────────────────────
+  // If the shopkeeper has published an AI-generated website, render it
+  // inside a sandboxed iframe and short-circuit the default renderer.
+  if (data.ai_mode === true && data.ai_html && typeof data.ai_html === 'string' && data.ai_html.length > 50) {
+    document.title = (data.shop_name || 'Shop') + ' — ShopBill Pro';
+    const root = document.getElementById('app') || document.body;
+    // Clear loader / any existing markup
+    root.innerHTML = '';
+    const ifr = document.createElement('iframe');
+    ifr.style.cssText = 'border:0;width:100vw;height:100vh;display:block';
+    ifr.setAttribute('sandbox', 'allow-same-origin allow-popups allow-popups-to-escape-sandbox');
+    ifr.setAttribute('referrerpolicy', 'no-referrer');
+    ifr.srcdoc = data.ai_html;
+    root.appendChild(ifr);
+    // Still log the page view (RPC was already called; safe to call again is_idempotent)
+    try { sb.rpc('sbp_log_shop_page_view', { p_slug: data.slug }); } catch(e){}
+    return;
+  }
+  // ─── End AI fork. Existing renderer follows. ────────────────────────
+
   const c = data.content || {};
   const slug = data.slug;
   const shopName = c.name || data.shop_name || 'Shop';
