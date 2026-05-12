@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>022E Sidebar test harness</title>
+<style>
+  body{margin:0;font-family:sans-serif;background:#0A0E1A;color:#F0EFF8;display:flex}
+  #dsb{width:240px;min-height:100vh;background:#13182A;border-right:1px solid #2A3045;padding:12px;flex-shrink:0}
+  .dsb-logo{display:flex;align-items:center;gap:8px;padding:10px 6px;margin-bottom:8px;font-weight:800}
+  .dsb-brand{font-family:Outfit,sans-serif}
+  .dsb-nav{display:flex;flex-direction:column;gap:2px}
+  .dsb-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;color:inherit;text-decoration:none;font-size:14px;transition:.15s}
+  .dsb-item:hover{background:rgba(255,255,255,.04)}
+  .dsb-item.active{background:rgba(245,166,35,.18);color:#F5A623}
+  .dsb-ic{font-size:18px;width:24px;text-align:center}
+  .dsb-footer{margin-top:auto;padding:10px 6px;font-size:11px;color:#8A8AA8;border-top:1px solid #2A3045}
+  .dsb-badge{margin-left:auto;font-size:9px;font-weight:800;background:linear-gradient(135deg,#F59E0B,#EF4444);color:#fff;border-radius:4px;padding:2px 5px}
+  main{padding:24px;flex:1;line-height:1.6}
+  button{margin:4px;padding:8px 12px;background:#F5A623;color:#0A0E1A;border:none;border-radius:8px;font-weight:700;cursor:pointer}
+  .lang-en{display:inline}
+  .lang-hi{display:none}
+  pre{background:#1B2138;padding:12px;border-radius:8px;overflow:auto;font-size:12px}
+</style>
+</head>
+<body>
+<div id="dsb"></div>
+<main>
+  <h1>022E Sidebar Harness</h1>
+  <p>Role state: <strong id="role-state">?</strong></p>
+  <p>Visible primary items: <strong id="primary-count">—</strong> · "More" group items: <strong id="more-count">—</strong></p>
+  <p>
+    <button onclick="setOwner()">Set Owner</button>
+    <button onclick="setStaff()">Set Staff (Cashier)</button>
+    <button onclick="rerender()">Re-render</button>
+    <button onclick="toggleMore()">Toggle "More" (simulates click)</button>
+  </p>
+  <p>Expectations:
+    <ul>
+      <li>As Owner: 4 items in "More" group (Team, Authorized Users, Audit Log, Plans)</li>
+      <li>As Staff: 0 items in "More" group → group hidden entirely</li>
+      <li>Click "More" toggle → arrow rotates 90°, list slides into view</li>
+      <li>localStorage <code>sbp_sidebar_more_open</code> persists between renders</li>
+    </ul>
+  </p>
+  <h3>localStorage state</h3>
+  <pre id="ls-dump">—</pre>
+</main>
+
+<script src="lib/sidebar-engine.js"></script>
+<script>
+// Stub the shop so _shop() returns something
+localStorage.setItem('sbp_shop', JSON.stringify({ id: 'test-shop', shop_type: 'standard' }));
+
+function setOwner(){ localStorage.removeItem('sbp_is_staff'); rerender(); }
+function setStaff(){ localStorage.setItem('sbp_is_staff','1'); rerender(); }
+function toggleMore(){ SBPSidebar._toggleMore(); refreshStats(); }
+
+async function rerender(){
+  document.getElementById('dsb').innerHTML = '';
+  // Force a fresh render — the SBPSidebar render() will fetch via _fetchModules.
+  // Since there's no _sb client, it falls back to DEFAULT_FALLBACK.
+  await SBPSidebar.render({ container:'#dsb', layout:'desktop', currentPage:'dashboard' });
+  refreshStats();
+}
+
+function refreshStats(){
+  const isStaff = localStorage.getItem('sbp_is_staff') === '1';
+  document.getElementById('role-state').textContent = isStaff ? 'Staff (cashier)' : 'Owner';
+  const grp = document.getElementById('dsb-more-group');
+  const moreCount = grp ? grp.querySelectorAll('.dsb-item').length : 0;
+  const primaryCount = document.querySelectorAll('.dsb-nav > .dsb-item').length;
+  document.getElementById('primary-count').textContent = primaryCount;
+  document.getElementById('more-count').textContent = moreCount;
+  const ls = {
+    sbp_is_staff: localStorage.getItem('sbp_is_staff'),
+    sbp_sidebar_more_open: localStorage.getItem('sbp_sidebar_more_open'),
+    sbp_lang: localStorage.getItem('sbp_lang'),
+    sbp_theme: localStorage.getItem('sbp_theme')
+  };
+  document.getElementById('ls-dump').textContent = JSON.stringify(ls, null, 2);
+}
+
+// Force desktop layout (matches inner width check)
+Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1400 });
+
+// Boot
+rerender();
+</script>
+</body>
+</html>
