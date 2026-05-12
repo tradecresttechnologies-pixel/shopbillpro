@@ -25,6 +25,7 @@ function isFree(){return _sbpPlanInfo().plan==='free'}
 <script src="lang.js"></script>
 <script src="lib/sidebar-engine.js"></script>
 <script src="lib/hospitality.js"></script>
+<script src="lib/auth-pin.js"></script>
 <script src="conversion.js"></script>
 <script>
 const SB_URL='https://jfqeirfrkjdkqqixivru.supabase.co';
@@ -402,6 +403,27 @@ function fmtDate(iso){if(!iso)return '—';try{return new Date(iso+'T00:00:00').
 function fmtDateShort(iso){if(!iso)return '—';try{return new Date(iso+'T00:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short',timeZone:'Asia/Kolkata'})}catch(e){return '—'}}
 function todayISO(){const d=new Date();const y=d.getFullYear();const m=String(d.getMonth()+1).padStart(2,'0');const dd=String(d.getDate()).padStart(2,'0');return `${y}-${m}-${dd}`}
 function tomorrowISO(){const d=new Date();d.setDate(d.getDate()+1);const y=d.getFullYear();const m=String(d.getMonth()+1).padStart(2,'0');const dd=String(d.getDate()).padStart(2,'0');return `${y}-${m}-${dd}`}
+
+/* ── Auth-pin helper for high-risk RPCs (022D-B-3b) ──────────────────
+   Optimistic-retry-with-PIN pattern: tries the RPC without a PIN
+   first; if the server returns `requires_authorization`, shows the
+   SBPAuth modal and retries with the entered PIN + reason.
+   When the shop's require_auth_for_high_risk is false (default),
+   first call succeeds and no modal is shown. See folio.html for the
+   same helper.
+─────────────────────────────────────────────────────────────────── */
+async function _callWithAuth(meta, caller){
+  let res = await caller(null, null);
+  if(res && res.ok === false && res.error === 'requires_authorization'){
+    if(typeof window.SBPAuth === 'undefined' || !window.SBPAuth.requirePIN){
+      toast('Manager PIN required, but auth-pin.js not loaded','e');
+      return res;
+    }
+    const auth = await window.SBPAuth.requirePIN(meta);
+    res = await caller(auth.pin, auth.reason || null);
+  }
+  return res;
+}
 
 async function init(){
   if(window.SBPSidebar){
@@ -830,14 +852,32 @@ async function doCheckIn(){
 }
 
 async function doCancel(){
-  const reason = prompt('Reason for cancellation (optional):');
-  if(reason === null) return;
-  const res=await SBPHotel.bookings.cancel(_shopId, _currentBooking.id, reason);
-  if(!res.ok){toast(res.error||'Cancel failed','e');return}
-  toast('❌ Cancelled','s');
-  closeModal('det-modal');
-  await loadBookings();
-  const sm=await SBPHotel.summary(_shopId); if(sm.ok)_summary=sm; renderSummary();
+  if(!confirm('Cancel this booking?')) return;
+  try {
+    const res = await _callWithAuth(
+      {
+        action: 'booking.cancel',
+        detail: 'Authorize cancellation of this booking',
+        reason_hint: 'Reason for cancellation (guest no-show, double-booking, etc.)'
+      },
+      (authPin, reason) => SBPHotel.bookings.cancel(_shopId, _currentBooking.id, reason, authPin)
+    );
+    if(!res || !res.ok){
+      toast(res?.error || 'Cancel failed','e');
+      return;
+    }
+    toast('❌ Cancelled','s');
+    closeModal('det-modal');
+    await loadBookings();
+    const sm=await SBPHotel.summary(_shopId); if(sm.ok)_summary=sm; renderSummary();
+  } catch(e){
+    if(e && e.message === 'cancelled') return;
+    if(e && e.message === 'too_many_attempts'){
+      toast('Too many wrong PIN attempts','e');
+      return;
+    }
+    toast('Cancel failed: '+(e.message||'unknown'),'e');
+  }
 }
 
 async function doCheckOut(){
