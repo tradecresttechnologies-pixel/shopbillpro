@@ -76,16 +76,6 @@ body{background:var(--bg);color:var(--text)}
 .bill-action-btn{transition:var(--tr)}
 @media print{.bill-action-btn,.no-print{display:none!important}}
 
-/* Manager PIN Modal */
-.pin-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9500;display:none;align-items:center;justify-content:center;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
-.pin-overlay.open{display:flex}
-.pin-box{background:var(--surf);border-radius:var(--rs2);padding:24px;width:min(340px,90vw);text-align:center;animation:slideUp .28s cubic-bezier(.4,0,.2,1)}
-.pin-title{font-family:var(--font-h);font-size:16px;font-weight:800;margin-bottom:6px;color:var(--acc2)}
-.pin-sub{font-size:12px;color:var(--t2);margin-bottom:16px}
-.pin-input{width:100%;padding:14px;border-radius:var(--rs);border:1.5px solid var(--bord);background:var(--surf2);color:var(--text);font-size:22px;text-align:center;letter-spacing:12px;outline:none;font-family:var(--font-h);font-weight:800;-webkit-text-security:disc;margin-bottom:12px}
-.pin-input:focus{border-color:var(--acc)}
-.pin-error{font-size:11px;color:var(--acc2);margin-bottom:10px;min-height:16px}
-.pin-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 #app{display:flex;flex-direction:column;height:100vh;overflow:hidden}
 .sb{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
 
@@ -473,21 +463,6 @@ html,body{height:100%;overflow:hidden}
   </div>
 </div>
 
-<!-- Manager PIN Modal -->
-<div class="pin-overlay" id="pin-modal">
-  <div class="pin-box">
-    <div class="pin-title">🔒 Manager Access Required</div>
-    <div class="pin-sub">Enter Manager PIN to proceed with this action</div>
-    <input type="password" class="pin-input" id="pin-input" maxlength="6" placeholder="••••" inputmode="numeric" pattern="[0-9]*" autocomplete="off" onkeydown="if(event.key==='Enter')verifyPIN()">
-    <div class="pin-error" id="pin-error"></div>
-    <div class="pin-btns">
-      <button class="btn-sec" onclick="closePINModal()">Cancel</button>
-      <button class="btn-pri" style="padding:12px" onclick="verifyPIN()">🔓 Verify</button>
-    </div>
-    <div style="margin-top:12px;font-size:10px;color:var(--t3)">Default PIN: 1234 · Change in Settings</div>
-  </div>
-</div>
-
 <div id="toast-container"></div>
 
 <script>
@@ -520,8 +495,9 @@ let _online=navigator.onLine;
 //      audit_log entry — all server-side.
 //   3. Updates local cache to match the server response.
 // Requires online connectivity (security-critical actions don't run
-// offline). The legacy local requirePIN() below is kept for any
-// non-migrated callers but should not be used for new actions.
+// offline). The legacy client-side PIN compare was fully removed in
+// batch 022D-F (12 May 2026) — all 6 sensitive actions in this file
+// now go through this function.
 // ══════════════════════════════════════════════════════════════════
 async function _doPinGatedRpc(rpcName, rpcParams, opts){
   opts = opts || {};
@@ -582,75 +558,6 @@ async function _doPinGatedRpc(rpcName, rpcParams, opts){
   }
 }
 
-// ══ MANAGER PIN SYSTEM (Multi-Manager) — LEGACY ══
-// Kept for backward compat. New actions use _doPinGatedRpc above.
-let _pinCallback=null;
-let _pinAttempts=0;
-let _lastPinUser=null; // tracks which manager verified
-
-function getManagerPINs(){
-  // Returns array of {name, pin, role, id}
-  const shopUsers=JSON.parse(localStorage.getItem('sbp_shop_users')||'[]');
-  const pins=shopUsers.filter(s=>s.pin&&s.pin_active!==false&&String(s.role||'').toLowerCase()==='manager')
-    .map(s=>({name:s.name,pin:s.pin,role:s.role,id:s.id}));
-  // Always include owner PIN (primary manager)
-  const ownerPin=localStorage.getItem('sbp_manager_pin');
-  if(ownerPin){
-    const shop=JSON.parse(localStorage.getItem('sbp_shop')||'{}');
-    pins.unshift({name:shop.owner_name||'Owner',pin:ownerPin,role:'Owner',id:'owner'});
-  }
-  return pins;
-}
-
-function requirePIN(action,callback){
-  // Check if any PIN is configured
-  const pins=getManagerPINs();
-  if(!pins.length){
-    if(confirm('⚠️ No Manager PIN has been set yet.\n\nYou must set a Manager PIN to authorize sensitive actions like voiding bills or deleting items.\n\nSet one now in Team & Users?')){
-      window.location.href='team.html';
-    }
-    return;
-  }
-  _pinCallback=callback;
-  _pinAttempts=0;
-  _lastPinUser=null;
-  document.getElementById('pin-error').textContent='';
-  document.getElementById('pin-input').value='';
-  document.getElementById('pin-modal').classList.add('open');
-  setTimeout(()=>document.getElementById('pin-input').focus(),200);
-}
-
-function verifyPIN(){
-  const entered=document.getElementById('pin-input').value;
-  const pins=getManagerPINs();
-  const match=pins.find(p=>p.pin===entered);
-  if(match){
-    _lastPinUser=match;
-    const cb=_pinCallback;
-    closePINModal();
-    logAudit('pin_verified',{action:'manager_access',verified_by:match.name,role:match.role,staff_id:match.id});
-    if(cb)cb();
-  }else{
-    _pinAttempts++;
-    document.getElementById('pin-error').textContent='❌ Wrong PIN (Attempt '+_pinAttempts+'/5)';
-    document.getElementById('pin-input').value='';
-    document.getElementById('pin-input').focus();
-    if(_pinAttempts>=5){
-      closePINModal();
-      toast('🔒 Too many failed attempts. Try again later.','e');
-      logAudit('pin_failed',{attempts:_pinAttempts});
-      _pinCallback=null;
-    }
-  }
-}
-
-function closePINModal(){
-  document.getElementById('pin-modal').classList.remove('open');
-  _pinCallback=null;
-}
-
-// Helper: get name of last PIN-verified manager (for audit trail attribution)
-function getPinUser(){return _lastPinUser?_lastPinUser.name:(localStorage.getItem('sbp_role')||'Admin');}
 let _sessionTimeout=parseInt(localStorage.getItem('sbp_session_timeout')||'30');
 let _actTimer;
 
@@ -1333,56 +1240,6 @@ async function deleteItem(billId, itemIdx){
 
   openBillPreview(billId);
   toast('🗑️ ' + (item.item_name || 'Item') + ' removed', 'i');
-}
-
-// ── Recalculate Bill Totals ──
-function recalcBillTotals(b){
-  const items=(b.bill_items||[]).filter(it=>!it.voided);
-  const subtotal=items.reduce((s,it)=>s+(parseFloat(it.qty||1)*parseFloat(it.rate||0)),0);
-  const gstAmount=items.reduce((s,it)=>{
-    const lineAmt=parseFloat(it.qty||1)*parseFloat(it.rate||0);
-    return s+(lineAmt*parseFloat(it.gst_rate||0)/100);
-  },0);
-  const discount=parseFloat(b.discount||0);
-  const grandTotal=subtotal+gstAmount-discount;
-  const paid=parseFloat(b.paid_amount||0);
-  b.subtotal=subtotal;
-  b.gst_amount=gstAmount;
-  b.grand_total=Math.max(0,grandTotal);
-  b.balance_due=Math.max(0,grandTotal-paid);
-  if(b.balance_due<=0&&paid>0)b.status='Paid';
-  else if(paid>0)b.status='Partial';
-}
-
-// ══════════════════════════════════════════
-// AUDIT TRAIL
-// ══════════════════════════════════════════
-
-function logAudit(action,details){
-  const log=JSON.parse(localStorage.getItem('sbp_audit_log')||'[]');
-  const entry={
-    id:'aud_'+Date.now(),
-    action,
-    details,
-    user:getPinUser(),
-    timestamp:new Date().toISOString(),
-    shop_id:_shopId
-  };
-  log.unshift(entry);
-  // Keep last 500 entries
-  if(log.length>500)log.length=500;
-  localStorage.setItem('sbp_audit_log',JSON.stringify(log));
-  
-  // Also push to Supabase if online
-  if(_sb&&_online&&_shopId&&!String(entry.id).startsWith('local_')){
-    _sb.from('audit_log').insert({
-      shop_id:_shopId,
-      action,
-      details:JSON.stringify(details),
-      user_role:entry.user,
-      created_at:entry.timestamp
-    }).then(()=>{}).catch(()=>{});
-  }
 }
 
 function exportBills(){
