@@ -32,41 +32,118 @@
 window.SBPSidebar = (function() {
   'use strict';
 
-  // ── Vertical categories ────────────────────────────────────────────
-  // Single source of truth for which shop_type values count as
-  // "hospitality". Previously this list was duplicated inline in 4
-  // different `more_for_verticals` arrays (and was missing 5 of the 11
-  // hospitality sub-types — resort, guesthouse, service_apartment,
-  // hostel, dharamshala, boutique_hotel, camping — so those shops saw
-  // the retail-shaped sidebar by accident).
+  // ── Vertical taxonomy (single source of truth) ─────────────────────
+  // Maps every shop_type code to its macro_category. Mirrors the DB
+  // table sbp_business_categories (003_business_categories.sql +
+  // 015_hospitality.sql). The sidebar engine reads this map at runtime
+  // to apply per-vertical ordering (order_for_verticals) and Quick
+  // Action sets (in dashboard.html).
   //
-  // To add another hospitality sub-type: add it here. To add a whole
-  // new vertical category (food, salon, healthcare, ...): add a Set + a
-  // _isXxxShop helper + use order_for_verticals: { <category>: N } per
-  // catalog entry.
-  const HOSPITALITY_VERTICALS = new Set([
-    'hotel', 'homestay', 'pg_hostel', 'banquet', 'hospitality', 'day_room',
-    'resort', 'guesthouse', 'service_apartment', 'hostel', 'dharamshala',
-    'boutique_hotel', 'camping'
-  ]);
+  // To add a new shop_type:
+  //   1. Add the row in the sbp_business_categories migration
+  //   2. Add the same mapping here
+  //
+  // Cross-macro override: pg_hostel is DB-classified as 'property' but
+  // its daily workflow is hospitality (rooms, bookings, residents).
+  // We route it to 'hospitality' for sidebar purposes only.
+  const MACRO_BY_SHOP_TYPE = {
+    // retail (18) — default behavior, no order overrides applied
+    kirana: 'retail', dairy: 'retail', fruit_veg: 'retail',
+    bakery_retail: 'retail', pharmacy: 'retail', mobile_elec: 'retail',
+    garments: 'retail', jewellery: 'retail', furniture: 'retail',
+    hardware: 'retail', stationery: 'retail', footwear: 'retail',
+    gift_shop: 'retail', pet_shop: 'retail', plant_nursery: 'retail',
+    auto_parts: 'retail', tea_pan: 'retail', general_retail: 'retail',
+
+    // food (9) — Restaurants, cafes, QSR, tiffin etc.
+    restaurant: 'food', cafe: 'food', qsr: 'food', ice_cream: 'food',
+    cloud_kitchen: 'food', tiffin: 'food', catering: 'food',
+    bar_lounge: 'food', food_other: 'food',
+
+    // beauty (9) — Salon, spa, gym, yoga, tattoo
+    salon: 'beauty', spa: 'beauty', nail_beauty: 'beauty',
+    unisex_salon: 'beauty', wellness: 'beauty', gym: 'beauty',
+    yoga: 'beauty', sports_club: 'beauty', tattoo: 'beauty',
+
+    // healthcare (7) — Clinics, dentists, opticians, vets, labs
+    clinic: 'healthcare', dentist: 'healthcare', optician: 'healthcare',
+    vet: 'healthcare', lab: 'healthcare', physio: 'healthcare',
+    counselling: 'healthcare',
+
+    // education (7) — Coaching, art classes, libraries, online courses
+    coaching: 'education', art_class: 'education', online_course: 'education',
+    library: 'education', driving_school: 'education',
+    skill_training: 'education', personal_coach: 'education',
+
+    // services + specialized merged (16) — same daily flow (book → do → bill)
+    handyman: 'services', home_services: 'services', device_repair: 'services',
+    photographer: 'services', event_mgr: 'services', car_wash: 'services',
+    interior: 'services', agency_help: 'services', movers: 'services',
+    tailor: 'services', pet_groomer: 'services',
+    wedding_planner: 'services', dj_musician: 'services',
+    print_shop: 'services', travel_agent: 'services', cab_transport: 'services',
+
+    // wholesale (5) — B2B distributors, mandis, manufacturers
+    distributor: 'wholesale', mandi: 'wholesale', manufacturer: 'wholesale',
+    stockist: 'wholesale', importer: 'wholesale',
+
+    // online / D2C (4) — Online resellers, handmade, marketplaces
+    online_reseller: 'online', handmade: 'online',
+    digital_seller: 'online', marketplace: 'online',
+
+    // subscription (4) — Coworking, content, laundry, recurring fees
+    coworking: 'subscription', content_sub: 'subscription',
+    laundry_sub: 'subscription', fee_recurring: 'subscription',
+
+    // property (2) — Real estate, builders. pg_hostel routed to hospitality below.
+    real_estate: 'property', builder: 'property',
+
+    // hospitality (11 native + pg_hostel cross-routed = 12)
+    hotel: 'hospitality', homestay: 'hospitality', banquet: 'hospitality',
+    resort: 'hospitality', guesthouse: 'hospitality',
+    service_apartment: 'hospitality', hostel: 'hospitality',
+    dharamshala: 'hospitality', day_room: 'hospitality',
+    boutique_hotel: 'hospitality', camping: 'hospitality',
+    pg_hostel: 'hospitality',  // CROSS-MACRO: DB says property, behaves like hospitality
+  };
+
+  function _macroForShop(shopType) {
+    if (!shopType) return 'retail';
+    return MACRO_BY_SHOP_TYPE[shopType] || 'retail';
+  }
 
   function _isHospitalityShop(shopType) {
-    return HOSPITALITY_VERTICALS.has(shopType || '');
+    return _macroForShop(shopType) === 'hospitality';
   }
 
   // ── Universal core (always shown for every shop, every plan) ───
+  // order_for_verticals overrides the default `order` field when the
+  // shop's macro_category matches a key. Used to reshape the sidebar
+  // around each vertical's daily workflow without changing module
+  // visibility (the server's get_shop_modules RPC handles visibility).
   const UNIVERSAL_CORE = [
     { code: 'dashboard', href: 'dashboard.html', icon: '🏠', label_en: 'Home',     label_hi: 'होम',       order: 0 },
-    // For hospitality shops, Bills + New Bill push BELOW the daily-flow block
-    // (front-desk, rooms, bookings, folio at 5–18). The folio finalize flow is
-    // the primary billing path in a hotel; the bills list is reference, not action.
-    { code: 'bills',     href: 'bills.html',     icon: '🧾', label_en: 'Bills',    label_hi: 'बिल',       order: 10, order_for_verticals: { hospitality: 45 } },
-    { code: 'billing',   href: 'billing.html',   icon: '＋', label_en: 'New Bill', label_hi: 'नया बिल',   order: 20, isFab: true, order_for_verticals: { hospitality: 48 } },
-    { code: 'customers', href: 'customers.html', icon: '👥', label_en: 'Customers',label_hi: 'ग्राहक',    order: 30 },
-    { code: 'stock',     href: 'stock.html',     icon: '📦', label_en: 'Stock',    label_hi: 'स्टॉक',     order: 40, more_for_verticals: ['hotel','homestay','pg_hostel','banquet','hospitality','day_room'] },
+    // Bills/New Bill default to retail-flow (order 10/20 — top of list).
+    // For service-flow verticals (beauty/healthcare/education/services/subscription/property),
+    // billing is secondary to scheduling — push it below the daily-flow modules.
+    // For hospitality, the folio finalize flow is the primary billing path; bills list is reference.
+    { code: 'bills',     href: 'bills.html',     icon: '🧾', label_en: 'Bills',    label_hi: 'बिल',       order: 10,
+      order_for_verticals: { hospitality: 45, beauty: 30, healthcare: 35, education: 35, services: 30, subscription: 30, property: 30 } },
+    { code: 'billing',   href: 'billing.html',   icon: '＋', label_en: 'New Bill', label_hi: 'नया बिल',   order: 20, isFab: true,
+      order_for_verticals: { hospitality: 48, beauty: 35, healthcare: 40, education: 40, services: 35, subscription: 35, property: 35 } },
+    { code: 'customers', href: 'customers.html', icon: '👥', label_en: 'Customers',label_hi: 'ग्राहक',    order: 30,
+      // education uses Customers as Students — promote it. beauty/services keep default 30 which sits naturally.
+      order_for_verticals: { education: 5, subscription: 15, hospitality: 35, healthcare: 10, services: 15, property: 15, beauty: 20 } },
+    // Stock is irrelevant for service-flow verticals (no inventory in salons, clinics, schools, services).
+    // Pushed to "More" group via more_for_categories.
+    { code: 'stock',     href: 'stock.html',     icon: '📦', label_en: 'Stock',    label_hi: 'स्टॉक',     order: 40,
+      more_for_verticals: ['hotel','homestay','pg_hostel','banquet','hospitality','day_room'],
+      more_for_categories: ['hospitality','beauty','healthcare','education','services','subscription','property'] },
     { code: 'reports',   href: 'reports.html',   icon: '📊', label_en: 'Reports',  label_hi: 'रिपोर्ट',   order: 50 },
-    // BATCH 1B-C-Pilot: POS Admin + Bill Templates promoted to universal core (every shop has these)
-    { code: 'pos-admin', href: 'pos-admin.html', icon: '🛒', label_en: 'POS Admin', label_hi: 'POS एडमिन', order: 55, more_for_verticals: ['hotel','homestay','pg_hostel','banquet','hospitality','day_room'] },
+    // POS Admin: same — only retail/food/wholesale/online actually run a POS counter.
+    { code: 'pos-admin', href: 'pos-admin.html', icon: '🛒', label_en: 'POS Admin', label_hi: 'POS एडमिन', order: 55,
+      more_for_verticals: ['hotel','homestay','pg_hostel','banquet','hospitality','day_room'],
+      more_for_categories: ['hospitality','beauty','healthcare','education','services','subscription','property'] },
     // Hotel-polish (12 May 2026): bill-templates removed from sidebar. Page file kept on disk; just unlinked.
     // { code: 'bill-templates', href: 'bill-templates.html', icon: '🗂️', label_en: 'Templates', label_hi: 'टेम्पलेट', order: 135 },
     // BATCH 1B-C: 'settings' is "More" on mobile bnav (5-slot overflow), "Settings" on desktop side rail
@@ -74,63 +151,121 @@ window.SBPSidebar = (function() {
   ];
 
   // ── Module catalog: every vertical module mapped to icon/href/label
+  // Each entry can declare:
+  //   - order: default position (used for retail and as fallback)
+  //   - order_for_verticals: { food: 25, beauty: 5, ... } — per-macro override
+  //   - more_for_verticals: [shop_type codes] — legacy, exact match
+  //   - more_for_categories: [macro codes] — moves item to "More" group
+  //   - owner_only: true — hidden for non-owner accounts
+  //   - more_group: true — always in "More" group
   const MODULE_CATALOG = {
     'website':         { href: 'settings.html#website', icon: '🌐', label_en: 'Website',          label_hi: 'वेबसाइट',         order: 60 },
     'marketing':       { href: 'marketing.html',        icon: '📢', label_en: 'Marketing',        label_hi: 'मार्केटिंग',       order: 70 },
     'wa_center':       { href: 'wa-center.html',        icon: '💬', label_en: 'WhatsApp',         label_hi: 'व्हाट्सऐप',        order: 80 },
-    'recurring':       { href: 'recurring.html',        icon: '🔁', label_en: 'Recurring',        label_hi: 'रिकरिंग',         order: 90,  more_for_verticals: ['hotel','homestay','pg_hostel','banquet','hospitality','day_room'] },
+    // Recurring is THE primary action for subscription + education (monthly fees) — promote heavily
+    'recurring':       { href: 'recurring.html',        icon: '🔁', label_en: 'Recurring',        label_hi: 'रिकरिंग',         order: 90,
+      order_for_verticals: { subscription: 10, education: 20 },
+      more_for_verticals: ['hotel','homestay','pg_hostel','banquet','hospitality','day_room'],
+      more_for_categories: ['hospitality','beauty','healthcare','services','property'] },
     'cash_register':   { href: 'cash-register.html',    icon: '💵', label_en: 'Cash Register',    label_hi: 'कैश रजिस्टर',     order: 100 },
-    'supplier':        { href: 'supplier.html',         icon: '🏭', label_en: 'Suppliers',        label_hi: 'सप्लायर',         order: 110, more_for_verticals: ['hotel','homestay','pg_hostel','banquet','hospitality','day_room'] },
+    'supplier':        { href: 'supplier.html',         icon: '🏭', label_en: 'Suppliers',        label_hi: 'सप्लायर',         order: 110,
+      // Suppliers very relevant for wholesale; irrelevant for service-flow verticals
+      order_for_verticals: { wholesale: 45 },
+      more_for_verticals: ['hotel','homestay','pg_hostel','banquet','hospitality','day_room'],
+      more_for_categories: ['hospitality','beauty','healthcare','education','services','subscription','property'] },
     'team':            { href: 'team.html',             icon: '👨‍👩‍👧', label_en: 'Team',           label_hi: 'टीम',             order: 120, owner_only: true, more_group: true },
     // 022D Link Wiring: Authorized Users + Audit Log (server-side enforces owner-only access)
     // 022E: also flag client-side owner_only so non-owner accounts don't even see the menu entries.
     'authorized_users':{ href: 'authorized-users.html', icon: '🔒', label_en: 'Authorized Users', label_hi: 'अधिकृत उपयोगकर्ता', order: 122, owner_only: true, more_group: true },
     'audit_log':       { href: 'audit-log.html',        icon: '📋', label_en: 'Audit Log',        label_hi: 'ऑडिट लॉग',          order: 124, owner_only: true, more_group: true },
     'subscription':    { href: 'subscription.html',     icon: '💎', label_en: 'Plans',            label_hi: 'प्लान',            order: 130, owner_only: true, more_group: true },
-    // Universal add-ons (Batch 1B will create these pages)
-    'services':        { href: 'services.html',         icon: '🛎️', label_en: 'Services',         label_hi: 'सेवाएं',           order: 140 },
-    'appointments':    { href: 'appointments.html',     icon: '📅', label_en: 'Appointments',     label_hi: 'अपॉइंटमेंट',       order: 150 },
-    // Vertical-specific (most ship later — soon = Coming Soon badge)
-    'qr_menu':         { icon: '📱', label_en: 'QR Menu',         label_hi: 'QR मेनू',          order: 160 },
-    'tables':          { icon: '🍽️', label_en: 'Tables',          label_hi: 'टेबल',             order: 170 },
-    'online_orders':   { icon: '🛒', label_en: 'Online Orders',   label_hi: 'ऑनलाइन ऑर्डर',     order: 180 },
-    'kitchen':         { icon: '👨‍🍳', label_en: 'Kitchen',        label_hi: 'किचन',             order: 190 },
-    'stylists':        { icon: '✂️', label_en: 'Stylists',        label_hi: 'स्टाइलिस्ट',        order: 160 },
-    'customer_history':{ href: 'customer-history.html', icon: '📋', label_en: 'History',         label_hi: 'इतिहास',           order: 170 },
-    'drug_db':         { icon: '💊', label_en: 'Drug Database',   label_hi: 'दवा डेटाबेस',       order: 160 },
-    'expiry_alerts':   { icon: '⏰', label_en: 'Expiry',           label_hi: 'समाप्ति',           order: 170 },
-    'prescriptions':   { icon: '📝', label_en: 'Prescriptions',   label_hi: 'पर्ची',            order: 180 },
+    // Universal add-ons — Appointments/Services are THE primary daily action for beauty/healthcare/services
+    'services':        { href: 'services.html',         icon: '🛎️', label_en: 'Services',         label_hi: 'सेवाएं',           order: 140,
+      order_for_verticals: { beauty: 8, healthcare: 25, services: 8, hospitality: 70 } },
+    'appointments':    { href: 'appointments.html',     icon: '📅', label_en: 'Appointments',     label_hi: 'अपॉइंटमेंट',       order: 150,
+      order_for_verticals: { beauty: 5, healthcare: 5, services: 5, education: 25, hospitality: 75 } },
+    // ── Vertical-specific modules ──
+    // Food/Restaurant family
+    'qr_menu':         { icon: '📱', label_en: 'QR Menu',         label_hi: 'QR मेनू',          order: 160,
+      order_for_verticals: { food: 42 } },
+    'tables':          { icon: '🍽️', label_en: 'Tables',          label_hi: 'टेबल',             order: 170,
+      order_for_verticals: { food: 25 } },
+    'online_orders':   { icon: '🛒', label_en: 'Online Orders',   label_hi: 'ऑनलाइन ऑर्डर',     order: 180,
+      order_for_verticals: { food: 35 } },
+    'kitchen':         { icon: '👨‍🍳', label_en: 'Kitchen',        label_hi: 'किचन',             order: 190,
+      order_for_verticals: { food: 28 } },
+    // Beauty/Salon family
+    'stylists':        { icon: '✂️', label_en: 'Stylists',        label_hi: 'स्टाइलिस्ट',        order: 160,
+      order_for_verticals: { beauty: 12 } },
+    'customer_history':{ href: 'customer-history.html', icon: '📋', label_en: 'History',         label_hi: 'इतिहास',           order: 170,
+      // History view is daily-useful for service-flow verticals
+      order_for_verticals: { beauty: 38, healthcare: 15, services: 20, property: 25 } },
+    // Healthcare family — Drug DB / Expiry / Prescriptions are catalog placeholders (no href yet)
+    'drug_db':         { icon: '💊', label_en: 'Drug Database',   label_hi: 'दवा डेटाबेस',       order: 160,
+      order_for_verticals: { healthcare: 25 } },
+    'expiry_alerts':   { icon: '⏰', label_en: 'Expiry',           label_hi: 'समाप्ति',           order: 170,
+      order_for_verticals: { healthcare: 28 } },
+    'prescriptions':   { icon: '📝', label_en: 'Prescriptions',   label_hi: 'पर्ची',            order: 180,
+      order_for_verticals: { healthcare: 20 } },
+    // Mobile/electronics (placeholders)
     'imei_tracking':   { icon: '📲', label_en: 'IMEI',             label_hi: 'IMEI',             order: 160 },
     'warranty':        { icon: '🛡️', label_en: 'Warranty',        label_hi: 'वारंटी',           order: 170 },
     'repair_tickets':  { icon: '🔧', label_en: 'Repairs',          label_hi: 'मरम्मत',           order: 180 },
+    // Apparel (placeholders)
     'variants':        { icon: '🎨', label_en: 'Variants',        label_hi: 'वेरिएंट',          order: 160 },
     'alterations':     { icon: '📐', label_en: 'Alterations',     label_hi: 'अल्टरेशन',         order: 170 },
+    // Jewellery (placeholders)
     'gold_rate':       { icon: '🏆', label_en: 'Gold Rate',       label_hi: 'सोने की दर',       order: 160 },
     'hallmarking':     { icon: '✨', label_en: 'Hallmarking',     label_hi: 'हॉलमार्किंग',      order: 170 },
+    // Auto (placeholders)
     'vehicle_tracking':{ icon: '🚗', label_en: 'Vehicle',          label_hi: 'गाड़ी',           order: 160 },
     'service_history': { icon: '📋', label_en: 'Service History', label_hi: 'सर्विस इतिहास',    order: 170 },
-    'patients':        { icon: '🏥', label_en: 'Patients',         label_hi: 'मरीज',             order: 160 },
-    'batches':         { icon: '👨‍🎓', label_en: 'Batches',        label_hi: 'बैच',              order: 160 },
-    'attendance':      { icon: '✅', label_en: 'Attendance',      label_hi: 'उपस्थिति',          order: 170 },
-    'service_tickets': { icon: '🎫', label_en: 'Tickets',          label_hi: 'टिकट',             order: 160 },
-    'salesman_app':    { icon: '🚶', label_en: 'Salesman',        label_hi: 'सेल्समैन',         order: 160 },
-    'credit_limits':   { icon: '💳', label_en: 'Credit Limits',   label_hi: 'क्रेडिट लिमिट',    order: 170 },
-    'wa_catalog':      { icon: '🛍️', label_en: 'WA Catalog',      label_hi: 'WA कैटलॉग',       order: 160 },
-    'home_delivery':   { icon: '🛵', label_en: 'Delivery',        label_hi: 'डिलीवरी',         order: 170 },
-    'loyalty':         { href: 'loyalty.html', icon: '⭐', label_en: 'Loyalty',          label_hi: 'लॉयल्टी',         order: 180 },
-    'courier':         { icon: '📮', label_en: 'Courier',         label_hi: 'कूरियर',           order: 180 },
-    'members':         { icon: '🎟️', label_en: 'Members',         label_hi: 'सदस्य',           order: 160 },
-    'listings':        { icon: '🏘️', label_en: 'Listings',        label_hi: 'लिस्टिंग',         order: 160 },
-    'leads':           { icon: '📞', label_en: 'Leads',           label_hi: 'लीड्स',            order: 170 },
-    'rooms':           { href: 'rooms.html',       icon: '🛏️', label_en: 'Rooms',           label_hi: 'कमरे',             order: 160, order_for_verticals: { hospitality: 12 } },
-    // Batch 022A — dedicated folio page
-    'folio':           { href: 'folio.html',       icon: '📋', label_en: 'Folio',           label_hi: 'फ़ोलियो',           order: 165, order_for_verticals: { hospitality: 18 } },
-    'bookings':        { href: 'bookings.html',    icon: '📆', label_en: 'Bookings',        label_hi: 'बुकिंग',           order: 170, order_for_verticals: { hospitality: 15 } },
-    // Batch 021B-A — front-desk dashboard + walk-in fast-path
-    'front_desk':      { href: 'front-desk.html',  icon: '🛎️', label_en: 'Front Desk',      label_hi: 'फ्रंट डेस्क',      order: 155, order_for_verticals: { hospitality: 5 } },
-    'walk_in':         { href: 'walk-in.html',     icon: '⚡', label_en: 'Walk-in',         label_hi: 'वॉक-इन',           order: 156, order_for_verticals: { hospitality: 8 } },
-    // Batch 021B-B — Form B + Form C compliance
-    'compliance':      { href: 'compliance.html',  icon: '📋', label_en: 'Compliance',     label_hi: 'अनुपालन',          order: 175, order_for_verticals: { hospitality: 22 } },
+    // Healthcare patients (placeholder — currently aliases to customers)
+    'patients':        { icon: '🏥', label_en: 'Patients',         label_hi: 'मरीज',             order: 160,
+      order_for_verticals: { healthcare: 8 } },
+    // Education (placeholders)
+    'batches':         { icon: '👨‍🎓', label_en: 'Batches',        label_hi: 'बैच',              order: 160,
+      order_for_verticals: { education: 10 } },
+    'attendance':      { icon: '✅', label_en: 'Attendance',      label_hi: 'उपस्थिति',          order: 170,
+      order_for_verticals: { education: 15, subscription: 20 } },
+    // Services
+    'service_tickets': { icon: '🎫', label_en: 'Tickets',          label_hi: 'टिकट',             order: 160,
+      order_for_verticals: { services: 12 } },
+    // Wholesale (placeholders)
+    'salesman_app':    { icon: '🚶', label_en: 'Salesman',        label_hi: 'सेल्समैन',         order: 160,
+      order_for_verticals: { wholesale: 40 } },
+    'credit_limits':   { icon: '💳', label_en: 'Credit Limits',   label_hi: 'क्रेडिट लिमिट',    order: 170,
+      order_for_verticals: { wholesale: 32 } },
+    // Online/D2C (placeholders)
+    'wa_catalog':      { icon: '🛍️', label_en: 'WA Catalog',      label_hi: 'WA कैटलॉग',       order: 160,
+      order_for_verticals: { online: 41 } },
+    'home_delivery':   { icon: '🛵', label_en: 'Delivery',        label_hi: 'डिलीवरी',         order: 170,
+      order_for_verticals: { online: 42 } },
+    'loyalty':         { href: 'loyalty.html', icon: '⭐', label_en: 'Loyalty',          label_hi: 'लॉयल्टी',         order: 180,
+      order_for_verticals: { beauty: 40 } },
+    'courier':         { icon: '📮', label_en: 'Courier',         label_hi: 'कूरियर',           order: 180,
+      order_for_verticals: { online: 35 } },
+    // Subscription (placeholder)
+    'members':         { icon: '🎟️', label_en: 'Members',         label_hi: 'सदस्य',           order: 160,
+      order_for_verticals: { subscription: 5 } },
+    // Property (placeholders)
+    'listings':        { icon: '🏘️', label_en: 'Listings',        label_hi: 'लिस्टिंग',         order: 160,
+      order_for_verticals: { property: 5 } },
+    'leads':           { icon: '📞', label_en: 'Leads',           label_hi: 'लीड्स',            order: 170,
+      order_for_verticals: { property: 8 } },
+    // ── Hospitality family (built in Batch 015 + 021) ──
+    'rooms':           { href: 'rooms.html',       icon: '🛏️', label_en: 'Rooms',           label_hi: 'कमरे',             order: 160,
+      order_for_verticals: { hospitality: 12 } },
+    'folio':           { href: 'folio.html',       icon: '📋', label_en: 'Folio',           label_hi: 'फ़ोलियो',           order: 165,
+      order_for_verticals: { hospitality: 18 } },
+    'bookings':        { href: 'bookings.html',    icon: '📆', label_en: 'Bookings',        label_hi: 'बुकिंग',           order: 170,
+      order_for_verticals: { hospitality: 15 } },
+    'front_desk':      { href: 'front-desk.html',  icon: '🛎️', label_en: 'Front Desk',      label_hi: 'फ्रंट डेस्क',      order: 155,
+      order_for_verticals: { hospitality: 5 } },
+    'walk_in':         { href: 'walk-in.html',     icon: '⚡', label_en: 'Walk-in',         label_hi: 'वॉक-इन',           order: 156,
+      order_for_verticals: { hospitality: 8 } },
+    'compliance':      { href: 'compliance.html',  icon: '📋', label_en: 'Compliance',     label_hi: 'अनुपालन',          order: 175,
+      order_for_verticals: { hospitality: 22 } },
     // BATCH 017 BUG-021 FIX: 'folio' menu item removed. It pointed to bookings.html
     // (since folio is per-booking, not a standalone page) and confused users.
     // Folio is accessed inline via Bookings → tap booking → folio section.
@@ -218,33 +353,31 @@ window.SBPSidebar = (function() {
   // ── Build the full ordered list (universal core + vertical) ────
   function _buildItems(verticalModules, currentPage) {
     const isOwner = _isOwner();
-    // Hotel-polish (12 May 2026): read shop_type so we can route certain items into the
-    // "More" group on hospitality verticals (POS Admin, Stock, Recurring, Suppliers etc.
-    // don't fit a hotel's daily flow). The flag is `more_for_verticals` per catalog item.
-    //
-    // Batch 12-May-26 #3: also honor `order_for_verticals` for per-vertical ordering.
-    // This lets us push hotel-flow items (front_desk, rooms, etc.) above retail-flow
-    // items (bills, billing) WITHOUT changing the default order for retail shops.
+    // Read shop_type and resolve macro category once per build.
+    // The engine uses macro to apply per-vertical ordering and to
+    // route items into the "More" group on verticals where they
+    // don't fit (e.g. Stock + POS Admin for hospitality/salon/clinic).
     const shopType = (_shop() || {}).shop_type || '';
-    const isHosp   = _isHospitalityShop(shopType);
+    const macro    = _macroForShop(shopType);
 
     function _inMoreForVertical(itemCat) {
-      if (!Array.isArray(itemCat.more_for_verticals)) return false;
-      // Exact shop_type match (legacy + still supported)
-      if (itemCat.more_for_verticals.indexOf(shopType) !== -1) return true;
-      // Category-aware: 'hospitality' in the array catches ALL hospitality sub-types
-      // (resort, dharamshala, etc.) without needing to enumerate every one. Fixes
-      // a latent bug where 5 of 11 hospitality sub-types were missing from arrays.
-      if (isHosp && itemCat.more_for_verticals.indexOf('hospitality') !== -1) return true;
+      // 1. Exact shop_type match in more_for_verticals (legacy)
+      if (Array.isArray(itemCat.more_for_verticals)
+          && itemCat.more_for_verticals.indexOf(shopType) !== -1) return true;
+      // 2. Macro category match in more_for_categories (preferred — covers all sub-types)
+      if (Array.isArray(itemCat.more_for_categories)
+          && itemCat.more_for_categories.indexOf(macro) !== -1) return true;
       return false;
     }
 
     function _orderFor(itemCat) {
-      // Per-shop override wins; category fallback next; default order last.
+      // Per-macro override wins; exact shop_type next; default order last.
       const map = itemCat.order_for_verticals;
       if (map) {
+        // Exact shop_type match (rare, for ultra-specific tuning)
         if (map[shopType] !== undefined) return map[shopType];
-        if (isHosp && map['hospitality'] !== undefined) return map['hospitality'];
+        // Macro category match (the common case)
+        if (map[macro] !== undefined) return map[macro];
       }
       return itemCat.order;
     }
@@ -270,7 +403,8 @@ window.SBPSidebar = (function() {
       // BATCH 1B-G-Hotfix: force 'soon' for pages not yet built
       const effectiveStatus = PENDING_PAGES.has(m.module_code) ? 'soon' : m.status;
       // Order resolution: vertical override → catalog default → server display_order
-      const resolvedOrder = _orderFor(cat) !== undefined ? _orderFor(cat) : m.display_order;
+      const overrideOrder = _orderFor(cat);
+      const resolvedOrder = (overrideOrder !== undefined) ? overrideOrder : m.display_order;
       items.push({
         code: m.module_code,
         href: effectiveStatus === 'active' ? (cat.href || '#') : '#',
@@ -282,7 +416,7 @@ window.SBPSidebar = (function() {
         badge: m.badge || null,
         active: m.module_code === currentPage,
         owner_only: !!cat.owner_only,  // propagated for potential downstream use
-        more_group: !!cat.more_group || _inMoreForVertical(cat),  // 022E + Hotel-polish
+        more_group: !!cat.more_group || _inMoreForVertical(cat),
       });
     });
     // BATCH 1B-C-Pilot: fix falsy-0 bug — Home has order:0 which || treats as undefined
@@ -695,14 +829,24 @@ window.SBPSidebar = (function() {
     _toggleMore,
     UNIVERSAL_CORE,
     MODULE_CATALOG,
-    // Vertical helpers — used by dashboard.html (and any future page) to
-    // adapt UI based on shop_type without duplicating the hospitality list.
-    // Call: SBPSidebar.isHospitality(localStorage.sbp_shop && JSON.parse(...).shop_type)
-    // Or with no arg, uses the currently-loaded shop's type.
+    // ── Vertical helpers (Batch 12-May-26 #3) ───────────────────────
+    // Used by dashboard.html to choose Quick Action button sets per
+    // vertical, and by any future page that needs to adapt UI based
+    // on shop type. Single source of truth lives in MACRO_BY_SHOP_TYPE
+    // above; do not maintain parallel taxonomies elsewhere.
+    //
+    // Usage:
+    //   const macro = SBPSidebar.macroFor();           // current shop
+    //   const macro = SBPSidebar.macroFor('day_room'); // explicit
+    //   if (SBPSidebar.isHospitality()) {...}          // boolean convenience
+    macroFor: function(shopType) {
+      const t = (shopType !== undefined) ? shopType : ((_shop() || {}).shop_type || '');
+      return _macroForShop(t);
+    },
     isHospitality: function(shopType) {
       const t = (shopType !== undefined) ? shopType : ((_shop() || {}).shop_type || '');
       return _isHospitalityShop(t);
     },
-    HOSPITALITY_VERTICALS,
+    MACRO_BY_SHOP_TYPE,
   };
 })();

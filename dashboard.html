@@ -656,12 +656,7 @@ html,body{height:100%;overflow:hidden}
         </div>
       </div>
 
-      <!-- Quick Actions
-           Wrapped in #qa-section so we can hide the whole block (header + grid)
-           for hospitality verticals where retail-flow actions (New Bill, POS,
-           Stock, GST Report) don't match the daily workflow. Hide logic runs
-           after sidebar init below — uses SBPSidebar.isHospitality(). -->
-      <div id="qa-section">
+      <!-- Quick Actions -->
       <div class="sec-hd">
         <div class="sec-t"><span class="lang-en">Quick Actions</span><span class="lang-hi">त्वरित कार्य</span><span class="hi">त्वरित कार्य</span></div>
       </div>
@@ -699,7 +694,6 @@ html,body{height:100%;overflow:hidden}
           <div class="qa-lb">Stock<span class="hi">स्टॉक</span></div>
         </div>
       </div>
-      </div><!-- /#qa-section -->
 
       <!-- GST Summary -->
       <div class="gst-card fade-in" id="gst-card">
@@ -1258,10 +1252,164 @@ init();
 /* Mobile:  lib renders .bnav (5-slot bottom nav) + .bnav-drawer (full menu, slides    */
 /*          in from right when "More" is tapped — gives mobile users access to ALL     */
 /*          pages including Website, Services, Appointments, Stylists, etc.)          */
+/* Batch 12-May-26 #3: Quick Actions are now vertical-aware. The static HTML above     */
+/* (qa-grid) shows the retail button set on first paint. After sidebar lib loads, we   */
+/* read SBPSidebar.macroFor() and — if the shop isn't retail — swap the buttons to    */
+/* the vertical's preferred set (Front Desk/Walk-in/Rooms for hospitality,            */
+/* Appointments/Stylists for beauty, etc.). Retail shops never re-render — no flash.   */
 (function(){
   if (!window.SBPSidebar || typeof window.SBPSidebar.render !== 'function') {
     console.warn('[1B-C/F-Pilot] SBPSidebar lib not loaded — sidebar will not render');
     return;
+  }
+
+  // ── Per-vertical Quick Action button sets ────────────────────────────
+  // Each macro_category gets 8 buttons matched to its daily workflow.
+  // Placeholder buttons (modules not yet built) trigger a Coming Soon
+  // toast via SBPSidebar._showSoon() — same UX as the sidebar uses.
+  //
+  // Fields:
+  //   icon     — emoji shown in the colored circle
+  //   bg       — background color of the icon circle (rgba)
+  //   en       — English label
+  //   hi       — Hindi label (full)
+  //   hi_short — Hindi label (mobile short, omit to reuse hi)
+  //   action   — JS expression to run on click (string)
+  const QUICK_ACTIONS_BY_MACRO = {
+    retail: [
+      { icon:'🧾', bg:'rgba(245,166,35,.15)',  en:'New Bill',   hi:'नया बिल',          action:"goTo('billing.html')" },
+      { icon:'🏪', bg:'rgba(16,185,129,.15)',  en:'POS Mode',   hi:'POS मोड',          action:"goTo('billing.html?mode=pos')" },
+      { icon:'👥', bg:'rgba(239,68,68,.15)',   en:'Customers',  hi:'ग्राहक',           action:"goTo('customers.html')" },
+      { icon:'📒', bg:'rgba(6,182,212,.15)',   en:'Ledger',     hi:'खाता बही',         hi_short:'खाता', action:"goTo('customers.html?view=ledger')" },
+      { icon:'📊', bg:'rgba(245,158,11,.15)',  en:'Reports',    hi:'रिपोर्ट',          action:"goTo('reports.html')" },
+      { icon:'📲', bg:'rgba(37,211,102,.15)',  en:'Remind All', hi:'सभी को याद दिलाएं', hi_short:'याद दिलाएं', action:"remindAll()" },
+      { icon:'🏛️', bg:'rgba(255,138,0,.15)',   en:'GST Report', hi:'GST रिपोर्ट',      action:"goTo('reports.html?tab=gst')" },
+      { icon:'📦', bg:'rgba(251,146,60,.15)',  en:'Stock',      hi:'स्टॉक',            action:"goTo('stock.html')" }
+    ],
+    food: [
+      { icon:'🧾', bg:'rgba(245,166,35,.15)',  en:'New Bill',   hi:'नया बिल',          action:"goTo('billing.html')" },
+      { icon:'🏪', bg:'rgba(16,185,129,.15)',  en:'POS Mode',   hi:'POS मोड',          action:"goTo('billing.html?mode=pos')" },
+      { icon:'🍽️', bg:'rgba(168,85,247,.15)',  en:'Tables',     hi:'टेबल',             action:"SBPSidebar._showSoon('Tables')" },
+      { icon:'👨‍🍳', bg:'rgba(239,68,68,.15)',  en:'Kitchen',    hi:'किचन',             action:"SBPSidebar._showSoon('Kitchen')" },
+      { icon:'👥', bg:'rgba(99,102,241,.15)',  en:'Customers',  hi:'ग्राहक',           action:"goTo('customers.html')" },
+      { icon:'📊', bg:'rgba(245,158,11,.15)',  en:'Reports',    hi:'रिपोर्ट',          action:"goTo('reports.html')" },
+      { icon:'🏛️', bg:'rgba(255,138,0,.15)',   en:'GST Report', hi:'GST रिपोर्ट',      action:"goTo('reports.html?tab=gst')" },
+      { icon:'📦', bg:'rgba(251,146,60,.15)',  en:'Stock',      hi:'स्टॉक',            action:"goTo('stock.html')" }
+    ],
+    beauty: [
+      { icon:'📅', bg:'rgba(245,166,35,.15)',  en:'New Appointment', hi:'नया अपॉइंटमेंट', hi_short:'अपॉइंटमेंट', action:"goTo('appointments.html?action=new')" },
+      { icon:'🧾', bg:'rgba(16,185,129,.15)',  en:'New Bill',   hi:'नया बिल',          action:"goTo('billing.html')" },
+      { icon:'🛎️', bg:'rgba(99,102,241,.15)',  en:"Today's Schedule", hi:'आज का शेड्यूल', hi_short:'आज', action:"goTo('appointments.html?filter=today')" },
+      { icon:'⚡', bg:'rgba(245,158,11,.15)',  en:'Walk-in',    hi:'वॉक-इन',           action:"goTo('appointments.html?action=walkin')" },
+      { icon:'👥', bg:'rgba(239,68,68,.15)',   en:'Customers',  hi:'ग्राहक',           action:"goTo('customers.html')" },
+      { icon:'⭐', bg:'rgba(255,138,0,.15)',   en:'Loyalty',    hi:'लॉयल्टी',          action:"goTo('loyalty.html')" },
+      { icon:'📊', bg:'rgba(6,182,212,.15)',   en:'Reports',    hi:'रिपोर्ट',          action:"goTo('reports.html')" },
+      { icon:'📲', bg:'rgba(37,211,102,.15)',  en:'Remind All', hi:'सभी को याद दिलाएं', hi_short:'याद दिलाएं', action:"remindAll()" }
+    ],
+    healthcare: [
+      { icon:'📅', bg:'rgba(245,166,35,.15)',  en:'New Appointment', hi:'नया अपॉइंटमेंट', hi_short:'अपॉइंटमेंट', action:"goTo('appointments.html?action=new')" },
+      { icon:'🧾', bg:'rgba(16,185,129,.15)',  en:'New Bill',   hi:'नया बिल',          action:"goTo('billing.html')" },
+      { icon:'👥', bg:'rgba(239,68,68,.15)',   en:'Patients',   hi:'मरीज',             action:"goTo('customers.html')" },
+      { icon:'📋', bg:'rgba(168,85,247,.15)',  en:'History',    hi:'इतिहास',           action:"goTo('customer-history.html')" },
+      { icon:'🛎️', bg:'rgba(99,102,241,.15)',  en:"Today's Schedule", hi:'आज का शेड्यूल', hi_short:'आज', action:"goTo('appointments.html?filter=today')" },
+      { icon:'📊', bg:'rgba(245,158,11,.15)',  en:'Reports',    hi:'रिपोर्ट',          action:"goTo('reports.html')" },
+      { icon:'📲', bg:'rgba(37,211,102,.15)',  en:'Remind All', hi:'सभी को याद दिलाएं', hi_short:'याद दिलाएं', action:"remindAll()" },
+      { icon:'🏛️', bg:'rgba(255,138,0,.15)',   en:'GST Report', hi:'GST रिपोर्ट',      action:"goTo('reports.html?tab=gst')" }
+    ],
+    education: [
+      { icon:'🧾', bg:'rgba(245,166,35,.15)',  en:'New Bill (Fees)', hi:'नया बिल (फीस)', hi_short:'फीस', action:"goTo('billing.html')" },
+      { icon:'🔁', bg:'rgba(16,185,129,.15)',  en:'Recurring (Monthly)', hi:'रिकरिंग (मासिक)', hi_short:'मासिक', action:"goTo('recurring.html')" },
+      { icon:'👥', bg:'rgba(239,68,68,.15)',   en:'Students',   hi:'छात्र',            action:"goTo('customers.html')" },
+      { icon:'✅', bg:'rgba(34,197,94,.15)',   en:'Attendance', hi:'उपस्थिति',         action:"SBPSidebar._showSoon('Attendance')" },
+      { icon:'📋', bg:'rgba(168,85,247,.15)',  en:'History',    hi:'इतिहास',           action:"goTo('customer-history.html')" },
+      { icon:'📊', bg:'rgba(245,158,11,.15)',  en:'Reports',    hi:'रिपोर्ट',          action:"goTo('reports.html')" },
+      { icon:'📲', bg:'rgba(37,211,102,.15)',  en:'Remind All', hi:'सभी को याद दिलाएं', hi_short:'याद दिलाएं', action:"remindAll()" },
+      { icon:'🏛️', bg:'rgba(255,138,0,.15)',   en:'GST Report', hi:'GST रिपोर्ट',      action:"goTo('reports.html?tab=gst')" }
+    ],
+    services: [
+      { icon:'📅', bg:'rgba(245,166,35,.15)',  en:'New Appointment', hi:'नया अपॉइंटमेंट', hi_short:'अपॉइंटमेंट', action:"goTo('appointments.html?action=new')" },
+      { icon:'🧾', bg:'rgba(16,185,129,.15)',  en:'New Bill',   hi:'नया बिल',          action:"goTo('billing.html')" },
+      { icon:'🛎️', bg:'rgba(99,102,241,.15)',  en:"Today's Jobs", hi:'आज के काम',       hi_short:'आज', action:"goTo('appointments.html?filter=today')" },
+      { icon:'👥', bg:'rgba(239,68,68,.15)',   en:'Customers',  hi:'ग्राहक',           action:"goTo('customers.html')" },
+      { icon:'🔧', bg:'rgba(168,85,247,.15)',  en:'Services',   hi:'सेवाएं',           action:"goTo('services.html')" },
+      { icon:'📋', bg:'rgba(245,158,11,.15)',  en:'History',    hi:'इतिहास',           action:"goTo('customer-history.html')" },
+      { icon:'📊', bg:'rgba(6,182,212,.15)',   en:'Reports',    hi:'रिपोर्ट',          action:"goTo('reports.html')" },
+      { icon:'📲', bg:'rgba(37,211,102,.15)',  en:'Remind All', hi:'सभी को याद दिलाएं', hi_short:'याद दिलाएं', action:"remindAll()" }
+    ],
+    wholesale: [
+      { icon:'🧾', bg:'rgba(245,166,35,.15)',  en:'New Bill',   hi:'नया बिल',          action:"goTo('billing.html')" },
+      { icon:'🏪', bg:'rgba(16,185,129,.15)',  en:'POS Mode',   hi:'POS मोड',          action:"goTo('billing.html?mode=pos')" },
+      { icon:'👥', bg:'rgba(239,68,68,.15)',   en:'Customers',  hi:'ग्राहक',           action:"goTo('customers.html')" },
+      { icon:'📒', bg:'rgba(6,182,212,.15)',   en:'Ledger',     hi:'खाता बही',         hi_short:'खाता', action:"goTo('customers.html?view=ledger')" },
+      { icon:'🏭', bg:'rgba(168,85,247,.15)',  en:'Suppliers',  hi:'सप्लायर',          action:"goTo('supplier.html')" },
+      { icon:'📦', bg:'rgba(251,146,60,.15)',  en:'Stock',      hi:'स्टॉक',            action:"goTo('stock.html')" },
+      { icon:'📊', bg:'rgba(245,158,11,.15)',  en:'Reports',    hi:'रिपोर्ट',          action:"goTo('reports.html')" },
+      { icon:'🏛️', bg:'rgba(255,138,0,.15)',   en:'GST Report', hi:'GST रिपोर्ट',      action:"goTo('reports.html?tab=gst')" }
+    ],
+    online: [
+      { icon:'🧾', bg:'rgba(245,166,35,.15)',  en:'New Bill',   hi:'नया बिल',          action:"goTo('billing.html')" },
+      { icon:'👥', bg:'rgba(239,68,68,.15)',   en:'Customers',  hi:'ग्राहक',           action:"goTo('customers.html')" },
+      { icon:'📦', bg:'rgba(251,146,60,.15)',  en:'Stock',      hi:'स्टॉक',            action:"goTo('stock.html')" },
+      { icon:'📮', bg:'rgba(99,102,241,.15)',  en:'Courier',    hi:'कूरियर',           action:"SBPSidebar._showSoon('Courier')" },
+      { icon:'🛍️', bg:'rgba(37,211,102,.15)',  en:'WA Catalog', hi:'WA कैटलॉग',        action:"SBPSidebar._showSoon('WA Catalog')" },
+      { icon:'📊', bg:'rgba(245,158,11,.15)',  en:'Reports',    hi:'रिपोर्ट',          action:"goTo('reports.html')" },
+      { icon:'📲', bg:'rgba(168,85,247,.15)',  en:'Remind All', hi:'सभी को याद दिलाएं', hi_short:'याद दिलाएं', action:"remindAll()" },
+      { icon:'🏛️', bg:'rgba(255,138,0,.15)',   en:'GST Report', hi:'GST रिपोर्ट',      action:"goTo('reports.html?tab=gst')" }
+    ],
+    subscription: [
+      { icon:'🔁', bg:'rgba(16,185,129,.15)',  en:'Recurring',  hi:'रिकरिंग',          action:"goTo('recurring.html')" },
+      { icon:'🎟️', bg:'rgba(168,85,247,.15)',  en:'Members',    hi:'सदस्य',            action:"SBPSidebar._showSoon('Members')" },
+      { icon:'🧾', bg:'rgba(245,166,35,.15)',  en:'New Bill',   hi:'नया बिल',          action:"goTo('billing.html')" },
+      { icon:'👥', bg:'rgba(239,68,68,.15)',   en:'Customers',  hi:'ग्राहक',           action:"goTo('customers.html')" },
+      { icon:'✅', bg:'rgba(34,197,94,.15)',   en:'Attendance', hi:'उपस्थिति',         action:"SBPSidebar._showSoon('Attendance')" },
+      { icon:'📊', bg:'rgba(245,158,11,.15)',  en:'Reports',    hi:'रिपोर्ट',          action:"goTo('reports.html')" },
+      { icon:'📲', bg:'rgba(6,182,212,.15)',   en:'Remind All', hi:'सभी को याद दिलाएं', hi_short:'याद दिलाएं', action:"remindAll()" },
+      { icon:'🏛️', bg:'rgba(255,138,0,.15)',   en:'GST Report', hi:'GST रिपोर्ट',      action:"goTo('reports.html?tab=gst')" }
+    ],
+    property: [
+      { icon:'🏘️', bg:'rgba(245,166,35,.15)',  en:'Listings',   hi:'लिस्टिंग',         action:"SBPSidebar._showSoon('Listings')" },
+      { icon:'📞', bg:'rgba(245,158,11,.15)',  en:'Leads',      hi:'लीड्स',            action:"SBPSidebar._showSoon('Leads')" },
+      { icon:'👥', bg:'rgba(239,68,68,.15)',   en:'Customers',  hi:'ग्राहक',           action:"goTo('customers.html')" },
+      { icon:'🧾', bg:'rgba(16,185,129,.15)',  en:'New Bill',   hi:'नया बिल',          action:"goTo('billing.html')" },
+      { icon:'📋', bg:'rgba(168,85,247,.15)',  en:'History',    hi:'इतिहास',           action:"goTo('customer-history.html')" },
+      { icon:'📊', bg:'rgba(6,182,212,.15)',   en:'Reports',    hi:'रिपोर्ट',          action:"goTo('reports.html')" },
+      { icon:'📲', bg:'rgba(37,211,102,.15)',  en:'Remind All', hi:'सभी को याद दिलाएं', hi_short:'याद दिलाएं', action:"remindAll()" },
+      { icon:'🏛️', bg:'rgba(255,138,0,.15)',   en:'GST Report', hi:'GST रिपोर्ट',      action:"goTo('reports.html?tab=gst')" }
+    ],
+    hospitality: [
+      { icon:'🛎️', bg:'rgba(245,166,35,.15)',  en:'Front Desk', hi:'फ्रंट डेस्क',      action:"goTo('front-desk.html')" },
+      { icon:'⚡', bg:'rgba(245,158,11,.15)',  en:'Walk-in',    hi:'वॉक-इन',           action:"goTo('walk-in.html')" },
+      { icon:'🛏️', bg:'rgba(99,102,241,.15)',  en:'Rooms',      hi:'कमरे',             action:"goTo('rooms.html')" },
+      { icon:'📆', bg:'rgba(16,185,129,.15)',  en:'New Booking', hi:'नई बुकिंग',       hi_short:'बुकिंग', action:"goTo('bookings.html?action=new')" },
+      { icon:'📋', bg:'rgba(168,85,247,.15)',  en:'Folios',     hi:'फ़ोलियो',          action:"goTo('folio.html')" },
+      { icon:'🧾', bg:'rgba(239,68,68,.15)',   en:'New Bill',   hi:'नया बिल',          action:"goTo('billing.html')" },
+      { icon:'📊', bg:'rgba(6,182,212,.15)',   en:'Reports',    hi:'रिपोर्ट',          action:"goTo('reports.html')" },
+      { icon:'📲', bg:'rgba(37,211,102,.15)',  en:'Remind All', hi:'सभी को याद दिलाएं', hi_short:'याद दिलाएं', action:"remindAll()" }
+    ]
+    // 'specialized' inherits 'services' via macro mapping (sidebar-engine.js line ~70)
+  };
+
+  function _escQA(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  function renderQuickActions(macro) {
+    const buttons = QUICK_ACTIONS_BY_MACRO[macro];
+    // No data for this macro? Keep the static retail HTML in place (no-op).
+    if (!buttons || !Array.isArray(buttons)) return;
+    const grid = document.getElementById('qa-grid');
+    if (!grid) return;
+    grid.innerHTML = buttons.map(b => {
+      const hiShort = b.hi_short || b.hi;
+      return '<div class="qa-btn" onclick="' + _escQA(b.action) + '">' +
+        '<div class="qa-ic" style="background:' + _escQA(b.bg) + '">' + b.icon + '</div>' +
+        '<div class="qa-lb">' +
+          '<span class="lang-en">' + _escQA(b.en) + '</span>' +
+          '<span class="lang-hi">' + _escQA(b.hi) + '</span>' +
+          '<span class="hi">' + _escQA(hiShort) + '</span>' +
+        '</div>' +
+      '</div>';
+    }).join('');
   }
 
   function renderForViewport() {
@@ -1278,18 +1426,19 @@ init();
   // Initial render
   renderForViewport();
 
-  // Vertical-aware Quick Actions visibility — for hospitality shops, the
-  // retail-flow buttons (New Bill, POS, Stock, GST Report) don't match
-  // a hotel's daily workflow. Front Desk in the sidebar is the natural
-  // daily landing instead. Hide the entire section to keep the dashboard
-  // focused. Other verticals get the standard Quick Actions row.
+  // Render the vertical-specific Quick Actions row. Static HTML in the
+  // markup is the retail default — only swap if shop is a different
+  // macro category. Retail shops pay no JS cost; everyone else gets a
+  // sub-second swap synchronously during init.
   try {
-    if (window.SBPSidebar && typeof window.SBPSidebar.isHospitality === 'function'
-        && window.SBPSidebar.isHospitality()) {
-      var qaSection = document.getElementById('qa-section');
-      if (qaSection) qaSection.style.display = 'none';
+    const macro = window.SBPSidebar.macroFor();
+    if (macro && macro !== 'retail') {
+      renderQuickActions(macro);
     }
-  } catch (e) { /* non-fatal — Quick Actions just stays visible */ }
+  } catch (e) {
+    console.warn('[Dashboard QA] vertical render failed:', e);
+    /* non-fatal — retail buttons stay visible */
+  }
 
   // Re-render on viewport crossing the 1024px threshold (rotate, resize, fold/unfold)
   var lastIsDesktop = window.innerWidth >= 1024;
