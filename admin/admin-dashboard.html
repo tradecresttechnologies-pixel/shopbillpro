@@ -8,14 +8,7 @@
 <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180x180.png?v=2">
 <title>Admin Dashboard — ShopBill Pro</title>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js">
-    function goTo(p){ window.location.href = p; }
-    function logout(){
-      try { sessionStorage.removeItem('sbp_admin_token'); } catch(e){}
-      try { sessionStorage.removeItem('sbp_admin_logged_in'); } catch(e){}
-      window.location.href = 'admin-login.html';
-    }
-</script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@3/dist/chart.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -367,6 +360,7 @@
         <div class="nav-item active"><span>📊</span><span>Dashboard</span></div>
         <div class="nav-item" onclick="goTo('admin-subscriptions.html')"><span>💳</span><span>Subscriptions</span></div>
         <div class="nav-item" onclick="goTo('admin-users.html')"><span>👥</span><span>Users</span></div>
+        <div class="nav-item" onclick="goTo('admin-websites.html')"><span>🌐</span><span>Websites</span></div>
         <div class="nav-item" onclick="goTo('admin-revenue.html')"><span>💰</span><span>Revenue</span></div>
         <div class="nav-item" onclick="goTo('admin-analytics.html')"><span>📈</span><span>Analytics</span></div>
       </div>
@@ -394,7 +388,7 @@
       </div>
 
       <div style="margin-top:32px;padding-top:18px;border-top:1px solid rgba(124,58,237,.2)">
-        <div class="nav-item" onclick="logout()" style="color:#EF4444"><span>🚪</span><span>Logout</span></div>
+        <div id="logoutBtn" class="nav-item" onclick="logout()" style="color:#EF4444"><span>🚪</span><span>Logout</span></div>
       </div>
     </div>
     
@@ -627,6 +621,25 @@
 
     // Refresh every 30 seconds
     setInterval(loadDashboard, 30000);
+  </script>
+
+  <script>
+    /* Batch 018.2 — sidebar nav helpers + legacy compat */
+    if (typeof window.goTo !== 'function') {
+      window.goTo = function(p){ window.location.href = p; };
+    }
+    if (typeof window.logout !== 'function') {
+      window.logout = function(){
+        if (window.AdminAuth && AdminAuth.getInstance && typeof AdminAuth.getInstance().logout === 'function') {
+          if (!confirm('Are you sure you want to logout?')) return;
+          try { AdminAuth.getInstance().logout(); } catch(e){}
+        }
+        try { sessionStorage.removeItem('sbp_admin_token'); } catch(e){}
+        try { sessionStorage.removeItem('sbp_admin_session'); } catch(e){}
+        try { sessionStorage.removeItem('sbp_admin_logged_in'); } catch(e){}
+        window.location.href = 'admin-login.html';
+      };
+    }
   </script>
 </body>
 </html>

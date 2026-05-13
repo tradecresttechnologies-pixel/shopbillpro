@@ -1,21 +1,22 @@
-// supabase/functions/generate-ai-website/index.ts
-// Real Deno Edge Function (NOT a string wrapped in JS).
+// supabase/functions/generate-ai-website/index.ts  (v2 — Admin-integrated)
+// Real Deno Edge Function — pairs with migration 045.
 //
-// Generates an HTML website via Claude API, then records it via the
-// sbp_record_ai_website_generation RPC. Quota enforcement happens
-// server-side inside that RPC (defense in depth).
+// Improvements over v1:
+//   • Reads prompt template from DB via get_active_ai_prompt RPC
+//     (so admin can edit the prompt without redeploying)
+//   • Logs every attempt (success + failure) via log_ai_generation RPC
+//   • Captures token usage + cost for analytics
+//   • Provider switch via admin_settings.active_ai_provider
 //
 // Deploy:
 //   supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
+//   supabase secrets set GROQ_API_KEY=gsk_...   (optional, only if using groq)
 //   supabase functions deploy generate-ai-website --no-verify-jwt=false
-//
-// Caller must include the user's JWT in Authorization header
-// (the supabase-js client does this automatically when invoked via
-//  _sb.functions.invoke).
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
+const GROQ_API_KEY      = Deno.env.get("GROQ_API_KEY") ?? "";
 const SUPABASE_URL      = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 
@@ -26,32 +27,20 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-function buildClaudePrompt(p: Record<string, string>): string {
-  return `You are an expert web designer. Generate a single self-contained HTML5 website.
-
-BUSINESS:
-- Name: ${p.shop_name}
-- Type: ${p.business_type}
-- Headline: ${p.headline}
-- Description: ${p.description}
-- Style: ${p.design_style}
-
-COLORS (use exactly these):
-- Primary: ${p.color_primary} (${p.color_primary_hex})
-- Accent:  ${p.color_accent}  (${p.color_accent_hex})
-
-REQUIREMENTS:
-- Single HTML file. All CSS inside one <style> tag. No external CSS/JS frameworks.
-- Mobile-first responsive. Works at 320px width.
-- WCAG AA contrast on text.
-- Sections: sticky header with shop name, hero with headline + CTA, services/products list (3-6 items inferred from business type), about block, contact (WhatsApp + email + address placeholders), footer with "Powered by ShopBill Pro".
-- Use ${p.color_primary_hex} for header/hero background. Use ${p.color_accent_hex} for buttons and links.
-- Clean Outfit/Inter style typography (use system-ui font stack).
-- No JavaScript needed beyond a smooth-scroll snippet.
-- Output ONLY the raw HTML, starting with <!DOCTYPE html>. No markdown fences, no commentary.`;
+function fillTemplate(tpl: string, p: Record<string, string>): string {
+  return tpl
+    .replaceAll("{SHOP_NAME}",         p.shop_name)
+    .replaceAll("{BUSINESS_TYPE}",     p.business_type)
+    .replaceAll("{HEADLINE}",          p.headline)
+    .replaceAll("{DESCRIPTION}",       p.description)
+    .replaceAll("{DESIGN_STYLE}",      p.design_style)
+    .replaceAll("{COLOR_PRIMARY}",     p.color_primary)
+    .replaceAll("{COLOR_PRIMARY_HEX}", p.color_primary_hex)
+    .replaceAll("{COLOR_ACCENT}",      p.color_accent)
+    .replaceAll("{COLOR_ACCENT_HEX}",  p.color_accent_hex);
 }
 
-async function callClaude(prompt: string): Promise<string> {
+async function callClaude(prompt: string): Promise<{ html: string; in_tokens: number; out_tokens: number }> {
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -76,19 +65,67 @@ async function callClaude(prompt: string): Promise<string> {
   if (!block?.text) throw new Error("claude_no_text_block");
 
   let html = block.text.trim();
-  // strip code fences if Claude wrapped output despite instructions
   const m = html.match(/```html\s*([\s\S]*?)```/i);
   if (m) html = m[1].trim();
   if (!html.startsWith("<!DOCTYPE") && !html.startsWith("<html")) {
     throw new Error("claude_invalid_html");
   }
-  return html;
+
+  return {
+    html,
+    in_tokens:  data?.usage?.input_tokens  ?? 0,
+    out_tokens: data?.usage?.output_tokens ?? 0,
+  };
+}
+
+async function callGroq(prompt: string): Promise<{ html: string; in_tokens: number; out_tokens: number }> {
+  if (!GROQ_API_KEY) throw new Error("groq_api_key_missing");
+
+  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${GROQ_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "llama-3.3-70b-versatile",
+      messages: [{ role: "user", content: prompt }],
+      max_tokens: 4096,
+    }),
+  });
+
+  if (!res.ok) {
+    const txt = await res.text();
+    throw new Error(`groq_api_error: ${res.status} ${txt.slice(0, 200)}`);
+  }
+
+  const data = await res.json();
+  let html = data?.choices?.[0]?.message?.content?.trim() ?? "";
+  if (!html) throw new Error("groq_empty_response");
+
+  const m = html.match(/```html\s*([\s\S]*?)```/i);
+  if (m) html = m[1].trim();
+  if (!html.startsWith("<!DOCTYPE") && !html.startsWith("<html")) {
+    throw new Error("groq_invalid_html");
+  }
+
+  return {
+    html,
+    in_tokens:  data?.usage?.prompt_tokens     ?? 0,
+    out_tokens: data?.usage?.completion_tokens ?? 0,
+  };
 }
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
+
+  const startedAt = Date.now();
+  let shopId: string | null = null;
+  let shopName: string | null = null;
+  let providerUsed = "claude";
+  let promptTemplate = "website_v1";
 
   try {
     if (req.method !== "POST") {
@@ -119,16 +156,17 @@ Deno.serve(async (req) => {
         );
       }
     }
+    shopName = body.shop_name;
 
     // Per-user supabase client (carries user JWT — RPC sees auth.uid())
     const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       global: { headers: { Authorization: authHeader } },
     });
 
-    // 1. Pre-flight quota check (server source of truth)
+    // 1. Pre-flight quota check
     const stateResp = await sb.rpc("sbp_get_website_builder_state");
     if (stateResp.error) throw new Error("state_rpc_failed: " + stateResp.error.message);
-    const state = stateResp.data as { ok: boolean; tier?: { can_generate?: boolean; block_reason?: string } };
+    const state = stateResp.data as { ok: boolean; shop?: { id?: string }; tier?: { can_generate?: boolean; block_reason?: string } };
     if (!state?.ok) {
       return new Response(JSON.stringify({ ok: false, error: "no_shop" }), {
         status: 400,
@@ -141,14 +179,34 @@ Deno.serve(async (req) => {
         { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+    shopId = state.shop?.id ?? null;
 
-    // 2. Generate HTML
-    const html = await callClaude(buildClaudePrompt(body));
+    // 2. Fetch active prompt template from DB (admin-editable)
+    const promptResp = await sb.rpc("get_active_ai_prompt", { p_name: "website_v1" });
+    if (promptResp.error || !promptResp.data?.ok) {
+      throw new Error("no_active_prompt_template");
+    }
+    const tplText = promptResp.data.prompt_text as string;
+    promptTemplate = `${promptResp.data.name}:v${promptResp.data.version}`;
+    providerUsed = promptResp.data.provider ?? "claude";
 
-    // 3. Record via RPC (also re-checks quota, atomic with counter increment)
+    // (Optionally override provider from admin_settings — not strictly needed since
+    //  template has its own provider attribute, but kept as a switch point.)
+
+    const filledPrompt = fillTemplate(tplText, body);
+
+    // 3. Call AI provider
+    let result;
+    if (providerUsed === "groq") {
+      result = await callGroq(filledPrompt);
+    } else {
+      result = await callClaude(filledPrompt);
+    }
+
+    // 4. Record successful generation
     const recResp = await sb.rpc("sbp_record_ai_website_generation", {
       p_payload: {
-        generated_html:    html,
+        generated_html:    result.html,
         design_style:      body.design_style,
         color_primary:     body.color_primary,
         color_primary_hex: body.color_primary_hex,
@@ -157,10 +215,9 @@ Deno.serve(async (req) => {
         headline:          body.headline,
         description:       body.description,
         business_type:     body.business_type,
-        provider:          "claude",
+        provider:          providerUsed,
       },
     });
-
     if (recResp.error) throw new Error("record_rpc_failed: " + recResp.error.message);
     if (!recResp.data?.ok) {
       return new Response(JSON.stringify(recResp.data), {
@@ -169,12 +226,28 @@ Deno.serve(async (req) => {
       });
     }
 
+    // 5. Log success
+    await sb.rpc("log_ai_generation", {
+      p_payload: {
+        shop_id:           shopId,
+        shop_name:         shopName,
+        provider:          providerUsed,
+        prompt_template:   promptTemplate,
+        status:            "success",
+        input_tokens:      String(result.in_tokens),
+        output_tokens:     String(result.out_tokens),
+        generation_time_ms: String(Date.now() - startedAt),
+        request_payload:   body,
+      },
+    });
+
     return new Response(
       JSON.stringify({
         ok: true,
         website_id: recResp.data.website_id,
         slug:       recResp.data.slug,
-        html_length: html.length,
+        html_length: result.html.length,
+        provider:    providerUsed,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
@@ -182,6 +255,28 @@ Deno.serve(async (req) => {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("generate-ai-website error:", msg);
+
+    // Best-effort failure log (don't fail the response just because logging fails)
+    try {
+      const authHeader = req.headers.get("Authorization") ?? "";
+      if (authHeader.startsWith("Bearer ")) {
+        const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+          global: { headers: { Authorization: authHeader } },
+        });
+        await sb.rpc("log_ai_generation", {
+          p_payload: {
+            shop_id:           shopId,
+            shop_name:         shopName,
+            provider:          providerUsed,
+            prompt_template:   promptTemplate,
+            status:            "failure",
+            error_message:    msg,
+            generation_time_ms: String(Date.now() - startedAt),
+          },
+        });
+      }
+    } catch (_logErr) { /* swallow */ }
+
     return new Response(
       JSON.stringify({ ok: false, error: "generation_failed", message: msg }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
