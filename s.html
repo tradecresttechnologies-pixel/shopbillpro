@@ -304,21 +304,58 @@ function renderEmpty(title, msg, ctaText) {
 }
 
 function renderShop(data) {
-  // ─── AI Website fork (Phase 5a v2) ──────────────────────────────────
+  // ─── AI Website fork (Phase 5a v4 — live components) ───────────────────
   // If the shopkeeper has published an AI-generated website, render it
   // inside a sandboxed iframe and short-circuit the default renderer.
+  //
+  // v4 changes:
+  //   • Iframe sandbox drops allow-same-origin (security) and adds
+  //     allow-scripts so lib/live-site.js can hydrate [data-sbp] placeholders.
+  //   • Before insertion we splice in: window.__SBP_{SLUG,URL,KEY} globals,
+  //     the Supabase UMD SDK, and lib/live-site.js — all loaded via absolute
+  //     URLs because srcdoc iframes have no base URL.
   if (data.ai_mode === true && data.ai_html && typeof data.ai_html === 'string' && data.ai_html.length > 50) {
     document.title = (data.shop_name || 'Shop') + ' — ShopBill Pro';
     const root = document.getElementById('app') || document.body;
-    // Clear loader / any existing markup
     root.innerHTML = '';
+
+    const origin = window.location.origin; // e.g. https://app.shopbillpro.in
+    const SB_URL = 'https://jfqeirfrkjdkqqixivru.supabase.co';
+    const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmcWVpcmZya2pka3FxaXhpdnJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzNzQ4MzgsImV4cCI6MjA4OTk1MDgzOH0.akd4E0nil8ypLR4WOykkeYIL8g4uuNU6XdSVh_Y1utk';
+
+    // JSON-encode the slug to safely embed it (handles quotes / unicode)
+    const slugJS = JSON.stringify(String(data.slug || ''));
+    const urlJS  = JSON.stringify(SB_URL);
+    const keyJS  = JSON.stringify(SB_KEY);
+
+    const runtimeBlock =
+      '<script>window.__SBP_SLUG=' + slugJS +
+      ';window.__SBP_URL=' + urlJS +
+      ';window.__SBP_KEY=' + keyJS + ';<\/script>' +
+      '<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"><\/script>' +
+      '<script src="' + origin + '/lib/live-site.js"><\/script>';
+
+    // Insert the runtime block right before </body>; if AI omitted </body>,
+    // append at the end as a fallback.
+    let html = data.ai_html;
+    if (/<\/body>/i.test(html)) {
+      html = html.replace(/<\/body>/i, runtimeBlock + '</body>');
+    } else {
+      html = html + runtimeBlock;
+    }
+
     const ifr = document.createElement('iframe');
     ifr.style.cssText = 'border:0;width:100vw;height:100vh;display:block';
-    ifr.setAttribute('sandbox', 'allow-same-origin allow-popups allow-popups-to-escape-sandbox');
+    // NB: NO allow-same-origin — iframe gets a unique opaque origin so AI-generated
+    // JS cannot read parent localStorage/cookies. Supabase JS works fine without
+    // it (uses fetch + public anon key).
+    ifr.setAttribute('sandbox', 'allow-scripts allow-popups allow-popups-to-escape-sandbox allow-forms');
     ifr.setAttribute('referrerpolicy', 'no-referrer');
-    ifr.srcdoc = data.ai_html;
+    ifr.srcdoc = html;
     root.appendChild(ifr);
-    // Still log the page view (RPC was already called; safe to call again is_idempotent)
+
+    // Parent-side page view log (live-site.js also logs but inside the iframe;
+    // we keep this one as a belt-and-braces redundancy)
     try { sb.rpc('sbp_log_shop_page_view', { p_slug: data.slug }); } catch(e){}
     return;
   }
