@@ -331,17 +331,25 @@ function renderShop(data) {
     const runtimeBlock =
       '<script>window.__SBP_SLUG=' + slugJS +
       ';window.__SBP_URL=' + urlJS +
-      ';window.__SBP_KEY=' + keyJS + ';<\/script>' +
+      ';window.__SBP_KEY=' + keyJS +
+      ';console.log("[sbp] globals set:", window.__SBP_SLUG, !!window.__SBP_URL);<\/script>' +
       '<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"><\/script>' +
       '<script src="' + origin + '/lib/live-site.js"><\/script>';
 
-    // Insert the runtime block right before </body>; if AI omitted </body>,
-    // append at the end as a fallback.
+    // Inject the runtime block INTO <head> as early as possible. This works
+    // regardless of whether the AI produced </body>, malformed HTML, or
+    // unusual structures. Head injection guarantees globals are set before
+    // any DOMContentLoaded handlers fire inside the body.
     let html = data.ai_html;
-    if (/<\/body>/i.test(html)) {
-      html = html.replace(/<\/body>/i, runtimeBlock + '</body>');
+    if (/<head[^>]*>/i.test(html)) {
+      // Inject right after the opening <head> tag
+      html = html.replace(/<head([^>]*)>/i, '<head$1>' + runtimeBlock);
+    } else if (/<html[^>]*>/i.test(html)) {
+      // No <head>, inject a synthetic one right after <html>
+      html = html.replace(/<html([^>]*)>/i, '<html$1><head>' + runtimeBlock + '</head>');
     } else {
-      html = html + runtimeBlock;
+      // No <html> at all — prepend the runtime block at the very top
+      html = runtimeBlock + html;
     }
 
     const ifr = document.createElement('iframe');
