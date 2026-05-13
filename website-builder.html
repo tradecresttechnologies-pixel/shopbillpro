@@ -552,6 +552,9 @@ body{
               <option value="education">Education / शिक्षा</option>
               <option value="online_brand">Online Brand / ऑनलाइन</option>
             </select>
+            <div class="helper">
+              <span class="lang-en">Used by AI to choose layout style. To change your actual shop type, use Settings → Change Business Type.</span>
+            </div>
           </div>
 
           <div class="form-row">
@@ -1303,7 +1306,8 @@ async function saveGalleryToDb(){
 async function handleSaveAll(){
   loadingOn('Saving everything…');
   try {
-    // 1. Update shops table
+    // 1. Update shops table (excluding shop_type — that has an FK constraint
+    // and should only be changed via the shop-type wizard, not the website builder)
     const shopPatch = {
       name:    $('shop-name').value.trim() || _shop.name,
       phone:   $('c-phone').value.trim() || _shop.phone || '',
@@ -1312,8 +1316,7 @@ async function handleSaveAll(){
       address: $('c-address').value.trim() || _shop.address || '',
       city:    $('c-city').value.trim() || _shop.city || '',
       pincode: $('c-pincode').value.trim() || _shop.pincode || '',
-      upi:     $('c-upi').value.trim() || _shop.upi || '',
-      shop_type: $('business-type').value || _shop.shop_type
+      upi:     $('c-upi').value.trim() || _shop.upi || ''
     };
     const { error: shopErr } = await _sb.from('shops').update(shopPatch).eq('id', _shopId);
     if (shopErr) throw shopErr;
