@@ -239,6 +239,35 @@ select.filter,select.period{padding:11px 16px;background:rgba(20,18,32,.6);borde
 
     <!-- ─────────── TAB: PROVIDER & PROMPTS ─────────── -->
     <div id="tab-provider" class="tab-panel">
+
+      <!-- API Keys (new in v3.2) -->
+      <div class="chart-card">
+        <h3>🔑 AI Provider API Keys</h3>
+        <p style="font-size:12.5px;color:#8A8AA8;margin-bottom:14px">Paste your API keys here. They are stored encrypted via pgcrypto in <code>admin_settings</code>. Keys are never shown in plaintext after save.</p>
+
+        <div id="keys-status" style="font-size:12px;margin-bottom:14px"></div>
+
+        <label style="display:block;font-size:13px;color:#8A8AA8;margin-bottom:6px">Anthropic API Key (Claude)</label>
+        <div style="display:flex;gap:8px;margin-bottom:14px">
+          <input type="password" id="key-anthropic" placeholder="paste sk-ant-… here (leave blank to keep current)" autocomplete="off" style="flex:1;padding:10px 12px;background:rgba(10,14,20,.6);border:1px solid rgba(124,58,237,.3);border-radius:8px;color:#F0EFF8;font-family:inherit;font-size:13px">
+          <button class="btn btn-act" onclick="toggleKeyVis('key-anthropic')">👁</button>
+        </div>
+
+        <label style="display:block;font-size:13px;color:#8A8AA8;margin-bottom:6px">Groq API Key (optional, for fallback)</label>
+        <div style="display:flex;gap:8px;margin-bottom:14px">
+          <input type="password" id="key-groq" placeholder="paste gsk_… here (leave blank to keep current)" autocomplete="off" style="flex:1;padding:10px 12px;background:rgba(10,14,20,.6);border:1px solid rgba(124,58,237,.3);border-radius:8px;color:#F0EFF8;font-family:inherit;font-size:13px">
+          <button class="btn btn-act" onclick="toggleKeyVis('key-groq')">👁</button>
+        </div>
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-primary btn-lg" onclick="saveApiKeys()">💾 Save Keys</button>
+          <button class="btn btn-act btn-lg" onclick="testGenerationKey()">🧪 Test Anthropic key</button>
+          <button class="btn btn-act" onclick="loadKeysStatus()">↻ Refresh status</button>
+        </div>
+
+        <p style="font-size:11px;color:#5A5A78;margin-top:14px">Get Anthropic keys at <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:#F5A623">console.anthropic.com</a> · Groq keys at <a href="https://console.groq.com/keys" target="_blank" style="color:#F5A623">console.groq.com</a></p>
+      </div>
+
       <div class="chart-card">
         <h3>🤖 Active AI Provider</h3>
         <p style="font-size:12.5px;color:#8A8AA8;margin-bottom:12px">Switching only takes effect for new generations. Existing AI sites stay as they were generated.</p>
@@ -247,7 +276,7 @@ select.filter,select.period{padding:11px 16px;background:rgba(20,18,32,.6);borde
           <option value="groq">Groq (Llama 3.3 — cheaper, lower quality)</option>
         </select>
         <button class="btn btn-primary btn-lg" style="margin-left:10px" onclick="saveProvider()">Save</button>
-        <p style="font-size:11.5px;color:#5A5A78;margin-top:10px">Anthropic API key + Groq API key are set via Supabase secrets, not here. CLI: <code style="color:#F5A623">supabase secrets set ANTHROPIC_API_KEY=...</code></p>
+        <p style="font-size:11.5px;color:#5A5A78;margin-top:10px">Anthropic and Groq API keys are managed in the section above ↑ (no more CLI needed).</p>
       </div>
 
       <div class="chart-card">
@@ -346,7 +375,7 @@ function bindTabs(){
       tab.classList.add('active');
       document.getElementById('tab-' + name).classList.add('active');
       if (name === 'analytics') loadAnalytics();
-      if (name === 'provider')  loadProviderTab();
+      if (name === 'provider')  { loadProviderTab(); loadKeysStatus(); }
       if (name === 'failures')  loadFailures();
     });
   });
@@ -616,7 +645,108 @@ async function activateVersion(id){
   loadProviderTab();
 }
 
-// ─────────── FAILURES TAB ───────────
+// ─────────── API KEYS (v3.2) ───────────
+function toggleKeyVis(id){
+  const el = document.getElementById(id);
+  el.type = el.type === 'password' ? 'text' : 'password';
+}
+
+async function loadKeysStatus(){
+  const el = document.getElementById('keys-status');
+  if (!el) return;
+  el.innerHTML = '<span style="color:#8A8AA8">Checking…</span>';
+
+  const { data, error } = await sb.rpc('admin_get_ai_keys_status', { p_admin_token: token() });
+  if (error || !data?.ok){
+    el.innerHTML = `<span style="color:#EF4444">❌ Failed to load status: ${esc(error?.message || data?.error)}</span>`;
+    return;
+  }
+
+  const enc = data.encryption_configured;
+  const a   = data.anthropic_set;
+  const g   = data.groq_set;
+  const aUpd = data.anthropic_updated_at ? fmtDate(data.anthropic_updated_at) : '';
+  const gUpd = data.groq_updated_at      ? fmtDate(data.groq_updated_at)      : '';
+
+  let html = '';
+
+  if (!enc){
+    html += '<div style="padding:11px 14px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.4);border-radius:8px;margin-bottom:10px;font-size:12.5px;color:#FCA5A5"><strong>⚠️ Encryption key not set.</strong> Run this in Supabase SQL Editor first: <code style="background:rgba(0,0,0,.3);padding:2px 6px;border-radius:4px;display:block;margin-top:6px;font-size:11.5px">ALTER DATABASE postgres SET app.encryption_key = \'pick-a-32-char-secret-here-okay!\';</code> Then close + reopen the SQL editor and click 🧪 Test below.</div>';
+  }
+
+  html += `<div style="display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px">
+    <div>${a ? '✅' : '⚪'} <strong>Anthropic:</strong> ${a ? `set <span style="color:#5A5A78">· updated ${aUpd}</span>` : 'not set'}</div>
+    <div>${g ? '✅' : '⚪'} <strong>Groq:</strong> ${g ? `set <span style="color:#5A5A78">· updated ${gUpd}</span>` : 'not set'}</div>
+  </div>`;
+
+  el.innerHTML = html;
+}
+
+async function saveApiKeys(){
+  const a = document.getElementById('key-anthropic').value.trim();
+  const g = document.getElementById('key-groq').value.trim();
+
+  if (!a && !g){
+    toast('Paste at least one key first', true);
+    return;
+  }
+
+  let saved = [];
+
+  if (a){
+    if (!a.startsWith('sk-ant-')){
+      if (!confirm('Anthropic keys usually start with "sk-ant-". Save anyway?')) return;
+    }
+    const r = await sb.rpc('admin_set_setting', {
+      p_admin_token: token(), p_key: 'anthropic_api_key', p_value: a, p_is_secret: true
+    });
+    if (r.error){ toast('Save anthropic failed: ' + r.error.message, true); return; }
+    saved.push('Anthropic');
+    document.getElementById('key-anthropic').value = '';
+  }
+
+  if (g){
+    if (!g.startsWith('gsk_')){
+      if (!confirm('Groq keys usually start with "gsk_". Save anyway?')) return;
+    }
+    const r = await sb.rpc('admin_set_setting', {
+      p_admin_token: token(), p_key: 'groq_api_key', p_value: g, p_is_secret: true
+    });
+    if (r.error){ toast('Save groq failed: ' + r.error.message, true); return; }
+    saved.push('Groq');
+    document.getElementById('key-groq').value = '';
+  }
+
+  toast(`Saved: ${saved.join(' + ')} ✓`);
+  loadKeysStatus();
+}
+
+async function testGenerationKey(){
+  toast('Testing… check the Failures tab if it errors out');
+  // Invoke the edge function with a tiny sample payload
+  const { data, error } = await sb.functions.invoke('generate-ai-website', {
+    body: {
+      shop_name:         'TestShop',
+      business_type:     'retail',
+      headline:          'Test connection',
+      description:       'This is a test generation to verify the API key works.',
+      design_style:      'modern',
+      color_primary:     'orange',
+      color_primary_hex: '#FF6B35',
+      color_accent:      'navy',
+      color_accent_hex:  '#001F3F'
+    }
+  });
+
+  if (error){ toast('Test failed: ' + error.message, true); return; }
+  if (data?.ok){
+    toast(`✅ Anthropic key works! Generated ${data.html_length} chars via ${data.provider}`);
+  } else if (data?.error === 'quota_exhausted'){
+    toast('Quota exhausted on the test shop — but key likely works (the request reached the gate).', false);
+  } else {
+    toast('Test returned: ' + (data?.message || data?.error || 'unknown'), true);
+  }
+}
 async function loadFailures(){
   const tbody = document.getElementById('failures-tbody');
   tbody.innerHTML = '<tr><td colspan="4" class="empty">Loading…</td></tr>';
