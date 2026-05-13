@@ -329,10 +329,24 @@ function renderShop(data) {
     const keyJS  = JSON.stringify(SB_KEY);
 
     const runtimeBlock =
+      '<base target="_self">' +
       '<script>window.__SBP_SLUG=' + slugJS +
       ';window.__SBP_URL=' + urlJS +
       ';window.__SBP_KEY=' + keyJS +
-      ';console.log("[sbp] globals set:", window.__SBP_SLUG, !!window.__SBP_URL);<\/script>' +
+      ';console.log("[sbp] globals set:", window.__SBP_SLUG, !!window.__SBP_URL);' +
+      // Intercept hash-only links so they smooth-scroll within iframe instead
+      // of triggering a top-level navigation that reloads srcdoc with no slug.
+      'document.addEventListener("click",function(e){' +
+        'var a=e.target.closest&&e.target.closest("a");' +
+        'if(!a)return;' +
+        'var href=a.getAttribute("href")||"";' +
+        'if(href.charAt(0)==="#"){' +
+          'e.preventDefault();' +
+          'var t=document.getElementById(href.slice(1))||document.querySelector(href);' +
+          'if(t)t.scrollIntoView({behavior:"smooth",block:"start"});' +
+        '}' +
+      '},true);' +
+      '<\/script>' +
       '<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"><\/script>' +
       '<script src="' + origin + '/lib/live-site.js"><\/script>';
 
