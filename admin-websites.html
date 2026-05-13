@@ -243,7 +243,7 @@ select.filter,select.period{padding:11px 16px;background:rgba(20,18,32,.6);borde
       <!-- API Keys (new in v3.2) -->
       <div class="chart-card">
         <h3>🔑 AI Provider API Keys</h3>
-        <p style="font-size:12.5px;color:#8A8AA8;margin-bottom:14px">Paste your API keys here. They are stored encrypted via pgcrypto in <code>admin_settings</code>. Keys are never shown in plaintext after save.</p>
+        <p style="font-size:12.5px;color:#8A8AA8;margin-bottom:14px">Paste your API keys here. They are stored encrypted in <a href="https://supabase.com/docs/guides/database/vault" target="_blank" style="color:#F5A623">Supabase Vault</a>. Keys are never shown in plaintext after save.</p>
 
         <div id="keys-status" style="font-size:12px;margin-bottom:14px"></div>
 
@@ -671,7 +671,7 @@ async function loadKeysStatus(){
   let html = '';
 
   if (!enc){
-    html += '<div style="padding:11px 14px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.4);border-radius:8px;margin-bottom:10px;font-size:12.5px;color:#FCA5A5"><strong>⚠️ Encryption key not set.</strong> Run this in Supabase SQL Editor first: <code style="background:rgba(0,0,0,.3);padding:2px 6px;border-radius:4px;display:block;margin-top:6px;font-size:11.5px">ALTER DATABASE postgres SET app.encryption_key = \'pick-a-32-char-secret-here-okay!\';</code> Then close + reopen the SQL editor and click 🧪 Test below.</div>';
+    html += '<div style="padding:11px 14px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.4);border-radius:8px;margin-bottom:10px;font-size:12.5px;color:#FCA5A5"><strong>⚠️ Vault extension is not enabled.</strong> Run migration 047 first, or enable Supabase Vault via Dashboard → Database → Extensions → search "vault".</div>';
   }
 
   html += `<div style="display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px">
@@ -697,10 +697,10 @@ async function saveApiKeys(){
     if (!a.startsWith('sk-ant-')){
       if (!confirm('Anthropic keys usually start with "sk-ant-". Save anyway?')) return;
     }
-    const r = await sb.rpc('admin_set_setting', {
-      p_admin_token: token(), p_key: 'anthropic_api_key', p_value: a, p_is_secret: true
+    const r = await sb.rpc('admin_save_ai_api_key', {
+      p_admin_token: token(), p_key_name: 'anthropic_api_key', p_value: a
     });
-    if (r.error){ toast('Save anthropic failed: ' + r.error.message, true); return; }
+    if (r.error || !r.data?.ok){ toast('Save anthropic failed: ' + (r.error?.message || r.data?.error), true); return; }
     saved.push('Anthropic');
     document.getElementById('key-anthropic').value = '';
   }
@@ -709,10 +709,10 @@ async function saveApiKeys(){
     if (!g.startsWith('gsk_')){
       if (!confirm('Groq keys usually start with "gsk_". Save anyway?')) return;
     }
-    const r = await sb.rpc('admin_set_setting', {
-      p_admin_token: token(), p_key: 'groq_api_key', p_value: g, p_is_secret: true
+    const r = await sb.rpc('admin_save_ai_api_key', {
+      p_admin_token: token(), p_key_name: 'groq_api_key', p_value: g
     });
-    if (r.error){ toast('Save groq failed: ' + r.error.message, true); return; }
+    if (r.error || !r.data?.ok){ toast('Save groq failed: ' + (r.error?.message || r.data?.error), true); return; }
     saved.push('Groq');
     document.getElementById('key-groq').value = '';
   }
