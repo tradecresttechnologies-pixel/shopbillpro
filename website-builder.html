@@ -345,9 +345,102 @@ body{
 /* ── Mobile nav placeholders (sidebar engine populates) ── */
 .bnav, .bnav-drawer, .bnav-overlay{display:none}
 @media(max-width:1023px){ .bnav{display:flex} }
+
+/* ══════════════════════════════════════════════════════════════════
+   SIDEBAR + APP SHELL — matches services.html / dashboard.html
+   Required for SBPSidebar.render() output to be styled properly.
+══════════════════════════════════════════════════════════════════ */
+
+/* App wrapper */
+#app{
+  min-height:100vh; display:flex; flex-direction:column; position:relative;
+}
+
+/* Desktop side rail (220px fixed) */
+#dsb{
+  position:fixed; left:0; top:0; bottom:0; width:220px;
+  background:var(--surf); border-right:1px solid var(--bord);
+  display:flex; flex-direction:column; z-index:200; overflow-y:auto;
+}
+.dsb-logo{
+  display:flex; align-items:center; gap:10px;
+  padding:20px 16px 14px; border-bottom:1px solid var(--bord);
+}
+.dsb-brand{
+  font-size:15px; font-weight:800; color:var(--acc);
+}
+.dsb-nav{flex:1; padding:10px 8px; display:flex; flex-direction:column; gap:2px; overflow-y:auto}
+.dsb-item{
+  display:flex; align-items:center; gap:10px;
+  padding:9px 12px; border-radius:10px; cursor:pointer;
+  text-decoration:none; color:var(--muted); font-size:13px; font-weight:600;
+  transition:.15s ease; white-space:nowrap; border:none; background:none; width:100%;
+}
+.dsb-item:hover{background:var(--surf2); color:var(--text)}
+.dsb-item.active{background:var(--acc-soft); color:var(--acc)}
+.dsb-item.fab-sb{
+  background:linear-gradient(135deg, var(--acc), #FF8A00); color:#fff;
+  margin:4px 0 8px; font-weight:700;
+}
+.dsb-item.fab-sb:hover{opacity:.88}
+.dsb-ic{font-size:17px; width:22px; text-align:center; flex-shrink:0}
+.dsb-sep{height:1px; background:var(--bord); margin:6px 12px}
+.dsb-footer{padding:8px; border-top:1px solid var(--bord)}
+.dsb-ver{font-size:10px; color:var(--muted); text-align:center; padding:8px 0 4px}
+
+/* Mobile drawer styling (bnav-drawer panel) */
+.bnav-overlay{
+  position:fixed; inset:0; background:rgba(0,0,0,.5);
+  opacity:0; pointer-events:none; transition:opacity .25s ease;
+  z-index:90;
+}
+.bnav-overlay.open{opacity:1; pointer-events:auto}
+.bnav-drawer{
+  position:fixed; top:0; right:0; bottom:0; width:min(85vw,360px);
+  background:var(--surf); color:var(--text);
+  transform:translateX(100%); transition:transform .28s cubic-bezier(.4,0,.2,1);
+  z-index:95; display:flex; flex-direction:column;
+  box-shadow:-4px 0 24px rgba(0,0,0,.4); overflow:hidden;
+}
+.bnav-drawer.open{transform:translateX(0)}
+
+/* Mobile bottom nav */
+.bnav{
+  position:fixed; bottom:0; left:0; right:0; height:60px;
+  background:var(--surf); border-top:1px solid var(--bord);
+  display:flex; align-items:stretch; z-index:55;
+}
+.ni{
+  flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  padding:8px 4px; gap:3px; cursor:pointer; min-height:56px; user-select:none;
+}
+.ni-ic{font-size:20px; line-height:1}
+.ni-lb{font-size:10px; color:var(--muted); font-weight:600; white-space:nowrap}
+.ni.on .ni-lb{color:var(--acc)}
+.ni.on::after{
+  content:''; position:absolute; top:0; left:20%; right:20%;
+  height:2.5px; border-radius:0 0 4px 4px; background:var(--acc);
+}
+.nav-fab{
+  width:48px; height:48px; border-radius:16px;
+  background:linear-gradient(135deg, var(--acc), #FF8A00);
+  color:#fff; font-size:22px; display:flex; align-items:center; justify-content:center;
+  box-shadow:0 4px 16px rgba(245,166,35,.5); margin-bottom:4px;
+}
+
+/* Hide desktop sidebar on mobile, mobile drawer/bnav on desktop */
+@media(max-width:1023px){
+  #dsb{display:none !important}
+}
+@media(min-width:1024px){
+  .bnav, .bnav-drawer, .bnav-overlay{display:none !important}
+  #app{ margin-left:220px; }
+}
 </style>
 </head>
 <body>
+
+<div id="app">
 
 <!-- ── Topbar ── -->
 <div class="topbar">
@@ -721,6 +814,8 @@ body{
 <div class="bnav"></div>
 <div class="bnav-overlay" onclick="window.SBPSidebar && window.SBPSidebar._closeDrawer && window.SBPSidebar._closeDrawer()"></div>
 <div class="bnav-drawer"></div>
+
+</div><!-- /#app -->
 
 <!-- ── Supabase client ── -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
