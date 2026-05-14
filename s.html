@@ -604,11 +604,26 @@ async function init() {
     }
 
     renderShop(data);
-    // Async: load services from sbp_services table via public RPC
-    // (separate from resolve_shop_slug to keep the resolve cacheable + fast)
-    loadServicesPublic(slug);
-    // Async: load appointment config — shows Book CTA if shop has Business plan + active providers
-    loadAppointmentConfig(slug);
+
+    // AI-mode sites are rendered entirely inside a sandboxed iframe by
+    // renderShop() (which returns early). The iframe's own lib/live-site.js
+    // hydrates everything — services, gallery, contact, booking. The
+    // parent-page helpers below (loadServicesPublic, loadAppointmentConfig)
+    // target DOM elements that only exist in the NON-AI renderer's markup,
+    // and loadAppointmentConfig hits sbp_get_appointment_config_public which
+    // 400s for shops without the legacy appointments module. So for AI
+    // sites we skip both — they're pure noise there.
+    const _isAiSite = (data.ai_mode === true && data.ai_html
+                       && typeof data.ai_html === 'string'
+                       && data.ai_html.length > 50);
+    if (!_isAiSite) {
+      // Async: load services from sbp_services table via public RPC
+      // (separate from resolve_shop_slug to keep the resolve cacheable + fast)
+      loadServicesPublic(slug);
+      // Async: load appointment config — shows Book CTA if shop has
+      // Business plan + active providers
+      loadAppointmentConfig(slug);
+    }
   } catch (err) {
     console.error('[PSP] resolve error:', err);
     renderEmpty(

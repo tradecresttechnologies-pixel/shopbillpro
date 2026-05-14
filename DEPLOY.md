@@ -46,33 +46,34 @@ the generated site, THAT would be a real bug — but I couldn't reproduce it
 from the code. If it happens, screenshot the picker + the result and I'll
 dig in.)
 
-### 3. ⏳ DEFERRED — Appointment 400 noise
+### 3. ✅ FIXED — Appointment 400 noise
 
-The `sbp_get_appointment_config_public` 400 error comes from leftover
-Universal Appointments code (Batch 015) in `s.html` — lines ~531-572 call
-that RPC on every page load, including AI-mode sites that don't need it.
+The `sbp_get_appointment_config_public` 400 error came from `s.html`
+unconditionally calling two parent-page helper functions
+(`loadServicesPublic` + `loadAppointmentConfig`) AFTER `renderShop()` —
+even for AI-mode sites.
 
-**Why deferred:** The `s.html` in the project repo snapshot is dated
-May 5 — it's the OLD pre-AI version. The deployed `s.html` (which handles
-AI iframe rendering) is newer and isn't in the snapshot I can read. I can't
-safely patch a file I can't see the current version of.
+For an AI site, `renderShop()` replaces the whole page with a sandboxed
+iframe and returns early. But those two helpers still fired:
+- They look for DOM elements (`psp-book-cta-slot`) that only exist in the
+  non-AI renderer's markup — so they did nothing useful
+- `loadAppointmentConfig` hit `sbp_get_appointment_config_public`, which
+  400s for shops without the legacy appointments module — that was the
+  console error you saw
 
-**To fix this:** upload your current deployed `s.html` (or the one from
-whichever batch added AI iframe support) and I'll patch it in a tiny
-follow-up — the fix is ~3 lines: skip `loadAppointmentConfig()` when
-`data.ai_mode` is true.
-
-**Impact if left alone:** harmless. It's one failed background request
-that's caught and logged as a warning. Nothing user-facing breaks. Worth
-cleaning up before launch but not urgent.
+**The fix:** `s.html` now detects AI-mode sites and skips both parent-page
+helpers. The iframe's own `lib/live-site.js` already handles everything
+(services, gallery, contact, booking) inside. No more 400, no wasted
+requests.
 
 ## DEPLOY PATHS
 
 ```
-NEW  db/migrations/057_website_prompt_v3_2.sql
+NEW      db/migrations/057_website_prompt_v3_2.sql
+REPLACE  s.html
 ```
 
-**One file.** SQL migration only. No HTML, no edge function change.
+**Two files.** One SQL migration + one HTML file. No edge function change.
 
 ## Deploy steps
 
@@ -87,7 +88,9 @@ NEW  db/migrations/057_website_prompt_v3_2.sql
    FROM ai_prompt_templates WHERE name='website_v1' AND is_active=true;
    -- should be true
    ```
-3. Regenerate Glitz & Glam from `/website-builder.html` to see the fix
+3. Copy `s.html` → repo root (overwrite) → commit → push
+4. Regenerate Glitz & Glam from `/website-builder.html` to see the
+   duplicate-services fix
 
 ## Test
 
@@ -97,6 +100,8 @@ After regenerating Glitz & Glam:
   shows only non-room extras — OR is gracefully empty/hidden if the shop
   has no extras
 - ✅ No more seeing the same 3 rooms listed twice
+- ✅ Open DevTools Console on `/s/glitz-glam` → no more
+  `sbp_get_appointment_config_public` 400 error
 
 ## Rollback
 
@@ -105,16 +110,20 @@ UPDATE ai_prompt_templates SET is_active = (notes LIKE 'v3.1 —%')
 WHERE name='website_v1';
 ```
 
+For `s.html`: git revert the commit. The change is a clean conditional
+wrapper — reverting just restores the unconditional helper calls.
+
 ## Files in this batch
 
 ```
 Batch_Website_Polish_v4_8b/
 ├── DEPLOY.md
+├── s.html                              (AI-site helper-skip fix)
 └── db/migrations/
-    └── 057_website_prompt_v3_2.sql
+    └── 057_website_prompt_v3_2.sql      (prompt v3.2 — no duplicates)
 ```
 
-One migration. Run it, regenerate, done.
+Run the migration, deploy s.html, regenerate Glitz & Glam.
 
 ## Note on quota
 
