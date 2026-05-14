@@ -1,84 +1,127 @@
-# Batch v4.7-HOTFIX — Booking "Stuck on Sending" Fix
+# Batch v4.8b — Website Polish: Fix Duplicate Services
 
 **Delivered:** May 14, 2026
 
-## The bug
+## What this batch fixes
 
-Clicking "Send request" in the booking modal got stuck on "Sending..." forever.
-No network request was ever made.
+You flagged three things for v4.8b. Here's the honest status of each after
+investigation:
 
-**Root cause:** Line 683 of `live-site.js` called `sessionStorage.getItem(...)`.
-The AI website iframe runs in a sandbox with an opaque origin (no
-`allow-same-origin`). Opaque-origin iframes throw a `SecurityError` when ANY
-storage API is accessed — `sessionStorage` included.
+### 1. ✅ FIXED — Duplicate services (rooms shown twice)
 
-The crash happened at line 683, BEFORE the code reached the `try/catch` block
-around the actual RPC call (line 701). So:
-- The exception was uncaught
-- `submitBookingForm()` died mid-execution
-- The button stayed on "Sending..." with no error shown
-- The `sb.rpc('sbp_create_booking_public')` call was never reached
+**The bug:** For hospitality shops, the AI generated room cards TWICE:
+- Hand-authored "Our Rooms" cards in the #about section (with Book Now)
+- A separate `data-sbp="services"` component ("Our Services") that
+  hydrated the SAME rooms from `sbp_services`
 
-This is the same class of bug as the Web Locks API issue fixed earlier —
-sandboxed iframes block browser storage APIs.
+The customer saw rooms listed twice — redundant and confusing.
 
-## The fix
+**The fix:** Prompt v3.2 adds a hard "NO DUPLICATE OFFERINGS" rule:
+- **Hospitality** → #about section shows rooms (with Book Now CTAs). The
+  `data-sbp="services"` component is then for NON-ROOM extras only (spa,
+  restaurant, laundry, airport pickup). Its heading becomes "Additional
+  Services" not "Our Services". Rooms are never listed twice.
+- **Other verticals** → #about is a short teaser, services component is
+  the full list. They naturally differ — no duplication.
 
-Wrapped every `sessionStorage` access in try/catch, with an in-memory
-module-level variable (`_sbpIpHashCache`) as the fallback. The rate-limit
-token still works within a single page visit; it just isn't persisted across
-reloads when storage is blocked — which is fine.
+### 2. ⚠️ NOT A BUG — Color picker
+
+I investigated the "Orange → wrong color" issue thoroughly. The color
+picker code in `website-builder.html` is actually **correct**:
+- `selectColor('Orange')` → finds `{name:'Orange', hex:'#FF6B35'}` →
+  correctly sets `color_primary_hex = '#FF6B35'`
+- `init()` calls `selectColor('Orange')` first, THEN `loadWebsiteState()`
+  overrides it only if a saved draft exists
+
+What you saw was **expected behavior**: you had previously saved a draft
+with a different color (Sage/Teal during earlier testing). When you
+reopened the builder, `loadWebsiteState()` correctly restored that saved
+draft's color. That's the feature working — not a bug.
+
+**If you want Orange:** just click Orange in the picker before generating.
+It saves with the draft. Nothing to fix here.
+
+(If you genuinely see Orange selected in the UI but a different color in
+the generated site, THAT would be a real bug — but I couldn't reproduce it
+from the code. If it happens, screenshot the picker + the result and I'll
+dig in.)
+
+### 3. ⏳ DEFERRED — Appointment 400 noise
+
+The `sbp_get_appointment_config_public` 400 error comes from leftover
+Universal Appointments code (Batch 015) in `s.html` — lines ~531-572 call
+that RPC on every page load, including AI-mode sites that don't need it.
+
+**Why deferred:** The `s.html` in the project repo snapshot is dated
+May 5 — it's the OLD pre-AI version. The deployed `s.html` (which handles
+AI iframe rendering) is newer and isn't in the snapshot I can read. I can't
+safely patch a file I can't see the current version of.
+
+**To fix this:** upload your current deployed `s.html` (or the one from
+whichever batch added AI iframe support) and I'll patch it in a tiny
+follow-up — the fix is ~3 lines: skip `loadAppointmentConfig()` when
+`data.ai_mode` is true.
+
+**Impact if left alone:** harmless. It's one failed background request
+that's caught and logged as a warning. Nothing user-facing breaks. Worth
+cleaning up before launch but not urgent.
 
 ## DEPLOY PATHS
 
 ```
-REPLACE  lib/live-site.js
+NEW  db/migrations/057_website_prompt_v3_2.sql
 ```
 
-**One file.** No SQL, no edge function, no s.html change.
+**One file.** SQL migration only. No HTML, no edge function change.
 
 ## Deploy steps
 
-1. Extract this zip
-2. Copy `lib/live-site.js` → your repo's `/lib/live-site.js` (overwrite)
-3. GitHub Desktop → commit: `Fix: guard sessionStorage in sandboxed iframe (booking stuck on Sending)`
-4. Push origin → wait ~30 sec for Vercel
-5. **Hard refresh** `/s/glitz-glam` with **Ctrl+Shift+R** (important — old JS is cached)
+1. Supabase SQL Editor → paste `057_website_prompt_v3_2.sql` → Run
+2. Verify:
+   ```sql
+   SELECT name, version, is_active, left(notes, 60) AS notes
+   FROM ai_prompt_templates WHERE name='website_v1' ORDER BY version;
+   -- v3.2 should be the only active row
+
+   SELECT prompt_text LIKE '%NO DUPLICATE OFFERINGS%' AS has_rule
+   FROM ai_prompt_templates WHERE name='website_v1' AND is_active=true;
+   -- should be true
+   ```
+3. Regenerate Glitz & Glam from `/website-builder.html` to see the fix
 
 ## Test
 
-1. Open `/s/glitz-glam` in incognito
-2. Click any "Book Now" button
-3. Fill the form (name, phone, dates)
-4. Click "Send request"
-5. **Expected:** Within 1-2 seconds → green ✅ success screen with a
-   confirmation code (8-char hex) + WhatsApp follow-up button
-6. Switch to shop owner view → `/bookings.html` → the booking appears with
-   a 🌐 Online tag, status `pending`
-
-## Why this is the last booking blocker
-
-Everything else is already proven working:
-- ✅ `sbp_create_booking_public` RPC works (test booking 86BF7829 created
-  successfully via direct SQL call)
-- ✅ Migration 053 deployed (config RPC returns 200)
-- ✅ The booking modal opens and the form renders correctly
-- ✅ The v4.7 booking code is in the deployed file
-
-The ONLY thing broken was the unguarded `sessionStorage` call crashing the
-submit handler. This fix resolves it.
-
-## Changes in this file vs the previous live-site.js
-
-Two edits:
-1. Added `let _sbpIpHashCache = null;` near the top of the IIFE (module-level
-   in-memory fallback)
-2. Replaced the unguarded `sessionStorage.getItem/setItem` block in
-   `submitBookingForm()` with try/catch-wrapped versions
-
-Everything else is identical to the previous version.
+After regenerating Glitz & Glam:
+- ✅ "Our Rooms" appears once (in the #about section, with Book Now buttons)
+- ✅ The services component below is now headed "Additional Services" and
+  shows only non-room extras — OR is gracefully empty/hidden if the shop
+  has no extras
+- ✅ No more seeing the same 3 rooms listed twice
 
 ## Rollback
 
-Git revert the commit. But there's no reason to — the previous version is
-strictly broken (booking can never complete in the sandboxed iframe).
+```sql
+UPDATE ai_prompt_templates SET is_active = (notes LIKE 'v3.1 —%')
+WHERE name='website_v1';
+```
+
+## Files in this batch
+
+```
+Batch_Website_Polish_v4_8b/
+├── DEPLOY.md
+└── db/migrations/
+    └── 057_website_prompt_v3_2.sql
+```
+
+One migration. Run it, regenerate, done.
+
+## Note on quota
+
+Regenerating uses one of your monthly generations. If you hit the 402
+quota error again, reset with:
+```sql
+UPDATE sbp_shop_websites
+SET ai_regenerations_used = 0, ai_regen_period_start = now()
+WHERE shop_id = '73aa8ede-6352-4549-8617-cccacdd5c821';
+```

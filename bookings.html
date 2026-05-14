@@ -81,6 +81,21 @@ body{background:var(--bg);color:var(--text);min-height:100dvh;overflow-x:hidden}
 .bk-tag.no_show     {background:rgba(244,63,94,.15);color:var(--rose);border-color:var(--rose)}
 .bk-tag.dim         {background:var(--surf2);color:var(--t2);border-color:var(--bord)}
 .bk-tag.online      {background:rgba(59,130,246,.10);color:var(--acc4);border-color:var(--acc4)}
+/* BATCH v4.10 — quick WhatsApp confirmation button on booking cards */
+.bk-wa-quick{
+  margin-left:auto;
+  background:rgba(37,211,102,.12);
+  border:1px solid #25D366;
+  color:#25D366;
+  border-radius:6px;
+  padding:2px 8px;
+  font-size:13px;
+  line-height:1.4;
+  cursor:pointer;
+  transition:background .15s ease;
+}
+.bk-wa-quick:hover{background:rgba(37,211,102,.22)}
+.bk-wa-quick:active{transform:scale(.94)}
 
 /* BATCH 017 BUG-024 FIX: FAB now uses flex centering + system font for + glyph
    (avoids font-loading flash where Outfit renders + as offset/cropped).
@@ -549,6 +564,12 @@ function renderBookings(){
                     : b.source==='walk_in'?`<span class="bk-tag dim">🚶 Walk-in</span>`
                     : '';
     const roomLine = b.room_number ? `Room ${escHtml(b.room_number)}${b.room_type_name?` · ${escHtml(b.room_type_name)}`:''}` : 'Room TBD';
+    // BATCH v4.10 — quick WhatsApp confirmation button on the card itself,
+    // so the owner can send a confirmation without opening the detail modal.
+    const guestWa = (b.customer_wa || b.customer_phone || '').trim();
+    const waQuickBtn = guestWa
+      ? `<button class="bk-wa-quick" onclick="event.stopPropagation();sendGuestConfirmationById('${b.id}')" title="Send WhatsApp confirmation">📲</button>`
+      : '';
     return `
     <div class="bk-card" onclick="openDetail('${b.id}')">
       <div class="bk-row1">
@@ -561,6 +582,7 @@ function renderBookings(){
         <span class="bk-tag ${b.status}">${sb.label}</span>
         ${sourceTag}
         ${b.bill_id?`<span class="bk-tag dim">🧾 Bill</span>`:''}
+        ${waQuickBtn}
       </div>
     </div>`;
   }).join('');
@@ -743,6 +765,16 @@ async function renderDetail(){
   const actionBtns = [];
   // BATCH 022A — prominent CTA to the dedicated folio page
   actionBtns.push(`<button class="btn-pri" onclick="window.location.href='folio.html?id=${b.id}'" style="margin-bottom:10px;background:linear-gradient(135deg,var(--acc),#FF6B35);color:#0A0E1A;font-weight:800">📋 <span class="lang-en">Open Full Folio →</span><span class="lang-hi">पूरा फ़ोलियो खोलें →</span></button>`);
+
+  // BATCH v4.10 — Send WhatsApp confirmation to the guest. Shown for any
+  // booking that has a contactable number (especially public_form bookings
+  // that came in online and haven't been confirmed yet). One tap opens
+  // WhatsApp with a pre-filled confirmation message to the GUEST's number.
+  const guestWaNumber = (b.customer_wa || b.customer_phone || '').trim();
+  if (guestWaNumber){
+    actionBtns.push(`<button class="btn-sec" onclick="sendGuestConfirmation()" style="margin-bottom:8px;border-color:#25D366;color:#25D366"><span style="font-size:15px">📲</span> <span class="lang-en">Send Confirmation to Guest</span><span class="lang-hi">मेहमान को पुष्टि भेजें</span></button>`);
+  }
+
   // BATCH 017 BUG-022b: Always show Print Folio (works in any state)
   actionBtns.push(`<button class="btn-sec" onclick="printFolio()" style="margin-bottom:8px">🖨️ <span class="lang-en">Print Folio</span><span class="lang-hi">फोलियो प्रिंट करें</span></button>`);
   if(b.status==='pending' || b.status==='confirmed'){
@@ -839,6 +871,84 @@ async function renderDetail(){
     <button class="btn-sec" onclick="closeModal('det-modal')" style="margin-top:8px">Close</button>
     <div style="height:8px"></div>
   `;
+}
+
+// ── BATCH v4.10 — Send WhatsApp confirmation to guest ──────────────
+// Opens WhatsApp (wa.me) with a pre-filled confirmation message addressed
+// to the guest's number. The shop owner taps "send" in WhatsApp. ₹0, no
+// API, no Meta approval — works today. The confirmation code (if the
+// booking came from the public form) is parsed out of the notes field.
+function _extractConfirmationCode(notes){
+  if (!notes) return '';
+  // Public-form bookings store "Confirmation: XXXXXXXX" at the start of notes
+  const m = String(notes).match(/Confirmation:\s*([A-Z0-9]{6,12})/i);
+  return m ? m[1].toUpperCase() : '';
+}
+
+function _normalizeWaNumber(raw){
+  // Strip everything except digits. If it's a 10-digit Indian number,
+  // prefix 91. If it already has a country code (11-15 digits), use as-is.
+  const digits = String(raw || '').replace(/[^0-9]/g, '');
+  if (!digits) return '';
+  if (digits.length === 10) return '91' + digits;
+  if (digits.length >= 11 && digits.length <= 15) return digits;
+  // 12 digits starting with 91 → already fine; anything else → best effort
+  return digits;
+}
+
+function sendGuestConfirmation(){
+  const b = _currentBooking;
+  if (!b){ toast('No booking selected','e'); return; }
+  _sendConfirmationForBooking(b);
+}
+
+// Called from the list card's quick button — finds the booking by id
+// in the already-loaded _bookings array (no extra fetch needed).
+function sendGuestConfirmationById(bookingId){
+  const b = (_bookings || []).find(x => x.id === bookingId);
+  if (!b){ toast('Booking not found','e'); return; }
+  _sendConfirmationForBooking(b);
+}
+
+// Shared core: build the WhatsApp message + open wa.me for a given booking.
+function _sendConfirmationForBooking(b){
+  const rawNumber = (b.customer_wa || b.customer_phone || '').trim();
+  const waNumber  = _normalizeWaNumber(rawNumber);
+  if (!waNumber){
+    toast('No valid WhatsApp number for this guest','e');
+    return;
+  }
+
+  const shopName = (_shop && (_shop.name || _shop.shop_name)) || 'our hotel';
+  const guestName = (b.customer_name || 'Guest').trim();
+  const code = _extractConfirmationCode(b.notes);
+  const checkIn  = fmtDate(b.check_in_date);
+  const checkOut = fmtDate(b.check_out_date);
+  const nights   = b.num_nights || 1;
+  const guests   = `${b.num_adults || 1} adult${(b.num_adults||1) > 1 ? 's' : ''}` +
+                   (b.num_children > 0 ? `, ${b.num_children} child` : '');
+  const roomLine = b.room_type_name
+    ? `Room: ${b.room_type_name}\n`
+    : (b.room_number && b.room_number !== 'TBD' ? `Room: ${b.room_number}\n` : '');
+
+  const lines = [
+    `Hi ${guestName}! 🙏`,
+    ``,
+    `Your booking at *${shopName}* is confirmed ✅`,
+    ``,
+    `📅 Check-in: ${checkIn}`,
+    `📅 Check-out: ${checkOut} (${nights} night${nights > 1 ? 's' : ''})`,
+    `👥 Guests: ${guests}`,
+    roomLine.trim() ? roomLine.trim() : null,
+    code ? `🔖 Confirmation code: ${code}` : null,
+    ``,
+    `We look forward to hosting you. Reply here for any questions!`,
+  ].filter(l => l !== null);
+
+  const msg = lines.join('\n');
+  const url = `https://wa.me/${waNumber}?text=${encodeURIComponent(msg)}`;
+  window.open(url, '_blank');
+  toast('Opening WhatsApp…','s');
 }
 
 async function doCheckIn(){
