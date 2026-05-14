@@ -1,161 +1,173 @@
-# Batch v4.6 — Consolidated Website Builder + Disk Image Upload
+# Batch v4.7 — Public Booking Form + Auto-Create
 
-**Delivered:** May 13, 2026
+**Delivered:** May 14, 2026
 
 ## What this batch does
 
-Replaces the old 3-page workflow (`/website-builder.html` + `/services.html` + `/settings.html → Website Content`) with a **single comprehensive page** at `/website-builder.html` where shop owners manage everything for their AI website in one place.
-
-**New capability:** Direct disk/phone image upload via Supabase Storage — no more pasting URLs from third-party hosts.
-
----
+When a customer visits your AI-generated website (`/s/glitz-glam`) and clicks **"Book Now"** on any room card (or "Reserve", "Enquire", etc.), a clean booking form modal appears inside the iframe. They fill name + phone + dates → click Send → a real `sbp_bookings` row is created server-side with `source='public_form'`. You see it immediately in your `/bookings.html` admin with the 🌐 Online tag.
 
 ## DEPLOY PATHS
 
 ```
-NEW      db/migrations/052_shop_gallery_storage.sql
-NEW      lib/shop-images.js
-REPLACE  website-builder.html
+NEW      db/migrations/053_public_booking.sql
+REPLACE  lib/live-site.js
 ```
 
-Three files. No edge function changes. No s.html changes. No live-site.js changes.
+**2 files.** No s.html change. No edge function change. No website-builder.html change.
 
 ---
 
-## Deploy steps (in order)
+## Deploy in 3 steps (~3 min)
 
-### Step 1 — Run SQL migration (~30 sec)
+### Step 1 — Run SQL migration
 
-1. Open Supabase Dashboard → SQL Editor
-2. Paste contents of `db/migrations/052_shop_gallery_storage.sql`
-3. Run
+Supabase Dashboard → SQL Editor → paste contents of `053_public_booking.sql` → Run.
 
-**Verify:**
+**Verify with these 3 queries:**
+
 ```sql
--- Should return 1 row: id=shop-gallery, public=true
-SELECT id, public, file_size_limit
-FROM storage.buckets WHERE id = 'shop-gallery';
+-- A. The form config RPC should resolve glitz-glam as hospitality
+SELECT sbp_get_public_booking_form_config('glitz-glam');
+-- Expected: {ok:true, form_mode:"hospitality", shop_name:"Glitz &Glam", ...}
 
--- Should return 4 policies
-SELECT polname FROM pg_policy
-WHERE polrelid = 'storage.objects'::regclass
-  AND polname LIKE 'shop_gallery%';
+-- B. Room types lookup (returns empty array if you haven't added room types)
+SELECT sbp_get_public_room_types('glitz-glam');
+-- Expected: {ok:true, room_types:[]}
+
+-- C. Test creating a booking
+SELECT sbp_create_booking_public('glitz-glam', jsonb_build_object(
+  'customer_name', 'Test Customer',
+  'customer_phone', '9876543210',
+  'check_in_date', (CURRENT_DATE + 1)::text,
+  'check_out_date', (CURRENT_DATE + 3)::text,
+  'num_adults', 2,
+  'room_type_name', 'Deluxe Room',
+  'rate_per_night', 2500
+), 'test-ip-hash');
+-- Expected: {ok:true, booking_id:"...", confirmation_code:"ABC12345", ...}
+
+-- D. Confirm it landed in sbp_bookings
+SELECT id, customer_name, source, status, check_in_date, room_type_snapshot
+FROM sbp_bookings
+WHERE shop_id = '73aa8ede-6352-4549-8617-cccacdd5c821'
+  AND source = 'public_form'
+ORDER BY created_at DESC LIMIT 3;
 ```
 
-### Step 2 — Deploy frontend files (~1 min)
+If all 4 succeed, the backend is ready.
 
-1. Extract `Batch_Website_Builder_v4_6.zip`
-2. Copy to your repo:
-   - `lib/shop-images.js` → `<repo>/lib/shop-images.js` (new file)
-   - `website-builder.html` → `<repo>/website-builder.html` (overwrite)
-3. GitHub Desktop → commit: `v4.6: Consolidated website builder + disk image upload`
+### Step 2 — Deploy `lib/live-site.js`
+
+1. Extract zip
+2. Copy `lib/live-site.js` → repo's `/lib/` folder (overwrite)
+3. GitHub Desktop → commit: `v4.7: Public booking form + auto-create`
 4. Push origin → wait ~30 sec for Vercel
 
-### Step 3 — Smoke test (~3 min)
+### Step 3 — End-to-end test
 
-1. Login as Glitz & Glam owner
-2. Navigate to `/website-builder.html`
-3. **Expected:** Single-page form with 6 sections, sticky preview on the right
-4. **Test image upload:**
-   - Section 4 (Gallery) — click the drop zone
-   - Pick a photo from your phone/computer
-   - Should auto-compress to <3MB and appear as a thumbnail within 5 sec
-5. **Test services CRUD:**
-   - Section 3 — click "+ Add"
-   - Fill in name + price, save
-   - Service appears in the list
-6. **Test save all:**
-   - Fill in some contact fields (address, hours)
-   - Click "Save All" at the bottom
-   - Toast: "All saved ✓"
-7. **Test generate:**
-   - Click "Generate Website with AI"
-   - Wait 15-30 sec for completion
-   - Preview pane on the right hydrates with the new design
-8. **Verify on public URL:**
-   - Open `/s/glitz-glam` in incognito
-   - All your services + photos + contact info now appear
+1. Open `/s/glitz-glam` in **incognito** (test as anonymous customer)
+2. Scroll to "Our Accommodations" → click **Book Now** on any room card
+3. **Expected:** Modal opens with title "Book a Room" + form fields:
+   - Your name *
+   - Phone * + Email
+   - Check-in date * + Check-out date *
+   - Adults * + Children
+   - Room type (prefilled with the clicked card's title, e.g. "Deluxe Rooms")
+   - Notes
+4. Fill in test data, click **Send request**
+5. **Expected:** Success screen with green ✅, confirmation code (e.g. `7B9F3D2A`), summary, and **💬 Follow up on WhatsApp** button
+6. Click WhatsApp button → opens `wa.me/91...` with prefilled message including the code
+7. Switch to shop owner view → open `/bookings.html`
+8. **Expected:** The new booking appears with `🌐 Online` tag and `pending` status
 
 ---
 
-## What's new vs old builder
+## How the form adapts to business type
 
-| Feature | Old (v2) | New (v4.6) |
+The `form_mode` field in `sbp_get_public_booking_form_config` returns one of three modes based on the shop's `shop_type`:
+
+| Form mode | Triggered by shop_type | Form fields |
 |---|---|---|
-| Pages required to manage AI website | 3 separate pages | 1 page |
-| Image upload | Paste URLs only | Drag-drop or pick from device |
-| Services management | Separate `/services.html` | Inline in builder |
-| Address/hours/UPI/etc | `/settings.html` | Inline in builder |
-| About text + tagline | `/settings.html` modal | Inline in builder |
-| Quick-add service templates | None | Per-business-type suggestions |
-| Completion progress | None | Shows X/8 fields done at top |
-| Save All | None | Single button saves everything |
-| Mobile responsive | Partial | Full single-column on <1024px |
+| `hospitality` | hotel, day_room, pg_hostel, resort, motel, guest_house, dharamshala, homestay, serviced_apartment | Name, Phone, Email, **Check-in date, Check-out date, Adults, Children, Room type**, Notes |
+| `service` | salon, spa, clinic, physio, lab, consultancy, repair_service, tutoring, training | Name, Phone, Email, **Preferred date, Time, Service interested in**, Notes |
+| `generic` | Everything else (retail, restaurant, online_brand) | Name, Phone, Email, **Preferred date, What are you interested in**, Notes |
+
+Glitz & Glam has `shop_type='day_room'` → form_mode='hospitality' → full hotel form.
 
 ---
 
-## How disk image upload works
+## Security & rate limiting
 
-1. User picks file (or drags onto drop zone) in Section 4
-2. `lib/shop-images.js` validates: image type, size
-3. Client-side compression: resizes to max 1600px, re-encodes as JPEG at progressively lower quality until <3MB
-4. Uploads to Supabase Storage bucket `shop-gallery` at path `{shop_id}/{timestamp}-{slug}.jpg`
-5. RLS policies enforce: only the shop's owner can upload to that folder
-6. Public URL returned: `https://{project}.supabase.co/storage/v1/object/public/shop-gallery/{path}`
-7. URL pushed to `_gallery` array, auto-saved to `sbp_shop_websites.content_json.gallery`
-8. Iframe at `/s/{slug}` reads the same array and renders the gallery
-
-When user removes an image, both:
-- Deletes from Supabase Storage (frees the byte allocation)
-- Removes URL from `content_json.gallery`
-
----
-
-## Backward compatibility
-
-✅ `/services.html` still works — reads from same `sbp_services` table  
-✅ `/settings.html` → Website Content modal still works — reads from same `content_json`  
-✅ Edits in either old page also reflect in the new builder (next time it loads)  
-✅ Existing AI-generated websites are unaffected — no regeneration needed  
-✅ Existing gallery URLs in `content_json.gallery` are preserved and rendered  
+- **Rate limit:** Max 5 booking attempts per shop per IP (hashed) per hour. After that, returns `error: 'rate_limited'`.
+- **IP hash:** Stored in customer's `sessionStorage` (we don't actually see the IP — just a session token, sufficient for casual abuse prevention).
+- **Server-side validation:**
+  - Name required, max 100 chars
+  - Phone required, 10-15 digits after stripping non-numeric
+  - Email optional but validated if provided
+  - Check-in cannot be in the past
+  - Check-out must be after check-in
+  - Stay cannot exceed 90 days
+- **Slug gating:** Only resolves slugs that are `published=true` OR `ai_published=true` with AI HTML present.
+- **Public access:** RPCs granted to `anon` role — no login required for customers.
 
 ---
 
-## Known limitations of this batch
+## How "Book Now" detection works in `live-site.js`
 
-| Item | Status |
+The click interceptor uses two signals (either is sufficient):
+
+1. **Text match:** Button/link text contains any of: `book`, `reserve`, `enquire`, `inquire`, `order`, `schedule`, `appointment`, `contact us`.
+2. **Class match:** Element has class `btn-primary`, `btn-secondary`, `sbp-book`, `book-btn`, or `book-now` AND is NOT inside `<header>` / `<nav>`.
+
+**Excluded:**
+- Links with `href="tel:..."`, `href="mailto:..."`, `href="https://wa.me/..."` (already direct contact)
+- Anything inside `[data-sbp="cta"]` (that's the existing WhatsApp CTA component)
+- Nav header links (so "Contact" in the nav still scrolls, doesn't open form)
+
+The `findContextLabel()` helper walks up to find the nearest card heading. So clicking "Book Now" inside a `.room-card` with `<h3>Deluxe Rooms</h3>` prefills "Deluxe Rooms" in the room type field.
+
+---
+
+## What's deferred to future batches
+
+| Feature | When |
 |---|---|
-| Color picker bug (Orange label → cyan generation) | Still present — fix deferred |
-| `data-sbp="info"` not always generated by AI | Prompt fix deferred to v5 batch |
-| Booking interceptor (WhatsApp) | Deferred to v4.7 |
-| Drag-to-reorder gallery | Not in this batch (use delete + re-upload) |
-| Per-image alt text / captions | Not in this batch |
-| Bulk service operations | Not in this batch |
-
----
-
-## Rollback plan
-
-If something breaks badly:
-
-1. Revert `website-builder.html` to previous version (git revert the commit)
-2. The SQL migration is **safe to leave deployed** — it only adds a bucket and policies, doesn't change existing tables
-3. `lib/shop-images.js` is a new file — leaving it on disk is harmless (just unused)
-
-No data is at risk: this batch only adds capabilities, doesn't migrate or destroy anything.
+| WhatsApp/email/SMS notification to shop owner on new booking | v4.10 (needs MSG91 setup or email service) |
+| Room type dropdown using actual `sbp_room_types` (not just clicked card label) | When you add real room types via admin |
+| Time-slot availability check (no double-booking) | v4.11 — needs Room Calendar |
+| Razorpay deposit payment at booking time | When Razorpay batch ships |
+| Customer auto-receives confirmation SMS/email | v4.10 |
 
 ---
 
 ## Files in this batch
 
 ```
-Batch_Website_Builder_v4_6/
+Batch_Website_Booking_v4_7/
 ├── db/
 │   └── migrations/
-│       └── 052_shop_gallery_storage.sql   (4.2 KB)
-├── lib/
-│   └── shop-images.js                       (7.3 KB)
-└── website-builder.html                     (65 KB, 1553 lines)
+│       └── 053_public_booking.sql   (10.4 KB)
+└── lib/
+    └── live-site.js                  (36.2 KB, 844 lines)
 ```
 
-Total: 3 files. Run SQL first, then deploy the 2 frontend files together.
+Total: 2 files. SQL migration first, then deploy the JS.
+
+---
+
+## Rollback plan
+
+If something breaks:
+
+1. **Revert `lib/live-site.js`** to v4.4 (the previous CSS-fix version) via git revert
+2. **SQL migration is safe to leave deployed** — only adds RPCs + 1 rate-limit table, doesn't change existing tables
+3. If you need to remove the migration entirely:
+   ```sql
+   DROP FUNCTION IF EXISTS sbp_create_booking_public(text, jsonb, text);
+   DROP FUNCTION IF EXISTS sbp_get_public_booking_form_config(text);
+   DROP FUNCTION IF EXISTS sbp_get_public_room_types(text);
+   DROP FUNCTION IF EXISTS sbp_get_public_services_for_booking(text);
+   DROP TABLE IF EXISTS sbp_public_booking_attempts;
+   ```
+
+No customer bookings are lost — they're in the regular `sbp_bookings` table.
