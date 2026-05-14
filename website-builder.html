@@ -1325,11 +1325,21 @@ async function handleSaveAll(){
     try { localStorage.setItem('sbp_shop', JSON.stringify(_shop)); } catch(_){}
 
     // 2. Update content_json + gallery via RPC
+    // IMPORTANT: also write address/city/phone/email here. sbp_resolve_shop_slug
+    // merges shops.* over content_json.*, but keeping both in sync avoids the
+    // stale-data bug where content_json.city ("Gorakhp") showed instead of the
+    // real address. Migration 055 made the resolver prefer shops.*, but we still
+    // mirror into content_json so the two stores never diverge.
     const contentPatch = {
       about:    $('about').value.trim(),
       tagline:  $('tagline').value.trim(),
       hours:    $('c-hours').value.trim(),
       whatsapp: $('c-whatsapp').value.trim(),
+      address:  $('c-address').value.trim(),
+      city:     $('c-city').value.trim(),
+      phone:    $('c-phone').value.trim(),
+      email:    $('c-email').value.trim(),
+      upi:      $('c-upi').value.trim(),
       gallery:  _gallery
     };
     const { data: cdata, error: cerr } = await _sb.rpc('sbp_update_website_content', {
@@ -1554,6 +1564,14 @@ async function loadContentJson(){
     $('tagline').value = c.tagline || '';
     $('about').value   = c.about   || '';
     $('c-hours').value = c.hours   || '';
+    // Fallback fill: if the shops table didn't have these (older shops),
+    // pull from content_json so the form isn't blank. The shops-table
+    // prefill in init() runs first; only fill here if still empty.
+    if (!$('c-address').value && c.address) $('c-address').value = c.address;
+    if (!$('c-city').value    && c.city)    $('c-city').value    = c.city;
+    if (!$('c-phone').value   && c.phone)   $('c-phone').value   = c.phone;
+    if (!$('c-email').value   && c.email)   $('c-email').value   = c.email;
+    if (!$('c-upi').value     && c.upi)     $('c-upi').value     = c.upi;
     _gallery = Array.isArray(c.gallery) ? c.gallery.slice(0,6) : [];
     renderGallery();
   } catch(e){ console.warn('content load error:', e); }

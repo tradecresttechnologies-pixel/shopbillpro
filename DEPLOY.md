@@ -1,173 +1,164 @@
-# Batch v4.7 — Public Booking Form + Auto-Create
+# Batch v4.8a-HOTFIX — Address Fix + Contrast Fix + Booking Buttons
 
 **Delivered:** May 14, 2026
 
-## What this batch does
+Fixes the 3 issues found after v4.8a deployment:
 
-When a customer visits your AI-generated website (`/s/glitz-glam`) and clicks **"Book Now"** on any room card (or "Reserve", "Enquire", etc.), a clean booking form modal appears inside the iframe. They fill name + phone + dates → click Send → a real `sbp_bookings` row is created server-side with `source='public_form'`. You see it immediately in your `/bookings.html` admin with the 🌐 Online tag.
+1. **Address shows "Gorakhp"** instead of the real address → resolver was reading the wrong field
+2. **Section text invisible** (dark-on-dark) → prompt contrast rule wasn't strong enough
+3. **No "Book Now" buttons** on room cards → prompt didn't require booking CTAs
 
 ## DEPLOY PATHS
 
 ```
-NEW      db/migrations/053_public_booking.sql
-REPLACE  lib/live-site.js
+NEW      db/migrations/055_fix_address_resolution.sql
+NEW      db/migrations/056_website_prompt_v3_1.sql
+REPLACE  website-builder.html
 ```
 
-**2 files.** No s.html change. No edge function change. No website-builder.html change.
+**3 files.** Two SQL migrations + one HTML file. No edge function change (v3.2 stays).
 
 ---
 
-## Deploy in 3 steps (~3 min)
+## Deploy in 4 steps (~5 min)
 
-### Step 1 — Run SQL migration
+### Step 1 — (Optional but recommended) Manual address patch for Glitz & Glam
 
-Supabase Dashboard → SQL Editor → paste contents of `053_public_booking.sql` → Run.
-
-**Verify with these 3 queries:**
+If you haven't already run this, do it now in Supabase SQL Editor — instantly fixes your test shop:
 
 ```sql
--- A. The form config RPC should resolve glitz-glam as hospitality
-SELECT sbp_get_public_booking_form_config('glitz-glam');
--- Expected: {ok:true, form_mode:"hospitality", shop_name:"Glitz &Glam", ...}
-
--- B. Room types lookup (returns empty array if you haven't added room types)
-SELECT sbp_get_public_room_types('glitz-glam');
--- Expected: {ok:true, room_types:[]}
-
--- C. Test creating a booking
-SELECT sbp_create_booking_public('glitz-glam', jsonb_build_object(
-  'customer_name', 'Test Customer',
-  'customer_phone', '9876543210',
-  'check_in_date', (CURRENT_DATE + 1)::text,
-  'check_out_date', (CURRENT_DATE + 3)::text,
-  'num_adults', 2,
-  'room_type_name', 'Deluxe Room',
-  'rate_per_night', 2500
-), 'test-ip-hash');
--- Expected: {ok:true, booking_id:"...", confirmation_code:"ABC12345", ...}
-
--- D. Confirm it landed in sbp_bookings
-SELECT id, customer_name, source, status, check_in_date, room_type_snapshot
-FROM sbp_bookings
-WHERE shop_id = '73aa8ede-6352-4549-8617-cccacdd5c821'
-  AND source = 'public_form'
-ORDER BY created_at DESC LIMIT 3;
+UPDATE shops
+SET address = 'Cinema Road, Near Golghar', city = 'Gorakhpur'
+WHERE id = '73aa8ede-6352-4549-8617-cccacdd5c821';
 ```
 
-If all 4 succeed, the backend is ready.
+(Migration 055's backfill will then sync this into content_json automatically.)
 
-### Step 2 — Deploy `lib/live-site.js`
+### Step 2 — Run migration 055 (address resolution fix)
 
-1. Extract zip
-2. Copy `lib/live-site.js` → repo's `/lib/` folder (overwrite)
-3. GitHub Desktop → commit: `v4.7: Public booking form + auto-create`
-4. Push origin → wait ~30 sec for Vercel
+Supabase SQL Editor → paste `055_fix_address_resolution.sql` → Run.
 
-### Step 3 — End-to-end test
+**Verify:**
+```sql
+-- Should now show the real address, not "Gorakhp"
+SELECT sbp_resolve_shop_slug('glitz-glam') -> 'content' ->> 'address';
+-- Expected: "Cinema Road, Near Golghar"
+```
 
-1. Open `/s/glitz-glam` in **incognito** (test as anonymous customer)
-2. Scroll to "Our Accommodations" → click **Book Now** on any room card
-3. **Expected:** Modal opens with title "Book a Room" + form fields:
-   - Your name *
-   - Phone * + Email
-   - Check-in date * + Check-out date *
-   - Adults * + Children
-   - Room type (prefilled with the clicked card's title, e.g. "Deluxe Rooms")
-   - Notes
-4. Fill in test data, click **Send request**
-5. **Expected:** Success screen with green ✅, confirmation code (e.g. `7B9F3D2A`), summary, and **💬 Follow up on WhatsApp** button
-6. Click WhatsApp button → opens `wa.me/91...` with prefilled message including the code
-7. Switch to shop owner view → open `/bookings.html`
-8. **Expected:** The new booking appears with `🌐 Online` tag and `pending` status
+### Step 3 — Run migration 056 (prompt v3.1)
 
----
+Supabase SQL Editor → paste `056_website_prompt_v3_1.sql` → Run.
 
-## How the form adapts to business type
+**Verify:**
+```sql
+-- Should show v3.1 active
+SELECT name, version, is_active, left(notes, 50) AS notes
+FROM ai_prompt_templates WHERE name='website_v1' ORDER BY version;
 
-The `form_mode` field in `sbp_get_public_booking_form_config` returns one of three modes based on the shop's `shop_type`:
+-- Should both be true
+SELECT prompt_text LIKE '%card-cta%'        AS has_card_cta,
+       prompt_text LIKE '%CONTRAST — HARD%' AS has_contrast_rule
+FROM ai_prompt_templates WHERE name='website_v1' AND is_active=true;
+```
 
-| Form mode | Triggered by shop_type | Form fields |
-|---|---|---|
-| `hospitality` | hotel, day_room, pg_hostel, resort, motel, guest_house, dharamshala, homestay, serviced_apartment | Name, Phone, Email, **Check-in date, Check-out date, Adults, Children, Room type**, Notes |
-| `service` | salon, spa, clinic, physio, lab, consultancy, repair_service, tutoring, training | Name, Phone, Email, **Preferred date, Time, Service interested in**, Notes |
-| `generic` | Everything else (retail, restaurant, online_brand) | Name, Phone, Email, **Preferred date, What are you interested in**, Notes |
+### Step 4 — Deploy website-builder.html
 
-Glitz & Glam has `shop_type='day_room'` → form_mode='hospitality' → full hotel form.
+1. Extract zip → copy `website-builder.html` → repo root (overwrite)
+2. GitHub Desktop → commit: `v4.8a-hotfix: address sync + contrast + booking CTA`
+3. Push origin → wait ~30 sec for Vercel
 
 ---
 
-## Security & rate limiting
+## Step 5 — Regenerate Glitz & Glam to see the fixes
 
-- **Rate limit:** Max 5 booking attempts per shop per IP (hashed) per hour. After that, returns `error: 'rate_limited'`.
-- **IP hash:** Stored in customer's `sessionStorage` (we don't actually see the IP — just a session token, sufficient for casual abuse prevention).
-- **Server-side validation:**
-  - Name required, max 100 chars
-  - Phone required, 10-15 digits after stripping non-numeric
-  - Email optional but validated if provided
-  - Check-in cannot be in the past
-  - Check-out must be after check-in
-  - Stay cannot exceed 90 days
-- **Slug gating:** Only resolves slugs that are `published=true` OR `ai_published=true` with AI HTML present.
-- **Public access:** RPCs granted to `anon` role — no login required for customers.
+1. `/website-builder.html` → click **🚀 Generate Website with AI**
+2. Open `/s/glitz-glam` in incognito
+
+**Expected changes:**
+- ✅ Hero photo still works (from v4.8a)
+- ✅ Section headings now READABLE — proper contrast (no more dark-on-dark)
+- ✅ Room cards now have **"Book Now"** buttons
+- ✅ Clicking "Book Now" → opens the booking form modal (from Batch v4.7 — confirm that's deployed too)
+- ✅ Contact info card shows the real address "Cinema Road, Near Golghar"
 
 ---
 
-## How "Book Now" detection works in `live-site.js`
+## What each fix does
 
-The click interceptor uses two signals (either is sufficient):
+### Fix 1 — Address resolution (migration 055)
 
-1. **Text match:** Button/link text contains any of: `book`, `reserve`, `enquire`, `inquire`, `order`, `schedule`, `appointment`, `contact us`.
-2. **Class match:** Element has class `btn-primary`, `btn-secondary`, `sbp-book`, `book-btn`, or `book-now` AND is NOT inside `<header>` / `<nav>`.
+**The bug:** Website builder's "Save All" wrote address to the `shops` table. But `sbp_resolve_shop_slug` read it from `content_json.address` — a different storage location the builder never populated. So the resolver fell back to `content_json.city` ("Gorakhp", stale data).
 
-**Excluded:**
-- Links with `href="tel:..."`, `href="mailto:..."`, `href="https://wa.me/..."` (already direct contact)
-- Anything inside `[data-sbp="cta"]` (that's the existing WhatsApp CTA component)
-- Nav header links (so "Contact" in the nav still scrolls, doesn't open form)
+**The fix:**
+- `sbp_resolve_shop_slug` now merges contact fields with `shops.*` taking priority over `content_json.*`, treating empty strings as "missing" so they never override real data
+- One-time backfill copies `shops.address` → `content_json.address` for all existing shops
+- `website-builder.html` now writes address/city/phone/email to BOTH the shops table AND content_json, so they never diverge again
 
-The `findContextLabel()` helper walks up to find the nearest card heading. So clicking "Book Now" inside a `.room-card` with `<h3>Deluxe Rooms</h3>` prefills "Deluxe Rooms" in the room type field.
+### Fix 2 — Contrast rule (prompt v3.1)
+
+**The bug:** v3 generated sections with dark backgrounds but kept heading text in navy/accent → navy-on-near-black, invisible.
+
+**The fix:** New hard rule in the prompt — an explicit contrast pairing table:
+- Dark background → ALL text white
+- Light background → ALL text near-black
+- Forbids dark-on-dark and light-on-light
+- Instructs the AI to mentally check every section before finishing
+
+### Fix 3 — Booking CTA buttons (prompt v3.1)
+
+**The bug:** v3 generated room/service cards as plain text. The v4.7 booking runtime intercepts "Book Now" clicks — but there were no buttons.
+
+**The fix:** New hard rule — every hand-authored card MUST end with:
+```html
+<a href="#contact" class="card-cta">Book Now</a>
+```
+Label adapts per vertical (Book Now / Book Appointment / Reserve a Table / Get a Quote / Enquire Now). The `href="#contact"` is what the live-site.js v4.7 interceptor catches to open the booking modal.
 
 ---
 
-## What's deferred to future batches
+## ⚠️ Prerequisite check — is Batch v4.7 deployed?
 
-| Feature | When |
-|---|---|
-| WhatsApp/email/SMS notification to shop owner on new booking | v4.10 (needs MSG91 setup or email service) |
-| Room type dropdown using actual `sbp_room_types` (not just clicked card label) | When you add real room types via admin |
-| Time-slot availability check (no double-booking) | v4.11 — needs Room Calendar |
-| Razorpay deposit payment at booking time | When Razorpay batch ships |
-| Customer auto-receives confirmation SMS/email | v4.10 |
+The booking buttons only DO something if `lib/live-site.js` from Batch v4.7 is live. Verify:
+
+1. Open `https://app.shopbillpro.in/lib/live-site.js` in your browser
+2. Ctrl+F for `openBookingModal`
+
+- **Found** → v4.7 booking JS is deployed, booking buttons will work after this hotfix
+- **Not found** → deploy `lib/live-site.js` from `Batch_Website_Booking_v4_7.zip` first, then this hotfix
+
+Also confirm migration `053_public_booking.sql` ran (the booking RPC). If unsure:
+```sql
+SELECT sbp_get_public_booking_form_config('glitz-glam');
+-- If this errors "function does not exist" → run 053 first
+```
+
+---
+
+## Rollback
+
+```sql
+-- Rollback prompt to v3
+UPDATE ai_prompt_templates SET is_active = (notes LIKE 'v3 —%') WHERE name='website_v1';
+
+-- Rollback resolver: re-run migration 050's version of sbp_resolve_shop_slug
+-- (050_fix_resolve_shop_slug.sql) — but 055 is strictly better, no reason to.
+```
+
+`website-builder.html` → git revert the commit.
+
+No data at risk — 055's backfill only ADDS data to content_json, never deletes.
 
 ---
 
 ## Files in this batch
 
 ```
-Batch_Website_Booking_v4_7/
-├── db/
-│   └── migrations/
-│       └── 053_public_booking.sql   (10.4 KB)
-└── lib/
-    └── live-site.js                  (36.2 KB, 844 lines)
+Batch_Website_Hotfix_v4_8a/
+├── DEPLOY.md
+├── db/migrations/
+│   ├── 055_fix_address_resolution.sql    (5.5 KB)
+│   └── 056_website_prompt_v3_1.sql        (14 KB)
+└── website-builder.html                   (~66 KB)
 ```
 
-Total: 2 files. SQL migration first, then deploy the JS.
-
----
-
-## Rollback plan
-
-If something breaks:
-
-1. **Revert `lib/live-site.js`** to v4.4 (the previous CSS-fix version) via git revert
-2. **SQL migration is safe to leave deployed** — only adds RPCs + 1 rate-limit table, doesn't change existing tables
-3. If you need to remove the migration entirely:
-   ```sql
-   DROP FUNCTION IF EXISTS sbp_create_booking_public(text, jsonb, text);
-   DROP FUNCTION IF EXISTS sbp_get_public_booking_form_config(text);
-   DROP FUNCTION IF EXISTS sbp_get_public_room_types(text);
-   DROP FUNCTION IF EXISTS sbp_get_public_services_for_booking(text);
-   DROP TABLE IF EXISTS sbp_public_booking_attempts;
-   ```
-
-No customer bookings are lost — they're in the regular `sbp_bookings` table.
+Run 055 → run 056 → deploy website-builder.html → regenerate Glitz & Glam.
