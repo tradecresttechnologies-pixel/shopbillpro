@@ -1764,7 +1764,8 @@ async function handlePublishToggle(){
   else { await handlePushLive(); }
 }
 function updatePublishButton(){
-  const hasDraft=!!(_websiteState&&_websiteState.has_ai_draft);
+  // Treat published=true as has_draft=true (published site definitionally has HTML)
+  const hasDraft=!!(_websiteState&&(_websiteState.has_ai_draft||_websiteState.ai_published));
   const isLive=!!(_websiteState&&_websiteState.ai_published);
   const slug=(_websiteState&&_websiteState.slug)||'';
   const pushBtn=$('push-live-btn'), badge=$('live-badge'), badgeUrl=$('live-badge-url'), viewLive=$('view-live');
@@ -1848,14 +1849,16 @@ function updatePreview(){
   const empty  = $('preview-empty');
   const foot   = $('preview-foot');
 
-  if (!_websiteState || !_websiteState.has_ai_draft){
+  // Show preview if draft exists OR site is published (both prove HTML exists)
+  const canPreview = _websiteState && (_websiteState.has_ai_draft || _websiteState.ai_published);
+  if (!canPreview){
     if(iframe) iframe.style.display = 'none';
     if(empty)  empty.style.display  = 'flex';
     if(foot)   foot.style.display   = 'none';
     return;
   }
 
-  const slug = _websiteState.slug || 'glitz-glam';
+  const slug = _websiteState.slug || '';
 
   // Always load preview via /s/slug (works whether published or not,
   // since we just published via sbp_record_ai_website_generation which
@@ -1906,6 +1909,16 @@ async function loadWebsiteState(){
     if (error){ console.warn('state load:', error); return; }
     _websiteState = data && data.ok ? data : null;
     if (_websiteState){
+      // If site is published, it definitionally has a draft — fix inconsistency
+      // that can occur when ai_generated_html is null but site was published via legacy flow
+      if (_websiteState.ai_published && !_websiteState.has_ai_draft) {
+        _websiteState.has_ai_draft = true;
+      }
+      // If slug is missing but we have the shop slug, use it
+      if (!_websiteState.slug) {
+        const shop = JSON.parse(localStorage.getItem('sbp_shop') || '{}');
+        _websiteState.slug = shop.slug || shop.id || null;
+      }
       if (_websiteState.draft){
         const d = _websiteState.draft;
         $('headline').value      = d.headline    || $('headline').value;
