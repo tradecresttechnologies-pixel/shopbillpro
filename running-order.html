@@ -30,12 +30,34 @@ window._sb=_sb;
 :root{--acc:#F5A623;--acc2:#EF4444;--acc3:#10B981;--bg:#0A0E1A;--surf:#131826;--surf2:#1A2035;--bord:#252D3D;--text:#F0EFF8;--t2:#8A8AA8;--t3:#4A4A60;--font-h:'Outfit',system-ui,sans-serif;--tr:.15s ease;}
 html[data-theme='light']{--bg:#F4F5F7;--surf:#FFFFFF;--surf2:#F0F2F5;--bord:#E2E5EA;--text:#0A0E1A;--t2:#6B7280;}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font-h),sans-serif;-webkit-font-smoothing:antialiased}
+html,body{height:100%;width:100%;margin:0;padding:0;overflow:hidden;background:var(--bg);color:var(--text);font-family:var(--font-h),sans-serif;-webkit-font-smoothing:antialiased}
 
-/* Layout */
-#app-layout{display:flex;min-height:100vh}
-#dsb{position:fixed;left:0;top:0;bottom:0;width:220px;background:var(--surf);border-right:1px solid var(--bord);display:flex;flex-direction:column;z-index:200;overflow-y:auto}
-#main-col{margin-left:220px;min-width:0;display:flex;flex-direction:column;height:100vh;overflow:hidden}
+/* Layout — BATCH 067-UX-v3: true full-viewport.
+   #app-layout is a flex ROW pinned to the viewport. #dsb is a fixed-width
+   flex child; #main-col is flex:1 so it ALWAYS consumes every remaining
+   pixel — no fixed-positioning math, no width can collapse, no gap on the
+   right. The sidebar lib's #dsb rule (position:fixed) is overridden below
+   to keep it inside this flex row. */
+#app-layout{
+  display:flex;
+  width:100vw;height:100vh;
+  overflow:hidden;
+}
+#dsb{
+  position:relative !important;   /* override lib's position:fixed */
+  left:auto !important;top:auto !important;bottom:auto !important;
+  width:220px;flex:0 0 220px;
+  height:100vh;
+  background:var(--surf);border-right:1px solid var(--bord);
+  display:flex;flex-direction:column;z-index:200;overflow-y:auto;
+}
+#main-col{
+  flex:1 1 auto;
+  min-width:0;            /* lets the flex child shrink below content width */
+  height:100vh;
+  display:flex;flex-direction:column;
+  overflow:hidden;
+}
 .dsb-nav{flex:1;padding:10px 8px;display:flex;flex-direction:column;gap:2px;overflow-y:auto}
 .dsb-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;cursor:pointer;text-decoration:none;color:var(--t2);font-size:13px;font-weight:600;border:none;background:none;width:100%;white-space:nowrap}
 .dsb-item:hover{background:var(--surf2);color:var(--text)}
@@ -45,7 +67,10 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .dsb-sep{height:1px;background:var(--bord);margin:6px 12px}
 .dsb-footer{padding:8px;border-top:1px solid var(--bord)}
 .dsb-ver{font-size:10px;color:var(--t3);text-align:center;padding:8px 0 4px}
-@media(max-width:1023px){#dsb{display:none!important}#main-col{margin-left:0!important;width:100%}}
+@media(max-width:1023px){
+  #dsb{display:none !important}
+  #main-col{width:100vw}
+}
 
 /* ── Header (BATCH 067-UX-v2: pro restaurant POS) ── */
 .ro-hdr{
@@ -76,10 +101,14 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .hdr-btn{padding:8px 14px;border-radius:9px;border:1px solid var(--bord);background:var(--surf2);color:var(--t2);font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font-h);transition:var(--tr);display:flex;align-items:center;gap:6px}
 .hdr-btn:hover{color:var(--acc);border-color:var(--acc);background:rgba(245,166,35,.08)}
 
-/* ── Split layout — give the order pane room to breathe ── */
-.ro-body{display:grid;grid-template-columns:1fr 420px;height:calc(100vh - 64px);overflow:hidden}
+/* ── Split layout — order pane scales with screen size ──
+   width:100% guarantees the grid stretches to fill #main-col; flex:1
+   makes it consume all vertical space below the header. */
+.ro-body{display:grid;grid-template-columns:1fr 420px;width:100%;flex:1 1 auto;min-height:0;min-width:0;overflow:hidden}
+@media(min-width:1600px){.ro-body{grid-template-columns:1fr 480px}}
+@media(min-width:2000px){.ro-body{grid-template-columns:1fr 560px}}
 @media(max-width:1100px){.ro-body{grid-template-columns:1fr 380px}}
-@media(max-width:900px){.ro-body{grid-template-columns:1fr;height:auto}}
+@media(max-width:900px){.ro-body{grid-template-columns:1fr}}
 
 /* ── Left: Menu picker ── */
 .menu-pane{display:flex;flex-direction:column;border-right:1px solid var(--bord);overflow:hidden;background:var(--bg)}
@@ -416,29 +445,43 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .bnav{display:none;position:fixed;bottom:0;left:0;right:0;height:56px;background:var(--surf);border-top:1px solid var(--bord);z-index:50;align-items:stretch}
 .bnav-overlay{display:none}
 .bnav-drawer{display:none}
+
+/* ── Tablet portrait / small laptop (768–900px): keep split layout but
+   narrow the order pane so the menu still shows 2 columns ── */
+@media(max-width:900px) and (min-width:768px){
+  .ro-body{grid-template-columns:1fr 320px}
+  .menu-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;padding:12px}
+}
+
+/* ── Phone (≤767px): stacked panes with tab switcher ── */
 @media(max-width:767px){
   .bnav{display:flex}
   .ro-pane-tabs{display:flex}
-  /* Stack panes vertically. Each pane takes its own height as needed;
-     toggled via body.ro-show-order class set by showPane(). */
-  .ro-body{
-    grid-template-columns:1fr;
-    display:block;
-    height:auto;
-  }
-  .menu-pane{display:flex;height:calc(100vh - 52px - 44px - 56px)}
-  .order-pane{display:none;height:calc(100vh - 52px - 44px - 56px);border-right:none}
+  .ro-hdr{height:auto;padding:10px 14px;flex-wrap:wrap;gap:8px}
+  .ro-stat-chips{width:100%;order:3}
+  /* On phone the panes stack and switch via the tab bar. ro-body becomes
+     a flex column that fills whatever space is left under the (possibly
+     wrapped) header + tab bar — no fragile 100vh-minus-N math. */
+  #main-col{height:100vh;overflow:hidden}
+  .ro-body{display:flex;flex-direction:column;flex:1 1 auto;min-height:0;overflow:hidden}
+  .menu-pane{display:flex;flex:1 1 auto;min-height:0}
+  .order-pane{display:none;flex:1 1 auto;min-height:0;border-right:none;box-shadow:none}
   body.ro-show-order .menu-pane{display:none}
   body.ro-show-order .order-pane{display:flex}
-  /* Order pane on mobile needs the actions to stay visible — tighten the
-     summary list to leave room. */
-  .summary-list{min-height:80px}
-  /* Tighter grid for phone widths — 2-col cards optimised for thumb-tap */
-  .menu-grid{grid-template-columns:repeat(2, 1fr);gap:6px;padding:8px}
-  .menu-card{padding:8px;min-height:68px}
+  .summary-list{min-height:60px}
+  /* 2-col cards optimised for thumb-tap. */
+  .menu-grid{grid-template-columns:repeat(2,1fr);gap:8px;padding:10px}
+  .menu-card{min-height:104px}
+  .menu-card-top{height:40px;font-size:20px}
+  .menu-card-body{padding:8px 10px 10px}
   .menu-card-name{font-size:12px}
-  .menu-card-price{font-size:13px}
-  .menu-cat-chip{padding:5px 11px;font-size:11px}
+  .menu-card-price{font-size:15px}
+  .menu-cat-chip{padding:6px 13px;font-size:12px}
+  .menu-cats-bar{padding:8px 10px}
+  .st-grand-amount{font-size:24px}
+  .round-empty-rich{padding:24px 16px}
+  /* leave room for the bottom nav bar */
+  .bottom-actions{margin-bottom:56px}
 }
 </style>
 </head>
