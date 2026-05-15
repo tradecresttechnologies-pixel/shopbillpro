@@ -330,6 +330,56 @@ html,body{height:100%;width:100%;margin:0;padding:0;overflow:hidden;background:v
    per-item delete button that triggers the PIN-gated void flow. */
 .summary-list{flex:1;overflow-y:auto;background:var(--surf);padding:8px}
 
+/* ── Top tabs (3-tab order panel layout, BATCH 067-UX-v3) ──────────
+   Bold pill set at the very top of the order pane. Swap content
+   without touching the totals footer. */
+.order-tabs{
+  display:flex;gap:4px;
+  padding:10px 12px;background:var(--surf);
+  border-bottom:1px solid var(--bord);flex-shrink:0;
+}
+.otab{
+  flex:1;padding:11px 6px;
+  background:var(--surf2);border:1px solid var(--bord);
+  border-radius:10px;color:var(--t2);
+  font-size:12px;font-weight:800;font-family:var(--font-h);
+  cursor:pointer;transition:var(--tr);
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  letter-spacing:.3px;line-height:1.2;position:relative;
+  min-width:0;
+}
+.otab-em{font-size:18px;line-height:1}
+.otab:hover{color:var(--text);border-color:var(--t2);transform:translateY(-1px)}
+.otab.on{
+  background:linear-gradient(135deg,#F5A623,#FF8A00);
+  color:#0A0E1A;border-color:transparent;
+  box-shadow:0 3px 10px rgba(245,166,35,.3);
+}
+.otab.on .otab-em{filter:drop-shadow(0 1px 2px rgba(0,0,0,.2))}
+.otab-badge{
+  position:absolute;top:4px;right:6px;
+  min-width:18px;height:18px;border-radius:9px;
+  background:#EF4444;color:#fff;
+  font-size:9px;font-weight:800;
+  display:flex;align-items:center;justify-content:center;
+  padding:0 5px;line-height:1;
+  border:1.5px solid var(--surf);
+}
+.otab.on .otab-badge{background:#0A0E1A;color:#F5A623;border-color:#FF8A00}
+
+.order-tab-body{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+.otab-pane{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+
+/* Section header inside a tab — replaces the old summary-hd-row */
+.tab-section-hd{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:11px 16px 9px;background:var(--surf);
+  border-bottom:1px solid var(--bord);flex-shrink:0;
+  font-size:11px;font-weight:800;color:var(--t2);
+  text-transform:uppercase;letter-spacing:.6px;
+}
+.tab-section-hd > span:last-child{font-size:11px;color:var(--t3);font-weight:600;text-transform:none;letter-spacing:0}
+
 /* ── View toggle: By KOT / By Item ─────────────────────────────────
    Now inline with the Order Summary header (single horizontal row)
    to free vertical space in the order pane. */
@@ -1023,71 +1073,97 @@ html,body{height:100%;width:100%;margin:0;padding:0;overflow:hidden;background:v
         </div>
       </div>
 
-      <!-- RIGHT: Current round + order summary -->
+      <!-- RIGHT: Order panel — tab-driven layout (BATCH 067-UX-v3)
+           Three top tabs swap the main content area:
+             • Add Order — build the current round
+             • By KOT   — sent items grouped chronologically
+             • By Item  — sent items aggregated per dish
+           Totals stay pinned at the bottom regardless of tab. -->
       <div class="order-pane">
 
-        <!-- Current round header -->
-        <div class="round-hd">
-          <div class="round-hd-left">
-            <div class="round-title">🍳 <span class="lang-en">Current Round</span><span class="lang-hi">वर्तमान राउंड</span></div>
-            <div class="round-count" id="round-count"><span class="lang-en">Tap menu items to add →</span><span class="lang-hi">मेनू आइटम पर टैप करें →</span></div>
-          </div>
-          <div class="round-badge" id="round-badge">0</div>
+        <!-- Top tab bar -->
+        <div class="order-tabs">
+          <button class="otab on" id="otab-add"  onclick="setOrderTab('add')">
+            <span class="otab-em">＋</span>
+            <span><span class="lang-en">Add Order</span><span class="lang-hi">ऑर्डर जोड़ें</span></span>
+            <span class="otab-badge" id="otab-add-badge" style="display:none">0</span>
+          </button>
+          <button class="otab" id="otab-kot" onclick="setOrderTab('kot')">
+            <span class="otab-em">📋</span>
+            <span><span class="lang-en">By KOT</span><span class="lang-hi">KOT वार</span></span>
+            <span class="otab-badge" id="otab-kot-badge" style="display:none">0</span>
+          </button>
+          <button class="otab" id="otab-item" onclick="setOrderTab('item')">
+            <span class="otab-em">🍽️</span>
+            <span><span class="lang-en">By Item</span><span class="lang-hi">आइटम वार</span></span>
+          </button>
         </div>
 
-        <!-- Current round items (being built) -->
-        <div class="round-items" id="round-items">
-          <div class="round-empty-rich">
-            <div class="round-empty-rich-em">🍽️</div>
-            <div class="round-empty-rich-title"><span class="lang-en">Build the first order</span><span class="lang-hi">पहला ऑर्डर बनाएं</span></div>
-            <div class="round-empty-rich-msg"><span class="lang-en">Tap items from the menu to add them. Quantity stacks on repeat taps.</span><span class="lang-hi">मेनू से आइटम जोड़ने के लिए टैप करें। बार-बार टैप करने पर मात्रा बढ़ती है।</span></div>
-            <div class="round-empty-tips">
-              <div class="round-empty-tip">
-                <span class="round-empty-tip-em">📋</span>
-                <span><strong><span class="lang-en">Category chips</span><span class="lang-hi">कैटेगरी</span></strong> <span class="lang-en">filter the menu — try them to find items faster.</span><span class="lang-hi"> — मेनू को फ़िल्टर करती हैं।</span></span>
+        <!-- Tab content area — only one pane is visible at a time -->
+        <div class="order-tab-body">
+
+          <!-- TAB: Add Order (Current Round builder) -->
+          <div class="otab-pane" id="otab-pane-add">
+            <div class="round-hd">
+              <div class="round-hd-left">
+                <div class="round-title">🍳 <span class="lang-en">Current Round</span><span class="lang-hi">वर्तमान राउंड</span></div>
+                <div class="round-count" id="round-count"><span class="lang-en">Tap menu items to add →</span><span class="lang-hi">मेनू आइटम पर टैप करें →</span></div>
               </div>
-              <div class="round-empty-tip">
-                <span class="round-empty-tip-em">🍳</span>
-                <span><strong><span class="lang-en">Send to Kitchen</span><span class="lang-hi">किचन भेजें</span></strong> <span class="lang-en">prints a KOT and starts cooking. You can send more rounds later.</span><span class="lang-hi"> KOT प्रिंट करता है।</span></span>
-              </div>
-              <div class="round-empty-tip">
-                <span class="round-empty-tip-em">🧾</span>
-                <span><strong><span class="lang-en">Generate Bill</span><span class="lang-hi">बिल बनाएं</span></strong> <span class="lang-en">when the guest is ready to pay — frees the table.</span><span class="lang-hi"> — टेबल फ्री करता है।</span></span>
+              <div class="round-badge" id="round-badge">0</div>
+            </div>
+
+            <div class="round-items" id="round-items">
+              <div class="round-empty-rich">
+                <div class="round-empty-rich-em">🍽️</div>
+                <div class="round-empty-rich-title"><span class="lang-en">Build the first order</span><span class="lang-hi">पहला ऑर्डर बनाएं</span></div>
+                <div class="round-empty-rich-msg"><span class="lang-en">Tap items from the menu to add them. Quantity stacks on repeat taps.</span><span class="lang-hi">मेनू से आइटम जोड़ने के लिए टैप करें।</span></div>
+                <div class="round-empty-tips">
+                  <div class="round-empty-tip">
+                    <span class="round-empty-tip-em">📋</span>
+                    <span><strong><span class="lang-en">Category chips</span><span class="lang-hi">कैटेगरी</span></strong> <span class="lang-en">filter the menu — try them.</span><span class="lang-hi"> — मेनू फ़िल्टर करें</span></span>
+                  </div>
+                  <div class="round-empty-tip">
+                    <span class="round-empty-tip-em">🍳</span>
+                    <span><strong><span class="lang-en">Send KOT</span><span class="lang-hi">KOT भेजें</span></strong> <span class="lang-en">prints a slip and starts cooking.</span><span class="lang-hi"> स्लिप प्रिंट करता है</span></span>
+                  </div>
+                  <div class="round-empty-tip">
+                    <span class="round-empty-tip-em">🧾</span>
+                    <span><strong><span class="lang-en">Generate Bill</span><span class="lang-hi">बिल बनाएं</span></strong> <span class="lang-en">when ready to pay — frees the table.</span><span class="lang-hi"> — टेबल फ्री करता है</span></span>
+                  </div>
+                </div>
               </div>
             </div>
+
+            <div class="round-note">
+              <input type="text" id="round-note-inp" placeholder="Note for kitchen (e.g. less spicy, no onion)...">
+            </div>
           </div>
-        </div>
 
-        <!-- Round note (kept in pane — input is too wide for the 76px rail) -->
-        <div class="round-note">
-          <input type="text" id="round-note-inp" placeholder="Note for kitchen (e.g. less spicy, no onion)...">
-        </div>
-
-        <!-- KOT button moved to the action rail on the right (see #rail-kot-btn). -->
-
-        <!-- All items summary (from previous rounds).
-             Header now carries BOTH the summary label/count AND the
-             By KOT / By Item view tabs — saves vertical space (audit
-             feedback: "there is enough space on top of panel"). -->
-        <div class="summary-hd-row">
-          <div class="summary-hd-text">
-            <div class="summary-hd-lbl"><span class="lang-en">Order Summary</span><span class="lang-hi">ऑर्डर सारांश</span></div>
-            <div class="summary-hd-sub" id="summary-rounds-info">—</div>
+          <!-- TAB: By KOT (sent items grouped per round) -->
+          <div class="otab-pane" id="otab-pane-kot" style="display:none">
+            <div class="tab-section-hd">
+              <span><span class="lang-en">Sent KOTs</span><span class="lang-hi">भेजे गए KOT</span></span>
+              <span id="summary-rounds-info-kot">—</span>
+            </div>
+            <div class="summary-list" id="summary-list-kot">
+              <div class="summary-empty-sm"><span class="lang-en">No KOTs sent yet</span><span class="lang-hi">अभी तक कोई KOT नहीं</span></div>
+            </div>
           </div>
-          <div class="summary-view-tabs">
-            <button class="svt on" id="svt-kot"  onclick="setSummaryView('kot')">
-              <span class="lang-en">By KOT</span><span class="lang-hi">KOT</span>
-            </button>
-            <button class="svt"    id="svt-item" onclick="setSummaryView('item')">
-              <span class="lang-en">By Item</span><span class="lang-hi">आइटम</span>
-            </button>
-          </div>
-        </div>
-        <div class="summary-list" id="summary-list">
-          <div class="summary-empty-sm"><span class="lang-en">No rounds sent yet</span><span class="lang-hi">अभी तक कोई राउंड नहीं भेजा गया</span></div>
-        </div>
 
-        <!-- Receipt-style totals -->
+          <!-- TAB: By Item (aggregated) -->
+          <div class="otab-pane" id="otab-pane-item" style="display:none">
+            <div class="tab-section-hd">
+              <span><span class="lang-en">All Items</span><span class="lang-hi">सभी आइटम</span></span>
+              <span id="summary-rounds-info-item">—</span>
+            </div>
+            <div class="summary-list" id="summary-list-item">
+              <div class="summary-empty-sm"><span class="lang-en">No items yet</span><span class="lang-hi">अभी तक कोई आइटम नहीं</span></div>
+            </div>
+          </div>
+
+        </div><!-- /order-tab-body -->
+
+        <!-- Receipt-style totals — always visible regardless of tab -->
         <div class="summary-total" id="summary-total">
           <div class="st-row sub">
             <div class="st-label"><span class="lang-en">Subtotal</span><span class="lang-hi">उप-योग</span></div>
@@ -1103,8 +1179,7 @@ html,body{height:100%;width:100%;margin:0;padding:0;overflow:hidden;background:v
           </div>
         </div>
 
-        <!-- Generate Bill + Void (in-pane buttons — hidden on desktop,
-             shown on mobile ≤900px where no rail is rendered). -->
+        <!-- Mobile-only inline actions (rail is hidden ≤900px) -->
         <div class="bottom-actions">
           <button class="btn-void" onclick="voidOrder()" title="Cancel order & free table">✕ <span class="lang-en">Void</span><span class="lang-hi">रद्द</span></button>
           <button class="btn-bill" id="bill-btn-mobile" onclick="generateBill()" disabled>
@@ -1765,7 +1840,8 @@ function render(){
   renderRound();
 
   const allItems = Array.isArray(_order?.items) ? _order.items : [];
-  const summaryEl     = $('summary-list');
+  const summaryElKot  = $('summary-list-kot');
+  const summaryElItem = $('summary-list-item');
   const billBtn       = $('bill-btn');
   const billBtnMob    = $('bill-btn-mobile');
   const stSubtotal    = $('st-subtotal');
@@ -1774,11 +1850,15 @@ function render(){
   const grandTotal    = $('grand-total');
   const hdrTotal      = $('hdr-total');
   const hdrItemCount  = $('hdr-item-count');
-  const summaryRounds = $('summary-rounds-info');
+  const summaryRoundsKot  = $('summary-rounds-info-kot');
+  const summaryRoundsItem = $('summary-rounds-info-item');
 
   if(!allItems.length){
-    summaryEl.innerHTML = '<div class="summary-empty-sm"><span class="lang-en">No rounds sent yet</span><span class="lang-hi">अभी तक कोई राउंड नहीं</span></div>';
-    if(summaryRounds) summaryRounds.textContent = '—';
+    const emptyHtml = '<div class="summary-empty-sm"><span class="lang-en">No rounds sent yet</span><span class="lang-hi">अभी तक कोई राउंड नहीं</span></div>';
+    if(summaryElKot)  summaryElKot.innerHTML  = emptyHtml;
+    if(summaryElItem) summaryElItem.innerHTML = emptyHtml;
+    if(summaryRoundsKot)  summaryRoundsKot.textContent  = '—';
+    if(summaryRoundsItem) summaryRoundsItem.textContent = '—';
     if(stSubtotal) stSubtotal.textContent = '₹0';
     if(stGstRow) stGstRow.style.display = 'none';
     grandTotal.textContent = '₹0';
@@ -1787,6 +1867,7 @@ function render(){
     if(hdrTotal) hdrTotal.textContent = '₹0';
     if(hdrItemCount) hdrItemCount.textContent = '0';
     updatePaneBadge();
+    updateOrderTabBadges(0, 0);
     return;
   }
 
@@ -1830,93 +1911,89 @@ function render(){
     if(_kotOpen[latest] === undefined) _kotOpen[latest] = true;
   }
 
-  // ── Branch on view mode ─────────────────────────────────────────
-  if(_summaryView === 'item'){
-    // ── BY ITEM (aggregated) ──
-    // Aggregate by stable key — service_id when present, else name.
-    // Keep all KOT instances so the breakdown modal can show them.
-    const agg = {};
-    allItems.forEach(it => {
-      const key = it.service_id || ('n:' + (it.name||''));
-      if(!agg[key]) agg[key] = {
-        name:       it.name || '',
-        price:      it.price || 0,
-        gst_rate:   it.gst_rate || 0,
-        instances:  [],   // each: { round, item_id, qty, voided, notes }
-      };
-      agg[key].instances.push({
-        round:       it.round || 0,
-        item_id:     it.item_id || '',
-        qty:         it.qty || 0,
-        voided_qty:  it.voided_qty || 0,
-        voided:      itemIsFullyVoided(it),
-        notes:       it.notes || '',
-      });
+  // ── Render BOTH views (only the active tab pane is visible). ─────
+  // Old code branched on `_summaryView` and wrote to one DOM node;
+  // now there are two nodes (one per tab pane), so each view is built
+  // once and written to its own target.
+
+  // BY ITEM aggregation
+  const agg = {};
+  allItems.forEach(it => {
+    const key = it.service_id || ('n:' + (it.name||''));
+    if(!agg[key]) agg[key] = {
+      name:       it.name || '',
+      price:      it.price || 0,
+      gst_rate:   it.gst_rate || 0,
+      instances:  [],
+    };
+    agg[key].instances.push({
+      round:       it.round || 0,
+      item_id:     it.item_id || '',
+      qty:         it.qty || 0,
+      voided_qty:  it.voided_qty || 0,
+      voided:      itemIsFullyVoided(it),
+      notes:       it.notes || '',
     });
+  });
 
-    const aggRows = Object.entries(agg).map(([key, a]) => {
-      // Active qty = ordered − cancelled, across all instances of this dish
-      const activeQty = a.instances.reduce((s,i) => s + Math.max(0, (i.qty||0) - (i.voided_qty||0)), 0);
-      const voidedQty = a.instances.reduce((s,i) => s + Math.min((i.qty||0), (i.voided_qty||0)), 0);
-      const lineSub   = activeQty * (a.price || 0);
-      const lineGst   = lineSub * (a.gst_rate || 0) / 100;
-      const lineTot   = lineSub + lineGst;
-      const allVoided = activeQty === 0 && voidedQty > 0;
-      const partial   = voidedQty > 0 && activeQty > 0;
-      const hasAnyNote = a.instances.some(i => i.notes && i.notes.trim());
+  const aggRows = Object.entries(agg).map(([key, a]) => {
+    const activeQty = a.instances.reduce((s,i) => s + Math.max(0, (i.qty||0) - (i.voided_qty||0)), 0);
+    const voidedQty = a.instances.reduce((s,i) => s + Math.min((i.qty||0), (i.voided_qty||0)), 0);
+    const lineSub   = activeQty * (a.price || 0);
+    const lineGst   = lineSub * (a.gst_rate || 0) / 100;
+    const lineTot   = lineSub + lineGst;
+    const allVoided = activeQty === 0 && voidedQty > 0;
+    const partial   = voidedQty > 0 && activeQty > 0;
+    const hasAnyNote = a.instances.some(i => i.notes && i.notes.trim());
 
-      // KOT pills — each instance, showing remaining/cancelled state
-      const pillsHtml = a.instances
-        .slice()
-        .sort((x,y)=>x.round - y.round)
-        .map(inst => {
-          const instActive = Math.max(0, (inst.qty||0) - (inst.voided_qty||0));
-          const instVoided = Math.min((inst.qty||0), (inst.voided_qty||0));
-          const cls = instActive === 0 ? 'voided' : '';
-          const txt = instVoided > 0 && instActive > 0
-            ? '#' + String(inst.round).padStart(3,'0') + ' ×' + instActive + ' (' + instVoided + ' cx)'
-            : '#' + String(inst.round).padStart(3,'0') + ' ×' + inst.qty;
-          return '<span class="agg-item-kot-pill ' + cls + '">' + txt + '</span>';
-        }).join('');
+    const pillsHtml = a.instances
+      .slice()
+      .sort((x,y)=>x.round - y.round)
+      .map(inst => {
+        const instActive = Math.max(0, (inst.qty||0) - (inst.voided_qty||0));
+        const instVoided = Math.min((inst.qty||0), (inst.voided_qty||0));
+        const cls = instActive === 0 ? 'voided' : '';
+        const txt = instVoided > 0 && instActive > 0
+          ? '#' + String(inst.round).padStart(3,'0') + ' ×' + instActive + ' (' + instVoided + ' cx)'
+          : '#' + String(inst.round).padStart(3,'0') + ' ×' + inst.qty;
+        return '<span class="agg-item-kot-pill ' + cls + '">' + txt + '</span>';
+      }).join('');
 
-      const safeNameJs = JSON.stringify(a.name).replace(/"/g,'&quot;');
-      const delBtn = allVoided
-        ? '<button class="agg-act-btn del" disabled title="All instances already voided">✕</button>'
-        : '<button class="agg-act-btn del" title="Cancel this item" onclick="openItemActionFromAgg(' + JSON.stringify(key).replace(/"/g,'&quot;') + ')">✕</button>';
-      const noteBtn = hasAnyNote
-        ? '<button class="agg-act-btn note has" title="Has chef notes — click to view in KOT view" onclick="setSummaryView(\'kot\')">💬</button>'
-        : '';
+    const delBtn = allVoided
+      ? '<button class="agg-act-btn del" disabled title="All instances already voided">✕</button>'
+      : '<button class="agg-act-btn del" title="Cancel this item" onclick="openItemActionFromAgg(' + JSON.stringify(key).replace(/"/g,'&quot;') + ')">✕</button>';
+    const noteBtn = hasAnyNote
+      ? '<button class="agg-act-btn note has" title="Has chef notes — switch to By KOT to view" onclick="setOrderTab(\'kot\')">💬</button>'
+      : '';
 
-      return '<div class="agg-item ' + (allVoided?'all-void':'') + (partial?'partial':'') + '">' +
-        '<div class="agg-item-main">' +
-          '<div class="agg-item-name">' + escHtml(a.name) +
-            (allVoided ? ' <span class="ki-voided-badge">ALL VOID</span>' :
-             partial   ? ' <span class="ki-voided-badge">' + voidedQty + ' voided</span>' : '') +
-          '</div>' +
-          '<div class="agg-item-meta">' + pillsHtml + '</div>' +
+    return '<div class="agg-item ' + (allVoided?'all-void':'') + (partial?'partial':'') + '">' +
+      '<div class="agg-item-main">' +
+        '<div class="agg-item-name">' + escHtml(a.name) +
+          (allVoided ? ' <span class="ki-voided-badge">ALL VOID</span>' :
+           partial   ? ' <span class="ki-voided-badge">' + voidedQty + ' voided</span>' : '') +
         '</div>' +
-        '<div class="agg-item-qty">×' + activeQty + '</div>' +
-        (a.price > 0 ? '<div class="agg-item-total">' + fINR(lineTot) + '</div>' : '<div class="agg-item-total">—</div>') +
-        '<div class="agg-item-actions">' +
-          noteBtn +
-          delBtn +
-        '</div>' +
-      '</div>';
-    }).join('');
+        '<div class="agg-item-meta">' + pillsHtml + '</div>' +
+      '</div>' +
+      '<div class="agg-item-qty">×' + activeQty + '</div>' +
+      (a.price > 0 ? '<div class="agg-item-total">' + fINR(lineTot) + '</div>' : '<div class="agg-item-total">—</div>') +
+      '<div class="agg-item-actions">' +
+        noteBtn +
+        delBtn +
+      '</div>' +
+    '</div>';
+  }).join('');
+  if(summaryElItem) summaryElItem.innerHTML = aggRows;
+  window._aggCache = agg;
 
-    summaryEl.innerHTML = aggRows;
-    // Stash the aggregation so action handlers can reach instances by key
-    window._aggCache = agg;
-  } else {
-    // ── BY KOT (default chronological) ──
-    summaryEl.innerHTML = roundsSorted.map(r => {
-      const items = kots[r];
-      const meta  = kotMeta[r] || {};
-      const open  = _kotOpen[r] === true;
-      let kotTotal = 0;
-      let kotQty   = 0;
-      let kotActiveCount = 0;
-      items.forEach(it => {
+  // BY KOT
+  const byKotHtml = roundsSorted.map(r => {
+    const items = kots[r];
+    const meta  = kotMeta[r] || {};
+    const open  = _kotOpen[r] === true;
+    let kotTotal = 0;
+    let kotQty   = 0;
+    let kotActiveCount = 0;
+    items.forEach(it => {
         const aQty = itemActiveQty(it);
         if(aQty > 0){
           kotTotal += aQty * (it.price||0) * (1 + (it.gst_rate||0)/100);
@@ -1974,15 +2051,20 @@ function render(){
           itemsHtml +
         '</div>' +
       '</div>';
-    }).join('');
-  }
+  }).join('');
+  if(summaryElKot) summaryElKot.innerHTML = byKotHtml;
 
   const kotCount = _order?.kot_count || 0;
   const grand    = subtotal + gstTotal;
 
-  if(summaryRounds){
-    summaryRounds.textContent = kotCount + ' KOT' + (kotCount===1?'':'s') + ' · ' + activeItemCount + ' items';
-  }
+  // Per-pane sub-headers
+  const subTxt = kotCount + ' KOT' + (kotCount===1?'':'s') + ' · ' + activeItemCount + ' active';
+  if(summaryRoundsKot)  summaryRoundsKot.textContent  = subTxt;
+  if(summaryRoundsItem) summaryRoundsItem.textContent = subTxt;
+
+  // Top-tab badges: red count on "By KOT" tab = # KOTs sent
+  updateOrderTabBadges(_roundItems.reduce((s,i)=>s+i.qty,0), kotCount);
+
   if(stSubtotal) stSubtotal.textContent = fINR(subtotal);
   if(stGstRow){
     if(gstTotal > 0){
@@ -1995,7 +2077,6 @@ function render(){
   grandTotal.textContent = fINR(grand);
   if(hdrTotal) hdrTotal.textContent = fINR(grand);
   if(hdrItemCount) hdrItemCount.textContent = activeItemCount;
-  // Bill button stays enabled only if there's at least one active item.
   billBtn.disabled = activeItemCount === 0;
   if(billBtnMob) billBtnMob.disabled = activeItemCount === 0;
   updatePaneBadge();
@@ -2054,17 +2135,41 @@ function toggleKot(round){
   render();
 }
 
-// ── Summary view toggle (By KOT ↔ By Item) ────────────────────────
-let _summaryView = 'kot';   // 'kot' | 'item'
+// ── Top-tab system: Add Order / By KOT / By Item ─────────────────
+let _orderTab = 'add';   // 'add' | 'kot' | 'item'
 
+function setOrderTab(t){
+  if(t !== 'add' && t !== 'kot' && t !== 'item') return;
+  _orderTab = t;
+  // Active button state
+  ['add','kot','item'].forEach(k => {
+    const btn  = document.getElementById('otab-' + k);
+    const pane = document.getElementById('otab-pane-' + k);
+    if(btn)  btn.classList.toggle('on', k === t);
+    if(pane) pane.style.display = (k === t) ? 'flex' : 'none';
+  });
+}
+
+// Update tab badges. Add tab: items currently being built. KOT tab:
+// red count of KOTs sent (matches what's queued in the kitchen view).
+function updateOrderTabBadges(addCount, kotCount){
+  const addBadge = document.getElementById('otab-add-badge');
+  const kotBadge = document.getElementById('otab-kot-badge');
+  if(addBadge){
+    if(addCount > 0){ addBadge.textContent = addCount; addBadge.style.display = ''; }
+    else            { addBadge.style.display = 'none'; }
+  }
+  if(kotBadge){
+    if(kotCount > 0){ kotBadge.textContent = kotCount; kotBadge.style.display = ''; }
+    else            { kotBadge.style.display = 'none'; }
+  }
+}
+
+// Legacy alias — older buttons (e.g. note-jump button on aggregated
+// item rows) still call setSummaryView('kot'). Map to setOrderTab.
+let _summaryView = 'kot';   // kept for back-compat reads, unused for branching
 function setSummaryView(v){
-  if(v !== 'kot' && v !== 'item') return;
-  _summaryView = v;
-  const kBtn = document.getElementById('svt-kot');
-  const iBtn = document.getElementById('svt-item');
-  if(kBtn) kBtn.classList.toggle('on', v === 'kot');
-  if(iBtn) iBtn.classList.toggle('on', v === 'item');
-  render();
+  if(v === 'item' || v === 'kot') setOrderTab(v);
 }
 
 // ── KOT breakdown modal: lets the operator pick which KOT instance

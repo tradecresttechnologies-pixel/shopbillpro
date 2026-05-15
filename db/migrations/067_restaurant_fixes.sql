@@ -38,7 +38,7 @@ BEGIN;
 DROP FUNCTION IF EXISTS sbp_services_upsert(uuid, jsonb);
 CREATE OR REPLACE FUNCTION sbp_services_upsert(p_shop_id uuid, p_data jsonb)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER
-SET search_path = public AS $$
+SET search_path = public, extensions, pg_temp AS $$
 DECLARE
   v_id   uuid;
   v_row  sbp_services%ROWTYPE;
@@ -117,7 +117,7 @@ GRANT EXECUTE ON FUNCTION sbp_services_upsert(uuid, jsonb) TO authenticated;
 DROP FUNCTION IF EXISTS sbp_get_menu_for_pos(uuid);
 CREATE OR REPLACE FUNCTION sbp_get_menu_for_pos(p_shop_id uuid)
 RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER
-SET search_path = public AS $$
+SET search_path = public, extensions, pg_temp AS $$
 BEGIN
   IF NOT public._sbp_check_shop_owner(p_shop_id) THEN
     RETURN jsonb_build_object('ok', false, 'error', 'not_authorized');
@@ -162,7 +162,7 @@ GRANT EXECUTE ON FUNCTION sbp_get_menu_for_pos(uuid) TO authenticated;
 DROP FUNCTION IF EXISTS sbp_ro_void(uuid, uuid);
 CREATE OR REPLACE FUNCTION sbp_ro_void(p_shop_id uuid, p_order_id uuid)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER
-SET search_path = public AS $$
+SET search_path = public, extensions, pg_temp AS $$
 DECLARE
   v_row        sbp_running_orders%ROWTYPE;
   v_cancelled  int := 0;
@@ -244,7 +244,7 @@ CREATE OR REPLACE FUNCTION sbp_ro_generate_bill(
   p_order_id uuid,
   p_bill_id  uuid DEFAULT NULL
 ) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER
-SET search_path = public AS $$
+SET search_path = public, extensions, pg_temp AS $$
 DECLARE v_row sbp_running_orders%ROWTYPE;
 BEGIN
   IF NOT public._sbp_check_shop_owner(p_shop_id) THEN
@@ -378,7 +378,7 @@ CREATE OR REPLACE FUNCTION sbp_ro_add_items(
   p_items    jsonb,
   p_notes    text DEFAULT NULL
 ) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER
-SET search_path = public AS $$
+SET search_path = public, extensions, pg_temp AS $$
 DECLARE
   v_row       sbp_running_orders%ROWTYPE;
   v_kot_n     int;
@@ -476,7 +476,7 @@ CREATE OR REPLACE FUNCTION sbp_ro_void_item(
   p_reason    text DEFAULT NULL,
   p_qty       int  DEFAULT NULL    -- NULL = void all remaining
 ) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER
-SET search_path = public AS $$
+SET search_path = public, extensions, pg_temp AS $$
 DECLARE
   v_row         sbp_running_orders%ROWTYPE;
   v_pin         jsonb;
