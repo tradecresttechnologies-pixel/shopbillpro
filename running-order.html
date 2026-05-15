@@ -280,11 +280,12 @@ html,body{height:100%;width:100%;margin:0;padding:0;overflow:hidden;background:v
 }
 .round-items{flex-shrink:0;max-height:240px;overflow-y:auto;background:var(--surf)}
 .round-item{
-  display:flex;align-items:center;gap:8px;
+  display:flex;flex-direction:column;
   padding:10px 18px;border-bottom:1px solid var(--surf2);
-  transition:var(--tr);
+  transition:var(--tr);gap:6px;
 }
 .round-item:hover{background:rgba(245,166,35,.03)}
+.ri-main{display:flex;align-items:center;gap:8px}
 .ri-name{flex:1;font-size:14px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .ri-price{font-size:12px;color:var(--t2);width:70px;text-align:right;flex-shrink:0;font-weight:600}
 .qty-ctrl{display:flex;align-items:center;gap:6px;flex-shrink:0;background:var(--surf2);padding:3px;border-radius:8px}
@@ -295,6 +296,178 @@ html,body{height:100%;width:100%;margin:0;padding:0;overflow:hidden;background:v
 }
 .qb:hover{background:var(--acc);color:#0A0E1A}
 .qn{font-size:14px;font-weight:800;min-width:20px;text-align:center;color:var(--text)}
+
+/* Per-item chef-note button + inline input (current round only) */
+.ri-note-btn{
+  width:26px;height:26px;border-radius:6px;border:1px solid var(--bord);
+  background:var(--surf2);color:var(--t2);font-size:12px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:var(--tr);
+}
+.ri-note-btn:hover{border-color:var(--acc);color:var(--acc)}
+.ri-note-btn.has-note{background:rgba(245,166,35,.12);border-color:var(--acc);color:var(--acc)}
+.ri-note-wrap{display:none}
+.ri-note-wrap.open{display:flex;gap:6px;align-items:center;padding:2px 0 2px 6px;border-left:2px solid var(--acc);margin-left:4px}
+.ri-note-inp{
+  flex:1;padding:6px 10px;border-radius:7px;
+  border:1px solid var(--bord);background:var(--surf2);
+  color:var(--text);font-size:12px;font-family:var(--font-h);
+}
+.ri-note-inp:focus{outline:none;border-color:var(--acc);background:var(--surf)}
+.ri-note-preview{
+  font-size:11px;color:var(--acc);padding:0 0 0 10px;
+  font-style:italic;display:flex;align-items:center;gap:5px;
+}
+.ri-note-preview::before{content:'💬';font-size:10px}
+
+/* ── KOT-grouped Order Summary (sent items) ─────────────────────────
+   Was: flat aggregated list. Now: a card per KOT, collapsed by default,
+   tap header to expand. Each item inside an expanded KOT card has a
+   per-item delete button that triggers the PIN-gated void flow. */
+.summary-list{flex:1;overflow-y:auto;background:var(--surf);padding:8px}
+.kot-card{
+  background:var(--surf2);border:1px solid var(--bord);
+  border-radius:10px;margin-bottom:8px;overflow:hidden;
+  transition:var(--tr);
+}
+.kot-card.open{border-color:var(--acc)}
+.kot-hd{
+  padding:10px 12px;cursor:pointer;
+  display:flex;align-items:center;gap:10px;
+  background:var(--surf2);transition:var(--tr);
+  user-select:none;
+}
+.kot-hd:hover{background:rgba(245,166,35,.05)}
+.kot-card.open .kot-hd{background:rgba(245,166,35,.08);border-bottom:1px solid var(--bord)}
+.kot-hd-badge{
+  background:linear-gradient(135deg,#F5A623,#FF8A00);color:#0A0E1A;
+  padding:4px 9px;border-radius:7px;font-size:11px;font-weight:800;
+  font-family:var(--font-h);letter-spacing:.3px;flex-shrink:0;
+  box-shadow:0 2px 6px rgba(245,166,35,.2);
+}
+.kot-hd-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.kot-hd-title{font-size:12px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:6px}
+.kot-hd-meta{font-size:10px;color:var(--t2);font-weight:600}
+.kot-hd-meta::before{content:'⏱ ';font-size:9px;opacity:.7}
+.kot-hd-total{font-size:14px;font-weight:800;color:var(--acc);font-family:var(--font-h);flex-shrink:0}
+.kot-hd-arrow{
+  font-size:14px;color:var(--t2);transition:transform .2s;
+  flex-shrink:0;width:18px;text-align:center;
+}
+.kot-card.open .kot-hd-arrow{transform:rotate(90deg);color:var(--acc)}
+.kot-body{display:none;background:var(--surf);padding:4px 0}
+.kot-card.open .kot-body{display:block}
+.kot-note-row{
+  padding:6px 14px;font-size:11px;color:var(--acc);
+  font-style:italic;background:rgba(245,166,35,.04);
+  border-bottom:1px dashed var(--bord);
+  display:flex;align-items:flex-start;gap:6px;
+}
+.kot-note-row::before{content:'💬';font-size:11px;flex-shrink:0}
+
+.kot-item{
+  display:flex;align-items:center;gap:8px;
+  padding:9px 14px;border-bottom:1px dashed var(--surf2);
+  font-size:13px;transition:var(--tr);
+}
+.kot-item:last-child{border-bottom:none}
+.kot-item.voided{opacity:.45}
+.kot-item.voided .ki-name,
+.kot-item.voided .ki-qty,
+.kot-item.voided .ki-total{text-decoration:line-through;text-decoration-color:#EF4444;text-decoration-thickness:1.5px}
+.ki-name{flex:1;color:var(--text);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.ki-note{
+  font-size:10px;color:var(--acc);font-style:italic;
+  padding:0 14px 6px 14px;
+  display:flex;align-items:flex-start;gap:5px;background:var(--surf);
+}
+.ki-note::before{content:'↳ 💬';font-size:9px;flex-shrink:0}
+.ki-qty{
+  color:var(--acc);font-weight:800;
+  font-family:var(--font-h);min-width:34px;text-align:center;flex-shrink:0;
+}
+.ki-total{color:var(--t2);min-width:64px;text-align:right;flex-shrink:0;font-weight:600;font-size:12px}
+.ki-del{
+  width:24px;height:24px;border-radius:6px;border:1px solid rgba(239,68,68,.3);
+  background:rgba(239,68,68,.06);color:#EF4444;font-size:13px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  transition:var(--tr);padding:0;
+}
+.ki-del:hover{background:#EF4444;color:#fff;border-color:#EF4444}
+.ki-voided-badge{
+  font-size:9px;font-weight:700;color:#EF4444;
+  background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);
+  padding:2px 6px;border-radius:5px;flex-shrink:0;
+  letter-spacing:.3px;
+}
+
+/* Per-item void confirmation modal — PIN modal is provided by SBPAuth,
+   but we show this first to capture reason + confirm details. */
+.ki-modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:1000;
+  display:none;align-items:center;justify-content:center;padding:20px;
+  backdrop-filter:blur(4px);
+}
+.ki-modal-overlay.open{display:flex}
+.ki-modal{
+  background:var(--surf);border:1px solid var(--bord);border-radius:14px;
+  max-width:380px;width:100%;padding:22px;
+  box-shadow:0 20px 60px rgba(0,0,0,.5);
+  animation:kiModalIn .2s ease-out;
+}
+@keyframes kiModalIn{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:none}}
+.ki-modal-hd{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.ki-modal-icon{
+  width:40px;height:40px;border-radius:10px;
+  background:rgba(239,68,68,.12);color:#EF4444;
+  display:flex;align-items:center;justify-content:center;
+  font-size:20px;flex-shrink:0;
+}
+.ki-modal-title{font-size:16px;font-weight:800;color:var(--text)}
+.ki-modal-sub{font-size:11px;color:var(--t2);font-weight:600;margin-top:1px}
+.ki-modal-item-card{
+  background:var(--surf2);border:1px solid var(--bord);border-radius:9px;
+  padding:11px 13px;margin-bottom:14px;
+  display:flex;align-items:center;gap:10px;
+}
+.ki-modal-item-card .ki-name{font-size:14px}
+.ki-modal-item-card .ki-qty{
+  background:var(--acc);color:#0A0E1A;padding:3px 10px;border-radius:6px;
+  min-width:32px;font-size:13px;
+}
+.ki-modal-item-card .ki-total{font-size:13px;color:var(--text);min-width:auto}
+.ki-modal-label{
+  font-size:11px;font-weight:700;color:var(--t2);
+  text-transform:uppercase;letter-spacing:.5px;
+  margin-bottom:6px;
+}
+.ki-modal-reason{
+  width:100%;padding:10px 12px;border-radius:9px;
+  border:1px solid var(--bord);background:var(--surf2);
+  color:var(--text);font-size:13px;font-family:var(--font-h);
+  resize:vertical;min-height:60px;
+}
+.ki-modal-reason:focus{outline:none;border-color:var(--acc);background:var(--surf)}
+.ki-modal-warn{
+  font-size:11px;color:var(--t2);line-height:1.5;
+  background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2);
+  padding:8px 11px;border-radius:8px;margin:12px 0 4px;
+  display:flex;align-items:flex-start;gap:7px;
+}
+.ki-modal-warn::before{content:'⚠️';font-size:13px;flex-shrink:0}
+.ki-modal-actions{display:flex;gap:8px;margin-top:18px}
+.ki-modal-btn{
+  flex:1;padding:11px;border-radius:10px;border:none;
+  font-size:13px;font-weight:800;cursor:pointer;font-family:var(--font-h);
+  transition:var(--tr);
+}
+.ki-modal-btn-cancel{background:var(--surf2);color:var(--t2);border:1px solid var(--bord)}
+.ki-modal-btn-cancel:hover{color:var(--text);border-color:var(--t2)}
+.ki-modal-btn-confirm{
+  background:linear-gradient(135deg,#EF4444,#DC2626);color:#fff;
+  box-shadow:0 4px 12px rgba(239,68,68,.3);
+}
+.ki-modal-btn-confirm:hover{transform:translateY(-1px);box-shadow:0 6px 16px rgba(239,68,68,.4)}
+.ki-modal-btn-confirm:disabled{opacity:.5;cursor:not-allowed;transform:none}
 
 /* Rich empty state for the current round — shows when 0 items + 0 KOTs */
 .round-empty-rich{
@@ -639,6 +812,31 @@ html,body{height:100%;width:100%;margin:0;padding:0;overflow:hidden;background:v
 <div class="bnav-drawer" id="bnav-drawer"></div>
 <div class="toast-host" id="toast-host"></div>
 
+<!-- Per-item void confirmation modal. Opens before SBPAuth PIN modal,
+     captures reason. Confirm → calls SBPAuth.requirePIN → calls
+     sbp_ro_void_item. Designed for the on-tap delete UX. -->
+<div class="ki-modal-overlay" id="ki-void-modal" onclick="if(event.target.id==='ki-void-modal')closeVoidItemModal()">
+  <div class="ki-modal" role="dialog" aria-labelledby="ki-void-title">
+    <div class="ki-modal-hd">
+      <div class="ki-modal-icon">✕</div>
+      <div>
+        <div class="ki-modal-title" id="ki-void-title"><span class="lang-en">Cancel item?</span><span class="lang-hi">आइटम रद्द करें?</span></div>
+        <div class="ki-modal-sub" id="ki-void-sub"><span class="lang-en">This item was already sent to kitchen</span><span class="lang-hi">यह आइटम पहले से किचन में भेजा गया है</span></div>
+      </div>
+    </div>
+    <div class="ki-modal-item-card" id="ki-void-item-card">
+      <!-- Filled by openVoidItemModal() -->
+    </div>
+    <div class="ki-modal-label"><span class="lang-en">Reason (optional)</span><span class="lang-hi">कारण (वैकल्पिक)</span></div>
+    <textarea class="ki-modal-reason" id="ki-void-reason" placeholder="e.g. customer changed mind, allergy, wrong order…"></textarea>
+    <div class="ki-modal-warn"><span class="lang-en"><strong>Kitchen will be notified</strong> — the cook sees this item crossed out on screen. Manager PIN required to authorize.</span><span class="lang-hi"><strong>किचन को सूचित किया जाएगा</strong> — मैनेजर PIN आवश्यक।</span></div>
+    <div class="ki-modal-actions">
+      <button class="ki-modal-btn ki-modal-btn-cancel" onclick="closeVoidItemModal()"><span class="lang-en">Keep Item</span><span class="lang-hi">रखें</span></button>
+      <button class="ki-modal-btn ki-modal-btn-confirm" id="ki-void-confirm-btn" onclick="confirmVoidItem()"><span class="lang-en">Cancel & Notify Kitchen</span><span class="lang-hi">रद्द और सूचित करें</span></button>
+    </div>
+  </div>
+</div>
+
 <!-- BATCH 067-hotfix (15-May-26): render the sidebar synchronously at parse
      time so this page doesn't appear sidebar-less for ~300ms while async
      data loads. Mirrors the canonical pattern used by dashboard / bills /
@@ -967,12 +1165,9 @@ function renderRound(){
   }
 
   if(!_roundItems.length){
-    // Only show the rich empty state when no rounds have been sent either —
-    // otherwise show a more compact "ready for next round" prompt.
     const sentItems = Array.isArray(_order?.items) ? _order.items.length : 0;
     if(sentItems === 0){
-      // The first-time rich empty state is hardcoded in the HTML; do nothing.
-      // (It's already in the DOM from page load and remains until first add.)
+      // first-time rich empty state hardcoded in the HTML, do nothing
     } else {
       el.innerHTML = '<div class="round-empty-sm">' +
         '<span class="lang-en">Ready for the next round — tap items to add</span>' +
@@ -987,16 +1182,57 @@ function renderRound(){
   roundCount.textContent = totalQty + ' item' + (totalQty===1?'':'s');
   kotBtn.disabled = false;
 
-  el.innerHTML = _roundItems.map((item, idx) =>
-    '<div class="round-item">' +
-      '<div class="ri-name">' + escHtml(item.name) + '</div>' +
-      '<div class="qty-ctrl">' +
-        '<button class="qb" onclick="changeQty(' + idx + ',-1)">−</button>' +
-        '<div class="qn">' + item.qty + '</div>' +
-        '<button class="qb" onclick="changeQty(' + idx + ',+1)">+</button>' +
+  // Each row gets: name · qty controls · price · chef-note button.
+  // Note button opens an inline input below the row. Note text goes
+  // out with the KOT payload so the kitchen sees per-item instructions.
+  el.innerHTML = _roundItems.map((item, idx) => {
+    const hasNote = !!(item.notes && item.notes.trim());
+    const noteEsc = escHtml(item.notes || '');
+    const noteOpen = item._noteOpen ? 'open' : '';
+    return '<div class="round-item">' +
+      '<div class="ri-main">' +
+        '<div class="ri-name">' + escHtml(item.name) + '</div>' +
+        '<button class="ri-note-btn ' + (hasNote?'has-note':'') + '" onclick="toggleItemNote(' + idx + ')" title="Chef note">💬</button>' +
+        '<div class="qty-ctrl">' +
+          '<button class="qb" onclick="changeQty(' + idx + ',-1)">−</button>' +
+          '<div class="qn">' + item.qty + '</div>' +
+          '<button class="qb" onclick="changeQty(' + idx + ',+1)">+</button>' +
+        '</div>' +
+        (item.price > 0 ? '<div class="ri-price">' + fINR(item.price * item.qty) + '</div>' : '') +
       '</div>' +
-      (item.price > 0 ? '<div class="ri-price">' + fINR(item.price * item.qty) + '</div>' : '') +
-    '</div>').join('');
+      // Inline note input (shown when ri-note-wrap.open)
+      '<div class="ri-note-wrap ' + noteOpen + '">' +
+        '<input type="text" class="ri-note-inp" id="ri-note-inp-' + idx + '" ' +
+               'value="' + noteEsc + '" ' +
+               'placeholder="Chef note: extra spicy, no onion, etc."' +
+               'oninput="setItemNote(' + idx + ', this.value)" ' +
+               'onkeydown="if(event.key===\'Enter\')toggleItemNote(' + idx + ')">' +
+      '</div>' +
+      // Preview when note is set but input is closed
+      (hasNote && !item._noteOpen ? '<div class="ri-note-preview">' + noteEsc + '</div>' : '') +
+    '</div>';
+  }).join('');
+
+  // Auto-focus the input if the operator just opened it
+  const openIdx = _roundItems.findIndex(i => i._noteOpen);
+  if(openIdx >= 0){
+    const inp = $('ri-note-inp-' + openIdx);
+    if(inp){ inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
+  }
+}
+
+// Toggle the inline chef-note input for a current-round item.
+function toggleItemNote(idx){
+  if(!_roundItems[idx]) return;
+  _roundItems[idx]._noteOpen = !_roundItems[idx]._noteOpen;
+  renderRound();
+}
+
+// Update the note text as the operator types.
+function setItemNote(idx, val){
+  if(!_roundItems[idx]) return;
+  _roundItems[idx].notes = val;
+  // No re-render here — input would lose focus mid-typing.
 }
 
 // ── Send KOT ──────────────────────────────────────────────────────
@@ -1010,6 +1246,8 @@ async function sendKOT(){
   // Full item shape — gst_rate + hsn_sac_code + service_id persist into
   // sbp_running_orders.items jsonb, then through to billing.html via
   // sessionStorage so the bill computes GST correctly (audit fix S2).
+  // Per-item `notes` (chef instructions) take precedence over the
+  // round-level note — kitchen sees them per-line on the KOT slip.
   const items = _roundItems.map(i => ({
     name:         i.name,
     qty:          i.qty,
@@ -1017,7 +1255,7 @@ async function sendKOT(){
     gst_rate:     i.gst_rate || 0,
     hsn_sac_code: i.hsn_sac_code || null,
     service_id:   i.service_id || null,
-    notes:        note || undefined
+    notes:        (i.notes && i.notes.trim()) ? i.notes.trim() : (note || undefined)
   }));
 
   const { data, error } = await _sb.rpc('sbp_ro_add_items',{
@@ -1083,6 +1321,10 @@ function printKOTSlip(items, kotN, note){
 }
 
 // ── Render full order summary ─────────────────────────────────────
+// State: which KOT cards are expanded. By default the latest KOT is
+// expanded so the operator sees recent activity. Toggled via toggleKot().
+const _kotOpen = {};
+
 function render(){
   renderHeader();
   renderRound();
@@ -1111,40 +1353,110 @@ function render(){
     return;
   }
 
-  // Aggregate by name across all sent rounds. Keep gst_rate so we can
-  // show the GST split in the receipt-style total panel.
-  const agg = {};
+  // ── Group sent items by KOT round ────────────────────────────────
+  // Each item carries `round` (set server-side in sbp_ro_add_items).
+  // Items without `round` (legacy/old data) collapse into round 0.
+  const kots = {};
+  const kotMeta = {};
+  // Build kotMeta from _order.kots (has sent_at + notes per KOT)
+  if(Array.isArray(_order?.kots)){
+    _order.kots.forEach(k => {
+      kotMeta[k.round || k.kot_number] = {
+        sent_at: k.sent_at || '',
+        notes:   k.notes   || '',
+      };
+    });
+  }
   allItems.forEach(it => {
-    const key = it.service_id || it.name || '';
-    if(!agg[key]) agg[key] = {
-      name: it.name || '',
-      qty: 0,
-      price: it.price || 0,
-      gst_rate: it.gst_rate || 0,
-    };
-    agg[key].qty += (it.qty || 1);
+    const r = it.round || 0;
+    if(!kots[r]) kots[r] = [];
+    kots[r].push(it);
   });
 
+  // Totals across all NON-VOIDED items
   let subtotal = 0;
   let gstTotal = 0;
-  summaryEl.innerHTML = Object.values(agg).map(it => {
-    const lineSub = it.qty * (it.price||0);
-    const lineGst = lineSub * (it.gst_rate||0) / 100;
+  let activeItemCount = 0;
+  allItems.forEach(it => {
+    if(it.voided) return;
+    const lineSub = (it.qty || 0) * (it.price || 0);
     subtotal += lineSub;
-    gstTotal += lineGst;
-    return '<div class="summary-item">' +
-      '<span class="s-name">' + escHtml(it.name) + '</span>' +
-      '<span class="s-qty">×' + it.qty + '</span>' +
-      (it.price > 0 ? '<span class="s-total">' + fINR(lineSub) + '</span>' : '') +
+    gstTotal += lineSub * (it.gst_rate || 0) / 100;
+    activeItemCount += (it.qty || 0);
+  });
+
+  // Default: expand the latest KOT only (most recently sent).
+  const roundsSorted = Object.keys(kots).map(n => parseInt(n,10)).sort((a,b)=>a-b);
+  if(roundsSorted.length){
+    const latest = roundsSorted[roundsSorted.length - 1];
+    // Only auto-open if no manual state has been set for it yet.
+    if(_kotOpen[latest] === undefined) _kotOpen[latest] = true;
+  }
+
+  summaryEl.innerHTML = roundsSorted.map(r => {
+    const items = kots[r];
+    const meta  = kotMeta[r] || {};
+    const open  = _kotOpen[r] === true;
+    // KOT total (active items only)
+    let kotTotal = 0;
+    let kotQty   = 0;
+    let kotActiveCount = 0;
+    items.forEach(it => {
+      if(!it.voided){
+        kotTotal += (it.qty||0) * (it.price||0) * (1 + (it.gst_rate||0)/100);
+        kotQty   += (it.qty||0);
+        kotActiveCount++;
+      }
+    });
+    const kotLabel = r > 0 ? ('KOT #' + String(r).padStart(3,'0')) : 'Earlier items';
+    const timeStr  = meta.sent_at ? meta.sent_at : '—';
+    const kotNoteRow = meta.notes ? '<div class="kot-note-row">' + escHtml(meta.notes) + '</div>' : '';
+
+    const itemsHtml = items.map(it => {
+      const lineSub = (it.qty||0) * (it.price||0);
+      const lineGst = lineSub * (it.gst_rate||0) / 100;
+      const lineTot = lineSub + lineGst;
+      const voided  = !!it.voided;
+      const itemId  = it.item_id || '';
+      const safeName = escHtml(it.name || '');
+      const noteRow  = it.notes ? '<div class="ki-note">' + escHtml(it.notes) + '</div>' : '';
+      const delBtn   = (!voided && itemId)
+        ? '<button class="ki-del" title="Cancel this item" onclick="openVoidItemModal(\'' + itemId + '\',' + JSON.stringify(safeName).replace(/"/g,'&quot;') + ',' + (it.qty||0) + ',' + lineTot.toFixed(2) + ')">✕</button>'
+        : (voided ? '<span class="ki-voided-badge">VOID</span>' : '');
+      return '<div class="kot-item ' + (voided?'voided':'') + '">' +
+        '<span class="ki-name">' + safeName + '</span>' +
+        '<span class="ki-qty">×' + (it.qty||0) + '</span>' +
+        (it.price > 0 ? '<span class="ki-total">' + fINR(lineTot) + '</span>' : '') +
+        delBtn +
+      '</div>' + noteRow;
+    }).join('');
+
+    return '<div class="kot-card ' + (open?'open':'') + '">' +
+      '<div class="kot-hd" onclick="toggleKot(' + r + ')">' +
+        '<span class="kot-hd-badge">' + (r > 0 ? '#' + String(r).padStart(3,'0') : '—') + '</span>' +
+        '<div class="kot-hd-info">' +
+          '<div class="kot-hd-title">' + escHtml(kotLabel) +
+            (kotActiveCount === 0 && items.length > 0
+              ? ' <span class="ki-voided-badge">ALL VOID</span>'
+              : '') +
+          '</div>' +
+          '<div class="kot-hd-meta">' + escHtml(timeStr) + ' · ' + kotQty + ' active item' + (kotQty===1?'':'s') + '</div>' +
+        '</div>' +
+        '<div class="kot-hd-total">' + fINR(kotTotal) + '</div>' +
+        '<div class="kot-hd-arrow">▸</div>' +
+      '</div>' +
+      '<div class="kot-body">' +
+        kotNoteRow +
+        itemsHtml +
+      '</div>' +
     '</div>';
   }).join('');
 
-  const itemCount  = allItems.reduce((s,i)=>s+(i.qty||1),0);
-  const kotCount   = _order?.kot_count || 0;
-  const grand      = subtotal + gstTotal;
+  const kotCount = _order?.kot_count || 0;
+  const grand    = subtotal + gstTotal;
 
   if(summaryRounds){
-    summaryRounds.textContent = kotCount + ' KOT' + (kotCount===1?'':'s') + ' · ' + itemCount + ' items';
+    summaryRounds.textContent = kotCount + ' KOT' + (kotCount===1?'':'s') + ' · ' + activeItemCount + ' items';
   }
   if(stSubtotal) stSubtotal.textContent = fINR(subtotal);
   if(stGstRow){
@@ -1157,8 +1469,9 @@ function render(){
   }
   grandTotal.textContent = fINR(grand);
   if(hdrTotal) hdrTotal.textContent = fINR(grand);
-  if(hdrItemCount) hdrItemCount.textContent = itemCount;
-  billBtn.disabled = false;
+  if(hdrItemCount) hdrItemCount.textContent = activeItemCount;
+  // Bill button stays enabled only if there's at least one active item.
+  billBtn.disabled = activeItemCount === 0;
   updatePaneBadge();
 }
 
@@ -1209,6 +1522,108 @@ async function generateBill(){
 }
 
 // ── Void order ────────────────────────────────────────────────────
+// ── KOT card expand/collapse (sent items summary) ─────────────────
+function toggleKot(round){
+  _kotOpen[round] = !_kotOpen[round];
+  render();
+}
+
+// ── Per-item void: confirm-modal → PIN modal → sbp_ro_void_item RPC ─
+let _pendingVoidItemId = null;
+
+function openVoidItemModal(itemId, itemName, qty, lineTotal){
+  _pendingVoidItemId = itemId;
+  const card = document.getElementById('ki-void-item-card');
+  if(card){
+    card.innerHTML =
+      '<span class="ki-name">' + escHtml(itemName) + '</span>' +
+      '<span class="ki-qty">×' + qty + '</span>' +
+      '<span class="ki-total">' + fINR(lineTotal) + '</span>';
+  }
+  const reasonEl = document.getElementById('ki-void-reason');
+  if(reasonEl) reasonEl.value = '';
+  document.getElementById('ki-void-modal').classList.add('open');
+  setTimeout(()=> reasonEl && reasonEl.focus(), 80);
+}
+
+function closeVoidItemModal(){
+  _pendingVoidItemId = null;
+  document.getElementById('ki-void-modal').classList.remove('open');
+  // Re-enable confirm button if it was disabled mid-flow
+  const btn = document.getElementById('ki-void-confirm-btn');
+  if(btn){ btn.disabled = false; btn.innerHTML = '<span class="lang-en">Cancel & Notify Kitchen</span><span class="lang-hi">रद्द और सूचित करें</span>'; }
+}
+
+async function confirmVoidItem(){
+  if(!_pendingVoidItemId){ closeVoidItemModal(); return; }
+  const reason = (document.getElementById('ki-void-reason')?.value || '').trim();
+  const itemId = _pendingVoidItemId;
+  const btn = document.getElementById('ki-void-confirm-btn');
+
+  // Sanity: must have SBPAuth for PIN modal
+  if(typeof window.SBPAuth === 'undefined' || !window.SBPAuth.requirePIN){
+    toast('🔒 PIN system not loaded — refresh the page','e');
+    return;
+  }
+  if(!navigator.onLine){
+    toast('🌐 Voiding an item needs internet','e');
+    return;
+  }
+
+  // Disable confirm button to prevent double-tap
+  if(btn){ btn.disabled = true; btn.innerHTML = '⏳ Verifying...'; }
+
+  // Open PIN modal — close this confirm modal first so they don't stack
+  document.getElementById('ki-void-modal').classList.remove('open');
+
+  let authResult;
+  try {
+    authResult = await window.SBPAuth.requirePIN({
+      action:      'restaurant.void_running_item',
+      detail:      'Cancel item from Table T' + _tableNum,
+      reason_hint: 'Why is this item being cancelled?'
+    });
+  } catch(e){
+    // 'cancelled' or 'invalid_pin' — SBPAuth handled UX
+    _pendingVoidItemId = null;
+    if(btn){ btn.disabled = false; btn.innerHTML = '<span class="lang-en">Cancel & Notify Kitchen</span><span class="lang-hi">रद्द और सूचित करें</span>'; }
+    return;
+  }
+
+  // Combine reason from our modal + PIN modal (PIN modal may also collect reason)
+  const finalReason = [reason, authResult.reason].filter(Boolean).join(' · ');
+
+  const { data, error } = await _sb.rpc('sbp_ro_void_item', {
+    p_shop_id:  _shopId,
+    p_order_id: _order.id,
+    p_item_id:  itemId,
+    p_auth_pin: authResult.pin,
+    p_reason:   finalReason || null,
+  });
+
+  _pendingVoidItemId = null;
+
+  if(error || !data?.ok){
+    const code = data?.error;
+    const friendly = ({
+      pin_invalid:       'PIN invalid (server check failed)',
+      item_not_found:    'Item not found — may have been already removed',
+      already_voided:    'Item is already cancelled',
+      order_not_open:    'Order is not open — cannot modify',
+      last_active_item:  'Cannot cancel the last item — void the whole order instead',
+      not_authorized:    'Not authorised',
+    })[code] || ('Failed: ' + (code || error?.message || 'unknown'));
+    toast('❌ ' + friendly, 'e');
+    return;
+  }
+
+  // Server returns the updated order — refresh local state and re-render.
+  _order = data.order;
+  toast('✅ Item cancelled — kitchen notified', 's');
+  render();
+}
+
+
 async function voidOrder(){
   // BATCH 067-UX: PIN-gate void. Matches the pattern used in bills.html /
   // bookings.html / folio.html. The modal calls sbp_verify_pin server-side

@@ -359,6 +359,236 @@ ON CONFLICT (profile, module_code) DO UPDATE
   SET status = 'active', badge = NULL;
 
 
+-- ─────────────────────────────────────────────────────────────────
+-- 7. sbp_ro_add_items  — patched, stamps stable item_id
+-- ─────────────────────────────────────────────────────────────────
+-- BEFORE: items in sbp_running_orders.items only carried a `round` tag —
+-- no stable per-item identifier. Made it impossible to void/cancel a
+-- single line item once sent to the kitchen; only whole-order void
+-- worked.
+-- AFTER: each item is stamped with `item_id` (uuid generated server-side)
+-- + `voided:false` baseline + `notes` passthrough. The RPC's signature is
+-- unchanged, so the UI keeps calling it the same way; the new fields are
+-- additive in jsonb. Old items already in the array stay as-is (legacy
+-- void-whole-order is still available for them).
+DROP FUNCTION IF EXISTS sbp_ro_add_items(uuid, uuid, jsonb, text);
+CREATE OR REPLACE FUNCTION sbp_ro_add_items(
+  p_shop_id  uuid,
+  p_order_id uuid,
+  p_items    jsonb,
+  p_notes    text DEFAULT NULL
+) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public AS $$
+DECLARE
+  v_row       sbp_running_orders%ROWTYPE;
+  v_kot_n     int;
+  v_new_kot   jsonb;
+  v_stamped   jsonb;
+BEGIN
+  IF NOT public._sbp_check_shop_owner(p_shop_id) THEN
+    RETURN jsonb_build_object('ok', false, 'error', 'not_authorized');
+  END IF;
+
+  SELECT * INTO v_row
+  FROM sbp_running_orders
+  WHERE id = p_order_id AND shop_id = p_shop_id AND status = 'open';
+
+  IF v_row.id IS NULL THEN
+    RETURN jsonb_build_object('ok', false, 'error', 'order_not_found_or_closed');
+  END IF;
+
+  IF coalesce(jsonb_array_length(p_items), 0) = 0 THEN
+    RETURN jsonb_build_object('ok', false, 'error', 'no_items');
+  END IF;
+
+  v_kot_n := v_row.kot_count + 1;
+
+  -- Stamp each item with: round, item_id (uuid), voided:false baseline.
+  -- This is the new behaviour — gives the UI a stable handle per line
+  -- for per-item void/cancel.
+  SELECT jsonb_agg(
+    item
+      || jsonb_build_object('round', v_kot_n)
+      || jsonb_build_object('item_id', gen_random_uuid())
+      || jsonb_build_object('voided', false)
+  )
+  INTO v_stamped
+  FROM jsonb_array_elements(p_items) AS item;
+
+  v_new_kot := jsonb_build_object(
+    'round',      v_kot_n,
+    'items',      v_stamped,
+    'notes',      p_notes,
+    'sent_at',    to_char(now() AT TIME ZONE 'Asia/Kolkata', 'HH24:MI'),
+    'kot_number', v_kot_n
+  );
+
+  UPDATE sbp_running_orders
+  SET items      = items || v_stamped,
+      kots       = kots  || jsonb_build_array(v_new_kot),
+      kot_count  = v_kot_n,
+      notes      = COALESCE(p_notes, notes),
+      updated_at = now()
+  WHERE id = p_order_id AND shop_id = p_shop_id;
+
+  -- Also register in KDS (sbp_restaurant_orders) with the stamped items
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='sbp_restaurant_orders') THEN
+    INSERT INTO sbp_restaurant_orders (
+      shop_id, table_number, table_id, items, status, source, notes, kot_number
+    ) VALUES (
+      p_shop_id, v_row.table_number, v_row.table_id,
+      v_stamped, 'pending', 'pos', p_notes, v_kot_n
+    );
+  END IF;
+
+  SELECT * INTO v_row FROM sbp_running_orders WHERE id = p_order_id;
+
+  RETURN jsonb_build_object('ok', true, 'order', to_jsonb(v_row), 'kot_number', v_kot_n);
+END; $$;
+
+GRANT EXECUTE ON FUNCTION sbp_ro_add_items(uuid, uuid, jsonb, text) TO authenticated;
+
+
+-- ─────────────────────────────────────────────────────────────────
+-- 8. sbp_ro_void_item  — PIN-gated per-item void from a sent KOT
+-- ─────────────────────────────────────────────────────────────────
+-- Customer changes their mind on ONE item that's already been sent to
+-- the kitchen. Whole-order void is too aggressive. This RPC:
+--   • Verifies the manager PIN server-side (re-check, not just client).
+--   • Finds the item by stable item_id, marks it voided:true with
+--     reason + timestamp + who-authorised metadata.
+--   • Updates the corresponding sbp_restaurant_orders entry so the
+--     kitchen sees that line crossed out (item-level cancel).
+--   • Writes an audit_log entry.
+-- Item stays in the array (soft-delete) so reports/history don't lose
+-- data; render code filters out voided:true from totals.
+CREATE OR REPLACE FUNCTION sbp_ro_void_item(
+  p_shop_id   uuid,
+  p_order_id  uuid,
+  p_item_id   uuid,
+  p_auth_pin  text,
+  p_reason    text DEFAULT NULL
+) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public AS $$
+DECLARE
+  v_row         sbp_running_orders%ROWTYPE;
+  v_pin         jsonb;
+  v_user_id     uuid;
+  v_user_name   text;
+  v_item_iid    text := p_item_id::text;
+  v_found       boolean := false;
+  v_item_before jsonb;
+  v_new_items   jsonb := '[]'::jsonb;
+  v_elem        jsonb;
+BEGIN
+  IF NOT public._sbp_check_shop_owner(p_shop_id) THEN
+    RETURN jsonb_build_object('ok', false, 'error', 'not_authorized');
+  END IF;
+
+  -- Server-side PIN verify (same pattern as bills void/delete)
+  v_pin := public.sbp_verify_pin(p_shop_id, p_auth_pin);
+  IF NOT COALESCE((v_pin->>'ok')::boolean, false) THEN
+    RETURN jsonb_build_object('ok', false, 'error', 'pin_invalid');
+  END IF;
+  v_user_id   := NULLIF(v_pin->>'user_id', '')::uuid;
+  v_user_name := v_pin->>'user_name';
+
+  SELECT * INTO v_row FROM sbp_running_orders
+  WHERE id = p_order_id AND shop_id = p_shop_id
+  FOR UPDATE;
+
+  IF v_row.id IS NULL THEN
+    RETURN jsonb_build_object('ok', false, 'error', 'order_not_found');
+  END IF;
+
+  IF v_row.status <> 'open' THEN
+    RETURN jsonb_build_object('ok', false, 'error', 'order_not_open');
+  END IF;
+
+  -- Walk the items array, find by item_id, flip voided:true with metadata.
+  FOR v_elem IN SELECT * FROM jsonb_array_elements(v_row.items)
+  LOOP
+    IF v_elem->>'item_id' = v_item_iid THEN
+      v_found := true;
+      IF COALESCE((v_elem->>'voided')::boolean, false) THEN
+        RETURN jsonb_build_object('ok', false, 'error', 'already_voided');
+      END IF;
+      v_item_before := v_elem;
+      v_elem := v_elem
+        || jsonb_build_object('voided', true)
+        || jsonb_build_object('voided_at', to_char(now() AT TIME ZONE 'Asia/Kolkata', 'YYYY-MM-DD"T"HH24:MI:SS'))
+        || jsonb_build_object('voided_reason', COALESCE(p_reason, ''))
+        || jsonb_build_object('voided_by', COALESCE(v_user_name, ''));
+    END IF;
+    v_new_items := v_new_items || jsonb_build_array(v_elem);
+  END LOOP;
+
+  IF NOT v_found THEN
+    RETURN jsonb_build_object('ok', false, 'error', 'item_not_found');
+  END IF;
+
+  -- Refuse if this would void the LAST active item — owner should
+  -- void the whole order instead (frees the table).
+  IF (
+    SELECT COUNT(*) FROM jsonb_array_elements(v_new_items) e
+    WHERE COALESCE((e->>'voided')::boolean, false) = false
+  ) = 0 THEN
+    RETURN jsonb_build_object('ok', false, 'error', 'last_active_item');
+  END IF;
+
+  UPDATE sbp_running_orders
+  SET items = v_new_items, updated_at = now()
+  WHERE id = p_order_id;
+
+  -- Also flag in KDS (sbp_restaurant_orders). The kitchen row's items
+  -- jsonb gets the matching item flipped to voided:true so the cook
+  -- sees the line crossed out on screen.
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='sbp_restaurant_orders') THEN
+    UPDATE sbp_restaurant_orders ro
+    SET items = (
+      SELECT jsonb_agg(
+        CASE
+          WHEN e->>'item_id' = v_item_iid THEN
+            e || jsonb_build_object('voided', true,
+                                    'voided_at', to_char(now() AT TIME ZONE 'Asia/Kolkata', 'YYYY-MM-DD"T"HH24:MI:SS'),
+                                    'voided_reason', COALESCE(p_reason, ''),
+                                    'voided_by', COALESCE(v_user_name, ''))
+          ELSE e
+        END
+      )
+      FROM jsonb_array_elements(ro.items) AS e
+    )
+    WHERE ro.shop_id = p_shop_id
+      AND ro.table_number = v_row.table_number
+      AND ro.created_at >= v_row.opened_at
+      AND ro.items @> jsonb_build_array(jsonb_build_object('item_id', v_item_iid));
+  END IF;
+
+  -- Audit log (best-effort — don't fail the void if logger is missing)
+  BEGIN
+    PERFORM public.sbp_audit_log_write(
+      p_shop_id              => p_shop_id,
+      p_action_code          => 'restaurant.void_running_item',
+      p_target_table         => 'sbp_running_orders',
+      p_target_id            => p_order_id,
+      p_before_json          => v_item_before,
+      p_after_json           => v_new_items,
+      p_reason               => p_reason,
+      p_authorized_by_user_id=> v_user_id,
+      p_authorized_by_name   => v_user_name
+    );
+  EXCEPTION WHEN OTHERS THEN
+    RAISE NOTICE 'Audit log write skipped: %', SQLERRM;
+  END;
+
+  -- Re-read for clean response
+  SELECT * INTO v_row FROM sbp_running_orders WHERE id = p_order_id;
+  RETURN jsonb_build_object('ok', true, 'order', to_jsonb(v_row));
+END; $$;
+
+GRANT EXECUTE ON FUNCTION sbp_ro_void_item(uuid, uuid, uuid, text, text) TO authenticated;
+
+
 NOTIFY pgrst, 'reload schema';
 COMMIT;
 
