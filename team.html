@@ -48,6 +48,7 @@ body{background:var(--bg);color:var(--text);overflow-y:auto}
 .role-owner{background:rgba(245,158,11,.15);color:#F59E0B}
 .role-manager{background:rgba(245,166,35,.12);color:var(--acc)}
 .role-cashier{background:rgba(16,185,129,.1);color:var(--acc3)}
+.role-housekeeper{background:rgba(99,102,241,.1);color:#6366F1}
 .role-viewer{background:rgba(138,138,168,.1);color:var(--t2)}
 .ff{margin-bottom:12px}
 .ff label{display:block;font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
@@ -273,6 +274,7 @@ html,body{height:100%;overflow:hidden}
           <select id="inv-role">
             <option value="manager">Manager — Full access except settings</option>
             <option value="cashier" selected>Cashier — Billing only</option>
+            <option value="housekeeper">Housekeeper — Room status only</option>
             <option value="viewer">Viewer — Read only</option>
           </select>
         </div>

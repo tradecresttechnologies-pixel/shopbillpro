@@ -76,6 +76,29 @@ body{background:var(--bg);color:var(--text);min-height:100dvh;overflow-x:hidden}
 .tag.gray{background:var(--surf2);color:var(--t2);border-color:var(--bord)}
 .card-r{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0}
 .card-price{font-family:var(--font-h);font-size:14px;font-weight:800;color:var(--acc3)}
+
+/* ── Housekeeping board ── */
+.hk-board{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;padding:14px}
+.hk-card{border-radius:14px;border:1.5px solid var(--bord);background:var(--surf2);padding:14px 12px;display:flex;flex-direction:column;gap:8px;transition:all .15s ease;position:relative}
+.hk-room-num{font-size:20px;font-weight:900;color:var(--text);line-height:1}
+.hk-room-type{font-size:11px;color:var(--t2);margin-top:1px}
+.hk-status-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:20px;font-size:11px;font-weight:700;width:fit-content}
+.hk-status-badge.available{background:rgba(16,185,129,.12);color:#10B981}
+.hk-status-badge.occupied{background:rgba(239,68,68,.12);color:#EF4444}
+.hk-status-badge.cleaning{background:rgba(245,166,35,.12);color:#F5A623}
+.hk-status-badge.maintenance{background:rgba(99,102,241,.12);color:#6366F1}
+.hk-status-badge.blocked{background:rgba(144,144,168,.12);color:#9090A8}
+.hk-guest{font-size:11px;color:var(--t2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hk-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:2px}
+.hk-btn{flex:1;min-width:0;padding:7px 4px;border:1.5px solid var(--bord);border-radius:8px;font-size:11px;font-weight:700;background:var(--surf);color:var(--text);cursor:pointer;transition:all .15s;font-family:inherit;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hk-btn:hover{border-color:var(--acc);color:var(--acc)}
+.hk-btn.done{background:rgba(16,185,129,.12);border-color:#10B981;color:#10B981}
+.hk-btn.done:hover{background:rgba(16,185,129,.25)}
+.hk-floor-hd{grid-column:1/-1;font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.6px;padding:6px 0 2px;border-bottom:1px solid var(--bord)}
+.hk-summary{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px;padding:12px 14px 4px}
+.hk-sum-box{background:var(--surf2);border:1px solid var(--bord);border-radius:10px;padding:10px;text-align:center}
+.hk-sum-v{font-size:22px;font-weight:800;color:var(--acc)}
+.hk-sum-l{font-size:10px;color:var(--t2);margin-top:2px;text-transform:uppercase;letter-spacing:.4px}
 .btn-row{display:flex;gap:6px}
 .act-btn{width:30px;height:30px;border-radius:8px;background:var(--surf2);border:1px solid var(--bord);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px}
 .act-btn.danger:hover{background:rgba(244,63,94,.12);border-color:var(--rose)}
@@ -190,14 +213,17 @@ body{background:var(--bg);color:var(--text);min-height:100dvh;overflow-x:hidden}
 
     <!-- Tabs -->
     <div class="tabs">
-      <button class="tab on" data-tab="rooms"      onclick="switchTab('rooms')">🛏️ <span class="lang-en">Rooms</span><span class="lang-hi">कमरे</span></button>
-      <button class="tab"    data-tab="room_types" onclick="switchTab('room_types')">🏷️ <span class="lang-en">Room Types</span><span class="lang-hi">कमरा प्रकार</span></button>
+      <button class="tab on" data-tab="rooms"        onclick="switchTab('rooms')">🛏️ <span class="lang-en">Rooms</span><span class="lang-hi">कमरे</span></button>
+      <button class="tab"    data-tab="housekeeping"  onclick="switchTab('housekeeping')">🧹 <span class="lang-en">Housekeeping</span><span class="lang-hi">हाउसकीपिंग</span></button>
+      <button class="tab"    data-tab="room_types"    onclick="switchTab('room_types')">🏷️ <span class="lang-en">Room Types</span><span class="lang-hi">कमरा प्रकार</span></button>
     </div>
 
     <!-- Pane: Rooms -->
-    <div id="pane-rooms"      class="lst"></div>
+    <div id="pane-rooms"        class="lst"></div>
+    <!-- Pane: Housekeeping -->
+    <div id="pane-housekeeping" class="lst" style="display:none"></div>
     <!-- Pane: Room Types -->
-    <div id="pane-room_types" class="lst" style="display:none"></div>
+    <div id="pane-room_types"   class="lst" style="display:none"></div>
   </div>
 
   <button class="fab" id="fab" onclick="openAddModal()" style="display:none">+</button>
@@ -391,8 +417,160 @@ function renderRoomTypes(){
 function switchTab(tab){
   _activeTab=tab;
   $$('.tab').forEach(t=>t.classList.toggle('on',t.dataset.tab===tab));
-  $('#pane-rooms').style.display      = tab==='rooms'      ? 'block':'none';
-  $('#pane-room_types').style.display = tab==='room_types' ? 'block':'none';
+  $('#pane-rooms').style.display        = tab==='rooms'        ? 'block':'none';
+  $('#pane-housekeeping').style.display = tab==='housekeeping' ? 'block':'none';
+  $('#pane-room_types').style.display   = tab==='room_types'   ? 'block':'none';
+  // FAB only on rooms + room_types tabs
+  const fab = $('#fab');
+  if(fab) fab.style.display = tab==='housekeeping' ? 'none' : '';
+  if(tab==='housekeeping') renderHousekeeping();
+}
+
+// ── Housekeeping Board ───────────────────────────────────────────────
+// Shows all rooms grouped by floor with 1-tap status buttons.
+// Staff can mark rooms as Cleaned (available), Cleaning, or Maintenance
+// without navigating to the full room edit screen.
+
+const HK_STATUS = {
+  available:   { label: '✅ Available',   cls: 'available',   emoji: '✅' },
+  occupied:    { label: '🔴 Occupied',    cls: 'occupied',    emoji: '🔴' },
+  cleaning:    { label: '🧹 Cleaning',    cls: 'cleaning',    emoji: '🧹' },
+  maintenance: { label: '🔧 Maintenance', cls: 'maintenance', emoji: '🔧' },
+  blocked:     { label: '⛔ Blocked',     cls: 'blocked',     emoji: '⛔' },
+};
+
+// Current guest name per room (populated from active bookings)
+let _hkGuestMap = {};   // room_id → guest_name
+
+async function renderHousekeeping() {
+  const pane = $('#pane-housekeeping');
+  if (!pane) return;
+
+  if (!_rooms.length) {
+    pane.innerHTML = '<div class="empty"><div class="empty-emoji">🧹</div><div class="empty-title">No rooms yet</div><div class="empty-msg">Add rooms first, then manage housekeeping here.</div></div>';
+    return;
+  }
+
+  // Build guest map from active bookings (checked_in rooms)
+  try {
+    const { data: bkData } = await _sb.rpc('sbp_bookings_list', {
+      p_shop_id: _shopId, p_filter: 'all', p_status_filter: 'checked_in'
+    });
+    _hkGuestMap = {};
+    if (bkData?.ok && bkData.bookings) {
+      bkData.bookings.forEach(b => {
+        if (b.room_id) _hkGuestMap[b.room_id] = b.customer_name || '';
+      });
+    }
+  } catch(e) { _hkGuestMap = {}; }
+
+  // Summary counts
+  const counts = { available: 0, occupied: 0, cleaning: 0, maintenance: 0, blocked: 0 };
+  _rooms.forEach(r => { if (counts[r.status] !== undefined) counts[r.status]++; });
+
+  // Group rooms by floor
+  const floorMap = {};
+  _rooms.forEach(r => {
+    const fl = r.floor || 'Ground Floor';
+    if (!floorMap[fl]) floorMap[fl] = [];
+    floorMap[fl].push(r);
+  });
+
+  let html = '';
+
+  // Summary row
+  html += '<div class="hk-summary">';
+  html += `<div class="hk-sum-box"><div class="hk-sum-v" style="color:#10B981">${counts.available}</div><div class="hk-sum-l">Available</div></div>`;
+  html += `<div class="hk-sum-box"><div class="hk-sum-v" style="color:#EF4444">${counts.occupied}</div><div class="hk-sum-l">Occupied</div></div>`;
+  html += `<div class="hk-sum-box"><div class="hk-sum-v" style="color:#F5A623">${counts.cleaning}</div><div class="hk-sum-l">Cleaning</div></div>`;
+  html += `<div class="hk-sum-box"><div class="hk-sum-v" style="color:#6366F1">${counts.maintenance}</div><div class="hk-sum-l">Maint.</div></div>`;
+  html += '</div>';
+
+  // Board grid
+  html += '<div class="hk-board">';
+  Object.entries(floorMap).forEach(([floor, rooms]) => {
+    html += `<div class="hk-floor-hd">📍 ${escHtml(floor)} (${rooms.length} rooms)</div>`;
+    rooms.forEach(r => {
+      const st    = r.status || 'available';
+      const badge = HK_STATUS[st] || HK_STATUS.available;
+      const guest = _hkGuestMap[r.id] ? `👤 ${escHtml(_hkGuestMap[r.id])}` : '';
+
+      // Build action buttons based on current status
+      let btns = '';
+      if (st === 'cleaning') {
+        btns += `<button class="hk-btn done" onclick="hkSetStatus('${r.id}','available',this)">✅ Mark Clean</button>`;
+        btns += `<button class="hk-btn" onclick="hkSetStatus('${r.id}','maintenance',this)">🔧 Maintenance</button>`;
+      } else if (st === 'available') {
+        btns += `<button class="hk-btn" onclick="hkSetStatus('${r.id}','cleaning',this)">🧹 Start Clean</button>`;
+        btns += `<button class="hk-btn" onclick="hkSetStatus('${r.id}','maintenance',this)">🔧 Maintenance</button>`;
+      } else if (st === 'maintenance') {
+        btns += `<button class="hk-btn done" onclick="hkSetStatus('${r.id}','available',this)">✅ Mark Ready</button>`;
+      } else if (st === 'occupied') {
+        btns += `<button class="hk-btn" onclick="hkSetStatus('${r.id}','maintenance',this)">🔧 Maintenance</button>`;
+      } else if (st === 'blocked') {
+        btns += `<button class="hk-btn done" onclick="hkSetStatus('${r.id}','available',this)">✅ Unblock</button>`;
+      }
+
+      html += `
+      <div class="hk-card" id="hk-card-${r.id}">
+        <div>
+          <div class="hk-room-num">Room ${escHtml(r.room_number)}</div>
+          ${r.room_type_name ? `<div class="hk-room-type">${escHtml(r.room_type_name)}</div>` : ''}
+        </div>
+        <div class="hk-status-badge ${badge.cls}">${badge.label}</div>
+        ${guest ? `<div class="hk-guest">${guest}</div>` : ''}
+        <div class="hk-actions">${btns}</div>
+      </div>`;
+    });
+  });
+  html += '</div>';
+
+  pane.innerHTML = html;
+}
+
+async function hkSetStatus(roomId, newStatus, btnEl) {
+  // Find room in memory
+  const room = _rooms.find(r => r.id === roomId);
+  if (!room) return;
+
+  // Prevent double-tap
+  if (btnEl) { btnEl.disabled = true; btnEl.textContent = '...'; }
+
+  const payload = {
+    id:           roomId,
+    room_number:  room.room_number,
+    room_type_id: room.room_type_id || null,
+    floor:        room.floor || null,
+    status:       newStatus,
+    notes:        room.notes || null,
+    active:       room.active !== false,
+    display_order: room.display_order || 0,
+  };
+
+  const { data, error } = await _sb.rpc('sbp_rooms_upsert', {
+    p_shop_id: _shopId,
+    p_data: payload
+  });
+
+  if (error || !data?.ok) {
+    toast('Failed to update: ' + (data?.error || error?.message || 'unknown'), 'e');
+    if (btnEl) { btnEl.disabled = false; }
+    return;
+  }
+
+  // Update local state
+  const idx = _rooms.findIndex(r => r.id === roomId);
+  if (idx >= 0) _rooms[idx].status = newStatus;
+
+  // Refresh only the card (no full re-render)
+  toast(
+    newStatus === 'available'    ? '✅ Room marked clean & available' :
+    newStatus === 'cleaning'     ? '🧹 Cleaning started' :
+    newStatus === 'maintenance'  ? '🔧 Marked for maintenance' :
+    newStatus === 'blocked'      ? '⛔ Room blocked' : 'Updated',
+    's'
+  );
+  renderHousekeeping();
 }
 
 function openAddModal(){
