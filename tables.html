@@ -161,7 +161,12 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 
     <!-- Content -->
     <div class="content" id="content">
-      <div class="empty"><div class="empty-emoji">⏳</div><div class="empty-title">Loading...</div></div>
+      <div class="tabs" id="tab-bar">
+        <button class="tab on" data-tab="tables" onclick="switchTab('tables',this)">🍽️ <span class="lang-en">Tables</span></button>
+        <button class="tab"    data-tab="qr"     onclick="switchTab('qr',this)">📱 <span class="lang-en">Table QR Codes</span></button>
+      </div>
+      <div id="pane-tables"></div>
+      <div id="pane-qr" style="display:none"></div>
     </div>
 
   </div><!-- /main-col -->
@@ -229,9 +234,9 @@ function closeModal(id){$(id).classList.remove('open');}
 
 // ── Load ──────────────────────────────────────────────────────────
 async function reloadAll(){
-  if(!_shopId){ $('content').innerHTML='<div class="empty"><div class="empty-emoji">⚠️</div><div class="empty-title">No shop found</div><div class="empty-msg">Please log in again.</div></div>'; return; }
+  if(!_shopId){ document.getElementById('pane-tables').innerHTML='<div class="empty"><div class="empty-emoji">⚠️</div><div class="empty-title">No shop found</div><div class="empty-msg">Please log in again.</div></div>'; return; }
   const { data, error } = await _sb.rpc('sbp_tables_list', { p_shop_id: _shopId });
-  if(error || !data?.ok){ $('content').innerHTML='<div class="empty"><div class="empty-emoji">⚠️</div><div class="empty-title">Could not load tables</div><div class="empty-msg">'+(error?.message||data?.error||'Unknown error')+'</div></div>'; return; }
+  if(error || !data?.ok){ document.getElementById('pane-tables').innerHTML='<div class="empty"><div class="empty-emoji">⚠️</div><div class="empty-title">Could not load tables</div><div class="empty-msg">'+(error?.message||data?.error||'Unknown error')+'</div></div>'; return; }
   _tables = data.tables || [];
   render();
 }
@@ -244,8 +249,18 @@ const ST_INFO = {
   cleaning:  { label:'🧹 Cleaning',  cls:'cleaning',  color:'#6366F1' },
 };
 
+let _activeTab = 'tables';
+function switchTab(tab, el){
+  _activeTab = tab;
+  document.querySelectorAll('#tab-bar .tab').forEach(t=>t.classList.toggle('on',t.dataset.tab===tab));
+  document.getElementById('pane-tables').style.display = tab==='tables' ? '' : 'none';
+  document.getElementById('pane-qr').style.display     = tab==='qr'     ? '' : 'none';
+  const fab = $('fab'); if(fab) fab.style.display = tab==='tables' ? '' : 'none';
+  if(tab==='qr') renderQR();
+}
+
 function render(){
-  const el = $('content');
+  const el = document.getElementById('pane-tables');
   if(!_tables.length){
     el.innerHTML = `
       <div class="empty">
@@ -296,6 +311,91 @@ function render(){
 
   el.innerHTML = html;
   SBPSidebar.render('tables');
+}
+
+// ── QR Codes ─────────────────────────────────────────────────────
+function renderQR(){
+  const pane = document.getElementById('pane-qr');
+  if(!_tables.length){
+    pane.innerHTML='<div class="empty"><div class="empty-emoji">📱</div><div class="empty-title">No tables yet</div><div class="empty-msg">Add tables first, then print QR codes for each one.</div></div>';
+    return;
+  }
+  const shop = JSON.parse(localStorage.getItem('sbp_shop')||'{}');
+  const slug = shop.slug || shop.id || '';
+  const base = window.location.origin;
+
+  let html = `<div style="margin-bottom:14px">
+    <div style="font-size:13px;color:var(--t2);margin-bottom:10px">Print these QR codes and place them on each table. Customers can scan to see your menu and place orders.</div>
+    <button class="btn-pri" onclick="printAllQR()">🖨️ Print All QR Codes</button>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px">`;
+
+  _tables.forEach(t => {
+    const tableUrl = `${base}/s/${slug}?table=${encodeURIComponent(t.table_number)}`;
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=8&data=${encodeURIComponent(tableUrl)}`;
+    html += `
+    <div style="background:var(--surf2);border:1px solid var(--bord);border-radius:14px;padding:16px;text-align:center">
+      <div style="font-size:20px;font-weight:900;margin-bottom:4px">T${escHtml(t.table_number)}</div>
+      <div style="font-size:11px;color:var(--t2);margin-bottom:10px">👥 ${t.capacity} seats${t.section?' · '+escHtml(t.section):''}</div>
+      <img src="${qrUrl}" style="width:160px;height:160px;border-radius:8px;border:1px solid var(--bord)" alt="QR T${escHtml(t.table_number)}">
+      <div style="margin-top:10px;display:flex;gap:6px;justify-content:center">
+        <button class="btn-sec" style="font-size:11px;padding:6px 10px" onclick="printOneQR('${escHtml(t.table_number)}','${encodeURIComponent(tableUrl)}')">🖨️ Print</button>
+        <a href="${tableUrl}" target="_blank" class="btn-sec" style="font-size:11px;padding:6px 10px;text-decoration:none">🔗 Test</a>
+      </div>
+    </div>`;
+  });
+
+  html += '</div>';
+  pane.innerHTML = html;
+}
+
+function printOneQR(tableNum, encodedUrl){
+  const tableUrl = decodeURIComponent(encodedUrl);
+  const shop = JSON.parse(localStorage.getItem('sbp_shop')||'{}');
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=12&data=${encodedUrl}`;
+  const w = window.open('','_blank','width=400,height=500');
+  if(!w){toast('Allow pop-ups to print','e');return;}
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Table ${tableNum} QR</title>
+<style>
+  @page{size:A5;margin:10mm}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,Arial,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#fff}
+  .card{text-align:center;padding:24px;border:2px dashed #ccc;border-radius:16px;max-width:260px}
+  h1{font-size:28px;font-weight:900;margin-bottom:4px}
+  .sub{font-size:13px;color:#666;margin-bottom:16px}
+  img{width:220px;height:220px;border-radius:8px}
+  .inst{font-size:12px;color:#888;margin-top:12px;line-height:1.5}
+  .shop{font-size:11px;font-weight:700;margin-top:10px;color:#333}
+</style></head><body>
+  <div class="card">
+    <h1>Table T${tableNum}</h1>
+    <div class="sub">Scan to see menu & order</div>
+    <img src="${qrUrl}" alt="QR Code">
+    <div class="inst">📱 Open camera → Point at QR → Tap link</div>
+    <div class="shop">${escHtml(shop.name||'Restaurant')}</div>
+  </div>
+  <script>window.addEventListener('load',function(){setTimeout(function(){window.print();},400);});<\/script>
+</body></html>`);
+  w.document.close();
+}
+
+function printAllQR(){
+  const shop = JSON.parse(localStorage.getItem('sbp_shop')||'{}');
+  const slug = shop.slug || shop.id || '';
+  const base = window.location.origin;
+  const cards = _tables.map(t => {
+    const tableUrl = `${base}/s/${slug}?table=${encodeURIComponent(t.table_number)}`;
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=10&data=${encodeURIComponent(tableUrl)}`;
+    return `<div class="card"><h1>T${t.table_number}</h1><div class="sub">Scan to order</div><img src="${qrUrl}" alt="T${t.table_number}"><div class="shop">${escHtml(shop.name||'Restaurant')}</div></div>`;
+  }).join('');
+  const w = window.open('','_blank');
+  if(!w){toast('Allow pop-ups to print','e');return;}
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>All Table QR Codes</title>
+<style>@page{margin:8mm}*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,Arial,sans-serif;background:#fff}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10mm;padding:5mm}.card{text-align:center;padding:10mm;border:1.5px dashed #bbb;border-radius:10px;page-break-inside:avoid}h1{font-size:22px;font-weight:900;margin-bottom:3px}.sub{font-size:11px;color:#666;margin-bottom:10px}img{width:180px;height:180px;border-radius:6px}.shop{font-size:10px;font-weight:700;margin-top:8px;color:#333}</style></head><body>
+<div class="grid">${cards}</div>
+<script>window.addEventListener('load',function(){setTimeout(function(){window.print();},800);});<\/script>
+</body></html>`);
+  w.document.close();
 }
 
 // ── Table tap ─────────────────────────────────────────────────────
@@ -458,7 +558,7 @@ async function deleteTable(){
 // ── Init ──────────────────────────────────────────────────────────
 (async function init(){
   if(!isPro()){
-    $('content').innerHTML=`<div class="plan-lock"><div class="plan-lock-icon">🍽️</div><div class="plan-lock-title">Table Management</div><div class="plan-lock-msg">Upgrade to Pro or Business to manage restaurant tables, track status, and link bills to tables.</div><button class="btn-pri" onclick="window.location.href='subscription.html'">Upgrade Now</button></div>`;
+    document.getElementById('pane-tables').innerHTML=`<div class="plan-lock"><div class="plan-lock-icon">🍽️</div><div class="plan-lock-title">Table Management</div><div class="plan-lock-msg">Upgrade to Pro or Business to manage restaurant tables, track status, and link bills to tables.</div><button class="btn-pri" onclick="window.location.href='subscription.html'">Upgrade Now</button></div>`;
     SBPSidebar.render('tables');
     return;
   }

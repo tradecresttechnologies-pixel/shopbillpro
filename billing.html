@@ -1738,17 +1738,10 @@ async function confirmSettle(){
       cached.unshift({...savedBill,bill_items:b.items});
       localStorage.setItem('sbp_bills',JSON.stringify(cached));
       toast('✅ Bill saved!','s');
-      // Loyalty hook (009_loyalty) — apply redemption + award earn
+      // Loyalty hook (009_loyalty)
       if(typeof _loyaltyHookAfterBillSave === 'function') _loyaltyHookAfterBillSave(savedBill);
-      // Free the restaurant table if this bill was table-linked
-      if(window._currentTableId){
-        const _shopIdTbl = localStorage.getItem('sbp_shop_id');
-        if(_shopIdTbl){
-          _sb.rpc('sbp_tables_free',{p_shop_id:_shopIdTbl,p_table_id:window._currentTableId})
-            .then(()=>{ window._currentTableId=null; window._currentTableNum=null; })
-            .catch(()=>{});
-        }
-      }
+      // Free restaurant table if this was a table-linked bill
+      if(window._currentTableId){const _st=localStorage.getItem('sbp_shop_id');if(_st)_sb.rpc('sbp_tables_free',{p_shop_id:_st,p_table_id:window._currentTableId}).then(()=>{window._currentTableId=null;window._currentTableNum=null;}).catch(()=>{});}
     }
 
     // FIX #15 — Deduct stock for matched products in manual mode (was missing)
@@ -2154,6 +2147,66 @@ function downloadPDF(){
 }
 
 // ── Print A4 ──
+// ── KOT (Kitchen Order Ticket) ─────────────────────────────────
+// Prints a minimal kitchen slip — item names + quantities only.
+// No prices, no customer details, no GST. Just what the kitchen needs.
+function printKOT(){
+  const b = _billSnap || gatherBill();
+  const s = _shop || JSON.parse(localStorage.getItem('sbp_shop')||'{}');
+  const tableNum = window._currentTableNum || (new URLSearchParams(window.location.search).get('table_num')) || '?';
+  const now = new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Kolkata'});
+  const kotNo = 'KOT-' + Date.now().toString().slice(-5);
+
+  const items = (b.items||[]).filter(it => {
+    const qty = parseFloat(it.q||it.qty||1);
+    const nm  = (it.nm||it.name||'').trim();
+    return qty > 0 && nm.length > 0;
+  });
+
+  if(!items.length){ toast('No items to print KOT','e'); return; }
+
+  const rows = items.map(it => {
+    const nm  = (it.nm||it.name||'').substring(0,32);
+    const qty = parseFloat(it.q||it.qty||1);
+    return `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:7px 0;border-bottom:1px dashed #ccc">
+      <div style="flex:1;font-size:15px;font-weight:700;line-height:1.3">${nm}</div>
+      <div style="font-size:20px;font-weight:900;min-width:32px;text-align:right">×${qty}</div>
+    </div>`;
+  }).join('');
+
+  const note = b.note ? `<div style="margin-top:10px;padding:8px;border:1px dashed #999;border-radius:6px;font-size:12px"><strong>Note:</strong> ${b.note}</div>` : '';
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<title>KOT ${kotNo}</title>
+<style>
+  @page { size: 80mm auto; margin: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Courier New', Courier, monospace; font-size: 13px; width: 80mm; max-width: 80mm; padding: 8mm 5mm 12mm 5mm; color: #000; background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .center { text-align: center; }
+  @media print { body { padding: 4mm 4mm 8mm 4mm; } }
+</style>
+</head><body>
+  <div class="center" style="font-size:11px;letter-spacing:2px;font-weight:700;margin-bottom:4px">KITCHEN ORDER TICKET</div>
+  <div class="center" style="font-size:18px;font-weight:900;margin-bottom:2px">${(s.name||'').toUpperCase().substring(0,20)}</div>
+  <div style="border-top:2px solid #000;border-bottom:2px solid #000;padding:6px 0;margin:8px 0;display:flex;justify-content:space-between;font-size:12px">
+    <div><strong>Table:</strong> T${tableNum}</div>
+    <div><strong>${kotNo}</strong></div>
+    <div>${now}</div>
+  </div>
+  ${rows}
+  ${note}
+  <div style="text-align:center;margin-top:14px;font-size:10px;border-top:1px solid #ccc;padding-top:8px">⭐ Thank you</div>
+  <script>window.addEventListener('load',function(){setTimeout(function(){window.print();},300);});<\/script>
+</body></html>`;
+
+  const win = window.open('','_blank','width=400,height=600');
+  if(!win){ toast('Allow pop-ups to print KOT','e'); return; }
+  win.document.write(html);
+  win.document.close();
+  toast('🍳 KOT sent to kitchen','s');
+}
+
 function printBill(){
   const b=_billSnap||gatherBill();
   const html=buildBillHTML(b,'Paid');
@@ -3196,27 +3249,20 @@ function loadFromTemplateParams(){
   // and stash the booking ID so the post-save hook can link the bill back.
 
   // ── TABLE PARAM (restaurant) ──────────────────────────────────────
-  // ?table_id=<uuid>&table_num=<number>&mode=pos
   const _tableId  = params.get('table_id')  || null;
   const _tableNum = params.get('table_num') || null;
   if(_tableId && _tableNum){
     window._currentTableId  = _tableId;
     window._currentTableNum = _tableNum;
-    // Show table badge in billing header
     const banner = document.createElement('div');
     banner.id = 'table-banner';
     banner.style.cssText = 'background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);border-radius:10px;padding:10px 14px;margin:12px 0;display:flex;align-items:center;gap:10px;font-size:13px';
-    banner.innerHTML = '<span style="font-size:20px">🍽️</span><div><div style="font-weight:800;color:#EF4444">Table ' + String(_tableNum).replace(/[<>&"']/g,'') + '</div><div style="font-size:11px;color:var(--t2)">Bill will be linked to this table</div></div>';
+    banner.innerHTML = '<span style="font-size:20px">🍽️</span><div><div style="font-weight:800;color:#EF4444">Table T' + String(_tableNum).replace(/[<>&"']/g,'') + '</div><div style="font-size:11px;color:var(--t2)">Bill linked to this table</div></div>';
     const wrap = document.getElementById('bill-wrap') || document.querySelector('.bill-wrap') || document.body;
-    if(wrap.firstChild) wrap.insertBefore(banner, wrap.firstChild);
-    else wrap.appendChild(banner);
-    // Mark table as occupied
+    if(wrap && wrap.firstChild) wrap.insertBefore(banner, wrap.firstChild);
+    else if(wrap) wrap.appendChild(banner);
     const _shopIdT = localStorage.getItem('sbp_shop_id');
-    if(_shopIdT){
-      _sb.rpc('sbp_tables_set_status', {
-        p_shop_id: _shopIdT, p_table_id: _tableId, p_status: 'occupied'
-      }).catch(()=>{});
-    }
+    if(_shopIdT) _sb.rpc('sbp_tables_set_status',{p_shop_id:_shopIdT,p_table_id:_tableId,p_status:'occupied'}).catch(()=>{});
   }
   // ── END TABLE PARAM ───────────────────────────────────────────────
 
@@ -3690,6 +3736,8 @@ function printThermal(size){
 function renderPrinterButtons(){
   const enabled=localStorage.getItem('sbp_printer_enabled')==='true';
   const type=localStorage.getItem('sbp_printer_type')||'a4';
+  const hasTable = !!(window._currentTableId || new URLSearchParams(window.location.search).get('table_id'));
+  const kotBtn = hasTable ? `<button class="btn-sec" onclick="printKOT()" style="background:rgba(245,166,35,.12);border-color:rgba(245,166,35,.4);color:var(--acc)">🍳 KOT</button>` : '';
 
   // Build the correct print button HTML
   let btnHTML='';
@@ -3720,7 +3768,7 @@ function renderPrinterButtons(){
   }
 
   const area=document.getElementById('print-btn-area');
-  if(area) area.outerHTML=btnHTML;
+  if(area) area.outerHTML = kotBtn + btnHTML;
 }
 
 // ══════════════════════════════════════════
