@@ -413,7 +413,7 @@ function printAllQR(){
 function handleTableTap(tableId, status, tableNum){
   if(status === 'free'){
     // Open new bill for this table
-    window.location.href = `billing.html?table_id=${encodeURIComponent(tableId)}&table_num=${encodeURIComponent(tableNum)}&mode=pos`;
+    window.location.href = `running-order.html?table_id=${encodeURIComponent(tableId)}&table_num=${encodeURIComponent(tableNum)}`;
   } else if(status === 'occupied'){
     // Table is occupied — show options
     showOccupiedOptions(tableId, tableNum);
@@ -467,7 +467,7 @@ function showStatusModal(tableId, tableNum, currentStatus){
 
 function newBillForTable(tableId, tableNum){
   closeModal('status-modal');
-  window.location.href = `billing.html?table_id=${encodeURIComponent(tableId)}&table_num=${encodeURIComponent(tableNum)}&mode=pos`;
+  window.location.href = `running-order.html?table_id=${encodeURIComponent(tableId)}&table_num=${encodeURIComponent(tableNum)}`;
 }
 
 async function setStatus(tableId, newStatus, el){

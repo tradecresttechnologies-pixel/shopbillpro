@@ -3286,6 +3286,57 @@ function loadFromTemplateParams(){
   }
   // ── END TABLE PARAM ───────────────────────────────────────────────
 
+  // ── RUNNING ORDER PARAM (proper dine-in) ─────────────────────────────
+  // ?running_order_id=X → pre-fill all items from the running order
+  const _roId     = params.get('running_order_id') || null;
+  if(_roId && _tableId && _tableNum){
+    window._currentTableId  = _tableId;
+    window._currentTableNum = _tableNum;
+
+    // Read items from sessionStorage (set by running-order.html generate_bill)
+    const _roItemsRaw = sessionStorage.getItem('sbp_ro_items');
+    if(_roItemsRaw){
+      try{
+        const _roItems = JSON.parse(_roItemsRaw);
+        sessionStorage.removeItem('sbp_ro_items');
+
+        // Show table banner
+        const roBanner = document.createElement('div');
+        roBanner.style.cssText = 'background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);border-radius:10px;padding:10px 14px;margin:12px 0;display:flex;align-items:center;gap:10px;font-size:13px';
+        roBanner.innerHTML = '<span style="font-size:20px">🧾</span><div><div style="font-weight:800;color:#10B981">Table T' + String(_tableNum).replace(/[<>&"']/g,'') + ' — Final Bill</div><div style="font-size:11px;color:var(--t2)">Pre-filled from running order · ' + _roItems.length + ' items</div></div>';
+        const wrap = document.getElementById('bill-wrap') || document.querySelector('.bill-wrap') || document.body;
+        if(wrap && wrap.firstChild) wrap.insertBefore(roBanner, wrap.firstChild);
+        else if(wrap) wrap.appendChild(roBanner);
+
+        // Wait for DOM + addItem function, then fill items
+        window.addEventListener('load', function(){
+          setTimeout(function(){
+            // Aggregate items by name
+            const agg = {};
+            _roItems.forEach(function(it){
+              const n = it.name||'';
+              if(!agg[n]) agg[n] = {nm:n, q:0, r:it.price||0, rate:0, disc:0};
+              agg[n].q += (it.qty||1);
+            });
+            // Clear default item row and add all aggregated items
+            const wrap2 = document.getElementById('items-wrap');
+            if(wrap2) wrap2.innerHTML = '';
+            Object.values(agg).forEach(function(item){
+              if(typeof addItem === 'function'){
+                addItem({nm:item.nm, q:item.q, r:item.r, rate:0, disc:0});
+              }
+            });
+            if(typeof calcTotals === 'function') calcTotals();
+          }, 500);
+        });
+      }catch(e){ console.warn('[RO] items parse failed:', e); }
+    }
+
+    // On bill save, also void the running order (already billed by generate_bill)
+    // and free table — handled by existing table-free code below
+  }
+  // ── END RUNNING ORDER PARAM ───────────────────────────────────────────
+
   if(params.get('booking_id')){
     const bookingId = params.get('booking_id');
     window._currentBookingId = bookingId;
