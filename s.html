@@ -152,6 +152,55 @@ body{background:var(--bg);color:var(--text);min-height:100dvh;overflow-x:hidden}
 .psp-svc-pick-name{font-family:var(--font-h);font-weight:700;font-size:14px;color:var(--text)}
 .psp-svc-pick-meta{font-size:11.5px;color:var(--t2);margin-top:1px}
 .psp-svc-pick-price{font-family:var(--font-h);font-weight:800;font-size:14px;color:#8B5CF6}
+
+/* ── Order mode (QR table scan) ── */
+.order-table-banner{
+  background:linear-gradient(135deg,rgba(239,68,68,.15),rgba(245,166,35,.1));
+  border:1.5px solid rgba(239,68,68,.35);border-radius:14px;
+  padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px;
+}
+.order-table-num{font-size:22px;font-weight:900;color:#EF4444}
+.order-table-sub{font-size:12px;color:var(--t2);margin-top:2px}
+.menu-item{
+  display:flex;gap:12px;padding:12px;
+  background:var(--surf);border:1px solid var(--bord);
+  border-radius:12px;margin-bottom:8px;align-items:center;
+  transition:.15s;
+}
+.menu-item.has-qty{border-color:rgba(245,166,35,.5);background:rgba(245,166,35,.04)}
+.menu-item-info{flex:1;min-width:0}
+.menu-item-name{font-family:var(--font-h);font-size:14px;font-weight:700;color:var(--text)}
+.menu-item-desc{font-size:11.5px;color:var(--t2);margin-top:2px;line-height:1.4}
+.menu-item-price{font-family:var(--font-h);font-size:14px;font-weight:800;color:var(--acc)}
+.qty-ctrl{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.qty-btn{
+  width:30px;height:30px;border-radius:8px;border:1.5px solid var(--bord);
+  background:var(--surf2);color:var(--text);font-size:18px;font-weight:700;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-family:var(--font-h);transition:.15s;line-height:1;
+}
+.qty-btn:hover{border-color:var(--acc);color:var(--acc)}
+.qty-num{font-family:var(--font-h);font-size:16px;font-weight:800;min-width:20px;text-align:center;color:var(--text)}
+/* Floating cart */
+.order-cart{
+  position:fixed;bottom:0;left:0;right:0;z-index:90;
+  background:var(--surf);border-top:1px solid var(--bord);
+  padding:14px 16px;transform:translateY(100%);transition:transform .3s ease;
+}
+.order-cart.visible{transform:translateY(0)}
+.cart-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.cart-info{flex:1}
+.cart-count{font-size:13px;font-weight:700;color:var(--text)}
+.cart-total{font-size:20px;font-weight:900;color:var(--acc);font-family:var(--font-h)}
+.cart-order-btn{
+  width:100%;padding:14px;border-radius:12px;
+  background:linear-gradient(135deg,#25D366,#128C7E);
+  color:#fff;border:none;font-size:15px;font-weight:800;
+  cursor:pointer;font-family:var(--font-h);
+  display:flex;align-items:center;justify-content:center;gap:8px;
+}
+.cart-order-btn:active{transform:scale(.98)}
+.cart-items-mini{font-size:11px;color:var(--t2);margin-bottom:8px;line-height:1.5}
 .psp-prv-pick{display:flex;align-items:center;gap:10px;padding:10px;background:var(--surf);border:1.5px solid var(--bord);border-radius:11px;margin-bottom:8px;cursor:pointer;transition:.15s}
 .psp-prv-pick:hover{border-color:#8B5CF6}
 .psp-prv-pick.on{border-color:#8B5CF6;background:linear-gradient(135deg,rgba(139,92,246,.1),rgba(59,130,246,.06))}
@@ -1095,5 +1144,126 @@ function bookingBack() {
 init();
 </script>
 
+<!-- Order cart (restaurant QR mode) -->
+<div class="order-cart" id="order-cart">
+  <div class="cart-items-mini" id="cart-items-mini"></div>
+  <div class="cart-row">
+    <div class="cart-info">
+      <div class="cart-count" id="cart-count"></div>
+      <div class="cart-total" id="cart-total"></div>
+    </div>
+    <button class="cart-order-btn" onclick="submitOrder()">
+      &#x1F4AC; Place Order on WhatsApp
+    </button>
+  </div>
+</div>
+
+<script>
+(function(){
+  var qs=new URLSearchParams(window.location.search);
+  var tableNum=qs.get('table');
+  if(!tableNum)return;
+  window._orderTableNum=tableNum;
+  window._orderCart={};
+  window._orderShopWa=null;
+
+  var _origLoad=window.loadServicesPublic;
+  window.loadServicesPublic=async function(slug){
+    try{
+      var r=await sb.rpc('sbp_get_shop_services_public',{p_slug:slug});
+      if(r.error||!r.data||!r.data.ok||!Array.isArray(r.data.services)||r.data.services.length===0)return;
+      renderOrderMenu(slug,r.data.services);
+    }catch(e){console.warn('[order] services load failed:',e);}
+  };
+
+  var _origRender=window.renderShop;
+  window.renderShop=function(data){
+    _origRender(data);
+    var root=document.getElementById('psp-root');
+    if(root){
+      var banner=document.createElement('div');
+      banner.className='order-table-banner';
+      banner.innerHTML='<div style="font-size:28px">&#x1F37D;&#xFE0F;</div><div><div class="order-table-num">Table T'+esc(tableNum)+'</div><div class="order-table-sub">Browse menu below and tap items to order</div></div>';
+      root.insertBefore(banner,root.firstChild);
+    }
+    try{var c=data.content||{};window._orderShopWa=c.wa||c.phone||c.whatsapp||null;}catch(e){}
+  };
+
+  function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];});}
+
+  function renderOrderMenu(slug,services){
+    var card=document.getElementById('psp-services-card');
+    if(!card)return;
+    var items=services.map(function(s,i){
+      var id=s.id||('item_'+i);
+      var price=(typeof s.price==='number'&&s.price>0)?s.price:0;
+      var priceStr=price>0?'&#x20B9;'+Math.round(price).toLocaleString('en-IN'):'Price on request';
+      var desc=s.description?'<div class="menu-item-desc">'+esc(s.description.substring(0,80))+'</div>':'';
+      return '<div class="menu-item" id="mi-'+esc(id)+'"><div class="menu-item-info"><div class="menu-item-name">'+esc(s.name||'')+'</div>'+desc+'<div class="menu-item-price">'+priceStr+'</div></div><div class="qty-ctrl"><button class="qty-btn" onclick="changeQty(''+esc(id)+'',''+esc((s.name||'').replace(/'/g,"\'"))+'','+price+',-1)">&#x2212;</button><div class="qty-num" id="qn-'+esc(id)+'">0</div><button class="qty-btn" onclick="changeQty(''+esc(id)+'',''+esc((s.name||'').replace(/'/g,"\'"))+'','+price+',1)">+</button></div></div>';
+    }).join('');
+    card.style.display='';
+    card.className='psp-card';
+    card.innerHTML='<div class="psp-card-h">&#x1F37D;&#xFE0F; Menu &mdash; Order from Table T'+esc(tableNum)+'</div>'+items;
+  }
+
+  window.changeQty=function(id,name,price,delta){
+    var cart=window._orderCart;
+    if(!cart[id])cart[id]={name:name,price:price,qty:0};
+    cart[id].qty=Math.max(0,(cart[id].qty||0)+delta);
+    if(cart[id].qty===0)delete cart[id];
+    var qnEl=document.getElementById('qn-'+id);
+    var miEl=document.getElementById('mi-'+id);
+    var qty=(cart[id]&&cart[id].qty)||0;
+    if(qnEl)qnEl.textContent=qty;
+    if(miEl)miEl.classList.toggle('has-qty',qty>0);
+    updateCart();
+  };
+
+  function updateCart(){
+    var cart=window._orderCart;
+    var keys=Object.keys(cart);
+    var cartEl=document.getElementById('order-cart');
+    if(!cartEl)return;
+    if(keys.length===0){cartEl.classList.remove('visible');return;}
+    var totalQty=0,totalPrice=0,lines=[];
+    keys.forEach(function(id){
+      var it=cart[id];
+      totalQty+=it.qty;
+      totalPrice+=it.price*it.qty;
+      lines.push(it.qty+'x '+it.name+(it.price>0?' ('+Math.round(it.price*it.qty).toLocaleString('en-IN')+')'  :''));
+    });
+    var mini=document.getElementById('cart-items-mini');
+    var cnt=document.getElementById('cart-count');
+    var tot=document.getElementById('cart-total');
+    if(mini)mini.textContent=lines.join(' · ');
+    if(cnt)cnt.textContent=totalQty+' item'+(totalQty===1?'':'s');
+    if(tot)tot.textContent=totalPrice>0?'&#x20B9;'+Math.round(totalPrice).toLocaleString('en-IN'):'';
+    cartEl.classList.add('visible');
+  }
+
+  window.submitOrder=function(){
+    var cart=window._orderCart;
+    var keys=Object.keys(cart);
+    if(!keys.length)return;
+    var totalPrice=0,lines=[];
+    keys.forEach(function(id){
+      var it=cart[id];
+      totalPrice+=it.price*it.qty;
+      lines.push('  '+it.qty+'x '+it.name+(it.price>0?' - Rs.'+Math.round(it.price*it.qty).toLocaleString('en-IN'):''));
+    });
+    var msg=['Table T'+tableNum+' - New Order','---'].concat(lines).concat(['---',totalPrice>0?'Total: Rs.'+Math.round(totalPrice).toLocaleString('en-IN'):'','Sent via ShopBill Pro']).join('\n');
+    var wa=window._orderShopWa;
+    if(!wa){navigator.clipboard&&navigator.clipboard.writeText(msg).then(function(){alert('Order copied! Please send it to restaurant staff.');}).catch(function(){alert(msg);});return;}
+    var clean=String(wa).replace(/[^0-9]/g,'');
+    var withCountry=clean.length===10?'91'+clean:clean;
+    window.open('https://wa.me/'+withCountry+'?text='+encodeURIComponent(msg),'_blank');
+    window._orderCart={};
+    document.querySelectorAll('.qty-num').forEach(function(el){el.textContent='0';});
+    document.querySelectorAll('.menu-item').forEach(function(el){el.classList.remove('has-qty');});
+    var cartEl=document.getElementById('order-cart');
+    if(cartEl)cartEl.classList.remove('visible');
+  };
+})();
+<\/script>
 </body>
 </html>
