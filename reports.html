@@ -1074,41 +1074,46 @@ function _printReport(title){
   const shop = JSON.parse(localStorage.getItem('sbp_shop')||'{}');
   const periodLabel = ({today:'Today',week:'This Week',month:'This Month',quarter:'Quarter',year:'This Year',all:'All Time',custom:'Custom Range'})[_curPeriod]||'Period';
   const w = window.open('','_blank','width=900,height=700');
-  if(!w){toast('⚠️ Pop-up blocked — allow pop-ups to print','e',5000);return;}
+  if(!w){toast('Pop-up blocked — allow pop-ups to print','e',5000);return;}
+  const cssVars = ':root{--acc:#F5A623;--acc2:#EF4444;--acc3:#10B981;--acc4:#3B82F6;--text:#111;--t2:#555;--t3:#888;--muted:#666;--surf:#fff;--surf2:#f8f9fa;--bord:#e5e7eb;--font-h:"Outfit",sans-serif}';
   w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>'+title+' — '+(shop.name||'ShopBill Pro')+'</title>'
+    + '<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&display=swap" rel="stylesheet">'
     + '<style>'
+    + cssVars
     + '* { box-sizing:border-box; }'
-    + 'body { font-family: -apple-system,Segoe UI,Roboto,Arial,sans-serif; padding: 28px; color:#111; max-width:900px; margin:0 auto; line-height:1.5; }'
-    + 'h1 { font-size: 22px; margin-bottom:4px; color:#F5A623; }'
+    + 'body { font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif; padding:28px; color:#111; max-width:900px; margin:0 auto; line-height:1.5; background:#fff; }'
+    + 'h1 { font-size:22px; margin-bottom:4px; color:#F5A623; }'
     + '.meta { font-size:12px; color:#666; margin-bottom:18px; padding-bottom:12px; border-bottom:2px solid #F5A623; }'
-    + '.scard, .sec { background:#FAFAFA; border:1px solid #E5E5E5; border-radius:8px; padding:14px; margin-bottom:12px; page-break-inside:avoid; }'
+    + '.scard,.sec { background:#FAFAFA; border:1px solid #E5E5E5; border-radius:8px; padding:14px; margin-bottom:12px; page-break-inside:avoid; }'
     + '.sec-t { font-weight:700; font-size:14px; margin-bottom:8px; color:#333; border-bottom:1px solid #DDD; padding-bottom:6px; }'
     + '.stats-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px; }'
     + '.sc-lbl { font-size:11px; color:#666; text-transform:uppercase; letter-spacing:.5px; font-weight:700; margin-bottom:4px; }'
     + '.sc-val { font-size:20px; font-weight:900; color:#111; }'
-    + '.sc-val.g { color:#0A8043; } .sc-val.p { color:#6366F1; } .sc-val.a { color:#F5A623; } .sc-val.r { color:#DC2626; }'
+    + '.sc-val.g{color:#0A8043}.sc-val.p{color:#6366F1}.sc-val.a{color:#F5A623}.sc-val.r{color:#DC2626}'
     + '.sc-sub { font-size:11px; color:#666; margin-top:2px; }'
-    + 'button { display:none; }'
+    + 'button,.ic-btn,.period-bar,.tab-bar,.report-tabs { display:none !important; }'
     + '.spacer { display:none; }'
     + 'table { width:100%; border-collapse:collapse; }'
-    + 'td, th { padding:6px 10px; border-bottom:1px solid #EEE; text-align:left; font-size:13px; }'
-    + 'th { background:#F5F5F5; font-weight:700; }'
+    + 'td,th { padding:6px 10px; border-bottom:1px solid #EEE; text-align:left; font-size:13px; color:#111; }'
+    + 'th { background:#F5F5F5; font-weight:700; color:#333; }'
     + '.rank-item { display:flex; padding:8px 0; border-bottom:1px solid #EEE; align-items:center; gap:10px; }'
-    + '.rank-num { width:28px; height:28px; background:#F5A623; color:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:13px; }'
-    + '.rank-nm { font-weight:600; font-size:13px; }'
+    + '.rank-num { width:28px; height:28px; background:#F5A623; color:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:13px; -webkit-print-color-adjust:exact; print-color-adjust:exact; }'
+    + '.rank-nm { font-weight:600; font-size:13px; color:#111; }'
     + '.rank-sub { font-size:11px; color:#666; }'
     + '.rank-val { font-weight:800; color:#0A8043; margin-left:auto; }'
-    + '.print-btn { display:block !important; margin:0 auto 16px; padding:12px 30px; background:#F5A623; color:#fff; border:none; border-radius:8px; font-weight:700; cursor:pointer; font-size:14px; }'
-    + '@media print { .print-btn { display:none !important; } body { padding:12px; } }'
+    + '.print-btn { display:block !important; margin:0 auto 16px; padding:12px 30px; background:#F5A623; color:#fff; border:none; border-radius:8px; font-weight:700; cursor:pointer; font-size:14px; -webkit-print-color-adjust:exact; print-color-adjust:exact; }'
+    + 'canvas { max-width:100% !important; }'
+    + '@media print { .print-btn { display:none !important; } body { padding:12px; } @page { margin:10mm; size:A4; } }'
     + '</style></head><body>'
     + '<h1>'+(shop.name||'ShopBill Pro')+'</h1>'
-    + '<div class="meta">'+title+' · <strong>'+periodLabel+'</strong> · Generated: '+new Date().toLocaleString('en-IN')+(shop.gstin?' · GSTIN: '+shop.gstin:'')+'</div>'
-    + '<button class="print-btn" onclick="window.print()">🖨️ Print / Save as PDF</button>'
+    + '<div class="meta">'+title+' &middot; <strong>'+periodLabel+'</strong> &middot; Generated: '+new Date().toLocaleString('en-IN')+(shop.gstin?' &middot; GSTIN: '+shop.gstin:'')+'</div>'
+    + '<button class="print-btn" onclick="window.print()">&#128438; Print / Save as PDF</button>'
     + html
-    + '<div style="margin-top:24px;font-size:10px;color:#999;text-align:center;border-top:1px solid #EEE;padding-top:10px">Powered by ShopBill Pro · TradeCrest Technologies</div>'
+    + '<div style="margin-top:24px;font-size:10px;color:#999;text-align:center;border-top:1px solid #EEE;padding-top:10px">Powered by ShopBill Pro &middot; TradeCrest Technologies Pvt. Ltd.</div>'
     + '</body></html>');
   w.document.close();
 }
+
 
 // ─── GSTR-1: Outward supplies ─────────────────────────
 function renderGSTR1(){

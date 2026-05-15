@@ -767,8 +767,8 @@ function printBillPreview(size){
       .bill-doc{max-width:${size?bodyW:'780px'};margin:0 auto;background:#fff}
       .bill-action-btn{display:none!important}
 
-      /* Header (dark gradient block) */
-      .bdoc-hd{background:linear-gradient(135deg,#0F1A14 0%,#1A2A1E 100%);color:#fff;padding:18px;position:relative;overflow:hidden}
+      /* Header — light for print, dark for screen */
+      .bdoc-hd{background:linear-gradient(135deg,#0F1A14 0%,#1A2A1E 100%);color:#fff;padding:18px;position:relative;overflow:hidden;-webkit-print-color-adjust:exact;print-color-adjust:exact}
       .bdoc-hd::after{content:'';position:absolute;right:-30px;top:-30px;width:130px;height:130px;border-radius:50%;background:rgba(245,166,35,.2)}
       .bdoc-shop-name{font-family:var(--font-h);font-size:20px;font-weight:900;margin-bottom:3px;color:#fff}
       .bdoc-shop-tag{font-size:11px;opacity:.7;margin-bottom:10px}
@@ -817,6 +817,16 @@ function printBillPreview(size){
         body{padding:${size?'2mm':'0'};background:#fff;width:${bodyW};max-width:${bodyW}}
         .bill-action-btn{display:none!important}
         .bdoc-hd{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+        /* Replace dark header with clean white+border for paper printing */
+        .bdoc-hd{background:#fff!important;color:#111!important;border-bottom:3px solid #F5A623!important}
+        .bdoc-shop-name{color:#111!important}
+        .bdoc-shop-tag{opacity:1!important;color:#555!important}
+        .bdoc-shop-info{opacity:1!important;color:#444!important}
+        .bdoc-stamp{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+        .bdoc-inv-badge{border-top-color:#E5E7EB!important;color:#111!important}
+        .bdoc-inv-no{color:#111!important}
+        .bdoc-inv-dates{color:#555!important;opacity:1!important}
+        .bdoc-hd::after{display:none!important}
       }
       ${size?`*{font-size:10px!important} .bdoc-shop-name{font-size:14px!important} .bdoc-inv-no{font-size:16px!important} .bdoc-tot-line.grand{font-size:14px!important} .bdoc-hd{padding:10px!important} .bdoc-body{padding:10px!important}`:''}
     </style></head><body>
