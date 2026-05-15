@@ -1742,6 +1742,26 @@ async function confirmSettle(){
       if(typeof _loyaltyHookAfterBillSave === 'function') _loyaltyHookAfterBillSave(savedBill);
       // Free restaurant table if this was a table-linked bill
       if(window._currentTableId){const _st=localStorage.getItem('sbp_shop_id');if(_st)_sb.rpc('sbp_tables_free',{p_shop_id:_st,p_table_id:window._currentTableId}).then(()=>{window._currentTableId=null;window._currentTableNum=null;}).catch(()=>{});}
+      // Create KDS order record for table-linked bills
+      if(window._currentTableId && window._currentTableNum){
+        const _st2=localStorage.getItem('sbp_shop_id');
+        if(_st2 && b.items && b.items.length){
+          const _orderItems=(b.items||[]).map(it=>({name:(it.nm||it.name||'').trim(),qty:parseFloat(it.q||it.qty||1)})).filter(x=>x.name&&x.qty>0);
+          if(_orderItems.length){
+            _sb.rpc('sbp_orders_create',{
+              p_shop_id:_st2,
+              p_data:{
+                table_number: window._currentTableNum,
+                table_id:     window._currentTableId,
+                bill_id:      (savedBill&&savedBill.id)?String(savedBill.id):null,
+                items:        _orderItems,
+                notes:        b.note||null,
+                source:       'pos'
+              }
+            }).catch(()=>{});
+          }
+        }
+      }
     }
 
     // FIX #15 — Deduct stock for matched products in manual mode (was missing)
