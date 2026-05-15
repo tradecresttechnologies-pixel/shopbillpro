@@ -535,6 +535,256 @@ html,body{height:100%;width:100%;margin:0;padding:0;overflow:hidden;background:v
 }
 .kbk-btn-all:hover{transform:translateY(-1px);box-shadow:0 6px 16px rgba(239,68,68,.4)}
 .kbk-btn-all:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
+
+/* ── BILL WIZARD (BATCH 067-UX-v4) ──────────────────────────────── */
+.bw-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1100;
+  display:none;align-items:center;justify-content:center;padding:20px;
+  backdrop-filter:blur(6px);
+}
+.bw-overlay.open{display:flex}
+.bw-modal{
+  background:var(--surf);border:1px solid var(--bord);border-radius:16px;
+  max-width:500px;width:100%;
+  max-height:92vh;display:flex;flex-direction:column;
+  box-shadow:0 24px 70px rgba(0,0,0,.6);
+  animation:kiModalIn .22s ease-out;overflow:hidden;
+}
+.bw-hd{
+  display:flex;align-items:flex-start;gap:12px;
+  padding:16px 18px 14px;
+  border-bottom:1px solid var(--bord);
+  flex-shrink:0;
+}
+.bw-hd-left{flex:1;min-width:0}
+.bw-title-row{display:flex;align-items:center;gap:9px;margin-bottom:3px}
+.bw-step-badge{
+  background:linear-gradient(135deg,#F5A623,#FF8A00);
+  color:#0A0E1A;padding:3px 9px;border-radius:6px;
+  font-size:10px;font-weight:800;font-family:var(--font-h);
+  letter-spacing:.5px;
+}
+.bw-title{font-size:17px;font-weight:800;color:var(--text);font-family:var(--font-h)}
+.bw-sub{font-size:12px;color:var(--t2);font-weight:600}
+.bw-close{
+  width:32px;height:32px;border-radius:8px;border:1px solid var(--bord);
+  background:var(--surf2);color:var(--t2);font-size:16px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  transition:var(--tr);
+}
+.bw-close:hover{background:#EF4444;color:#fff;border-color:#EF4444}
+
+.bw-steps{
+  display:flex;align-items:center;gap:6px;
+  padding:14px 18px;background:var(--surf2);
+  border-bottom:1px solid var(--bord);flex-shrink:0;
+}
+.bw-step{
+  display:flex;align-items:center;gap:8px;
+  padding:6px 10px;border-radius:8px;
+  background:var(--surf);border:1px solid var(--bord);
+  font-size:11px;font-weight:700;color:var(--t2);
+  flex:1;min-width:0;
+}
+.bw-step.on{
+  background:rgba(245,166,35,.1);border-color:var(--acc);color:var(--acc);
+}
+.bw-step.done{color:#10B981;border-color:rgba(16,185,129,.4);background:rgba(16,185,129,.06)}
+.bw-step-n{
+  width:18px;height:18px;border-radius:50%;
+  background:var(--surf2);color:var(--t2);
+  font-size:10px;font-weight:800;font-family:var(--font-h);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  border:1px solid var(--bord);
+}
+.bw-step.on .bw-step-n{background:var(--acc);color:#0A0E1A;border-color:var(--acc)}
+.bw-step.done .bw-step-n{background:#10B981;color:#fff;border-color:#10B981}
+.bw-step.done .bw-step-n::before{content:'✓';font-size:10px}
+.bw-step.done .bw-step-n > *{display:none}
+.bw-step-l{font-family:var(--font-h);text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bw-step-bar{flex:0 0 12px;height:1px;background:var(--bord)}
+
+.bw-pane{
+  flex:1;min-height:0;overflow-y:auto;
+  padding:18px 20px;
+  display:flex;flex-direction:column;gap:14px;
+}
+
+.bw-field{display:flex;flex-direction:column;gap:6px}
+.bw-lbl{
+  font-size:10px;font-weight:800;color:var(--t2);
+  text-transform:uppercase;letter-spacing:.6px;
+}
+.bw-inp{
+  padding:11px 13px;border-radius:10px;
+  border:1px solid var(--bord);background:var(--surf2);
+  color:var(--text);font-size:14px;font-family:var(--font-h);
+  width:100%;transition:var(--tr);
+}
+.bw-inp:focus{outline:none;border-color:var(--acc);background:var(--surf)}
+
+/* Step 1: customer lookup */
+.bw-cust-input-wrap{position:relative}
+.bw-cust-status{
+  position:absolute;right:12px;top:50%;transform:translateY(-50%);
+  font-size:11px;font-weight:700;color:var(--t3);
+}
+.bw-cust-status.found{color:#10B981}
+.bw-cust-suggest{
+  margin-top:6px;background:var(--surf2);border:1px solid var(--bord);
+  border-radius:9px;max-height:180px;overflow-y:auto;
+}
+.bw-cust-sg-item{
+  padding:9px 12px;border-bottom:1px solid var(--bord);
+  cursor:pointer;transition:var(--tr);
+  display:flex;align-items:center;gap:10px;
+}
+.bw-cust-sg-item:last-child{border-bottom:none}
+.bw-cust-sg-item:hover{background:rgba(245,166,35,.06)}
+.bw-cust-sg-avatar{
+  width:32px;height:32px;border-radius:50%;
+  background:linear-gradient(135deg,#F5A623,#FF8A00);color:#0A0E1A;
+  display:flex;align-items:center;justify-content:center;
+  font-size:13px;font-weight:800;font-family:var(--font-h);flex-shrink:0;
+}
+.bw-cust-sg-info{flex:1;min-width:0}
+.bw-cust-sg-name{font-size:13px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bw-cust-sg-phone{font-size:11px;color:var(--t2);font-weight:600}
+.bw-walkin-hint{
+  font-size:12px;color:var(--t2);line-height:1.5;
+  padding:10px 12px;background:rgba(245,166,35,.05);
+  border:1px solid rgba(245,166,35,.15);border-radius:9px;
+}
+
+/* Step 2: review + discount */
+.bw-item-list{
+  background:var(--surf2);border:1px solid var(--bord);border-radius:10px;
+  max-height:220px;overflow-y:auto;
+}
+.bw-item-row{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 12px;border-bottom:1px dashed var(--bord);
+  font-size:13px;
+}
+.bw-item-row:last-child{border-bottom:none}
+.bw-item-row .bi-name{flex:1;color:var(--text);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bw-item-row .bi-qty{color:var(--acc);font-weight:800;font-family:var(--font-h);min-width:34px;text-align:center;flex-shrink:0}
+.bw-item-row .bi-amt{color:var(--text);font-weight:700;min-width:74px;text-align:right;font-family:var(--font-h);flex-shrink:0}
+
+.bw-discount-block{display:flex;flex-direction:column;gap:8px}
+.bw-discount-row{display:flex;gap:8px;align-items:stretch}
+.bw-disc-mode{display:flex;background:var(--surf2);border:1px solid var(--bord);border-radius:9px;overflow:hidden;flex-shrink:0}
+.bw-disc-mode-btn{
+  padding:0 14px;background:transparent;border:none;
+  color:var(--t2);font-size:14px;font-weight:800;cursor:pointer;
+  font-family:var(--font-h);transition:var(--tr);
+}
+.bw-disc-mode-btn.on{background:var(--acc);color:#0A0E1A}
+.bw-disc-inp{flex:1}
+.bw-disc-presets{display:flex;gap:6px;flex-wrap:wrap}
+.bw-disc-preset{
+  padding:6px 11px;background:var(--surf2);border:1px solid var(--bord);
+  border-radius:7px;color:var(--t2);font-size:12px;font-weight:700;
+  cursor:pointer;font-family:var(--font-h);transition:var(--tr);
+}
+.bw-disc-preset:hover{border-color:var(--acc);color:var(--acc)}
+
+.bw-totals{
+  background:linear-gradient(180deg,var(--surf2) 0%,var(--surf) 100%);
+  border:1.5px solid var(--bord);border-radius:11px;
+  padding:13px 16px;display:flex;flex-direction:column;gap:6px;
+}
+.bw-tot-row{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--t2);font-weight:600}
+.bw-tot-row > span:last-child{color:var(--text);font-weight:700;font-family:var(--font-h)}
+.bw-tot-disc > span:last-child{color:#EF4444}
+.bw-tot-grand{
+  border-top:1px dashed var(--bord);padding-top:8px;margin-top:4px;
+  font-size:14px;color:var(--text);font-weight:800;
+}
+.bw-tot-grand > span:last-child{font-size:22px;color:var(--acc);letter-spacing:-0.5px}
+
+/* Step 3: payment */
+.bw-pay-grand{
+  background:linear-gradient(135deg,rgba(245,166,35,.1),rgba(255,138,0,.04));
+  border:1.5px solid rgba(245,166,35,.3);
+  border-radius:12px;padding:14px 18px;
+  text-align:center;
+}
+.bw-pay-grand-lbl{
+  font-size:10px;font-weight:800;color:var(--t2);
+  text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;
+}
+.bw-pay-grand-val{
+  font-size:32px;font-weight:900;color:var(--acc);
+  font-family:var(--font-h);letter-spacing:-1.5px;line-height:1;
+}
+.bw-pay-methods{
+  display:grid;grid-template-columns:repeat(4, 1fr);gap:8px;
+}
+.bw-pay-method{
+  padding:13px 6px;border-radius:10px;
+  background:var(--surf2);border:1.5px solid var(--bord);
+  color:var(--t2);font-size:12px;font-weight:800;
+  cursor:pointer;font-family:var(--font-h);transition:var(--tr);
+  display:flex;flex-direction:column;align-items:center;gap:5px;
+  letter-spacing:.3px;
+}
+.bw-pay-method:hover{border-color:var(--t2);color:var(--text);transform:translateY(-1px)}
+.bw-pay-method.on{
+  background:rgba(245,166,35,.12);border-color:var(--acc);color:var(--acc);
+  box-shadow:0 3px 10px rgba(245,166,35,.15);
+}
+.bw-pay-em{font-size:22px;line-height:1}
+
+.bw-pay-amt-field{margin-top:4px}
+.bw-pay-amt{font-size:18px;font-weight:800;text-align:right;font-family:var(--font-h)}
+.bw-pay-change-row,
+.bw-pay-bal-row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:9px 12px;border-radius:8px;margin-top:6px;
+  font-size:13px;font-weight:700;
+}
+.bw-pay-change-row{background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.25);color:#10B981}
+.bw-pay-bal-row{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);color:#EF4444}
+.bw-pay-change-row > span:last-child,
+.bw-pay-bal-row > span:last-child{font-size:15px;font-family:var(--font-h);font-weight:800}
+
+/* Footer */
+.bw-foot{
+  display:flex;align-items:center;gap:8px;
+  padding:14px 18px;background:var(--surf2);
+  border-top:1px solid var(--bord);flex-shrink:0;
+}
+.bw-foot-spacer{flex:1}
+.bw-btn{
+  padding:12px 22px;border-radius:10px;border:none;
+  font-size:13px;font-weight:800;cursor:pointer;font-family:var(--font-h);
+  transition:var(--tr);letter-spacing:.3px;
+}
+.bw-btn-back{
+  background:var(--surf);color:var(--t2);border:1px solid var(--bord);
+}
+.bw-btn-back:hover{color:var(--text);border-color:var(--t2)}
+.bw-btn-next{
+  background:linear-gradient(135deg,#F5A623,#FF8A00);
+  color:#0A0E1A;
+  box-shadow:0 4px 12px rgba(245,166,35,.3);
+}
+.bw-btn-next:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 18px rgba(245,166,35,.4)}
+.bw-btn-confirm{
+  background:linear-gradient(135deg,#10B981,#059669);
+  color:#fff;
+  box-shadow:0 4px 14px rgba(16,185,129,.3);
+}
+.bw-btn-confirm:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 20px rgba(16,185,129,.45)}
+.bw-btn:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none}
+
+/* Mobile fit */
+@media(max-width:520px){
+  .bw-overlay{padding:0}
+  .bw-modal{max-width:100%;max-height:100vh;border-radius:0}
+  .bw-pay-methods{grid-template-columns:repeat(2, 1fr)}
+}
 .kot-card{
   background:var(--surf2);border:1px solid var(--bord);
   border-radius:10px;margin-bottom:8px;overflow:hidden;
@@ -1267,6 +1517,163 @@ html,body{height:100%;width:100%;margin:0;padding:0;overflow:hidden;background:v
 <!-- Per-item void confirmation modal. Opens before SBPAuth PIN modal,
      captures reason. Confirm → calls SBPAuth.requirePIN → calls
      sbp_ro_void_item. Designed for the on-tap delete UX. -->
+<!-- ════════════════════════════════════════════════════════════════
+     BILL WIZARD (BATCH 067-UX-v4)
+     In-place 3-step bill generation. Replaces the old redirect to
+     billing.html (which had broken RO→items prefill).
+       Step 1: Customer (lookup by WhatsApp, auto-fill name)
+       Step 2: Review items + apply discount
+       Step 3: Payment method + amount + settle
+     On confirm: insert bill+items, mark RO billed, free table, redirect.
+══════════════════════════════════════════════════════════════════ -->
+<div class="bw-overlay" id="bw-modal" onclick="if(event.target.id==='bw-modal')closeBillWizard()">
+  <div class="bw-modal" role="dialog" aria-labelledby="bw-title">
+
+    <!-- Header -->
+    <div class="bw-hd">
+      <div class="bw-hd-left">
+        <div class="bw-title-row">
+          <span class="bw-step-badge" id="bw-step-badge">1/3</span>
+          <div class="bw-title" id="bw-title">Customer details</div>
+        </div>
+        <div class="bw-sub" id="bw-sub">Look up by WhatsApp number, or skip for walk-in</div>
+      </div>
+      <button class="bw-close" onclick="closeBillWizard()" title="Close">✕</button>
+    </div>
+
+    <!-- Step indicator -->
+    <div class="bw-steps">
+      <div class="bw-step on" id="bw-step-1">
+        <span class="bw-step-n">1</span>
+        <span class="bw-step-l"><span class="lang-en">Customer</span><span class="lang-hi">ग्राहक</span></span>
+      </div>
+      <div class="bw-step-bar"></div>
+      <div class="bw-step" id="bw-step-2">
+        <span class="bw-step-n">2</span>
+        <span class="bw-step-l"><span class="lang-en">Review</span><span class="lang-hi">समीक्षा</span></span>
+      </div>
+      <div class="bw-step-bar"></div>
+      <div class="bw-step" id="bw-step-3">
+        <span class="bw-step-n">3</span>
+        <span class="bw-step-l"><span class="lang-en">Payment</span><span class="lang-hi">भुगतान</span></span>
+      </div>
+    </div>
+
+    <!-- ─── STEP 1: Customer ─── -->
+    <div class="bw-pane" id="bw-pane-1">
+      <div class="bw-field">
+        <label class="bw-lbl"><span class="lang-en">WhatsApp / Phone</span><span class="lang-hi">वॉट्सऐप / फ़ोन</span></label>
+        <div class="bw-cust-input-wrap">
+          <input type="tel" class="bw-inp" id="bw-cust-wa"
+            placeholder="10-digit number"
+            inputmode="numeric" maxlength="15"
+            autocomplete="off"
+            oninput="onCustPhoneInput(this.value)">
+          <div class="bw-cust-status" id="bw-cust-status"></div>
+        </div>
+        <!-- Live customer suggestions (matches as user types) -->
+        <div class="bw-cust-suggest" id="bw-cust-suggest" style="display:none"></div>
+      </div>
+      <div class="bw-field">
+        <label class="bw-lbl"><span class="lang-en">Name</span><span class="lang-hi">नाम</span></label>
+        <input type="text" class="bw-inp" id="bw-cust-name" placeholder="Customer name (optional)">
+      </div>
+      <div class="bw-walkin-hint">
+        💡 <span class="lang-en">Leave blank for a walk-in customer. We'll just print "Walk-in" on the bill.</span><span class="lang-hi">वॉक-इन ग्राहक के लिए खाली छोड़ें</span>
+      </div>
+    </div>
+
+    <!-- ─── STEP 2: Review + Discount ─── -->
+    <div class="bw-pane" id="bw-pane-2" style="display:none">
+      <div class="bw-item-list" id="bw-item-list">
+        <!-- filled by renderBillWizardItems() -->
+      </div>
+
+      <div class="bw-discount-block">
+        <label class="bw-lbl"><span class="lang-en">Discount</span><span class="lang-hi">छूट</span></label>
+        <div class="bw-discount-row">
+          <div class="bw-disc-mode">
+            <button class="bw-disc-mode-btn on" id="bw-disc-mode-amt" onclick="setDiscMode('amt')">₹</button>
+            <button class="bw-disc-mode-btn"    id="bw-disc-mode-pct" onclick="setDiscMode('pct')">%</button>
+          </div>
+          <input type="number" class="bw-inp bw-disc-inp" id="bw-disc-input"
+            placeholder="0" step="0.01" min="0"
+            oninput="recomputeBillTotal()">
+        </div>
+        <div class="bw-disc-presets">
+          <button class="bw-disc-preset" onclick="setDiscPreset(50)">₹50</button>
+          <button class="bw-disc-preset" onclick="setDiscPreset(100)">₹100</button>
+          <button class="bw-disc-preset" onclick="setDiscPreset('5%')">5%</button>
+          <button class="bw-disc-preset" onclick="setDiscPreset('10%')">10%</button>
+          <button class="bw-disc-preset" onclick="setDiscPreset(0)" title="Clear">✕</button>
+        </div>
+      </div>
+
+      <div class="bw-totals">
+        <div class="bw-tot-row"><span><span class="lang-en">Subtotal</span><span class="lang-hi">उप-योग</span></span><span id="bw-sub-val">₹0</span></div>
+        <div class="bw-tot-row" id="bw-gst-row"><span><span class="lang-en">GST</span><span class="lang-hi">GST</span></span><span id="bw-gst-val">₹0</span></div>
+        <div class="bw-tot-row bw-tot-disc" id="bw-disc-row" style="display:none"><span><span class="lang-en">Discount</span><span class="lang-hi">छूट</span></span><span id="bw-disc-val">−₹0</span></div>
+        <div class="bw-tot-row bw-tot-grand"><span><span class="lang-en">TOTAL</span><span class="lang-hi">कुल</span></span><span id="bw-grand-val">₹0</span></div>
+      </div>
+    </div>
+
+    <!-- ─── STEP 3: Payment ─── -->
+    <div class="bw-pane" id="bw-pane-3" style="display:none">
+      <div class="bw-pay-grand">
+        <div class="bw-pay-grand-lbl"><span class="lang-en">AMOUNT DUE</span><span class="lang-hi">देय राशि</span></div>
+        <div class="bw-pay-grand-val" id="bw-pay-grand-val">₹0</div>
+      </div>
+
+      <label class="bw-lbl"><span class="lang-en">Payment Method</span><span class="lang-hi">भुगतान विधि</span></label>
+      <div class="bw-pay-methods">
+        <button class="bw-pay-method on" data-method="Cash" onclick="setPayMethod('Cash')">
+          <span class="bw-pay-em">💵</span>
+          <span><span class="lang-en">Cash</span><span class="lang-hi">नकद</span></span>
+        </button>
+        <button class="bw-pay-method" data-method="UPI" onclick="setPayMethod('UPI')">
+          <span class="bw-pay-em">📱</span>
+          <span>UPI</span>
+        </button>
+        <button class="bw-pay-method" data-method="Card" onclick="setPayMethod('Card')">
+          <span class="bw-pay-em">💳</span>
+          <span><span class="lang-en">Card</span><span class="lang-hi">कार्ड</span></span>
+        </button>
+        <button class="bw-pay-method" data-method="Credit" onclick="setPayMethod('Credit')">
+          <span class="bw-pay-em">📒</span>
+          <span><span class="lang-en">Credit</span><span class="lang-hi">उधार</span></span>
+        </button>
+      </div>
+
+      <div class="bw-field bw-pay-amt-field">
+        <label class="bw-lbl"><span class="lang-en">Amount Received</span><span class="lang-hi">प्राप्त राशि</span></label>
+        <input type="number" class="bw-inp bw-pay-amt" id="bw-pay-amt"
+          step="0.01" min="0"
+          oninput="onPayAmtInput()">
+        <div class="bw-pay-change-row" id="bw-pay-change-row" style="display:none">
+          <span><span class="lang-en">Change due</span><span class="lang-hi">वापसी</span></span>
+          <span id="bw-pay-change-val">₹0</span>
+        </div>
+        <div class="bw-pay-bal-row" id="bw-pay-bal-row" style="display:none">
+          <span><span class="lang-en">Balance pending</span><span class="lang-hi">शेष</span></span>
+          <span id="bw-pay-bal-val">₹0</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer: Back / Next / Confirm -->
+    <div class="bw-foot">
+      <button class="bw-btn bw-btn-back" id="bw-btn-back" onclick="bwBack()" style="visibility:hidden">
+        ← <span class="lang-en">Back</span><span class="lang-hi">पीछे</span>
+      </button>
+      <div class="bw-foot-spacer"></div>
+      <button class="bw-btn bw-btn-next" id="bw-btn-next" onclick="bwNext()">
+        <span class="lang-en">Next</span><span class="lang-hi">आगे</span> →
+      </button>
+    </div>
+
+  </div>
+</div>
+
 <div class="ki-modal-overlay" id="ki-void-modal" onclick="if(event.target.id==='ki-void-modal')closeVoidItemModal()">
   <div class="ki-modal" role="dialog" aria-labelledby="ki-void-title">
     <div class="ki-modal-hd">
@@ -2083,49 +2490,483 @@ function render(){
 }
 
 // ── Generate Bill → go to billing.html pre-filled ─────────────────
+// ── Generate Bill: in-place wizard (BATCH 067-UX-v4) ─────────────
+// Old: redirected to billing.html with sessionStorage handoff (broken).
+// New: opens a 3-step modal here — Customer → Review+Discount → Payment.
+// On confirm we insert bill + items + mark RO billed in one go, then
+// redirect back to tables.html so the operator can pick the next table.
 async function generateBill(){
   if(!_order?.id){ toast('No active order','e'); return; }
   const allItems = Array.isArray(_order?.items) ? _order.items : [];
   if(!allItems.length){ toast('No items in order','e'); return; }
+  // Refuse if every item is voided
+  const anyActive = allItems.some(it => itemActiveQty(it) > 0);
+  if(!anyActive){ toast('All items cancelled — void the order instead','e'); return; }
 
-  const btn = $('bill-btn');
-  btn.disabled = true;
-  btn.textContent = '⏳ Generating...';
+  openBillWizard();
+}
 
-  // BATCH 067: read-only fetch. The state transition to 'billed' now
-  // happens in billing.html when the bill is actually saved (with the
-  // real bill_id). Closing the billing tab leaves this RO at 'open',
-  // so the existing resume-on-tap path in sbp_ro_open picks it up.
-  const { data, error } = await _sb.rpc('sbp_ro_get_by_id',{
-    p_shop_id: _shopId, p_order_id: _order.id
+// ─────────────────────────────────────────────────────────────────
+// BILL WIZARD STATE
+// ─────────────────────────────────────────────────────────────────
+let _bwStep        = 1;          // 1 | 2 | 3
+let _bwCustomer    = null;       // {id, name, whatsapp, phone, ...}
+let _bwDiscMode    = 'amt';      // 'amt' | 'pct'
+let _bwDiscRaw     = 0;          // raw value as typed
+let _bwPayMethod   = 'Cash';     // Cash | UPI | Card | Credit
+let _bwPayAmt      = 0;          // amount received
+let _bwTotals      = { subtotal:0, gst:0, discount:0, grand:0 };
+let _bwItemsCache  = [];         // pre-built list of active items for the bill
+let _bwCustSearchT = null;       // debounce timer for customer lookup
+
+function openBillWizard(){
+  // Build the items snapshot once — uses ACTIVE qty (qty - voided_qty)
+  _bwItemsCache = (Array.isArray(_order?.items) ? _order.items : [])
+    .map(it => {
+      const aQty = itemActiveQty(it);
+      if(aQty <= 0) return null;
+      return {
+        nm:           it.name || '',
+        q:            aQty,
+        r:            it.price || 0,
+        rate:         it.gst_rate || 0,           // GST %
+        kind:         it.service_id ? 'service' : 'product',
+        productId:    null,
+        serviceId:    it.service_id || null,
+        lineGST:      aQty * (it.price||0) * (it.gst_rate||0) / 100,
+        tot:          aQty * (it.price||0) * (1 + (it.gst_rate||0)/100),
+      };
+    })
+    .filter(Boolean);
+
+  // Reset state
+  _bwStep      = 1;
+  _bwCustomer  = null;
+  _bwDiscMode  = 'amt';
+  _bwDiscRaw   = 0;
+  _bwPayMethod = 'Cash';
+  _bwPayAmt    = 0;
+
+  // Reset form fields
+  const waEl   = document.getElementById('bw-cust-wa');   if(waEl) waEl.value = '';
+  const nameEl = document.getElementById('bw-cust-name'); if(nameEl) nameEl.value = '';
+  const discEl = document.getElementById('bw-disc-input');if(discEl) discEl.value = '';
+  const sugEl  = document.getElementById('bw-cust-suggest'); if(sugEl){ sugEl.style.display='none'; sugEl.innerHTML=''; }
+  const stEl   = document.getElementById('bw-cust-status'); if(stEl){ stEl.textContent=''; stEl.classList.remove('found'); }
+
+  renderBillWizardItems();
+  recomputeBillTotal();
+  showBwStep(1);
+  document.getElementById('bw-modal').classList.add('open');
+  setTimeout(()=> waEl && waEl.focus(), 100);
+}
+
+function closeBillWizard(){
+  document.getElementById('bw-modal').classList.remove('open');
+  // Don't reset _order — operator may want to keep working
+}
+
+function showBwStep(n){
+  _bwStep = n;
+  // Step indicator
+  for(let i=1; i<=3; i++){
+    const el = document.getElementById('bw-step-' + i);
+    if(!el) continue;
+    el.classList.remove('on','done');
+    if(i < n)      el.classList.add('done');
+    else if(i===n) el.classList.add('on');
+  }
+  // Step badge + title
+  const titles = {
+    1: { t: 'Customer details',    s: 'Look up by WhatsApp, or skip for walk-in' },
+    2: { t: 'Review & discount',   s: 'Confirm items and apply discount if any' },
+    3: { t: 'Settle payment',      s: 'Pick the payment method and amount' },
+  };
+  document.getElementById('bw-step-badge').textContent = n + '/3';
+  document.getElementById('bw-title').textContent = titles[n].t;
+  document.getElementById('bw-sub').textContent   = titles[n].s;
+
+  // Show/hide panes
+  [1,2,3].forEach(i => {
+    const p = document.getElementById('bw-pane-' + i);
+    if(p) p.style.display = (i===n) ? '' : 'none';
   });
 
-  if(error || !data?.ok){
-    toast('Failed: '+(data?.error||error?.message||'?'),'e');
-    btn.disabled = false; btn.textContent = '🧾 Generate Bill'; return;
+  // Footer buttons
+  const back = document.getElementById('bw-btn-back');
+  const next = document.getElementById('bw-btn-next');
+  if(back) back.style.visibility = n === 1 ? 'hidden' : '';
+  if(next){
+    if(n === 3){
+      next.classList.remove('bw-btn-next');
+      next.classList.add('bw-btn-confirm');
+      next.innerHTML = '✓ <span class="lang-en">Save Bill & Free Table</span><span class="lang-hi">बिल सेव करें</span>';
+    } else {
+      next.classList.remove('bw-btn-confirm');
+      next.classList.add('bw-btn-next');
+      next.innerHTML = '<span class="lang-en">Next</span><span class="lang-hi">आगे</span> →';
+    }
   }
 
-  const items = (data.order && Array.isArray(data.order.items)) ? data.order.items : [];
-  if(!items.length){
-    toast('No items in order','e');
-    btn.disabled = false; btn.textContent = '🧾 Generate Bill'; return;
+  // Step-specific setup
+  if(n === 2){ recomputeBillTotal(); }
+  if(n === 3){
+    // Default amount received = grand total
+    _bwPayAmt = _bwTotals.grand;
+    const amtEl = document.getElementById('bw-pay-amt');
+    if(amtEl) amtEl.value = _bwTotals.grand.toFixed(2);
+    document.getElementById('bw-pay-grand-val').textContent = fINR(_bwTotals.grand);
+    onPayAmtInput();
   }
+}
 
-  // Build URL for billing.html with running order data.
-  // BATCH 067-UX fix: NO `mode=pos` — POS mode swaps the DOM to a
-  // POS-cart view, but the prefill code in billing.html writes into
-  // manual mode's #items-wrap via addItem(). Leaving the page in
-  // manual mode (default) is what makes "items auto-appear in the
-  // bill" actually work.
-  const url = new URL('billing.html', window.location.origin + window.location.pathname.replace('running-order.html',''));
-  url.searchParams.set('running_order_id', _order.id);
-  url.searchParams.set('table_id',  _tableId);
-  url.searchParams.set('table_num', _tableNum);
+function bwBack(){
+  if(_bwStep > 1) showBwStep(_bwStep - 1);
+}
 
-  // Store items in sessionStorage for billing.html to read
-  sessionStorage.setItem('sbp_ro_items', JSON.stringify(items));
+async function bwNext(){
+  if(_bwStep < 3){
+    // Capture customer fields on leaving step 1
+    if(_bwStep === 1){
+      const wa   = document.getElementById('bw-cust-wa').value.trim();
+      const name = document.getElementById('bw-cust-name').value.trim();
+      if(!_bwCustomer && (wa || name)){
+        // Walk-in if both empty; else stash as a "new" pending customer
+        _bwCustomer = { isNew: true, name: name || '', whatsapp: wa || '', phone: wa || '' };
+      }
+    }
+    showBwStep(_bwStep + 1);
+    return;
+  }
+  // Final step → save
+  await confirmAndSaveBill();
+}
 
-  window.location.href = url.toString();
+// ─────────────────────────────────────────────────────────────────
+// STEP 1: Customer lookup
+// ─────────────────────────────────────────────────────────────────
+function onCustPhoneInput(val){
+  const v = (val || '').trim();
+  // Reset selection if user is typing fresh
+  _bwCustomer = null;
+  const stEl  = document.getElementById('bw-cust-status');
+  const sugEl = document.getElementById('bw-cust-suggest');
+  if(stEl){ stEl.textContent = ''; stEl.classList.remove('found'); }
+  if(v.length < 3){
+    if(sugEl){ sugEl.style.display='none'; sugEl.innerHTML=''; }
+    return;
+  }
+  // Debounced lookup
+  clearTimeout(_bwCustSearchT);
+  _bwCustSearchT = setTimeout(()=> searchCustomers(v), 250);
+}
+
+async function searchCustomers(q){
+  const stEl  = document.getElementById('bw-cust-status');
+  const sugEl = document.getElementById('bw-cust-suggest');
+  if(stEl) stEl.textContent = '⏳';
+
+  try {
+    // Match against whatsapp OR phone OR name (loose contains)
+    const { data, error } = await _sb.from('customers')
+      .select('id, name, whatsapp, phone, email')
+      .eq('shop_id', _shopId)
+      .or('whatsapp.ilike.%' + q + '%,phone.ilike.%' + q + '%,name.ilike.%' + q + '%')
+      .limit(6);
+
+    if(stEl) stEl.textContent = '';
+    if(error){ console.warn('[cust search]', error); return; }
+    const rows = data || [];
+
+    if(rows.length === 0){
+      sugEl.style.display = '';
+      sugEl.innerHTML = '<div class="bw-cust-sg-item" onclick="useNewWalkInFromInput()">' +
+        '<div class="bw-cust-sg-avatar">+</div>' +
+        '<div class="bw-cust-sg-info">' +
+          '<div class="bw-cust-sg-name">Save as new customer</div>' +
+          '<div class="bw-cust-sg-phone">No match for "' + escHtml(q) + '"</div>' +
+        '</div>' +
+      '</div>';
+      return;
+    }
+
+    sugEl.style.display = '';
+    sugEl.innerHTML = rows.map(c => {
+      const phone = c.whatsapp || c.phone || '';
+      const init  = (c.name || '?').slice(0,1).toUpperCase();
+      const cJson = JSON.stringify(c).replace(/"/g,'&quot;');
+      return '<div class="bw-cust-sg-item" onclick="pickCustomer(' + cJson + ')">' +
+        '<div class="bw-cust-sg-avatar">' + escHtml(init) + '</div>' +
+        '<div class="bw-cust-sg-info">' +
+          '<div class="bw-cust-sg-name">' + escHtml(c.name||'(no name)') + '</div>' +
+          '<div class="bw-cust-sg-phone">📱 ' + escHtml(phone) + '</div>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  } catch(e){
+    console.warn('[cust search error]', e);
+    if(stEl) stEl.textContent = '';
+  }
+}
+
+function pickCustomer(c){
+  _bwCustomer = c;
+  document.getElementById('bw-cust-wa').value   = c.whatsapp || c.phone || '';
+  document.getElementById('bw-cust-name').value = c.name || '';
+  const sugEl = document.getElementById('bw-cust-suggest');
+  const stEl  = document.getElementById('bw-cust-status');
+  if(sugEl){ sugEl.style.display = 'none'; sugEl.innerHTML = ''; }
+  if(stEl){ stEl.textContent = '✓ saved'; stEl.classList.add('found'); }
+}
+
+function useNewWalkInFromInput(){
+  const wa = document.getElementById('bw-cust-wa').value.trim();
+  _bwCustomer = { isNew: true, name: '', whatsapp: wa, phone: wa };
+  const sugEl = document.getElementById('bw-cust-suggest');
+  if(sugEl){ sugEl.style.display='none'; sugEl.innerHTML=''; }
+  // Focus name field to encourage them to fill it
+  document.getElementById('bw-cust-name').focus();
+}
+
+// ─────────────────────────────────────────────────────────────────
+// STEP 2: Review + Discount
+// ─────────────────────────────────────────────────────────────────
+function renderBillWizardItems(){
+  const el = document.getElementById('bw-item-list');
+  if(!el) return;
+  el.innerHTML = _bwItemsCache.map(it =>
+    '<div class="bw-item-row">' +
+      '<div class="bi-name">' + escHtml(it.nm) + '</div>' +
+      '<div class="bi-qty">×' + it.q + '</div>' +
+      '<div class="bi-amt">' + fINR(it.tot) + '</div>' +
+    '</div>'
+  ).join('');
+}
+
+function setDiscMode(m){
+  _bwDiscMode = m;
+  document.getElementById('bw-disc-mode-amt').classList.toggle('on', m === 'amt');
+  document.getElementById('bw-disc-mode-pct').classList.toggle('on', m === 'pct');
+  recomputeBillTotal();
+}
+
+function setDiscPreset(v){
+  const inp = document.getElementById('bw-disc-input');
+  if(v === 0){ inp.value = ''; setDiscMode('amt'); recomputeBillTotal(); return; }
+  if(typeof v === 'string' && v.endsWith('%')){
+    setDiscMode('pct'); inp.value = v.replace('%','');
+  } else {
+    setDiscMode('amt'); inp.value = String(v);
+  }
+  recomputeBillTotal();
+}
+
+function recomputeBillTotal(){
+  // Totals from items snapshot (active qty only)
+  let subtotal = 0;
+  let gstAmt   = 0;
+  _bwItemsCache.forEach(it => {
+    const sub = it.q * it.r;
+    subtotal += sub;
+    gstAmt   += sub * (it.rate||0) / 100;
+  });
+
+  // Discount
+  const inp = document.getElementById('bw-disc-input');
+  _bwDiscRaw = parseFloat(inp?.value || '0') || 0;
+  let discAmt = 0;
+  if(_bwDiscMode === 'pct'){
+    discAmt = (subtotal + gstAmt) * Math.max(0, Math.min(100, _bwDiscRaw)) / 100;
+  } else {
+    discAmt = Math.max(0, _bwDiscRaw);
+  }
+  // Cap at grand pre-discount so discount can't make total negative
+  const preDisc = subtotal + gstAmt;
+  if(discAmt > preDisc) discAmt = preDisc;
+  const grand = preDisc - discAmt;
+
+  _bwTotals = { subtotal, gst: gstAmt, discount: discAmt, grand };
+
+  const sv  = $('bw-sub-val');   if(sv) sv.textContent = fINR(subtotal);
+  const gv  = $('bw-gst-val');   if(gv) gv.textContent = fINR(gstAmt);
+  const gr  = $('bw-gst-row');   if(gr) gr.style.display = gstAmt > 0 ? '' : 'none';
+  const dv  = $('bw-disc-val');  if(dv) dv.textContent = '−' + fINR(discAmt);
+  const dr  = $('bw-disc-row');  if(dr) dr.style.display = discAmt > 0 ? '' : 'none';
+  const tv  = $('bw-grand-val'); if(tv) tv.textContent = fINR(grand);
+}
+
+// ─────────────────────────────────────────────────────────────────
+// STEP 3: Payment
+// ─────────────────────────────────────────────────────────────────
+function setPayMethod(m){
+  _bwPayMethod = m;
+  document.querySelectorAll('.bw-pay-method').forEach(btn => {
+    btn.classList.toggle('on', btn.dataset.method === m);
+  });
+  // Credit defaults paid to 0; others default to grand total
+  const amtEl = document.getElementById('bw-pay-amt');
+  if(m === 'Credit'){
+    _bwPayAmt = 0;
+    if(amtEl) amtEl.value = '0';
+  } else {
+    _bwPayAmt = _bwTotals.grand;
+    if(amtEl) amtEl.value = _bwTotals.grand.toFixed(2);
+  }
+  onPayAmtInput();
+}
+
+function onPayAmtInput(){
+  const amtEl = document.getElementById('bw-pay-amt');
+  _bwPayAmt = parseFloat(amtEl?.value || '0') || 0;
+  const change = Math.max(0, _bwPayAmt - _bwTotals.grand);
+  const bal    = Math.max(0, _bwTotals.grand - _bwPayAmt);
+  const chgRow = document.getElementById('bw-pay-change-row');
+  const balRow = document.getElementById('bw-pay-bal-row');
+  document.getElementById('bw-pay-change-val').textContent = fINR(change);
+  document.getElementById('bw-pay-bal-val').textContent    = fINR(bal);
+  if(chgRow) chgRow.style.display = (change > 0 && _bwPayMethod === 'Cash') ? '' : 'none';
+  if(balRow) balRow.style.display = (bal > 0 && _bwPayMethod !== 'Cash') ? '' : 'none';
+}
+
+// ─────────────────────────────────────────────────────────────────
+// FINAL: save bill, mark RO billed, free table, redirect
+// ─────────────────────────────────────────────────────────────────
+async function confirmAndSaveBill(){
+  const next = document.getElementById('bw-btn-next');
+  if(next){ next.disabled = true; next.innerHTML = '⏳ Saving…'; }
+
+  try {
+    // 1. Get atomic invoice number
+    const { data: invData, error: invErr } = await _sb.rpc('next_invoice_no', { p_shop_id: _shopId });
+    if(invErr || !invData?.length){
+      throw new Error('Invoice number: ' + (invErr?.message || 'no row'));
+    }
+    const invRow = invData[0];
+    const invNo  = (invRow.invoice_prefix || 'INV') + '-' + String(invRow.invoice_counter).padStart(4, '0');
+
+    // 2. Resolve customer — find existing or create new
+    let customerId = null;
+    let custName   = '';
+    let custWA     = '';
+    if(_bwCustomer && !_bwCustomer.isNew && _bwCustomer.id){
+      customerId = _bwCustomer.id;
+      custName   = _bwCustomer.name || '';
+      custWA     = _bwCustomer.whatsapp || _bwCustomer.phone || '';
+    } else if(_bwCustomer && _bwCustomer.isNew){
+      // Pull final values from inputs
+      custName = document.getElementById('bw-cust-name').value.trim();
+      custWA   = document.getElementById('bw-cust-wa').value.trim();
+      if(custName || custWA){
+        try {
+          const { data: c, error: ce } = await _sb.from('customers').insert({
+            shop_id:        _shopId,
+            name:           custName || 'Walk-in',
+            whatsapp:       custWA,
+            phone:          custWA,
+            customer_type:  'Regular',
+            balance:        0,
+          }).select().single();
+          if(!ce && c) customerId = c.id;
+        } catch(e){ console.warn('[customer insert]', e); /* non-fatal */ }
+      }
+    }
+    if(!custName) custName = 'Walk-in';
+
+    // 3. Determine status / amounts
+    const status     = _bwPayMethod === 'Credit' ? 'Credit' : 'Paid';
+    const paid       = _bwPayMethod === 'Credit' ? 0 : Math.min(_bwPayAmt, _bwTotals.grand);
+    const balance    = Math.max(0, _bwTotals.grand - paid);
+    const todayISO   = new Date().toISOString().slice(0,10);
+
+    // 4. Insert bill
+    const billData = {
+      shop_id:        _shopId,
+      invoice_no:     invNo,
+      invoice_date:   todayISO,
+      customer_id:    customerId,
+      customer_name:  custName,
+      customer_wa:    custWA,
+      payment_mode:   _bwPayMethod,
+      status,
+      subtotal:       _bwTotals.subtotal,
+      gst_amount:     _bwTotals.gst,
+      discount:       _bwTotals.discount,
+      grand_total:    _bwTotals.grand,
+      paid_amount:    paid,
+      balance_due:    balance,
+      bill_mode:      'pos',
+      table_number:   String(_tableNum),
+      notes:          '',
+    };
+    const { data: bill, error: bErr } = await _sb.from('bills').insert(billData).select().single();
+    if(bErr) throw new Error('Bill insert: ' + bErr.message);
+
+    // 5. Insert items
+    const itemPayload = _bwItemsCache.map(it => ({
+      bill_id:        bill.id,
+      item_name:      it.nm,
+      qty:            it.q,
+      rate:           it.r,
+      gst_rate:       it.rate,
+      discount:       0,
+      line_total:     parseFloat(it.tot),
+      gst_amount:     parseFloat(it.lineGST || 0),
+      kind:           it.kind || 'product',
+      product_id:     it.productId  || null,
+      service_id:     it.serviceId  || null,
+      unit:           'piece',
+    }));
+    if(itemPayload.length){
+      const { error: iErr } = await _sb.from('bill_items').insert(itemPayload);
+      if(iErr){
+        // Try legacy column set if 'kind'/'product_id'/etc. don't exist on older schemas
+        console.warn('[bill_items new cols failed, retrying legacy]', iErr);
+        const legacy = _bwItemsCache.map(it => ({
+          bill_id: bill.id, item_name: it.nm, qty: it.q, rate: it.r,
+          gst_rate: it.rate, discount: 0,
+          line_total: parseFloat(it.tot), gst_amount: parseFloat(it.lineGST || 0),
+        }));
+        const { error: iErr2 } = await _sb.from('bill_items').insert(legacy);
+        if(iErr2) throw new Error('Bill items: ' + iErr2.message);
+      }
+    }
+
+    // 6. Mark running order as billed (3-arg signature added in 067)
+    try {
+      await _sb.rpc('sbp_ro_generate_bill', {
+        p_shop_id:  _shopId,
+        p_order_id: _order.id,
+        p_bill_id:  bill.id,
+      });
+    } catch(e){
+      // Try 2-arg legacy signature
+      try {
+        await _sb.rpc('sbp_ro_generate_bill', {
+          p_shop_id:  _shopId,
+          p_order_id: _order.id,
+        });
+      } catch(e2){ console.warn('[ro_generate_bill]', e2); }
+    }
+
+    // 7. Free the table (best-effort)
+    if(_tableId){
+      try {
+        await _sb.rpc('sbp_tables_free', { p_shop_id: _shopId, p_table_id: _tableId });
+      } catch(e){ console.warn('[tables_free]', e); }
+    }
+
+    closeBillWizard();
+    toast('✅ Bill ' + invNo + ' saved · Table T' + _tableNum + ' freed', 's', 2500);
+    setTimeout(()=> { window.location.href = 'tables.html'; }, 900);
+
+  } catch(e){
+    console.error('[bill save]', e);
+    toast('❌ ' + (e.message || 'Failed to save bill'), 'e');
+    if(next){
+      next.disabled = false;
+      next.innerHTML = '✓ <span class="lang-en">Save Bill & Free Table</span><span class="lang-hi">बिल सेव करें</span>';
+    }
+  }
 }
 
 // ── Void order ────────────────────────────────────────────────────
