@@ -104,11 +104,16 @@ html,body{height:100%;width:100%;margin:0;padding:0;overflow:hidden;background:v
 /* ── Split layout — order pane scales with screen size ──
    width:100% guarantees the grid stretches to fill #main-col; flex:1
    makes it consume all vertical space below the header. */
-.ro-body{display:grid;grid-template-columns:1fr 420px;width:100%;flex:1 1 auto;min-height:0;min-width:0;overflow:hidden}
-@media(min-width:1600px){.ro-body{grid-template-columns:1fr 480px}}
-@media(min-width:2000px){.ro-body{grid-template-columns:1fr 560px}}
-@media(max-width:1100px){.ro-body{grid-template-columns:1fr 380px}}
-@media(max-width:900px){.ro-body{grid-template-columns:1fr}}
+/* ── 3-column layout: menu | order display | action rail ───────────
+   The rail is a fixed-width vertical column on the far right holding
+   ALL primary action buttons. The order display panel between menu
+   and rail is display-only — never has its content cells fight with
+   action buttons for space. */
+.ro-body{display:grid;grid-template-columns:1fr 380px 76px;width:100%;flex:1 1 auto;min-height:0;min-width:0;overflow:hidden}
+@media(min-width:1600px){.ro-body{grid-template-columns:1fr 440px 84px}}
+@media(min-width:2000px){.ro-body{grid-template-columns:1fr 520px 84px}}
+@media(max-width:1200px){.ro-body{grid-template-columns:1fr 340px 68px}}
+@media(max-width:900px){.ro-body{grid-template-columns:1fr}.action-rail{display:none}}
 
 /* ── Left: Menu picker ── */
 .menu-pane{display:flex;flex-direction:column;border-right:1px solid var(--bord);overflow:hidden;background:var(--bg)}
@@ -613,6 +618,134 @@ html,body{height:100%;width:100%;margin:0;padding:0;overflow:hidden;background:v
 .ki-modal-btn-confirm:hover{transform:translateY(-1px);box-shadow:0 6px 16px rgba(239,68,68,.4)}
 .ki-modal-btn-confirm:disabled{opacity:.5;cursor:not-allowed;transform:none}
 
+/* ── Qty stepper inside the void-item modal (partial cancel) ────── */
+.qty-pick{
+  background:var(--surf2);border:1px solid var(--bord);
+  border-radius:10px;padding:14px;margin-bottom:14px;
+}
+.qty-pick-label{
+  font-size:11px;font-weight:700;color:var(--t2);
+  text-transform:uppercase;letter-spacing:.5px;
+  margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;
+}
+.qty-pick-label-max{color:var(--t3);font-size:10px;text-transform:none;letter-spacing:0}
+.qty-pick-presets{
+  display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;
+}
+.qty-preset{
+  flex:1;min-width:48px;padding:9px 10px;border-radius:8px;
+  border:1px solid var(--bord);background:var(--surf);
+  color:var(--text);font-size:13px;font-weight:800;font-family:var(--font-h);
+  cursor:pointer;transition:var(--tr);
+}
+.qty-preset:hover{border-color:var(--acc);color:var(--acc)}
+.qty-preset.on{
+  background:linear-gradient(135deg,#F5A623,#FF8A00);
+  color:#0A0E1A;border-color:transparent;
+  box-shadow:0 2px 8px rgba(245,166,35,.25);
+}
+.qty-stepper{display:flex;align-items:center;gap:10px;justify-content:center}
+.qty-step-btn{
+  width:38px;height:38px;border-radius:9px;border:1px solid var(--bord);
+  background:var(--surf);color:var(--text);font-size:18px;font-weight:800;
+  cursor:pointer;transition:var(--tr);
+  display:flex;align-items:center;justify-content:center;
+}
+.qty-step-btn:hover:not(:disabled){border-color:var(--acc);color:var(--acc)}
+.qty-step-btn:disabled{opacity:.3;cursor:not-allowed}
+.qty-step-val{
+  min-width:70px;text-align:center;
+  font-size:26px;font-weight:900;color:var(--acc);
+  font-family:var(--font-h);letter-spacing:-1px;
+}
+.qty-pick-summary{
+  display:flex;justify-content:space-between;align-items:center;gap:10px;
+  padding:9px 12px;border-radius:8px;background:rgba(239,68,68,.06);
+  border:1px solid rgba(239,68,68,.2);font-size:12px;
+  margin-top:12px;
+}
+.qty-pick-summary strong{font-weight:800;font-family:var(--font-h)}
+.qps-line{display:flex;flex-direction:column;gap:2px}
+.qps-line-lbl{font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.5px}
+.qps-line-val{font-size:13px;color:var(--text)}
+.qps-line-val.cancel{color:#EF4444}
+.qps-line-val.remain{color:#10B981}
+
+/* ── Action Rail (right column) ──────────────────────────────────── */
+.action-rail{
+  display:flex;flex-direction:column;
+  background:var(--surf);border-left:1px solid var(--bord);
+  padding:14px 8px;gap:8px;
+  align-items:stretch;
+  box-shadow:-4px 0 16px rgba(0,0,0,.15);
+  overflow-y:auto;
+}
+.rail-section{display:flex;flex-direction:column;gap:6px}
+.rail-section + .rail-section{
+  margin-top:8px;padding-top:10px;
+  border-top:1px solid var(--bord);
+}
+.rail-section-lbl{
+  font-size:8px;font-weight:800;color:var(--t3);
+  text-transform:uppercase;letter-spacing:.7px;
+  text-align:center;padding:0 4px 2px;
+}
+.rail-btn{
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:11px 4px;border-radius:11px;
+  border:1px solid var(--bord);background:var(--surf2);
+  color:var(--t2);font-size:9px;font-weight:700;font-family:var(--font-h);
+  cursor:pointer;transition:var(--tr);
+  text-align:center;line-height:1.15;letter-spacing:.2px;
+  position:relative;
+}
+.rail-btn-em{font-size:22px;line-height:1}
+.rail-btn:hover:not(:disabled){
+  color:var(--acc);border-color:var(--acc);
+  background:rgba(245,166,35,.08);transform:translateY(-1px);
+}
+.rail-btn:disabled{opacity:.35;cursor:not-allowed}
+.rail-btn.primary{
+  background:linear-gradient(135deg,#10B981,#059669);
+  color:#fff;border-color:transparent;
+  box-shadow:0 4px 14px rgba(16,185,129,.25);
+}
+.rail-btn.primary:hover:not(:disabled){
+  transform:translateY(-2px);box-shadow:0 6px 20px rgba(16,185,129,.4);
+  color:#fff;background:linear-gradient(135deg,#10B981,#059669);
+}
+.rail-btn.danger{
+  color:#EF4444;border-color:rgba(239,68,68,.3);background:rgba(239,68,68,.08);
+}
+.rail-btn.danger:hover:not(:disabled){
+  background:#EF4444;color:#fff;border-color:#EF4444;
+  box-shadow:0 4px 14px rgba(239,68,68,.3);
+}
+.rail-spacer{flex:1}
+.rail-badge{
+  position:absolute;top:4px;right:4px;
+  min-width:18px;height:18px;border-radius:9px;
+  background:var(--acc);color:#0A0E1A;
+  font-size:10px;font-weight:800;
+  display:flex;align-items:center;justify-content:center;
+  padding:0 5px;
+}
+
+/* Bigger, more reliable ✕ on KOT-item rows.
+   Was 24px → now 32px with bigger hit area + clear hover. */
+.ki-del{
+  width:32px;height:32px;border-radius:8px;
+  border:1px solid rgba(239,68,68,.35);background:rgba(239,68,68,.08);
+  color:#EF4444;font-size:15px;font-weight:700;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  transition:var(--tr);padding:0;line-height:1;
+}
+.ki-del:hover{background:#EF4444;color:#fff;border-color:#EF4444;box-shadow:0 3px 10px rgba(239,68,68,.3)}
+.ki-del:active{transform:scale(.95)}
+
+/* Bigger row padding to reduce cramping */
+.kot-item{padding:11px 14px}
+
 /* Rich empty state for the current round — shows when 0 items + 0 KOTs */
 .round-empty-rich{
   padding:32px 22px 28px;text-align:center;
@@ -702,9 +835,13 @@ html,body{height:100%;width:100%;margin:0;padding:0;overflow:hidden;background:v
 }
 
 .bottom-actions{
+  /* Desktop: hidden — these actions live on the action rail.
+     Mobile (≤900px): shown as in-pane buttons because there's no rail. */
+  display:none;
   padding:12px 18px 16px;background:var(--surf2);
-  display:flex;gap:8px;flex-shrink:0;
+  gap:8px;flex-shrink:0;
 }
+@media(max-width:900px){.bottom-actions{display:flex}}
 .btn-void{
   padding:13px 18px;border-radius:11px;
   border:1px solid rgba(239,68,68,.35);background:rgba(239,68,68,.08);
@@ -950,15 +1087,51 @@ html,body{height:100%;width:100%;margin:0;padding:0;overflow:hidden;background:v
           </div>
         </div>
 
-        <!-- Generate Bill + Void -->
+        <!-- Generate Bill + Void (in-pane buttons — hidden on desktop,
+             shown on mobile ≤900px where no rail is rendered). -->
         <div class="bottom-actions">
           <button class="btn-void" onclick="voidOrder()" title="Cancel order & free table">✕ <span class="lang-en">Void</span><span class="lang-hi">रद्द</span></button>
-          <button class="btn-bill" id="bill-btn" onclick="generateBill()" disabled>
+          <button class="btn-bill" id="bill-btn-mobile" onclick="generateBill()" disabled>
             🧾 <span class="lang-en">Generate Bill</span><span class="lang-hi">बिल बनाएं</span>
           </button>
         </div>
 
       </div><!-- /order-pane -->
+
+      <!-- ACTION RAIL ───────────────────────────────────────────
+           Holds every action button so the order display panel
+           stays clean and uncramped. Hidden on mobile (≤900px). -->
+      <div class="action-rail" id="action-rail">
+        <div class="rail-section">
+          <div class="rail-section-lbl"><span class="lang-en">Actions</span><span class="lang-hi">क्रिया</span></div>
+          <button class="rail-btn" onclick="reprintLastKOT()" id="rail-reprint" title="Reprint the last KOT slip">
+            <span class="rail-btn-em">🖨</span>
+            <span><span class="lang-en">Reprint KOT</span><span class="lang-hi">KOT पुनः</span></span>
+          </button>
+          <button class="rail-btn" onclick="refreshOrder()" title="Refresh from server">
+            <span class="rail-btn-em">⟳</span>
+            <span><span class="lang-en">Refresh</span><span class="lang-hi">रीफ्रेश</span></span>
+          </button>
+          <button class="rail-btn" onclick="openKitchenView()" title="Open the Kitchen Display in a new tab">
+            <span class="rail-btn-em">👨‍🍳</span>
+            <span><span class="lang-en">Kitchen</span><span class="lang-hi">किचन</span></span>
+          </button>
+        </div>
+
+        <div class="rail-spacer"></div>
+
+        <div class="rail-section">
+          <button class="rail-btn danger" onclick="voidOrder()" title="Cancel the whole order & free the table">
+            <span class="rail-btn-em">✕</span>
+            <span><span class="lang-en">Void Order</span><span class="lang-hi">रद्द करें</span></span>
+          </button>
+          <button class="rail-btn primary" id="bill-btn" onclick="generateBill()" disabled title="Save the bill & free the table">
+            <span class="rail-btn-em">🧾</span>
+            <span><span class="lang-en">Generate Bill</span><span class="lang-hi">बिल बनाएं</span></span>
+          </button>
+        </div>
+      </div><!-- /action-rail -->
+
     </div><!-- /ro-body -->
 
   </div><!-- /main-col -->
@@ -1006,6 +1179,34 @@ html,body{height:100%;width:100%;margin:0;padding:0;overflow:hidden;background:v
     <div class="ki-modal-item-card" id="ki-void-item-card">
       <!-- Filled by openVoidItemModal() -->
     </div>
+
+    <!-- Qty stepper — shown when remaining > 1 (partial cancel). Hidden
+         when remaining == 1 (nothing to choose). -->
+    <div class="qty-pick" id="qty-pick" style="display:none">
+      <div class="qty-pick-label">
+        <span><span class="lang-en">How many to cancel?</span><span class="lang-hi">कितने रद्द करें?</span></span>
+        <span class="qty-pick-label-max" id="qty-pick-max"></span>
+      </div>
+      <div class="qty-pick-presets" id="qty-pick-presets">
+        <!-- Filled with 1, half, all + custom shortcuts -->
+      </div>
+      <div class="qty-stepper">
+        <button class="qty-step-btn" id="qty-step-minus" onclick="adjustVoidQty(-1)">−</button>
+        <div class="qty-step-val" id="qty-step-val">1</div>
+        <button class="qty-step-btn" id="qty-step-plus"  onclick="adjustVoidQty(+1)">+</button>
+      </div>
+      <div class="qty-pick-summary">
+        <div class="qps-line">
+          <span class="qps-line-lbl"><span class="lang-en">Cancelling</span><span class="lang-hi">रद्द</span></span>
+          <span class="qps-line-val cancel" id="qps-cancel">×0 · ₹0</span>
+        </div>
+        <div class="qps-line" style="text-align:right">
+          <span class="qps-line-lbl"><span class="lang-en">Remaining</span><span class="lang-hi">शेष</span></span>
+          <span class="qps-line-val remain" id="qps-remain">×0 · ₹0</span>
+        </div>
+      </div>
+    </div>
+
     <div class="ki-modal-label"><span class="lang-en">Reason (optional)</span><span class="lang-hi">कारण (वैकल्पिक)</span></div>
     <textarea class="ki-modal-reason" id="ki-void-reason" placeholder="e.g. customer changed mind, allergy, wrong order…"></textarea>
     <div class="ki-modal-warn"><span class="lang-en"><strong>Kitchen will be notified</strong> — the cook sees this item crossed out on screen. Manager PIN required to authorize.</span><span class="lang-hi"><strong>किचन को सूचित किया जाएगा</strong> — मैनेजर PIN आवश्यक।</span></div>
@@ -1065,6 +1266,14 @@ function escHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&a
 function fINR(n){ return '₹' + (parseFloat(n)||0).toLocaleString('en-IN',{minimumFractionDigits:0,maximumFractionDigits:2}); }
 function toast(msg,type='i'){const h=$('toast-host');const e=document.createElement('div');e.className='toast '+type;e.textContent=msg;h.appendChild(e);setTimeout(()=>{e.style.opacity='0';setTimeout(()=>e.remove(),200)},2500);}
 function elapsed(iso){const m=Math.floor((Date.now()-new Date(iso).getTime())/60000);if(m<1)return 'Just now';if(m<60)return m+'m';return Math.floor(m/60)+'h '+m%60+'m';}
+
+// Partial-void helpers. Each KOT item carries `qty` (ordered) and
+// `voided_qty` (cumulative cancelled). Active = qty - voided_qty.
+// `voided:true` is a sentinel set when active reaches 0.
+function itemActiveQty(it){ return Math.max(0, (it.qty || 0) - (it.voided_qty || 0)); }
+function itemVoidedQty(it){ return Math.min(it.qty || 0, it.voided_qty || 0); }
+function itemIsFullyVoided(it){ return itemActiveQty(it) === 0 && (it.qty || 0) > 0; }
+function itemIsPartialVoided(it){ const v = itemVoidedQty(it); return v > 0 && v < (it.qty || 0); }
 
 // ── Mobile pane switcher ──────────────────────────────────────────
 function showPane(p){
@@ -1511,6 +1720,7 @@ function render(){
   const allItems = Array.isArray(_order?.items) ? _order.items : [];
   const summaryEl     = $('summary-list');
   const billBtn       = $('bill-btn');
+  const billBtnMob    = $('bill-btn-mobile');
   const stSubtotal    = $('st-subtotal');
   const stGstRow      = $('st-gst-row');
   const stGst         = $('st-gst');
@@ -1526,6 +1736,7 @@ function render(){
     if(stGstRow) stGstRow.style.display = 'none';
     grandTotal.textContent = '₹0';
     billBtn.disabled = true;
+    if(billBtnMob) billBtnMob.disabled = true;
     if(hdrTotal) hdrTotal.textContent = '₹0';
     if(hdrItemCount) hdrItemCount.textContent = '0';
     updatePaneBadge();
@@ -1552,16 +1763,17 @@ function render(){
     kots[r].push(it);
   });
 
-  // Totals across all NON-VOIDED items
+  // Totals across all NON-VOIDED qty (partial voids reduce the line)
   let subtotal = 0;
   let gstTotal = 0;
   let activeItemCount = 0;
   allItems.forEach(it => {
-    if(it.voided) return;
-    const lineSub = (it.qty || 0) * (it.price || 0);
+    const aQty = itemActiveQty(it);
+    if(aQty === 0) return;
+    const lineSub = aQty * (it.price || 0);
     subtotal += lineSub;
     gstTotal += lineSub * (it.gst_rate || 0) / 100;
-    activeItemCount += (it.qty || 0);
+    activeItemCount += aQty;
   });
 
   // Default: expand the latest KOT only (most recently sent).
@@ -1586,33 +1798,39 @@ function render(){
         instances:  [],   // each: { round, item_id, qty, voided, notes }
       };
       agg[key].instances.push({
-        round:    it.round || 0,
-        item_id:  it.item_id || '',
-        qty:      it.qty || 0,
-        voided:   !!it.voided,
-        notes:    it.notes || '',
+        round:       it.round || 0,
+        item_id:     it.item_id || '',
+        qty:         it.qty || 0,
+        voided_qty:  it.voided_qty || 0,
+        voided:      itemIsFullyVoided(it),
+        notes:       it.notes || '',
       });
     });
 
     const aggRows = Object.entries(agg).map(([key, a]) => {
-      // Totals for this aggregated row: sum across non-voided instances
-      const activeQty   = a.instances.reduce((s,i) => s + (i.voided ? 0 : i.qty), 0);
-      const voidedQty   = a.instances.reduce((s,i) => s + (i.voided ? i.qty : 0), 0);
-      const lineSub     = activeQty * (a.price || 0);
-      const lineGst     = lineSub * (a.gst_rate || 0) / 100;
-      const lineTot     = lineSub + lineGst;
-      const allVoided   = activeQty === 0 && voidedQty > 0;
-      const partial     = voidedQty > 0 && activeQty > 0;
-      const hasAnyNote  = a.instances.some(i => i.notes && i.notes.trim());
+      // Active qty = ordered − cancelled, across all instances of this dish
+      const activeQty = a.instances.reduce((s,i) => s + Math.max(0, (i.qty||0) - (i.voided_qty||0)), 0);
+      const voidedQty = a.instances.reduce((s,i) => s + Math.min((i.qty||0), (i.voided_qty||0)), 0);
+      const lineSub   = activeQty * (a.price || 0);
+      const lineGst   = lineSub * (a.gst_rate || 0) / 100;
+      const lineTot   = lineSub + lineGst;
+      const allVoided = activeQty === 0 && voidedQty > 0;
+      const partial   = voidedQty > 0 && activeQty > 0;
+      const hasAnyNote = a.instances.some(i => i.notes && i.notes.trim());
 
-      // KOT pills (one per instance) — show round number + qty + voided state
+      // KOT pills — each instance, showing remaining/cancelled state
       const pillsHtml = a.instances
         .slice()
         .sort((x,y)=>x.round - y.round)
-        .map(inst => '<span class="agg-item-kot-pill ' + (inst.voided?'voided':'') + '">' +
-          '#' + String(inst.round).padStart(3,'0') + ' ×' + inst.qty +
-        '</span>'
-        ).join('');
+        .map(inst => {
+          const instActive = Math.max(0, (inst.qty||0) - (inst.voided_qty||0));
+          const instVoided = Math.min((inst.qty||0), (inst.voided_qty||0));
+          const cls = instActive === 0 ? 'voided' : '';
+          const txt = instVoided > 0 && instActive > 0
+            ? '#' + String(inst.round).padStart(3,'0') + ' ×' + instActive + ' (' + instVoided + ' cx)'
+            : '#' + String(inst.round).padStart(3,'0') + ' ×' + inst.qty;
+          return '<span class="agg-item-kot-pill ' + cls + '">' + txt + '</span>';
+        }).join('');
 
       const safeNameJs = JSON.stringify(a.name).replace(/"/g,'&quot;');
       const delBtn = allVoided
@@ -1652,9 +1870,10 @@ function render(){
       let kotQty   = 0;
       let kotActiveCount = 0;
       items.forEach(it => {
-        if(!it.voided){
-          kotTotal += (it.qty||0) * (it.price||0) * (1 + (it.gst_rate||0)/100);
-          kotQty   += (it.qty||0);
+        const aQty = itemActiveQty(it);
+        if(aQty > 0){
+          kotTotal += aQty * (it.price||0) * (1 + (it.gst_rate||0)/100);
+          kotQty   += aQty;
           kotActiveCount++;
         }
       });
@@ -1663,19 +1882,27 @@ function render(){
       const kotNoteRow = meta.notes ? '<div class="kot-note-row">' + escHtml(meta.notes) + '</div>' : '';
 
       const itemsHtml = items.map(it => {
-        const lineSub = (it.qty||0) * (it.price||0);
+        const aQty    = itemActiveQty(it);
+        const vQty    = itemVoidedQty(it);
+        const lineSub = aQty * (it.price||0);
         const lineGst = lineSub * (it.gst_rate||0) / 100;
         const lineTot = lineSub + lineGst;
-        const voided  = !!it.voided;
+        const fullyVoided  = itemIsFullyVoided(it);
+        const partial      = itemIsPartialVoided(it);
         const itemId  = it.item_id || '';
         const safeName = escHtml(it.name || '');
         const noteRow  = it.notes ? '<div class="ki-note">' + escHtml(it.notes) + '</div>' : '';
-        const delBtn   = (!voided && itemId)
-          ? '<button class="ki-del" title="Cancel this item" onclick="openVoidItemModal(\'' + itemId + '\',' + JSON.stringify(safeName).replace(/"/g,'&quot;') + ',' + (it.qty||0) + ',' + lineTot.toFixed(2) + ')">✕</button>'
-          : (voided ? '<span class="ki-voided-badge">VOID</span>' : '');
-        return '<div class="kot-item ' + (voided?'voided':'') + '">' +
+        // Pass active qty + active-line total to the void modal so the
+        // stepper shows the remaining-cancellable amount, not the original.
+        const delBtn   = (!fullyVoided && itemId && aQty > 0)
+          ? '<button class="ki-del" title="Cancel this item" onclick="openVoidItemModal(\'' + itemId + '\',' + JSON.stringify(safeName).replace(/"/g,'&quot;') + ',' + aQty + ',' + lineTot.toFixed(2) + ')">✕</button>'
+          : (fullyVoided ? '<span class="ki-voided-badge">VOID</span>' : '');
+        const qtyDisplay = partial
+          ? '×' + aQty + ' <span style="font-size:10px;color:var(--t3);font-weight:600">(of ' + (it.qty||0) + ', ' + vQty + ' cx)</span>'
+          : '×' + (it.qty || 0);
+        return '<div class="kot-item ' + (fullyVoided?'voided':'') + '">' +
           '<span class="ki-name">' + safeName + '</span>' +
-          '<span class="ki-qty">×' + (it.qty||0) + '</span>' +
+          '<span class="ki-qty">' + qtyDisplay + '</span>' +
           (it.price > 0 ? '<span class="ki-total">' + fINR(lineTot) + '</span>' : '') +
           delBtn +
         '</div>' + noteRow;
@@ -1723,6 +1950,7 @@ function render(){
   if(hdrItemCount) hdrItemCount.textContent = activeItemCount;
   // Bill button stays enabled only if there's at least one active item.
   billBtn.disabled = activeItemCount === 0;
+  if(billBtnMob) billBtnMob.disabled = activeItemCount === 0;
   updatePaneBadge();
 }
 
@@ -1804,20 +2032,22 @@ function openItemActionFromAgg(aggKey){
   const entry = agg[aggKey];
   if(!entry){ toast('Item not found','e'); return; }
 
-  // Active instances only (already-voided ones are not actionable)
-  const active = entry.instances.filter(i => !i.voided && i.item_id);
+  // Active instances only — those with remaining qty
+  const active = entry.instances.filter(i =>
+    i.item_id && Math.max(0, (i.qty||0) - (i.voided_qty||0)) > 0
+  );
   if(active.length === 0){ toast('All instances already cancelled','e'); return; }
 
-  // Shortcut: single active instance → straight to existing void modal
+  // Single active instance → straight to void modal with active qty
   if(active.length === 1){
     const inst    = active[0];
-    const lineSub = inst.qty * (entry.price || 0);
+    const aQty    = Math.max(0, (inst.qty||0) - (inst.voided_qty||0));
+    const lineSub = aQty * (entry.price || 0);
     const lineTot = lineSub * (1 + (entry.gst_rate || 0) / 100);
-    openVoidItemModal(inst.item_id, entry.name, inst.qty, lineTot);
+    openVoidItemModal(inst.item_id, entry.name, aQty, lineTot);
     return;
   }
 
-  // Multiple active instances → breakdown picker
   _kbkKey = aggKey;
   _kbkPending = null;
   renderBreakdownModal();
@@ -1835,26 +2065,32 @@ function renderBreakdownModal(){
   const allBtn  = document.getElementById('kbk-cancel-all-btn');
 
   titleEl.textContent = entry.name;
-  const activeCnt = entry.instances.filter(i => !i.voided).length;
-  const totalQty  = entry.instances.filter(i => !i.voided).reduce((s,i)=>s+i.qty, 0);
-  subEl.textContent = 'In ' + activeCnt + ' KOT' + (activeCnt===1?'':'s') + ' · ×' + totalQty + ' total · choose which to cancel';
+  const active = entry.instances.filter(i => Math.max(0, (i.qty||0) - (i.voided_qty||0)) > 0);
+  const activeCnt = active.length;
+  const totalQty  = active.reduce((s,i)=> s + Math.max(0, (i.qty||0) - (i.voided_qty||0)), 0);
+  subEl.textContent = 'In ' + activeCnt + ' KOT' + (activeCnt===1?'':'s') + ' · ×' + totalQty + ' active · choose which to cancel';
 
   listEl.innerHTML = entry.instances
     .slice()
     .sort((a,b)=>a.round - b.round)
     .map(inst => {
-      const lineSub = (inst.qty || 0) * (entry.price || 0);
+      const aQty    = Math.max(0, (inst.qty||0) - (inst.voided_qty||0));
+      const fully   = aQty === 0 && (inst.qty||0) > 0;
+      const partial = (inst.voided_qty||0) > 0 && aQty > 0;
+      const lineSub = aQty * (entry.price || 0);
       const lineTot = lineSub * (1 + (entry.gst_rate || 0) / 100);
-      const voided  = inst.voided;
       const safeId  = inst.item_id || '';
       const safeName = JSON.stringify(entry.name).replace(/"/g,'&quot;');
-      const btn = voided
+      const btn = fully
         ? '<span class="ki-voided-badge">VOIDED</span>'
-        : '<button class="kbk-row-btn" onclick="cancelFromBreakdown(\'' + safeId + '\',' + safeName + ',' + inst.qty + ',' + lineTot.toFixed(2) + ')"><span class="lang-en">Cancel</span><span class="lang-hi">रद्द</span></button>';
-      return '<div class="kbk-row ' + (voided?'voided':'') + '">' +
+        : '<button class="kbk-row-btn" onclick="cancelFromBreakdown(\'' + safeId + '\',' + safeName + ',' + aQty + ',' + lineTot.toFixed(2) + ')"><span class="lang-en">Cancel</span><span class="lang-hi">रद्द</span></button>';
+      const qtyText = partial
+        ? '×' + aQty + ' (of ' + inst.qty + ')'
+        : '×' + (inst.qty || 0);
+      return '<div class="kbk-row ' + (fully?'voided':'') + '">' +
         '<span class="kbk-row-badge">#' + String(inst.round).padStart(3,'0') + '</span>' +
         '<div class="kbk-row-info">' +
-          '<div class="kbk-row-title">×' + inst.qty + ' ' + escHtml(entry.name) + '</div>' +
+          '<div class="kbk-row-title">' + qtyText + ' ' + escHtml(entry.name) + '</div>' +
           '<div class="kbk-row-meta">' +
             (inst.notes ? '💬 ' + escHtml(inst.notes) : '<em style="opacity:.6">no note</em>') +
           '</div>' +
@@ -1864,7 +2100,6 @@ function renderBreakdownModal(){
       '</div>';
     }).join('');
 
-  // Disable "Cancel All Active" if nothing active
   if(allBtn) allBtn.disabled = activeCnt === 0;
 }
 
@@ -1889,7 +2124,9 @@ async function cancelAllFromBreakdown(){
   const agg   = window._aggCache || {};
   const entry = agg[_kbkKey];
   if(!entry) return;
-  const targets = entry.instances.filter(i => !i.voided && i.item_id);
+  const targets = entry.instances.filter(i =>
+    i.item_id && Math.max(0, (i.qty||0) - (i.voided_qty||0)) > 0
+  );
   if(targets.length === 0){ closeKotBreakdownModal(); return; }
 
   // Confirm intent — explicit because this is bulk-destructive
@@ -1938,10 +2175,22 @@ async function cancelAllFromBreakdown(){
 }
 
 // ── Per-item void: confirm-modal → PIN modal → sbp_ro_void_item RPC ─
+// Supports partial-qty void: stepper presets [1, ½, all] + manual +/−.
 let _pendingVoidItemId = null;
+let _voidItemMaxQty    = 1;
+let _voidItemUnitPrice = 0;
+let _voidItemGstRate   = 0;
+let _voidItemQty       = 1;
 
 function openVoidItemModal(itemId, itemName, qty, lineTotal){
   _pendingVoidItemId = itemId;
+  _voidItemMaxQty    = Math.max(1, parseInt(qty, 10) || 1);
+  // Unit price (incl GST) derived from line total / qty.
+  _voidItemUnitPrice = _voidItemMaxQty > 0 ? (lineTotal / _voidItemMaxQty) : 0;
+  // Default cancel qty = ALL remaining — matches the most common intent
+  // (customer didn't want any of this item). User can step down.
+  _voidItemQty       = _voidItemMaxQty;
+
   const card = document.getElementById('ki-void-item-card');
   if(card){
     card.innerHTML =
@@ -1951,25 +2200,87 @@ function openVoidItemModal(itemId, itemName, qty, lineTotal){
   }
   const reasonEl = document.getElementById('ki-void-reason');
   if(reasonEl) reasonEl.value = '';
+
+  // Show qty stepper only when there's actually a choice (qty > 1).
+  const pick = document.getElementById('qty-pick');
+  if(pick){
+    pick.style.display = _voidItemMaxQty > 1 ? '' : 'none';
+    if(_voidItemMaxQty > 1) renderQtyPresets();
+  }
+  renderVoidQtyDisplay();
+
   document.getElementById('ki-void-modal').classList.add('open');
   setTimeout(()=> reasonEl && reasonEl.focus(), 80);
+}
+
+function renderQtyPresets(){
+  const presets = document.getElementById('qty-pick-presets');
+  const max     = _voidItemMaxQty;
+  if(!presets) return;
+  // Shortcuts: 1, half (if useful), all
+  const shortcuts = [];
+  shortcuts.push(1);
+  const half = Math.floor(max / 2);
+  if(half >= 2 && half < max) shortcuts.push(half);
+  shortcuts.push(max);   // "All" preset = max
+  // De-dup + sort
+  const uniq = Array.from(new Set(shortcuts)).sort((a,b)=>a-b);
+  presets.innerHTML = uniq.map(n => {
+    const lbl = (n === max) ? '<span class="lang-en">All ×' + n + '</span><span class="lang-hi">सभी ×' + n + '</span>' : '×' + n;
+    const on  = (n === _voidItemQty) ? ' on' : '';
+    return '<button class="qty-preset' + on + '" onclick="setVoidQty(' + n + ')">' + lbl + '</button>';
+  }).join('');
+  const maxEl = document.getElementById('qty-pick-max');
+  if(maxEl) maxEl.textContent = 'max ×' + max;
+}
+
+function setVoidQty(n){
+  _voidItemQty = Math.max(1, Math.min(_voidItemMaxQty, parseInt(n,10) || 1));
+  renderQtyPresets();
+  renderVoidQtyDisplay();
+}
+
+function adjustVoidQty(delta){
+  setVoidQty(_voidItemQty + delta);
+}
+
+function renderVoidQtyDisplay(){
+  const valEl = document.getElementById('qty-step-val');
+  if(valEl) valEl.textContent = _voidItemQty;
+  const minus = document.getElementById('qty-step-minus');
+  const plus  = document.getElementById('qty-step-plus');
+  if(minus) minus.disabled = _voidItemQty <= 1;
+  if(plus)  plus.disabled  = _voidItemQty >= _voidItemMaxQty;
+
+  const cancelLine = _voidItemQty * _voidItemUnitPrice;
+  const remainQty  = _voidItemMaxQty - _voidItemQty;
+  const remainLine = remainQty * _voidItemUnitPrice;
+  const cEl = document.getElementById('qps-cancel');
+  const rEl = document.getElementById('qps-remain');
+  if(cEl) cEl.textContent = '×' + _voidItemQty + ' · ' + fINR(cancelLine);
+  if(rEl) rEl.textContent = remainQty > 0 ? '×' + remainQty + ' · ' + fINR(remainLine) : '— (full cancel)';
+
+  const btn = document.getElementById('ki-void-confirm-btn');
+  if(btn){
+    const allWord = _voidItemQty === _voidItemMaxQty ? 'All' : '×' + _voidItemQty;
+    btn.innerHTML = '<span class="lang-en">Cancel ' + allWord + ' & Notify Kitchen</span><span class="lang-hi">रद्द ' + (_voidItemQty===_voidItemMaxQty?'(सभी)':'(×'+_voidItemQty+')') + '</span>';
+  }
 }
 
 function closeVoidItemModal(){
   _pendingVoidItemId = null;
   document.getElementById('ki-void-modal').classList.remove('open');
-  // Re-enable confirm button if it was disabled mid-flow
   const btn = document.getElementById('ki-void-confirm-btn');
   if(btn){ btn.disabled = false; btn.innerHTML = '<span class="lang-en">Cancel & Notify Kitchen</span><span class="lang-hi">रद्द और सूचित करें</span>'; }
 }
 
 async function confirmVoidItem(){
   if(!_pendingVoidItemId){ closeVoidItemModal(); return; }
-  const reason = (document.getElementById('ki-void-reason')?.value || '').trim();
-  const itemId = _pendingVoidItemId;
-  const btn = document.getElementById('ki-void-confirm-btn');
+  const reason  = (document.getElementById('ki-void-reason')?.value || '').trim();
+  const itemId  = _pendingVoidItemId;
+  const qtyToVoid = _voidItemQty;   // captured BEFORE closeVoidItemModal nullifies state
+  const btn     = document.getElementById('ki-void-confirm-btn');
 
-  // Sanity: must have SBPAuth for PIN modal
   if(typeof window.SBPAuth === 'undefined' || !window.SBPAuth.requirePIN){
     toast('🔒 PIN system not loaded — refresh the page','e');
     return;
@@ -1979,35 +2290,33 @@ async function confirmVoidItem(){
     return;
   }
 
-  // Disable confirm button to prevent double-tap
   if(btn){ btn.disabled = true; btn.innerHTML = '⏳ Verifying...'; }
-
-  // Open PIN modal — close this confirm modal first so they don't stack
   document.getElementById('ki-void-modal').classList.remove('open');
 
   let authResult;
   try {
     authResult = await window.SBPAuth.requirePIN({
       action:      'restaurant.void_running_item',
-      detail:      'Cancel item from Table T' + _tableNum,
+      detail:      'Cancel ×' + qtyToVoid + ' from Table T' + _tableNum,
       reason_hint: 'Why is this item being cancelled?'
     });
   } catch(e){
-    // 'cancelled' or 'invalid_pin' — SBPAuth handled UX
     _pendingVoidItemId = null;
     if(btn){ btn.disabled = false; btn.innerHTML = '<span class="lang-en">Cancel & Notify Kitchen</span><span class="lang-hi">रद्द और सूचित करें</span>'; }
     return;
   }
 
-  // Combine reason from our modal + PIN modal (PIN modal may also collect reason)
   const finalReason = [reason, authResult.reason].filter(Boolean).join(' · ');
 
+  // Pass qty (NULL → void all remaining). Backwards-compat: if migration
+  // 067 hasn't run yet, the 5-arg RPC ignores p_qty (just voids all).
   const { data, error } = await _sb.rpc('sbp_ro_void_item', {
     p_shop_id:  _shopId,
     p_order_id: _order.id,
     p_item_id:  itemId,
     p_auth_pin: authResult.pin,
     p_reason:   finalReason || null,
+    p_qty:      (qtyToVoid && qtyToVoid < _voidItemMaxQty) ? qtyToVoid : null,
   });
 
   _pendingVoidItemId = null;
@@ -2020,6 +2329,7 @@ async function confirmVoidItem(){
       already_voided:    'Item is already cancelled',
       order_not_open:    'Order is not open — cannot modify',
       last_active_item:  'Cannot cancel the last item — void the whole order instead',
+      invalid_qty:       'Invalid quantity',
       not_authorized:    'Not authorised',
     })[code] || ('Failed: ' + (code || error?.message || 'unknown'));
     toast('❌ ' + friendly, 'e');
@@ -2032,6 +2342,45 @@ async function confirmVoidItem(){
   render();
 }
 
+
+// ── Action rail handlers ──────────────────────────────────────────
+// Reprint the last KOT slip — useful if the kitchen lost it or the
+// thermal printer jammed mid-print. Pulls from _order.kots (jsonb).
+function reprintLastKOT(){
+  if(!_order || !Array.isArray(_order.kots) || !_order.kots.length){
+    toast('No KOTs sent yet','e'); return;
+  }
+  const last = _order.kots[_order.kots.length - 1];
+  const items = Array.isArray(last.items) ? last.items : [];
+  if(!items.length){ toast('Last KOT has no items','e'); return; }
+  if(typeof printKOTSlip === 'function'){
+    printKOTSlip(items, last.kot_number || last.round, last.notes || '');
+    toast('🖨 Reprinting KOT #' + String(last.kot_number || last.round || '?').padStart(3,'0'), 's');
+  } else {
+    toast('Print function unavailable','e');
+  }
+}
+
+// Refresh the running order from server — useful after a KDS-side change
+// or if multiple devices are working the same table.
+async function refreshOrder(){
+  if(!_order?.id || !_shopId) return;
+  const btn = document.getElementById('rail-reprint'); // any rail btn — just for visual
+  try {
+    const { data, error } = await _sb.rpc('sbp_ro_get_by_id', {
+      p_shop_id: _shopId, p_order_id: _order.id
+    });
+    if(error || !data?.ok){ toast('Refresh failed: ' + (data?.error || error?.message || '?'), 'e'); return; }
+    _order = data.order;
+    toast('🔄 Refreshed', 's');
+    render();
+  } catch(e){ toast('Refresh failed: ' + (e.message||''), 'e'); }
+}
+
+// Open Kitchen Display in a new tab — quick check that orders landed.
+function openKitchenView(){
+  window.open('kitchen.html', '_blank', 'noopener');
+}
 
 async function voidOrder(){
   // BATCH 067-UX: PIN-gate void. Matches the pattern used in bills.html /

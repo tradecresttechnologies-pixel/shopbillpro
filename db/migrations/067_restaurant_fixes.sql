@@ -450,24 +450,31 @@ GRANT EXECUTE ON FUNCTION sbp_ro_add_items(uuid, uuid, jsonb, text) TO authentic
 
 
 -- ─────────────────────────────────────────────────────────────────
--- 8. sbp_ro_void_item  — PIN-gated per-item void from a sent KOT
+-- 8. sbp_ro_void_item  — PIN-gated per-item void (full or partial qty)
 -- ─────────────────────────────────────────────────────────────────
 -- Customer changes their mind on ONE item that's already been sent to
 -- the kitchen. Whole-order void is too aggressive. This RPC:
 --   • Verifies the manager PIN server-side (re-check, not just client).
---   • Finds the item by stable item_id, marks it voided:true with
---     reason + timestamp + who-authorised metadata.
+--   • Voids p_qty units (NULL = all remaining). Uses CUMULATIVE
+--     `voided_qty` so partial voids stack across calls:
+--         Garlic Naan ×11 → void 3 → voided_qty=3, active=8
+--                        → void 2 → voided_qty=5, active=6
+--                        → void NULL (all) → voided_qty=11, active=0
+--     `voided:true` flag is only set when voided_qty reaches qty
+--     (fully gone). Renderers can show "× of ×N cancelled" hints
+--     based on voided_qty when partially voided.
 --   • Updates the corresponding sbp_restaurant_orders entry so the
---     kitchen sees that line crossed out (item-level cancel).
+--     kitchen sees the cancellation (full or partial).
 --   • Writes an audit_log entry.
--- Item stays in the array (soft-delete) so reports/history don't lose
--- data; render code filters out voided:true from totals.
+DROP FUNCTION IF EXISTS sbp_ro_void_item(uuid, uuid, uuid, text, text);
+DROP FUNCTION IF EXISTS sbp_ro_void_item(uuid, uuid, uuid, text, text, int);
 CREATE OR REPLACE FUNCTION sbp_ro_void_item(
   p_shop_id   uuid,
   p_order_id  uuid,
   p_item_id   uuid,
   p_auth_pin  text,
-  p_reason    text DEFAULT NULL
+  p_reason    text DEFAULT NULL,
+  p_qty       int  DEFAULT NULL    -- NULL = void all remaining
 ) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = public AS $$
 DECLARE
@@ -477,15 +484,20 @@ DECLARE
   v_user_name   text;
   v_item_iid    text := p_item_id::text;
   v_found       boolean := false;
+  v_orig_qty    int;
+  v_already_v   int;
+  v_remaining   int;
+  v_to_void     int;
+  v_new_voided  int;
   v_item_before jsonb;
   v_new_items   jsonb := '[]'::jsonb;
   v_elem        jsonb;
+  v_voided_now  text;
 BEGIN
   IF NOT public._sbp_check_shop_owner(p_shop_id) THEN
     RETURN jsonb_build_object('ok', false, 'error', 'not_authorized');
   END IF;
 
-  -- Server-side PIN verify (same pattern as bills void/delete)
   v_pin := public.sbp_verify_pin(p_shop_id, p_auth_pin);
   IF NOT COALESCE((v_pin->>'ok')::boolean, false) THEN
     RETURN jsonb_build_object('ok', false, 'error', 'pin_invalid');
@@ -500,23 +512,39 @@ BEGIN
   IF v_row.id IS NULL THEN
     RETURN jsonb_build_object('ok', false, 'error', 'order_not_found');
   END IF;
-
   IF v_row.status <> 'open' THEN
     RETURN jsonb_build_object('ok', false, 'error', 'order_not_open');
   END IF;
 
-  -- Walk the items array, find by item_id, flip voided:true with metadata.
+  v_voided_now := to_char(now() AT TIME ZONE 'Asia/Kolkata', 'YYYY-MM-DD"T"HH24:MI:SS');
+
   FOR v_elem IN SELECT * FROM jsonb_array_elements(v_row.items)
   LOOP
     IF v_elem->>'item_id' = v_item_iid THEN
       v_found := true;
-      IF COALESCE((v_elem->>'voided')::boolean, false) THEN
+      v_orig_qty  := COALESCE((v_elem->>'qty')::int, 0);
+      v_already_v := COALESCE((v_elem->>'voided_qty')::int, 0);
+      v_remaining := GREATEST(v_orig_qty - v_already_v, 0);
+      IF v_remaining = 0 THEN
         RETURN jsonb_build_object('ok', false, 'error', 'already_voided');
       END IF;
+
+      -- Resolve target qty: NULL → void all remaining; else clamp 1..remaining
+      v_to_void := COALESCE(p_qty, v_remaining);
+      IF v_to_void < 1 THEN
+        RETURN jsonb_build_object('ok', false, 'error', 'invalid_qty');
+      END IF;
+      IF v_to_void > v_remaining THEN
+        v_to_void := v_remaining;
+      END IF;
+
+      v_new_voided := v_already_v + v_to_void;
       v_item_before := v_elem;
+
       v_elem := v_elem
-        || jsonb_build_object('voided', true)
-        || jsonb_build_object('voided_at', to_char(now() AT TIME ZONE 'Asia/Kolkata', 'YYYY-MM-DD"T"HH24:MI:SS'))
+        || jsonb_build_object('voided_qty', v_new_voided)
+        || jsonb_build_object('voided', v_new_voided >= v_orig_qty)
+        || jsonb_build_object('voided_at', v_voided_now)
         || jsonb_build_object('voided_reason', COALESCE(p_reason, ''))
         || jsonb_build_object('voided_by', COALESCE(v_user_name, ''));
     END IF;
@@ -527,11 +555,16 @@ BEGIN
     RETURN jsonb_build_object('ok', false, 'error', 'item_not_found');
   END IF;
 
-  -- Refuse if this would void the LAST active item — owner should
-  -- void the whole order instead (frees the table).
+  -- Refuse if this would void the LAST active unit across the whole order
+  -- (operator should void the whole order instead, which frees the table).
   IF (
-    SELECT COUNT(*) FROM jsonb_array_elements(v_new_items) e
-    WHERE COALESCE((e->>'voided')::boolean, false) = false
+    SELECT COALESCE(SUM(
+      GREATEST(
+        COALESCE((e->>'qty')::int, 0) - COALESCE((e->>'voided_qty')::int, 0),
+        0
+      )
+    ), 0)
+    FROM jsonb_array_elements(v_new_items) e
   ) = 0 THEN
     RETURN jsonb_build_object('ok', false, 'error', 'last_active_item');
   END IF;
@@ -540,19 +573,33 @@ BEGIN
   SET items = v_new_items, updated_at = now()
   WHERE id = p_order_id;
 
-  -- Also flag in KDS (sbp_restaurant_orders). The kitchen row's items
-  -- jsonb gets the matching item flipped to voided:true so the cook
-  -- sees the line crossed out on screen.
+  -- Mirror to KDS so the kitchen sees the matching cancel
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='sbp_restaurant_orders') THEN
     UPDATE sbp_restaurant_orders ro
     SET items = (
       SELECT jsonb_agg(
         CASE
           WHEN e->>'item_id' = v_item_iid THEN
-            e || jsonb_build_object('voided', true,
-                                    'voided_at', to_char(now() AT TIME ZONE 'Asia/Kolkata', 'YYYY-MM-DD"T"HH24:MI:SS'),
-                                    'voided_reason', COALESCE(p_reason, ''),
-                                    'voided_by', COALESCE(v_user_name, ''))
+            e || jsonb_build_object(
+              'voided_qty', LEAST(
+                COALESCE((e->>'voided_qty')::int, 0) +
+                LEAST(
+                  COALESCE(p_qty, GREATEST(COALESCE((e->>'qty')::int,0) - COALESCE((e->>'voided_qty')::int,0), 0)),
+                  GREATEST(COALESCE((e->>'qty')::int,0) - COALESCE((e->>'voided_qty')::int,0), 0)
+                ),
+                COALESCE((e->>'qty')::int, 0)
+              ),
+              'voided',
+                (COALESCE((e->>'voided_qty')::int, 0) +
+                 LEAST(
+                  COALESCE(p_qty, GREATEST(COALESCE((e->>'qty')::int,0) - COALESCE((e->>'voided_qty')::int,0), 0)),
+                  GREATEST(COALESCE((e->>'qty')::int,0) - COALESCE((e->>'voided_qty')::int,0), 0)
+                 )
+                ) >= COALESCE((e->>'qty')::int, 0),
+              'voided_at',     v_voided_now,
+              'voided_reason', COALESCE(p_reason, ''),
+              'voided_by',     COALESCE(v_user_name, '')
+            )
           ELSE e
         END
       )
@@ -564,7 +611,6 @@ BEGIN
       AND ro.items @> jsonb_build_array(jsonb_build_object('item_id', v_item_iid));
   END IF;
 
-  -- Audit log (best-effort — don't fail the void if logger is missing)
   BEGIN
     PERFORM public.sbp_audit_log_write(
       p_shop_id              => p_shop_id,
@@ -572,7 +618,7 @@ BEGIN
       p_target_table         => 'sbp_running_orders',
       p_target_id            => p_order_id,
       p_before_json          => v_item_before,
-      p_after_json           => v_new_items,
+      p_after_json           => jsonb_build_object('item_id', v_item_iid, 'qty_voided', v_to_void, 'voided_qty_total', v_new_voided, 'orig_qty', v_orig_qty),
       p_reason               => p_reason,
       p_authorized_by_user_id=> v_user_id,
       p_authorized_by_name   => v_user_name
@@ -581,12 +627,11 @@ BEGIN
     RAISE NOTICE 'Audit log write skipped: %', SQLERRM;
   END;
 
-  -- Re-read for clean response
   SELECT * INTO v_row FROM sbp_running_orders WHERE id = p_order_id;
-  RETURN jsonb_build_object('ok', true, 'order', to_jsonb(v_row));
+  RETURN jsonb_build_object('ok', true, 'order', to_jsonb(v_row), 'qty_voided', v_to_void, 'voided_qty_total', v_new_voided);
 END; $$;
 
-GRANT EXECUTE ON FUNCTION sbp_ro_void_item(uuid, uuid, uuid, text, text) TO authenticated;
+GRANT EXECUTE ON FUNCTION sbp_ro_void_item(uuid, uuid, uuid, text, text, int) TO authenticated;
 
 
 NOTIFY pgrst, 'reload schema';
