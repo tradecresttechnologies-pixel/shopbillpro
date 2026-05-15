@@ -186,6 +186,33 @@ body{
 }
 .svc-tpl-chip:hover{border-color:var(--acc); color:var(--acc); border-style:solid}
 
+/* ── v4.8c: Amenity chips ── */
+.amenity-grid{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.amenity-group-lbl{
+  width:100%;font-size:10px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.6px;color:var(--muted);margin:10px 0 2px;
+}
+.amenity-chip{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:6px 12px;border-radius:20px;font-size:12.5px;font-weight:500;
+  border:1px solid var(--bord);background:var(--surf2);color:var(--text);
+  cursor:pointer;transition:.15s ease;user-select:none;
+}
+.amenity-chip:hover{border-color:var(--acc);color:var(--acc)}
+.amenity-chip input[type=checkbox]{accent-color:var(--acc);width:13px;height:13px;cursor:pointer}
+.amenity-chip:has(input:checked){
+  background:rgba(245,166,35,.12);border-color:var(--acc);color:var(--acc);font-weight:600;
+}
+/* ── v4.8c: Room items ── */
+.room-item{
+  display:flex;align-items:center;gap:10px;padding:10px 12px;
+  background:var(--surf2);border-radius:10px;border:1px solid var(--bord);margin-bottom:6px;
+}
+.room-item-info{flex:1;min-width:0}
+.room-item-name{font-weight:600;font-size:13.5px;color:var(--text)}
+.room-item-meta{font-size:12px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.room-item-price{font-weight:700;color:var(--acc);font-size:14px;white-space:nowrap}
+
 /* ── Gallery (disk upload + URL paste) ── */
 .gal-drop{
   border:2px dashed var(--bord); border-radius:12px; padding:22px;
@@ -608,12 +635,110 @@ body{
         </div>
       </div>
 
-      <!-- ── 4. Gallery ── -->
+      <!-- ── 4. Rooms / Accommodation (NEW v4.8c) ── -->
+      <div class="sec" id="sec-rooms">
+        <div class="sec-hd">
+          <div class="sec-hd-ic">🛏️</div>
+          <div class="sec-hd-grow">
+            <h2><span class="lang-en">4. Rooms / Accommodation</span><span class="lang-hi">4. कमरे</span></h2>
+            <div class="sub">
+              <span class="lang-en">ShopBill Pro AI builds room cards from this — leave empty to let AI decide</span>
+              <span class="lang-hi">ShopBill Pro AI इससे कमरे बनाएगा</span>
+            </div>
+          </div>
+          <button type="button" class="btn btn-sm btn-pri" onclick="roomShowForm()">
+            <span>+</span> <span class="lang-en">Add</span><span class="lang-hi">जोड़ें</span>
+          </button>
+        </div>
+        <div class="sec-bd">
+          <div id="room-list"></div>
+          <div id="room-form-wrap" style="display:none"></div>
+          <p id="room-empty-note" style="font-size:12px;color:var(--muted);margin:6px 0 0">
+            <span class="lang-en">No rooms added. AI will invent plausible rooms from your description.</span>
+            <span class="lang-hi">कमरे नहीं जोड़े। AI विवरण से बनाएगा।</span>
+          </p>
+        </div>
+      </div>
+
+      <!-- ── 5. Amenities (NEW v4.8c) ── -->
+      <div class="sec" id="sec-amenities">
+        <div class="sec-hd">
+          <div class="sec-hd-ic">⭐</div>
+          <div class="sec-hd-grow">
+            <h2><span class="lang-en">5. Amenities</span><span class="lang-hi">5. सुविधाएँ</span></h2>
+            <div class="sub">
+              <span class="lang-en">Tick what you offer — AI uses these for the amenities section</span>
+              <span class="lang-hi">जो सुविधाएँ हैं वो चुनें</span>
+            </div>
+          </div>
+        </div>
+        <div class="sec-bd">
+          <div class="amenity-grid" id="amenity-grid">
+
+            <div class="amenity-group-lbl">Connectivity</div>
+            <label class="amenity-chip"><input type="checkbox" value="Free WiFi"> Free WiFi</label>
+            <label class="amenity-chip"><input type="checkbox" value="High-Speed Internet"> High-Speed Internet</label>
+
+            <div class="amenity-group-lbl">Comfort</div>
+            <label class="amenity-chip"><input type="checkbox" value="Air Conditioning"> Air Conditioning</label>
+            <label class="amenity-chip"><input type="checkbox" value="Room Heating"> Room Heating</label>
+            <label class="amenity-chip"><input type="checkbox" value="Hot Water"> Hot Water</label>
+            <label class="amenity-chip"><input type="checkbox" value="Geyser"> Geyser</label>
+
+            <div class="amenity-group-lbl">Food & Dining</div>
+            <label class="amenity-chip"><input type="checkbox" value="Restaurant"> Restaurant</label>
+            <label class="amenity-chip"><input type="checkbox" value="Room Service"> Room Service</label>
+            <label class="amenity-chip"><input type="checkbox" value="Home-cooked Meals"> Home-cooked Meals</label>
+            <label class="amenity-chip"><input type="checkbox" value="Breakfast Included"> Breakfast Included</label>
+            <label class="amenity-chip"><input type="checkbox" value="Tea / Coffee"> Tea / Coffee</label>
+
+            <div class="amenity-group-lbl">Transport</div>
+            <label class="amenity-chip"><input type="checkbox" value="Free Parking"> Free Parking</label>
+            <label class="amenity-chip"><input type="checkbox" value="Airport Pickup"> Airport Pickup</label>
+            <label class="amenity-chip"><input type="checkbox" value="Taxi Arrangement"> Taxi Arrangement</label>
+
+            <div class="amenity-group-lbl">Facilities</div>
+            <label class="amenity-chip"><input type="checkbox" value="Power Backup"> Power Backup</label>
+            <label class="amenity-chip"><input type="checkbox" value="Lift / Elevator"> Lift / Elevator</label>
+            <label class="amenity-chip"><input type="checkbox" value="Swimming Pool"> Swimming Pool</label>
+            <label class="amenity-chip"><input type="checkbox" value="Gymnasium"> Gymnasium</label>
+            <label class="amenity-chip"><input type="checkbox" value="Conference Hall"> Conference Hall</label>
+            <label class="amenity-chip"><input type="checkbox" value="Banquet Hall"> Banquet Hall</label>
+
+            <div class="amenity-group-lbl">Services</div>
+            <label class="amenity-chip"><input type="checkbox" value="Laundry Service"> Laundry</label>
+            <label class="amenity-chip"><input type="checkbox" value="Daily Housekeeping"> Housekeeping</label>
+            <label class="amenity-chip"><input type="checkbox" value="24/7 Reception"> 24/7 Reception</label>
+            <label class="amenity-chip"><input type="checkbox" value="24/7 Security"> 24/7 Security</label>
+            <label class="amenity-chip"><input type="checkbox" value="CCTV Surveillance"> CCTV</label>
+            <label class="amenity-chip"><input type="checkbox" value="Doctor on Call"> Doctor on Call</label>
+
+            <div class="amenity-group-lbl">Entertainment</div>
+            <label class="amenity-chip"><input type="checkbox" value="Smart TV"> Smart TV</label>
+            <label class="amenity-chip"><input type="checkbox" value="Cable TV"> Cable TV</label>
+            <label class="amenity-chip"><input type="checkbox" value="Spa"> Spa</label>
+            <label class="amenity-chip"><input type="checkbox" value="Garden / Lawn"> Garden / Lawn</label>
+            <label class="amenity-chip"><input type="checkbox" value="Terrace"> Terrace</label>
+            <label class="amenity-chip"><input type="checkbox" value="Kids Play Area"> Kids Play Area</label>
+
+          </div>
+          <div style="margin-top:12px">
+            <label class="lbl">
+              <span class="lang-en">Any other amenity?</span>
+              <span class="lang-hi">अन्य सुविधा?</span>
+            </label>
+            <input type="text" class="inp" id="amenity-custom" placeholder="e.g. Pet friendly, Rooftop, Helipad" maxlength="200">
+            <div class="helper"><span class="lang-en">Comma-separated, added to the list above</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── 6. Gallery ── -->
       <div class="sec">
         <div class="sec-hd">
           <div class="sec-hd-ic">🖼️</div>
           <div class="sec-hd-grow">
-            <h2><span class="lang-en">4. Gallery Photos</span><span class="lang-hi">4. गैलरी फोटो</span></h2>
+            <h2><span class="lang-en">6. Gallery Photos</span><span class="lang-hi">6. गैलरी फोटो</span></h2>
             <div class="sub">
               <span class="lang-en">Up to 6 photos · auto-compressed</span>
               <span class="lang-hi">अधिकतम 6 फोटो</span>
@@ -663,7 +788,7 @@ body{
         <div class="sec-hd">
           <div class="sec-hd-ic">📍</div>
           <div class="sec-hd-grow">
-            <h2><span class="lang-en">5. Contact &amp; Location</span><span class="lang-hi">5. संपर्क और स्थान</span></h2>
+            <h2><span class="lang-en">7. Contact &amp; Location</span><span class="lang-hi">7. संपर्क और स्थान</span></h2>
             <div class="sub"><span class="lang-en">How customers reach you</span><span class="lang-hi">ग्राहक संपर्क कैसे करें</span></div>
           </div>
         </div>
@@ -723,8 +848,8 @@ body{
           <span class="lang-hi">अपनी AI वेबसाइट बनाएं ✨</span>
         </h2>
         <p>
-          <span class="lang-en">Claude AI will create a unique, professionally designed website based on your inputs above. Takes 15-30 seconds.</span>
-          <span class="lang-hi">Claude AI आपके इनपुट से एक अनोखी वेबसाइट बनाएगा। 15-30 सेकंड लगेंगे।</span>
+          <span class="lang-en">ShopBill Pro AI will create a unique, professionally designed website based on your inputs. Takes 15–30 seconds.</span>
+          <span class="lang-hi">ShopBill Pro AI आपके इनपुट से एक अनोखी वेबसाइट बनाएगा। 15–30 सेकंड लगेंगे।</span>
         </p>
         <div class="gen-stats">
           <div>
@@ -734,6 +859,10 @@ body{
           <div>
             <div class="gen-stat-v" id="gen-services">0</div>
             <div class="gen-stat-l"><span class="lang-en">Services</span><span class="lang-hi">सेवाएँ</span></div>
+          </div>
+          <div>
+            <div class="gen-stat-v" id="gen-rooms">0</div>
+            <div class="gen-stat-l"><span class="lang-en">Rooms</span><span class="lang-hi">कमरे</span></div>
           </div>
           <div>
             <div class="gen-stat-v" id="gen-photos">0</div>
@@ -847,6 +976,8 @@ let _shopId = null;
 let _websiteState = null;       // sbp_get_website_builder_state response
 let _services = [];              // current services array
 let _gallery = [];               // current gallery URLs
+let _rooms = [];                 // v4.8c: room types added by shop owner
+let _amenities = [];             // v4.8c: selected amenity names
 let _editingSvcId = null;
 let _previewMode = 'desktop';
 
@@ -1171,6 +1302,126 @@ async function reloadServices(){
   updateCompletion();
 }
 
+// ── ROOMS (v4.8c) — local state only, saved to content_json ─────────
+
+function renderRooms(){
+  const list = $('room-list');
+  const note = $('room-empty-note');
+  if (!list) return;
+  if (_rooms.length === 0){
+    list.innerHTML = '';
+    if (note) note.style.display = '';
+    return;
+  }
+  if (note) note.style.display = 'none';
+  list.innerHTML = _rooms.map((r, i) => `
+    <div class="room-item">
+      <div class="room-item-info">
+        <div class="room-item-name">${esc(r.name)}</div>
+        <div class="room-item-meta">${r.description ? esc(r.description.slice(0,60)) + (r.description.length>60?'…':'') : ''}${r.capacity ? ' · ' + r.capacity + ' guests' : ''}</div>
+      </div>
+      <div class="room-item-price">${r.price ? '₹'+Number(r.price).toLocaleString('en-IN')+'/night' : ''}</div>
+      <button class="icon-btn" onclick="roomEdit(${i})" title="Edit">✏️</button>
+      <button class="icon-btn" onclick="roomDelete(${i})" title="Remove">🗑️</button>
+    </div>`).join('');
+  updateCompletion();
+}
+
+function roomShowForm(idx){
+  const wrap = $('room-form-wrap');
+  const r = (idx !== undefined) ? _rooms[idx] : {};
+  wrap.style.display = '';
+  wrap.innerHTML = `
+    <div class="svc-form" style="margin-top:10px">
+      <div class="svc-form-row">
+        <div>
+          <label class="lbl">Room name <span class="req">*</span></label>
+          <input class="inp" id="rf-name" value="${esc(r.name||'')}" placeholder="e.g. Deluxe AC Room" maxlength="60">
+        </div>
+        <div>
+          <label class="lbl">Price per night (₹)</label>
+          <input class="inp" id="rf-price" type="number" value="${r.price||''}" placeholder="2500" min="0">
+        </div>
+      </div>
+      <div class="svc-form-row">
+        <div>
+          <label class="lbl">Max guests</label>
+          <input class="inp" id="rf-capacity" value="${esc(r.capacity||'')}" placeholder="2" maxlength="10">
+        </div>
+        <div>
+          <label class="lbl">Bed type</label>
+          <input class="inp" id="rf-bed" value="${esc(r.bed||'')}" placeholder="King / Twin / Double" maxlength="40">
+        </div>
+      </div>
+      <div>
+        <label class="lbl">Description</label>
+        <textarea class="inp" id="rf-desc" rows="2" maxlength="200" placeholder="Key features of this room…">${esc(r.description||'')}</textarea>
+      </div>
+      <div class="svc-form-acts" style="margin-top:10px">
+        <button class="btn btn-sm" type="button" onclick="roomCancelForm()">Cancel</button>
+        <button class="btn btn-sm btn-pri" type="button" onclick="roomSaveForm(${idx !== undefined ? idx : -1})">
+          ${idx !== undefined ? 'Update' : 'Add Room'}
+        </button>
+      </div>
+    </div>`;
+}
+
+function roomCancelForm(){
+  const wrap = $('room-form-wrap');
+  if (wrap) { wrap.innerHTML=''; wrap.style.display='none'; }
+}
+
+function roomSaveForm(idx){
+  const name = $('rf-name').value.trim();
+  if (!name){ toast('Room name required', 'e'); return; }
+  const room = {
+    name,
+    price:       $('rf-price').value.trim(),
+    capacity:    $('rf-capacity').value.trim(),
+    bed:         $('rf-bed').value.trim(),
+    description: $('rf-desc').value.trim()
+  };
+  if (idx >= 0){ _rooms[idx] = room; }
+  else { _rooms.push(room); }
+  roomCancelForm();
+  renderRooms();
+  toast(idx >= 0 ? 'Room updated' : 'Room added');
+}
+
+function roomEdit(idx){ roomShowForm(idx); }
+
+function roomDelete(idx){
+  _rooms.splice(idx, 1);
+  renderRooms();
+  toast('Removed');
+}
+
+// ── AMENITIES (v4.8c) ──────────────────────────────────────────────
+
+function getSelectedAmenities(){
+  const checked = [];
+  document.querySelectorAll('#amenity-grid input[type=checkbox]:checked')
+    .forEach(el => checked.push(el.value));
+  const custom = ($('amenity-custom') || {}).value || '';
+  if (custom.trim()){
+    custom.split(',').map(s => s.trim()).filter(Boolean).forEach(s => {
+      if (!checked.includes(s)) checked.push(s);
+    });
+  }
+  return checked;
+}
+
+function setSelectedAmenities(list){
+  document.querySelectorAll('#amenity-grid input[type=checkbox]')
+    .forEach(el => { el.checked = list.includes(el.value); });
+  // Put any custom ones (not in the checkbox list) into the text field
+  const standard = Array.from(document.querySelectorAll('#amenity-grid input[type=checkbox]'))
+    .map(el => el.value);
+  const custom = list.filter(a => !standard.includes(a));
+  const cf = $('amenity-custom');
+  if (cf) cf.value = custom.join(', ');
+}
+
 // ── Gallery: disk upload + URL paste ─────────────────────────────
 function renderGallery(){
   const grid = $('gal-grid');
@@ -1340,7 +1591,9 @@ async function handleSaveAll(){
       phone:    $('c-phone').value.trim(),
       email:    $('c-email').value.trim(),
       upi:      $('c-upi').value.trim(),
-      gallery:  _gallery
+      gallery:  _gallery,
+      rooms:    _rooms,          // v4.8c
+      amenities: getSelectedAmenities()  // v4.8c
     };
     const { data: cdata, error: cerr } = await _sb.rpc('sbp_update_website_content', {
       p_shop_id: _shopId,
@@ -1388,7 +1641,7 @@ async function handleGenerate(){
   await handleSaveAll();
 
   // Then trigger generation
-  loadingOn('Generating with Claude AI…\nTakes 15–30 seconds');
+  loadingOn('ShopBill Pro AI is building your website…\nTakes 15–30 seconds');
   try {
     const payload = {
       shop_name:         $('shop-name').value.trim(),
@@ -1518,6 +1771,7 @@ function updateCompletion(){
   ];
   const done = fields.filter(Boolean).length;
   $('gen-completed').textContent = done + '/8';
+  $('gen-rooms').textContent = _rooms.length;  // v4.8c
   const pct = Math.round((done / fields.length) * 100);
   $('completion-pct').textContent = pct + '% complete';
 }
@@ -1572,6 +1826,12 @@ async function loadContentJson(){
     if (!$('c-phone').value   && c.phone)   $('c-phone').value   = c.phone;
     if (!$('c-email').value   && c.email)   $('c-email').value   = c.email;
     if (!$('c-upi').value     && c.upi)     $('c-upi').value     = c.upi;
+    // v4.8c: restore rooms + amenities
+    _rooms = Array.isArray(c.rooms) ? c.rooms : [];
+    renderRooms();
+    if (Array.isArray(c.amenities) && c.amenities.length > 0){
+      setSelectedAmenities(c.amenities);
+    }
     _gallery = Array.isArray(c.gallery) ? c.gallery.slice(0,6) : [];
     renderGallery();
   } catch(e){ console.warn('content load error:', e); }
