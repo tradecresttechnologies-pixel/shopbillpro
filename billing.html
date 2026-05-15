@@ -1582,7 +1582,11 @@ async function confirmSettle(){
       supply_type:b.supplyType||'intra',
       bill_mode:'manual',
       place_of_supply:b.placeOfSupply||'',
-      notes:b.note||''
+      notes:b.note||'',
+      // BATCH 067: persist table linkage when this bill came from a
+      // restaurant table / running order (audit fix P5). NULL otherwise.
+      table_number:     window._currentTableNum       || null,
+      table_session_id: window._currentRunningOrderId || null
     };
 
     // ── Determine if this is an EDIT (update) or a NEW bill (insert) ──
@@ -1742,8 +1746,27 @@ async function confirmSettle(){
       if(typeof _loyaltyHookAfterBillSave === 'function') _loyaltyHookAfterBillSave(savedBill);
       // Free restaurant table if this was a table-linked bill
       if(window._currentTableId){const _st=localStorage.getItem('sbp_shop_id');if(_st)_sb.rpc('sbp_tables_free',{p_shop_id:_st,p_table_id:window._currentTableId}).then(()=>{window._currentTableId=null;window._currentTableNum=null;}).catch(()=>{});}
-      // Create KDS order record for table-linked bills
-      if(window._currentTableId && window._currentTableNum){
+      // BATCH 067: capture whether the bill came from a running order
+      // BEFORE any state-clearing below; gate the duplicate-KDS branch on it.
+      const _cameFromRO = !!window._currentRunningOrderId;
+      // Link running-order → saved bill (marks RO 'billed', stamps bill_id).
+      // 067 added an optional 3rd p_bill_id arg to sbp_ro_generate_bill;
+      // older deployments without 067 ignore the extra arg gracefully.
+      if(_cameFromRO){
+        const _stR=localStorage.getItem('sbp_shop_id');
+        const _bid=(savedBill&&savedBill.id&&!String(savedBill.id).startsWith('local_'))?String(savedBill.id):null;
+        if(_stR && _bid){
+          _sb.rpc('sbp_ro_generate_bill',{
+            p_shop_id:_stR, p_order_id:window._currentRunningOrderId, p_bill_id:_bid
+          }).catch(()=>{});
+        }
+        window._currentRunningOrderId=null;
+      }
+      // Create KDS order record for table-linked bills.
+      // BATCH 067 fix P3: skip when the bill came from a running order —
+      // per-round KOTs already exist in sbp_restaurant_orders; another
+      // aggregate row would show as a ghost order in the kitchen.
+      if(window._currentTableId && window._currentTableNum && !_cameFromRO){
         const _st2=localStorage.getItem('sbp_shop_id');
         if(_st2 && b.items && b.items.length){
           const _orderItems=(b.items||[]).map(it=>({name:(it.nm||it.name||'').trim(),qty:parseFloat(it.q||it.qty||1)})).filter(x=>x.name&&x.qty>0);
@@ -2880,7 +2903,10 @@ async function confirmPOSCheckout(){
       payment_mode:_pcoPayMethod,status,
       subtotal:sub,gst_amount:gstTotal,discount:billDisc,
       grand_total:grand,paid_amount:paid,balance_due:balance,
-      bill_mode:'pos'
+      bill_mode:'pos',
+      // BATCH 067: persist table linkage (audit fix P5)
+      table_number:     window._currentTableNum       || null,
+      table_session_id: window._currentRunningOrderId || null
     };
 
     let savedBill=null;
@@ -3271,7 +3297,11 @@ function loadFromTemplateParams(){
   // ── TABLE PARAM (restaurant) ──────────────────────────────────────
   const _tableId  = params.get('table_id')  || null;
   const _tableNum = params.get('table_num') || null;
-  if(_tableId && _tableNum){
+  // BATCH 067 fix W4: when running_order_id is ALSO in the URL, the RO
+  // branch below will render its own (green, "Final Bill") banner — skip
+  // this red banner to avoid stacking two banners for the same table.
+  const _roIdEarly = params.get('running_order_id') || null;
+  if(_tableId && _tableNum && !_roIdEarly){
     window._currentTableId  = _tableId;
     window._currentTableNum = _tableNum;
     const banner = document.createElement('div');
@@ -3290,8 +3320,12 @@ function loadFromTemplateParams(){
   // ?running_order_id=X → pre-fill all items from the running order
   const _roId     = params.get('running_order_id') || null;
   if(_roId && _tableId && _tableNum){
-    window._currentTableId  = _tableId;
-    window._currentTableNum = _tableNum;
+    window._currentTableId        = _tableId;
+    window._currentTableNum       = _tableNum;
+    // BATCH 067: stash the RO id so the save handler can (a) skip the
+    // duplicate sbp_orders_create KDS insert (audit P3), and (b) persist
+    // it into bills.table_session_id (audit P5).
+    window._currentRunningOrderId = _roId;
 
     // Read items from sessionStorage (set by running-order.html generate_bill)
     const _roItemsRaw = sessionStorage.getItem('sbp_ro_items');
@@ -3311,19 +3345,43 @@ function loadFromTemplateParams(){
         // Wait for DOM + addItem function, then fill items
         window.addEventListener('load', function(){
           setTimeout(function(){
-            // Aggregate items by name
+            // BATCH 067 fix S2/W5: aggregate by service_id when present,
+            // fall back to name. Carry gst_rate + hsn_sac_code so the bill
+            // computes GST correctly (was hard-coded to 0% before).
             const agg = {};
             _roItems.forEach(function(it){
-              const n = it.name||'';
-              if(!agg[n]) agg[n] = {nm:n, q:0, r:it.price||0, rate:0, disc:0};
-              agg[n].q += (it.qty||1);
+              const key = it.service_id || it.name || '';
+              if(!key) return;
+              if(!agg[key]){
+                agg[key] = {
+                  name:         it.name || '',
+                  qty:          0,
+                  price:        it.price || 0,
+                  gst_rate:     it.gst_rate || 0,
+                  hsn_sac_code: it.hsn_sac_code || null,
+                  service_id:   it.service_id || null,
+                };
+              }
+              agg[key].qty += (it.qty || 1);
             });
-            // Clear default item row and add all aggregated items
+
+            // Clear default item row and add all aggregated items.
+            // BATCH 067 fix W8: addItem expects {name, qty, rate (=price),
+            // gst_rate} — the previous {nm, q, r, rate:0} call populated
+            // NONE of those (key names didn't match), so items appeared
+            // as empty rows with 0 price.
             const wrap2 = document.getElementById('items-wrap');
             if(wrap2) wrap2.innerHTML = '';
             Object.values(agg).forEach(function(item){
               if(typeof addItem === 'function'){
-                addItem({nm:item.nm, q:item.q, r:item.r, rate:0, disc:0});
+                addItem({
+                  name:     item.name,
+                  qty:      item.qty,
+                  rate:     item.price,       // addItem reads .rate as price
+                  gst_rate: item.gst_rate,    // GST percent
+                  kind:     item.service_id ? 'service' : 'product',
+                  id:       item.service_id || null
+                });
               }
             });
             if(typeof calcTotals === 'function') calcTotals();
@@ -3332,8 +3390,8 @@ function loadFromTemplateParams(){
       }catch(e){ console.warn('[RO] items parse failed:', e); }
     }
 
-    // On bill save, also void the running order (already billed by generate_bill)
-    // and free table — handled by existing table-free code below
+    // On bill save: table-free + RO-billed link happen via existing
+    // post-save block below (sees window._currentTableId + _currentRunningOrderId).
   }
   // ── END RUNNING ORDER PARAM ───────────────────────────────────────────
 
@@ -3807,8 +3865,15 @@ function printThermal(size){
 function renderPrinterButtons(){
   const enabled=localStorage.getItem('sbp_printer_enabled')==='true';
   const type=localStorage.getItem('sbp_printer_type')||'a4';
-  const hasTable = !!(window._currentTableId || new URLSearchParams(window.location.search).get('table_id'));
-  const kotBtn = hasTable ? `<button class="btn-sec" onclick="printKOT()" style="background:rgba(245,166,35,.12);border-color:rgba(245,166,35,.4);color:var(--acc)">🍳 KOT</button>` : '';
+  // BATCH 067 fix W6: hide the KOT button when this bill came from a
+  // running order — per-round KOTs were already printed in real time;
+  // a final aggregate "KOT" slip would be a duplicate the kitchen
+  // has to ignore.
+  const _p067 = new URLSearchParams(window.location.search);
+  const hasTable   = !!(window._currentTableId        || _p067.get('table_id'));
+  const cameFromRO = !!(window._currentRunningOrderId || _p067.get('running_order_id'));
+  const showKot    = hasTable && !cameFromRO;
+  const kotBtn = showKot ? `<button class="btn-sec" onclick="printKOT()" style="background:rgba(245,166,35,.12);border-color:rgba(245,166,35,.4);color:var(--acc)">🍳 KOT</button>` : '';
 
   // Build the correct print button HTML
   let btnHTML='';

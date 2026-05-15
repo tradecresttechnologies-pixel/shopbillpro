@@ -179,13 +179,50 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .toast.s{border-color:#10B981;color:#10B981}
 .toast.e{border-color:#EF4444;color:#EF4444}
 .toast.i{border-color:var(--acc);color:var(--acc)}
+/* ── Mobile pane switcher (≤767px) — fixes audit bug S3 ───────────
+   Old behaviour hid the order pane entirely on phones, so waiters
+   couldn't see their cart, send KOTs, or generate a bill.
+   New behaviour: tabbed layout — tap "Menu" or "Order" to switch.
+   Order tab carries a live item-count badge. */
+.ro-pane-tabs{
+  display:none;background:var(--surf);
+  border-bottom:1px solid var(--bord);
+  flex-shrink:0;
+}
+.ro-ptab{
+  flex:1;padding:11px 8px;background:transparent;border:none;
+  color:var(--t2);font-size:13px;font-weight:700;font-family:var(--font-h);
+  cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;
+  border-bottom:2px solid transparent;transition:var(--tr);
+}
+.ro-ptab.on{color:var(--acc);border-bottom-color:var(--acc)}
+.ro-ptab-badge{
+  background:var(--acc);color:#0A0E1A;
+  border-radius:9px;padding:1px 7px;font-size:11px;font-weight:800;
+  min-width:18px;text-align:center;line-height:1.4;
+}
+.ro-ptab-badge.zero{background:var(--surf2);color:var(--t2)}
+
 .bnav{display:none;position:fixed;bottom:0;left:0;right:0;height:56px;background:var(--surf);border-top:1px solid var(--bord);z-index:50;align-items:stretch}
 .bnav-overlay{display:none}
 .bnav-drawer{display:none}
 @media(max-width:767px){
   .bnav{display:flex}
-  .ro-body{grid-template-columns:1fr}
-  .order-pane{display:none}
+  .ro-pane-tabs{display:flex}
+  /* Stack panes vertically. Each pane takes its own height as needed;
+     toggled via body.ro-show-order class set by showPane(). */
+  .ro-body{
+    grid-template-columns:1fr;
+    display:block;
+    height:auto;
+  }
+  .menu-pane{display:flex;height:calc(100vh - 52px - 44px - 56px)}
+  .order-pane{display:none;height:calc(100vh - 52px - 44px - 56px);border-right:none}
+  body.ro-show-order .menu-pane{display:none}
+  body.ro-show-order .order-pane{display:flex}
+  /* Order pane on mobile needs the actions to stay visible — tighten the
+     summary list to leave room. */
+  .summary-list{min-height:80px}
 }
 </style>
 </head>
@@ -207,6 +244,12 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
         <div class="ro-time" id="hdr-time">—</div>
       </div>
       <button class="hdr-btn" onclick="window.location.href='tables.html'">← Tables</button>
+    </div>
+
+    <!-- Mobile pane switcher (≤767px). Hidden on desktop via CSS. -->
+    <div class="ro-pane-tabs" id="ro-pane-tabs">
+      <button class="ro-ptab on" id="rop-menu" onclick="showPane('menu')">📋 <span class="lang-en">Menu</span><span class="lang-hi">मेनू</span></button>
+      <button class="ro-ptab"    id="rop-order" onclick="showPane('order')">🛒 <span class="lang-en">Order</span><span class="lang-hi">ऑर्डर</span> <span class="ro-ptab-badge zero" id="rop-count">0</span></button>
     </div>
 
     <!-- Split body -->
@@ -310,6 +353,27 @@ function fINR(n){ return '₹' + (parseFloat(n)||0).toLocaleString('en-IN',{mini
 function toast(msg,type='i'){const h=$('toast-host');const e=document.createElement('div');e.className='toast '+type;e.textContent=msg;h.appendChild(e);setTimeout(()=>{e.style.opacity='0';setTimeout(()=>e.remove(),200)},2500);}
 function elapsed(iso){const m=Math.floor((Date.now()-new Date(iso).getTime())/60000);if(m<1)return 'Just now';if(m<60)return m+'m';return Math.floor(m/60)+'h '+m%60+'m';}
 
+// ── Mobile pane switcher ──────────────────────────────────────────
+function showPane(p){
+  document.body.classList.toggle('ro-show-order', p === 'order');
+  const m = document.getElementById('rop-menu');
+  const o = document.getElementById('rop-order');
+  if(m) m.classList.toggle('on', p === 'menu');
+  if(o) o.classList.toggle('on', p === 'order');
+}
+
+function updatePaneBadge(){
+  const el = document.getElementById('rop-count');
+  if(!el) return;
+  const roundCount = _roundItems.reduce((s,i)=>s+(i.qty||0), 0);
+  const sentCount  = Array.isArray(_order?.items)
+    ? _order.items.reduce((s,i)=>s+(i.qty||0), 0)
+    : 0;
+  const total = roundCount + sentCount;
+  el.textContent = total;
+  el.classList.toggle('zero', total === 0);
+}
+
 // ── Init ──────────────────────────────────────────────────────────
 async function init(){
   if(!_tableId || !_shopId){ toast('Missing table info','e'); return; }
@@ -347,13 +411,10 @@ function renderHeader(){
     (_order.kot_count||0) + ' KOT' + ((_order.kot_count||0)===1?'':'s') + ' sent';
 }
 
-// ── Load menu from services ───────────────────────────────────────
+// ── Load menu via authenticated POS RPC (gst_rate + hsn + is_available) ──
 async function loadMenu(){
   try {
-    const shop = JSON.parse(localStorage.getItem('sbp_shop')||'{}');
-    const slug = shop.slug || shop.id || '';
-    if(!slug) return;
-    const { data } = await _sb.rpc('sbp_get_shop_services_public', { p_slug: slug });
+    const { data } = await _sb.rpc('sbp_get_menu_for_pos', { p_shop_id: _shopId });
     _menuItems = (data?.ok && Array.isArray(data.services)) ? data.services : [];
   } catch(e){ _menuItems = []; }
   renderMenu('');
@@ -365,7 +426,11 @@ function renderMenu(q){
   if(q) items = items.filter(i => (i.name||'').toLowerCase().includes(q.toLowerCase()) || (i.category||'').toLowerCase().includes(q.toLowerCase()));
 
   if(!items.length){
-    el.innerHTML = `<div class="menu-empty"><div class="menu-empty-em">${_menuItems.length ? '🔍' : '🍽️'}</div><div style="font-size:13px;color:var(--t2)">${_menuItems.length ? 'No items match' : 'No menu items yet'}</div>${!_menuItems.length?'<div style="font-size:11px;color:var(--t3);margin-top:4px">Add services in Settings → Services</div>':''}</div>`;
+    if(_menuItems.length){
+      el.innerHTML = `<div class="menu-empty"><div class="menu-empty-em">🔍</div><div style="font-size:13px;color:var(--t2)">No items match</div></div>`;
+    } else {
+      el.innerHTML = `<div class="menu-empty"><div class="menu-empty-em">🍽️</div><div style="font-size:13px;color:var(--t2);margin-bottom:4px">No menu items yet</div><div style="font-size:11px;color:var(--t3);margin-bottom:10px">Add items in <strong>Menu</strong> first — they'll appear here for the waiter.</div><a href="menu.html" style="display:inline-block;padding:7px 14px;border-radius:9px;background:rgba(245,166,35,.12);border:1px solid rgba(245,166,35,.3);color:var(--acc);font-size:12px;font-weight:700;text-decoration:none">+ Open Menu</a></div>`;
+    }
     return;
   }
 
@@ -381,12 +446,16 @@ function renderMenu(q){
     `<div class="menu-cat-hd">${escHtml(cat)}</div>` +
     citems.map(i => {
       const price = typeof i.price === 'number' && i.price > 0 ? i.price : 0;
-      return `<div class="menu-item-row" onclick="addFromMenu(${JSON.stringify(i).replace(/"/g,'&quot;')})">
+      const avail = i.is_available !== false;
+      const onclickAttr = avail
+        ? `onclick="addFromMenu(${JSON.stringify(i).replace(/"/g,'&quot;')})"`
+        : `onclick="toast('${escHtml((i.name||'item').replace(/'/g,'')) } not available right now','e')"`;
+      return `<div class="menu-item-row ${avail?'':'unavail'}" ${onclickAttr}>
         <div class="menu-item-info">
-          <div class="menu-item-name">${escHtml(i.name||'')}</div>
-          ${price ? `<div class="menu-item-price">${fINR(price)}</div>` : ''}
+          <div class="menu-item-name">${escHtml(i.name||'')}${avail?'':' <span style="color:#EF4444;font-size:10px;font-weight:700">· 86\'d</span>'}</div>
+          ${price ? `<div class="menu-item-price">${fINR(price)}${i.gst_rate>0?` <span style="color:var(--t3);font-weight:600">+${i.gst_rate}%</span>`:''}</div>` : ''}
         </div>
-        <div class="menu-item-add">+</div>
+        <div class="menu-item-add">${avail?'+':'×'}</div>
       </div>`;
     }).join('')
   ).join('');
@@ -396,13 +465,24 @@ function filterMenu(q){ renderMenu(q); }
 
 // ── Add from menu ─────────────────────────────────────────────────
 function addFromMenu(item){
-  const existing = _roundItems.find(i => i.name === item.name);
+  // Match by service_id when available so two items with the same name
+  // but different IDs stay separate (audit bug W5 partial fix).
+  const key = item.id || item.name;
+  const existing = _roundItems.find(i => (i.service_id || i.name) === key);
   if(existing){
     existing.qty++;
   } else {
-    _roundItems.push({ name: item.name || '', qty: 1, price: item.price || 0 });
+    _roundItems.push({
+      name:         item.name || '',
+      qty:          1,
+      price:        item.price || 0,
+      gst_rate:     item.gst_rate || 0,
+      hsn_sac_code: item.hsn_sac_code || null,
+      service_id:   item.id || null,
+    });
   }
   renderRound();
+  updatePaneBadge();
 }
 
 function addCustomItem(){
@@ -410,14 +490,16 @@ function addCustomItem(){
   const qty   = parseInt($('ci-qty').value)||1;
   const price = parseFloat($('ci-price').value)||0;
   if(!name){ toast('Enter item name','e'); return; }
-  const existing = _roundItems.find(i => i.name === name);
+  // Custom items have no service_id — match by name alone.
+  const existing = _roundItems.find(i => !i.service_id && i.name === name);
   if(existing){ existing.qty += qty; }
-  else { _roundItems.push({name, qty, price}); }
+  else { _roundItems.push({name, qty, price, gst_rate:0, hsn_sac_code:null, service_id:null}); }
   $('ci-name').value = '';
   $('ci-qty').value  = '1';
   $('ci-price').value = '';
   $('ci-name').focus();
   renderRound();
+  updatePaneBadge();
 }
 
 // ── Round management ──────────────────────────────────────────────
@@ -425,6 +507,7 @@ function changeQty(idx, delta){
   _roundItems[idx].qty = Math.max(0, _roundItems[idx].qty + delta);
   if(_roundItems[idx].qty === 0) _roundItems.splice(idx, 1);
   renderRound();
+  updatePaneBadge();
 }
 
 function renderRound(){
@@ -466,7 +549,18 @@ async function sendKOT(){
   kotBtn.textContent = '⏳ Sending...';
 
   const note = $('round-note-inp').value.trim();
-  const items = _roundItems.map(i => ({name: i.name, qty: i.qty, price: i.price||0, notes: note||undefined}));
+  // Full item shape — gst_rate + hsn_sac_code + service_id persist into
+  // sbp_running_orders.items jsonb, then through to billing.html via
+  // sessionStorage so the bill computes GST correctly (audit fix S2).
+  const items = _roundItems.map(i => ({
+    name:         i.name,
+    qty:          i.qty,
+    price:        i.price || 0,
+    gst_rate:     i.gst_rate || 0,
+    hsn_sac_code: i.hsn_sac_code || null,
+    service_id:   i.service_id || null,
+    notes:        note || undefined
+  }));
 
   const { data, error } = await _sb.rpc('sbp_ro_add_items',{
     p_shop_id:  _shopId,
@@ -494,6 +588,7 @@ async function sendKOT(){
   toast(`🍳 KOT-${String(kotN).padStart(3,'0')} sent to kitchen!`,'s');
 
   render();
+  updatePaneBadge();
 }
 
 function printKOTSlip(items, kotN, note){
@@ -568,6 +663,7 @@ function render(){
   summaryHd.textContent = `ORDER — ${allItems.reduce((s,i)=>s+(i.qty||1),0)} items`;
   grandTotal.textContent = fINR(total) || '₹—';
   billBtn.disabled = false;
+  updatePaneBadge();
 }
 
 // ── Generate Bill → go to billing.html pre-filled ─────────────────
@@ -580,12 +676,22 @@ async function generateBill(){
   btn.disabled = true;
   btn.textContent = '⏳ Generating...';
 
-  const { data, error } = await _sb.rpc('sbp_ro_generate_bill',{
+  // BATCH 067: read-only fetch. The state transition to 'billed' now
+  // happens in billing.html when the bill is actually saved (with the
+  // real bill_id). Closing the billing tab leaves this RO at 'open',
+  // so the existing resume-on-tap path in sbp_ro_open picks it up.
+  const { data, error } = await _sb.rpc('sbp_ro_get_by_id',{
     p_shop_id: _shopId, p_order_id: _order.id
   });
 
   if(error || !data?.ok){
     toast('Failed: '+(data?.error||error?.message||'?'),'e');
+    btn.disabled = false; btn.textContent = '🧾 Generate Bill'; return;
+  }
+
+  const items = (data.order && Array.isArray(data.order.items)) ? data.order.items : [];
+  if(!items.length){
+    toast('No items in order','e');
     btn.disabled = false; btn.textContent = '🧾 Generate Bill'; return;
   }
 
@@ -597,7 +703,7 @@ async function generateBill(){
   url.searchParams.set('mode',      'pos');
 
   // Store items in sessionStorage for billing.html to read
-  sessionStorage.setItem('sbp_ro_items', JSON.stringify(data.items));
+  sessionStorage.setItem('sbp_ro_items', JSON.stringify(items));
 
   window.location.href = url.toString();
 }
