@@ -1854,7 +1854,15 @@ function buildWAMsg(b){
     if(b.itemDiscAmt>0) msg+=`\n🎁 आइटम छूट: -₹${parseFloat(b.itemDiscAmt).toFixed(2)}`;
     if(b.discAmt>0) msg+=`\n🎁 बिल छूट: -₹${parseFloat(b.discAmt).toFixed(2)}`;
     msg+=`\n\n✅ *कुल: ₹${parseFloat(b.grand).toFixed(2)}*\n💳 ${b.paymode||_payMethod||'Cash'}`;
-    if(s.upi) msg+=`\n\n📲 *UPI से भुगतान करें:* ${s.upi}\n_(बिल प्रिंट में QR कोड देखें)_`;
+    if(s.upi) {
+      const _upiData = 'upi://pay?pa='+encodeURIComponent(s.upi)
+        +'&pn='+encodeURIComponent((s.name||'').slice(0,30))
+        +'&am='+parseFloat(b.grand).toFixed(2)
+        +'&cu=INR&tn='+encodeURIComponent(('Bill '+(b.invno||'')).slice(0,30));
+      const _qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data='
+        +encodeURIComponent(_upiData);
+      msg+=`\n\n📲 *UPI से भुगतान करें:* ${s.upi}\n💰 राशि: ₹${parseFloat(b.grand).toFixed(2)}\n\n🔗 QR स्कैन करें:\n${_qrUrl}`;
+    }
     msg+=`\n\n🙏 धन्यवाद! फिर आइए।`;
   }else{
     msg=`🧾 *${hasGST?'TAX INVOICE':'INVOICE'} — ${s.name||'ShopBill Pro'}*\n━━━━━━━━━━━━━`;
@@ -1866,7 +1874,15 @@ function buildWAMsg(b){
     if(b.itemDiscAmt>0) msg+=`\n🎁 Item Disc: -₹${parseFloat(b.itemDiscAmt).toFixed(2)}`;
     if(b.discAmt>0) msg+=`\n🎁 Bill Disc: -₹${parseFloat(b.discAmt).toFixed(2)}`;
     msg+=`\n\n✅ *Total: ₹${parseFloat(b.grand).toFixed(2)}*\n💳 ${b.paymode||_payMethod||'Cash'}`;
-    if(s.upi) msg+=`\n\n📲 *Pay via UPI:* ${s.upi}\n_(See QR code on printed bill)_`;
+    if(s.upi) {
+      const _upiData = 'upi://pay?pa='+encodeURIComponent(s.upi)
+        +'&pn='+encodeURIComponent((s.name||'').slice(0,30))
+        +'&am='+parseFloat(b.grand).toFixed(2)
+        +'&cu=INR&tn='+encodeURIComponent(('Bill '+(b.invno||'')).slice(0,30));
+      const _qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data='
+        +encodeURIComponent(_upiData);
+      msg+=`\n\n📲 *Pay via UPI:* ${s.upi}\n💰 Amount: ₹${parseFloat(b.grand).toFixed(2)}\n\n🔗 Scan QR to pay:\n${_qrUrl}`;
+    }
     msg+=`\n\n🙏 Thank you! Visit Again.`;
   }
   if(!isPaid) msg+=`\n_ShopBill Pro_`;
@@ -1942,85 +1958,148 @@ async function sendWAWithUPIQR(){
   const b=_billSnap; if(!b) return;
   const wa=(b.wa||'').replace(/\D/g,'').slice(-10);
   const s = JSON.parse(localStorage.getItem('sbp_shop')||'{}');
-  if(!s.upi){toast('Save UPI ID in Settings first','e');return}
+  if(!s.upi){toast('Save UPI ID in Settings first','e');return;}
   document.getElementById('wa-send-modal').style.display='none';
 
-  // Lazy load html2canvas if not present
-  if(!window.html2canvas){
-    await new Promise((res,rej)=>{
-      const sc=document.createElement('script');
-      sc.src='https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
-      sc.onload=res; sc.onerror=rej;
-      document.head.appendChild(sc);
-    }).catch(()=>{});
+  const grand   = parseFloat(b.grand||0).toFixed(2);
+  const isHindi = (localStorage.getItem('sbp_lang')||'en')==='hi';
+  const shopName = (s.name||'Shop').slice(0,30);
+  const invNo    = b.invno||'';
+
+  const upiData = 'upi://pay?pa='+encodeURIComponent(s.upi)
+    +'&pn='+encodeURIComponent(shopName)
+    +'&am='+grand
+    +'&cu=INR'
+    +'&tn='+encodeURIComponent(('Bill '+invNo).slice(0,40));
+
+  // ── Build QR payment card using Canvas API (no html2canvas needed) ──
+  const W=400, H=520;
+  const canvas = document.createElement('canvas');
+  canvas.width = W*2; canvas.height = H*2; // retina
+  const ctx = canvas.getContext('2d');
+  ctx.scale(2,2);
+
+  // Background
+  ctx.fillStyle='#ffffff';
+  ctx.roundRect(0,0,W,H,16);
+  ctx.fill();
+
+  // Header band
+  ctx.fillStyle='#F5A623';
+  ctx.fillRect(0,0,W,56);
+
+  // Header text
+  ctx.fillStyle='#ffffff';
+  ctx.font='bold 13px Arial';
+  ctx.textAlign='center';
+  ctx.fillText(isHindi?'UPI से भुगतान करें':'PAY VIA UPI', W/2, 22);
+  ctx.font='bold 18px Arial';
+  ctx.fillText(shopName, W/2, 44);
+
+  // Amount
+  ctx.fillStyle='#111111';
+  ctx.font='13px Arial';
+  ctx.textAlign='center';
+  ctx.fillText(isHindi?'राशि':'Amount', W/2, 82);
+  ctx.fillStyle='#0A8043';
+  ctx.font='bold 38px Arial';
+  ctx.fillText('₹'+grand, W/2, 122);
+  if(invNo){
+    ctx.fillStyle='#888888';
+    ctx.font='12px Arial';
+    ctx.fillText((isHindi?'Bill':'Invoice')+': '+invNo, W/2, 142);
   }
-  if(typeof QRCode==='undefined' || typeof html2canvas==='undefined'){
-    toast('QR library failed to load — using text','e');
-    sendWAText(); return;
-  }
-  toast('🎨 Generating QR card...','s',2000);
 
-  const grand = parseFloat(b.grand||0).toFixed(2);
-  const isHindi=(localStorage.getItem('sbp_lang')||'en')==='hi';
-  const upiLink = 'upi://pay?pa='+encodeURIComponent(s.upi)
-    +'&pn='+encodeURIComponent((s.name||'Shop').replace(/[^\w\s]/g,'').slice(0,40))
-    +'&am='+grand+'&cu=INR'
-    +'&tn='+encodeURIComponent(('Bill '+(b.invno||'')).slice(0,40));
+  // Fetch QR image from qrserver.com
+  toast('🎨 '+(isHindi?'QR बना रहे हैं...':'Generating QR...'),'s',2500);
+  const qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=264x264&margin=8&data='
+    +encodeURIComponent(upiData);
 
-  const card = document.createElement('div');
-  card.style.cssText='position:fixed;left:-9999px;top:0;width:380px;background:#fff;padding:24px;font-family:Arial,sans-serif;color:#111';
-  card.innerHTML = '<div style="text-align:center;border-bottom:2px solid #F5A623;padding-bottom:14px;margin-bottom:14px">'
-    + '<div style="font-size:14px;color:#666;letter-spacing:1px;font-weight:600">'+(isHindi?'भुगतान करें':'PAY VIA UPI')+'</div>'
-    + '<div style="font-size:22px;font-weight:900;color:#111;margin-top:4px">'+(s.name||'Shop')+'</div></div>'
-    + '<div style="text-align:center;margin-bottom:14px">'
-    + '<div style="font-size:13px;color:#666">'+(isHindi?'राशि':'Amount')+'</div>'
-    + '<div style="font-size:36px;font-weight:900;color:#0A8043">₹'+grand+'</div>'
-    + (b.invno?'<div style="font-size:12px;color:#888;margin-top:2px">'+(isHindi?'Bill':'Invoice')+': '+b.invno+'</div>':'')
-    + '</div>'
-    + '<div id="sbp-qr-target" style="width:280px;height:280px;margin:0 auto 12px;background:#fff;padding:8px;border:2px solid #F5A623;border-radius:8px"></div>'
-    + '<div style="text-align:center;font-size:13px;color:#444;margin-bottom:6px;font-weight:600">'+(isHindi?'किसी भी UPI app से scan करें':'Scan with any UPI app')+'</div>'
-    + '<div style="text-align:center;font-size:11px;color:#666;font-family:monospace;background:#F5F5F5;padding:6px;border-radius:6px">'+s.upi+'</div>'
-    + '<div style="text-align:center;font-size:9px;color:#999;margin-top:14px">Powered by ShopBill Pro</div>';
-  document.body.appendChild(card);
-
+  let qrLoaded = false;
   try {
-    const qrTarget = card.querySelector('#sbp-qr-target');
-    new QRCode(qrTarget, { text: upiLink, width: 264, height: 264, colorDark: '#000', colorLight: '#fff', correctLevel: QRCode.CorrectLevel.M });
-    await new Promise(r => setTimeout(r, 250));
-    const canvas = await html2canvas(card, { backgroundColor:'#ffffff', scale:2, logging:false });
-    canvas.toBlob(async (blob) => {
-      const file = new File([blob], 'pay-'+(b.invno||'bill')+'.png', {type:'image/png'});
-      let shared = false;
-      if(navigator.canShare && navigator.canShare({files:[file]})){
-        try {
-          await navigator.share({
-            title: (s.name||'Shop')+' — Pay ₹'+grand,
-            text: (isHindi
-              ? '🧾 *'+(s.name||'')+'*\nBill: '+(b.invno||'')+'\n💰 Amount: ₹'+grand+'\n\nQR scan करके pay करें या UPI ID use करें: '+s.upi
-              : '🧾 *'+(s.name||'')+'*\nBill: '+(b.invno||'')+'\n💰 Amount: ₹'+grand+'\n\nScan QR to pay or use UPI: '+s.upi),
-            files: [file]
-          });
-          shared = true;
-        } catch(err){}
-      }
-      if(!shared){
-        const a=document.createElement('a'); a.href=canvas.toDataURL('image/png'); a.download='pay-'+(b.invno||'bill')+'.png'; a.click();
-        if(wa.length>=10){
-          const text = (isHindi
-            ? '🧾 *'+(s.name||'')+'*\nBill: '+(b.invno||'')+' — ₹'+grand+'\n\n📲 UPI: '+s.upi+'\n\n_(QR image just downloaded — attach it from gallery)_'
-            : '🧾 *'+(s.name||'')+'*\nBill: '+(b.invno||'')+' — ₹'+grand+'\n\n📲 UPI: '+s.upi+'\n\n_(QR image just downloaded — attach it from gallery)_');
-          window.open('https://wa.me/91'+wa+'?text='+encodeURIComponent(text),'_blank');
-        }
-        toast('💾 QR saved — attach it in WhatsApp','s',5000);
-      }
-      try { document.body.removeChild(card); } catch(e){}
-    }, 'image/png');
-  } catch(err){
-    console.warn(err);
-    toast('❌ QR generation failed — using text','e');
-    try { document.body.removeChild(card); } catch(e){}
-    sendWAText();
+    const qrImg = await new Promise((res,rej)=>{
+      const img = new Image();
+      img.crossOrigin='anonymous';
+      img.onload=()=>res(img);
+      img.onerror=rej;
+      img.src=qrUrl;
+    });
+    // QR border
+    ctx.strokeStyle='#F5A623';
+    ctx.lineWidth=2;
+    ctx.roundRect(64,154,272,272,8);
+    ctx.stroke();
+    ctx.drawImage(qrImg,68,158,264,264);
+    qrLoaded=true;
+  } catch(e){
+    // QR fetch failed — draw placeholder text
+    ctx.fillStyle='#eeeeee';
+    ctx.fillRect(68,158,264,264);
+    ctx.fillStyle='#999';
+    ctx.font='12px Arial';
+    ctx.fillText('QR unavailable — use UPI ID',W/2,295);
   }
+
+  // UPI ID label
+  ctx.fillStyle='#444444';
+  ctx.font='13px Arial';
+  ctx.textAlign='center';
+  ctx.fillText(isHindi?'किसी भी UPI app से scan करें':'Scan with any UPI app',W/2,444);
+  ctx.fillStyle='#ffffff';
+  ctx.fillRect(40,452,320,32);
+  ctx.strokeStyle='#F5A623';
+  ctx.strokeRect(40,452,320,32);
+  ctx.fillStyle='#0A8043';
+  ctx.font='bold 14px Arial';
+  ctx.fillText(s.upi, W/2, 472);
+  ctx.fillStyle='#cccccc';
+  ctx.font='10px Arial';
+  ctx.fillText('Powered by ShopBill Pro', W/2, 506);
+
+  // ── Try Web Share API (mobile) ────────────────────────────────────
+  let shared = false;
+  const msgText = isHindi
+    ? `🧾 *${shopName}*\nBill: ${invNo} — ₹${grand}\n\n📲 UPI: ${s.upi}\n\nQR देखें:\n${qrUrl}`
+    : `🧾 *${shopName}*\nBill: ${invNo} — ₹${grand}\n\n📲 UPI: ${s.upi}\n\nScan QR to pay:\n${qrUrl}`;
+
+  canvas.toBlob(async(blob)=>{
+    const file = new File([blob],'pay-'+(invNo||'bill')+'.png',{type:'image/png'});
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      try{
+        await navigator.share({
+          title: shopName+' — Pay ₹'+grand,
+          text:  msgText,
+          files: [file]
+        });
+        shared=true;
+      }catch(err){
+        // User cancelled or share failed — fall through
+        if(err.name!=='AbortError') console.warn('[UPI QR share]',err.name, err.message);
+      }
+    }
+
+    if(!shared){
+      // Fallback: download image + open WhatsApp with text + QR link
+      const a=document.createElement('a');
+      a.href=canvas.toDataURL('image/png');
+      a.download='pay-'+(invNo||'bill')+'.png';
+      a.click();
+
+      if(wa.length>=10){
+        setTimeout(()=>{
+          window.open('https://wa.me/91'+wa+'?text='+encodeURIComponent(msgText),'_blank');
+        }, 600);
+        toast(
+          isHindi
+            ? '💾 QR image download हो गया। WhatsApp में attach करें।'
+            : '💾 QR image downloaded — attach it in WhatsApp',
+          's', 5000
+        );
+      } else {
+        toast(isHindi?'💾 QR image download हो गया':'💾 QR image downloaded','s',3000);
+      }
+    }
+  }, 'image/png');
 }
 
 function sendWAText(){
