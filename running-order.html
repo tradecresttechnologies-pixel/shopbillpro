@@ -47,27 +47,38 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .dsb-ver{font-size:10px;color:var(--t3);text-align:center;padding:8px 0 4px}
 @media(max-width:1023px){#dsb{display:none!important}#main-col{margin-left:0!important;width:100%}}
 
-/* ── Header ── */
+/* ── Header (BATCH 067-UX-v2: pro restaurant POS) ── */
 .ro-hdr{
-  background:var(--surf);border-bottom:1px solid var(--bord);
-  padding:10px 14px;display:flex;align-items:center;gap:10px;
-  flex-shrink:0;
+  background:linear-gradient(135deg,var(--surf) 0%,var(--surf2) 100%);
+  border-bottom:1px solid var(--bord);
+  padding:12px 20px;display:flex;align-items:center;gap:14px;
+  flex-shrink:0;height:64px;
 }
 .ro-table-badge{
-  background:linear-gradient(135deg,rgba(239,68,68,.2),rgba(245,166,35,.1));
-  border:1.5px solid rgba(239,68,68,.4);border-radius:10px;
-  padding:4px 12px;display:flex;align-items:center;gap:8px;
+  background:linear-gradient(135deg,#EF4444,#DC2626);
+  border:none;border-radius:12px;
+  padding:6px 16px;display:flex;flex-direction:column;align-items:center;
+  box-shadow:0 4px 12px rgba(239,68,68,.25);
+  min-width:84px;
 }
-.ro-table-num{font-size:22px;font-weight:900;color:#EF4444}
-.ro-table-label{font-size:10px;color:var(--t2);font-weight:700;text-transform:uppercase;letter-spacing:.5px}
-.ro-meta{flex:1;min-width:0}
-.ro-status{font-size:12px;color:var(--acc3);font-weight:700}
-.ro-time{font-size:11px;color:var(--t2)}
-.hdr-btn{padding:7px 12px;border-radius:8px;border:1px solid var(--bord);background:var(--surf2);color:var(--t2);font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font-h)}
-.hdr-btn:hover{color:var(--acc);border-color:var(--acc)}
+.ro-table-label{font-size:9px;color:rgba(255,255,255,.75);font-weight:700;text-transform:uppercase;letter-spacing:1.2px;line-height:1.4}
+.ro-table-num{font-size:26px;font-weight:900;color:#fff;line-height:1;font-family:var(--font-h);letter-spacing:-0.5px}
+.ro-meta{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.ro-status-row{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700}
+.ro-status{display:inline-flex;align-items:center;gap:5px;padding:2px 9px;border-radius:6px;background:rgba(16,185,129,.12);color:#10B981;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px}
+.ro-status::before{content:'';display:inline-block;width:6px;height:6px;border-radius:50%;background:#10B981;box-shadow:0 0 0 0 rgba(16,185,129,.6);animation:roPulse 2s infinite}
+@keyframes roPulse{0%{box-shadow:0 0 0 0 rgba(16,185,129,.6)}70%{box-shadow:0 0 0 6px rgba(16,185,129,0)}100%{box-shadow:0 0 0 0 rgba(16,185,129,0)}}
+.ro-time{font-size:12px;color:var(--t2);font-weight:600;display:flex;align-items:center;gap:5px}
+.ro-time::before{content:'⏱';font-size:11px}
+.ro-stat-chips{display:flex;align-items:center;gap:7px;font-size:11px}
+.ro-stat-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:6px;background:var(--surf);border:1px solid var(--bord);color:var(--t2);font-weight:700}
+.ro-stat-chip strong{color:var(--text)}
+.hdr-btn{padding:8px 14px;border-radius:9px;border:1px solid var(--bord);background:var(--surf2);color:var(--t2);font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font-h);transition:var(--tr);display:flex;align-items:center;gap:6px}
+.hdr-btn:hover{color:var(--acc);border-color:var(--acc);background:rgba(245,166,35,.08)}
 
-/* ── Split layout ── */
-.ro-body{display:grid;grid-template-columns:1fr 340px;height:calc(100vh - 52px);overflow:hidden}
+/* ── Split layout — give the order pane room to breathe ── */
+.ro-body{display:grid;grid-template-columns:1fr 420px;height:calc(100vh - 64px);overflow:hidden}
+@media(max-width:1100px){.ro-body{grid-template-columns:1fr 380px}}
 @media(max-width:900px){.ro-body{grid-template-columns:1fr;height:auto}}
 
 /* ── Left: Menu picker ── */
@@ -82,79 +93,109 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 }
 .menu-search:focus{outline:none;border-color:var(--acc)}
 
-/* ── BATCH 067-UX: restaurant POS layout ─────────────────────────────
-   Replaces the previous vertical list with category chips at the top
-   and a tappable grid of item cards below — matches how dine-in
-   ordering apps work in practice (waiters tap fast under pressure). */
+/* ── BATCH 067-UX-v2: pro restaurant POS layout ────────────────────── */
 .menu-cats-bar{
-  display:flex;gap:6px;padding:8px 10px 6px;overflow-x:auto;flex-shrink:0;
+  display:flex;gap:8px;padding:10px 14px;overflow-x:auto;flex-shrink:0;
   background:var(--surf);border-bottom:1px solid var(--bord);
   scrollbar-width:none;-ms-overflow-style:none;
 }
 .menu-cats-bar::-webkit-scrollbar{display:none}
 .menu-cat-chip{
-  padding:6px 13px;border-radius:18px;
+  padding:8px 16px;border-radius:22px;
   background:var(--surf2);border:1px solid var(--bord);
-  color:var(--t2);font-size:12px;font-weight:700;
+  color:var(--t2);font-size:13px;font-weight:700;
   white-space:nowrap;cursor:pointer;flex-shrink:0;transition:var(--tr);
-  font-family:var(--font-h);
+  font-family:var(--font-h);display:inline-flex;align-items:center;gap:7px;
 }
-.menu-cat-chip:hover{border-color:var(--acc);color:var(--text)}
+.menu-cat-chip:hover{border-color:var(--acc);color:var(--text);transform:translateY(-1px)}
 .menu-cat-chip.on{
-  background:rgba(245,166,35,.15);border-color:var(--acc);color:var(--acc);
+  background:linear-gradient(135deg,#F5A623,#FF8A00);
+  border-color:transparent;color:#0A0E1A;
+  box-shadow:0 3px 10px rgba(245,166,35,.3);
 }
 .menu-cat-chip-count{
-  font-size:10px;color:var(--t3);margin-left:4px;font-weight:700;
-  display:inline-block;background:rgba(255,255,255,.04);
-  padding:0 5px;border-radius:8px;line-height:1.6;
+  font-size:10px;font-weight:800;line-height:1.5;
+  display:inline-block;background:rgba(255,255,255,.08);
+  padding:1px 7px;border-radius:10px;
 }
-.menu-cat-chip.on .menu-cat-chip-count{color:var(--acc);background:rgba(245,166,35,.1)}
+.menu-cat-chip.on .menu-cat-chip-count{background:rgba(10,14,26,.15);color:#0A0E1A}
 
-.menu-list{flex:1;overflow-y:auto;padding:0}
+.menu-list{flex:1;overflow-y:auto;padding:0;background:var(--bg)}
 .menu-grid{
   display:grid;
-  grid-template-columns:repeat(auto-fill, minmax(140px, 1fr));
-  gap:8px;padding:10px;
+  grid-template-columns:repeat(auto-fill, minmax(180px, 1fr));
+  gap:12px;padding:14px;
 }
 .menu-card{
-  background:var(--surf2);border:1px solid var(--bord);
-  border-radius:10px;padding:10px;cursor:pointer;
+  background:var(--surf);border:1px solid var(--bord);
+  border-radius:14px;padding:0;cursor:pointer;
   display:flex;flex-direction:column;
   transition:var(--tr);position:relative;
-  min-height:78px;
+  overflow:hidden;
+  min-height:120px;
 }
 .menu-card:hover{
-  border-color:var(--acc);transform:translateY(-1px);
-  box-shadow:0 4px 12px rgba(245,166,35,.08);
+  border-color:var(--acc);transform:translateY(-2px);
+  box-shadow:0 8px 24px rgba(245,166,35,.12);
 }
-.menu-card:active{transform:translateY(0)}
-.menu-card.unavail{opacity:.45;cursor:not-allowed}
+.menu-card:active{transform:translateY(0);transition-duration:.05s}
+.menu-card.unavail{opacity:.5;cursor:not-allowed}
 .menu-card.unavail:hover{transform:none;box-shadow:none;border-color:var(--bord)}
+.menu-card.in-cart{border-color:var(--acc);background:linear-gradient(180deg,rgba(245,166,35,.06) 0%,var(--surf) 60%)}
+
+/* Visual top strip — gives each card character without needing photos */
+.menu-card-top{
+  height:48px;
+  background:linear-gradient(135deg,rgba(245,166,35,.12),rgba(245,166,35,.04));
+  border-bottom:1px solid var(--bord);
+  display:flex;align-items:center;justify-content:center;
+  font-size:24px;position:relative;
+}
+.menu-card-top::after{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(circle at 20% 30%, rgba(255,255,255,.08), transparent 50%);
+  pointer-events:none;
+}
+.menu-card-body{padding:10px 12px 12px;display:flex;flex-direction:column;flex:1;min-height:0}
 .menu-card-name{
-  font-size:13px;font-weight:700;color:var(--text);
-  line-height:1.25;margin-bottom:6px;
+  font-size:14px;font-weight:700;color:var(--text);
+  line-height:1.3;margin-bottom:8px;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
   overflow:hidden;
 }
-.menu-card-price{
-  margin-top:auto;font-size:14px;font-weight:800;color:var(--acc);
-  font-family:var(--font-h);
+.menu-card-footer{
+  margin-top:auto;display:flex;align-items:center;justify-content:space-between;gap:6px;
 }
-.menu-card-gst{font-size:10px;font-weight:600;color:var(--t3);margin-left:3px}
+.menu-card-price{
+  font-size:17px;font-weight:800;color:var(--acc);
+  font-family:var(--font-h);line-height:1;letter-spacing:-0.3px;
+}
+.menu-card-gst{
+  font-size:9px;font-weight:700;color:var(--t3);
+  padding:2px 6px;border-radius:5px;background:var(--surf2);border:1px solid var(--bord);
+  letter-spacing:.3px;
+}
+.menu-card-qty-badge{
+  position:absolute;top:8px;right:8px;
+  background:linear-gradient(135deg,#F5A623,#FF8A00);color:#0A0E1A;
+  min-width:24px;height:24px;border-radius:12px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:900;
+  padding:0 7px;
+  box-shadow:0 2px 8px rgba(245,166,35,.4);
+  z-index:1;
+}
 .menu-card-tag{
-  position:absolute;top:6px;right:6px;
-  background:rgba(239,68,68,.15);color:#EF4444;
-  padding:1px 6px;border-radius:6px;
-  font-size:9px;font-weight:800;letter-spacing:.3px;
+  position:absolute;top:8px;right:8px;
+  background:rgba(239,68,68,.95);color:#fff;
+  padding:3px 8px;border-radius:6px;
+  font-size:10px;font-weight:800;letter-spacing:.5px;
+  box-shadow:0 2px 6px rgba(239,68,68,.3);
 }
 
-/* Legacy list-style classes kept for backward compatibility with any
-   code that still references them; not used by the new grid renderer. */
+/* Legacy list-style classes kept for backward compatibility. */
 .menu-cat-hd{font-size:9px;font-weight:800;color:var(--t2);text-transform:uppercase;letter-spacing:.7px;padding:8px 8px 3px}
-.menu-item-row{
-  display:flex;align-items:center;padding:9px 10px;border-radius:9px;
-  cursor:pointer;transition:var(--tr);margin-bottom:1px;
-}
+.menu-item-row{display:flex;align-items:center;padding:9px 10px;border-radius:9px;cursor:pointer;transition:var(--tr);margin-bottom:1px}
 .menu-item-row:hover{background:var(--surf2)}
 .menu-item-row.unavail{opacity:.45}
 .menu-item-info{flex:1;min-width:0}
@@ -169,90 +210,178 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 }
 .menu-item-add:hover{background:var(--acc);color:#0A0E1A}
 
-/* Custom item: collapsible. Saves vertical space — most operators don't
-   need it; the few who do click once to expand. */
+/* Custom item: collapsible, but more prominent toggle when collapsed. */
 .custom-item-toggle{
-  display:flex;align-items:center;justify-content:center;gap:6px;
-  padding:9px;background:var(--surf2);border:none;border-top:1px solid var(--bord);
-  color:var(--t2);font-size:11px;font-weight:700;font-family:var(--font-h);
+  display:flex;align-items:center;justify-content:center;gap:7px;
+  padding:11px;background:var(--surf2);border:none;border-top:1px solid var(--bord);
+  color:var(--t2);font-size:12px;font-weight:700;font-family:var(--font-h);
   cursor:pointer;width:100%;flex-shrink:0;transition:var(--tr);
   letter-spacing:.3px;
 }
-.custom-item-toggle:hover{color:var(--acc);background:rgba(245,166,35,.04)}
-.custom-item-form{display:none;padding:10px;border-top:1px solid var(--bord);flex-shrink:0;background:var(--surf)}
+.custom-item-toggle:hover{color:var(--acc);background:rgba(245,166,35,.06)}
+.custom-item-form{display:none;padding:12px;border-top:1px solid var(--bord);flex-shrink:0;background:var(--surf)}
 .custom-item-form.open{display:block}
 .ci-label{font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
-.ci-row{display:flex;gap:5px}
-.inp{padding:8px 10px;border-radius:8px;border:1px solid var(--bord);background:var(--surf2);color:var(--text);font-size:13px;font-family:var(--font-h)}
+.ci-row{display:flex;gap:6px}
+.inp{padding:9px 11px;border-radius:9px;border:1px solid var(--bord);background:var(--surf2);color:var(--text);font-size:13px;font-family:var(--font-h)}
 .inp:focus{outline:none;border-color:var(--acc)}
 
-/* ── Right: Order pane ── */
-.order-pane{display:flex;flex-direction:column;overflow:hidden;background:var(--surf)}
+/* ── Right: Order pane (BATCH 067-UX-v2: receipt-style) ── */
+.order-pane{display:flex;flex-direction:column;overflow:hidden;background:var(--surf);box-shadow:-4px 0 20px rgba(0,0,0,.2)}
 
-/* Current round */
+/* Round section header */
 .round-hd{
-  padding:8px 12px;background:rgba(245,166,35,.06);
+  padding:14px 18px 12px;
+  background:linear-gradient(135deg,rgba(245,166,35,.08),rgba(245,166,35,.02));
   border-bottom:1px solid var(--bord);flex-shrink:0;
-  display:flex;align-items:center;justify-content:space-between;
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
 }
-.round-title{font-size:12px;font-weight:800;color:var(--acc)}
-.round-count{font-size:11px;color:var(--t2)}
-.round-items{flex-shrink:0;max-height:200px;overflow-y:auto}
-.round-item{
+.round-hd-left{display:flex;flex-direction:column;gap:2px}
+.round-title{
+  font-size:13px;font-weight:800;color:var(--acc);
+  text-transform:uppercase;letter-spacing:.8px;
   display:flex;align-items:center;gap:6px;
-  padding:7px 12px;border-bottom:1px solid var(--surf2);
 }
-.ri-name{flex:1;font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ri-price{font-size:11px;color:var(--t2);width:50px;text-align:right;flex-shrink:0}
-.qty-ctrl{display:flex;align-items:center;gap:4px;flex-shrink:0}
-.qb{width:22px;height:22px;border-radius:6px;border:1px solid var(--bord);background:var(--surf2);color:var(--text);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;transition:var(--tr)}
-.qb:hover{border-color:var(--acc);color:var(--acc)}
-.qn{font-size:13px;font-weight:800;min-width:16px;text-align:center}
-.round-empty-sm{padding:10px 12px;font-size:12px;color:var(--t2);font-style:italic}
+.round-count{font-size:12px;color:var(--t2);font-weight:600}
+.round-badge{
+  background:var(--acc);color:#0A0E1A;
+  padding:3px 10px;border-radius:11px;
+  font-size:12px;font-weight:800;font-family:var(--font-h);
+  min-width:30px;text-align:center;
+}
+.round-items{flex-shrink:0;max-height:240px;overflow-y:auto;background:var(--surf)}
+.round-item{
+  display:flex;align-items:center;gap:8px;
+  padding:10px 18px;border-bottom:1px solid var(--surf2);
+  transition:var(--tr);
+}
+.round-item:hover{background:rgba(245,166,35,.03)}
+.ri-name{flex:1;font-size:14px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.ri-price{font-size:12px;color:var(--t2);width:70px;text-align:right;flex-shrink:0;font-weight:600}
+.qty-ctrl{display:flex;align-items:center;gap:6px;flex-shrink:0;background:var(--surf2);padding:3px;border-radius:8px}
+.qb{
+  width:26px;height:26px;border-radius:6px;border:none;
+  background:transparent;color:var(--text);font-size:16px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;line-height:1;transition:var(--tr);font-weight:700;
+}
+.qb:hover{background:var(--acc);color:#0A0E1A}
+.qn{font-size:14px;font-weight:800;min-width:20px;text-align:center;color:var(--text)}
+
+/* Rich empty state for the current round — shows when 0 items + 0 KOTs */
+.round-empty-rich{
+  padding:32px 22px 28px;text-align:center;
+}
+.round-empty-rich-em{
+  font-size:48px;margin-bottom:10px;opacity:.7;
+  filter:drop-shadow(0 4px 12px rgba(245,166,35,.2));
+}
+.round-empty-rich-title{
+  font-size:15px;font-weight:800;color:var(--text);margin-bottom:6px;
+}
+.round-empty-rich-msg{
+  font-size:12px;color:var(--t2);line-height:1.55;max-width:240px;margin:0 auto 16px;
+}
+.round-empty-tips{
+  display:flex;flex-direction:column;gap:8px;
+  padding:14px;background:var(--surf2);border-radius:10px;
+  text-align:left;
+}
+.round-empty-tip{
+  display:flex;align-items:flex-start;gap:8px;font-size:11px;color:var(--t2);line-height:1.45;
+}
+.round-empty-tip-em{flex-shrink:0;width:18px;text-align:center;font-size:13px}
+.round-empty-tip strong{color:var(--text);font-weight:700}
+
+.round-empty-sm{padding:14px 18px;font-size:12px;color:var(--t2);font-style:italic;text-align:center}
 
 /* Note + KOT */
-.round-note{padding:6px 10px;border-bottom:1px solid var(--bord);flex-shrink:0}
-.round-note input{width:100%;padding:7px 9px;border-radius:7px;border:1px solid var(--bord);background:var(--surf2);color:var(--text);font-size:12px;font-family:var(--font-h)}
-.round-note input:focus{outline:none;border-color:var(--acc)}
-.kot-row{padding:8px 10px;border-bottom:1px solid var(--bord);flex-shrink:0}
-.kot-btn{
-  width:100%;padding:10px;border-radius:10px;
-  background:linear-gradient(135deg,#FF6B35,#F5A623);
-  color:#0A0E1A;border:none;font-size:13px;font-weight:800;
-  cursor:pointer;font-family:var(--font-h);display:flex;align-items:center;justify-content:center;gap:6px;
+.round-note{padding:10px 18px;border-bottom:1px solid var(--bord);flex-shrink:0}
+.round-note input{
+  width:100%;padding:9px 12px;border-radius:8px;
+  border:1px solid var(--bord);background:var(--surf2);
+  color:var(--text);font-size:13px;font-family:var(--font-h);
 }
-.kot-btn:disabled{opacity:.35;cursor:not-allowed}
+.round-note input::placeholder{color:var(--t3)}
+.round-note input:focus{outline:none;border-color:var(--acc);background:var(--surf)}
+.kot-row{padding:12px 18px;border-bottom:1px solid var(--bord);flex-shrink:0}
+.kot-btn{
+  width:100%;padding:14px;border-radius:11px;
+  background:linear-gradient(135deg,#FF6B35,#F5A623);
+  color:#0A0E1A;border:none;font-size:14px;font-weight:800;
+  cursor:pointer;font-family:var(--font-h);
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  letter-spacing:.3px;transition:var(--tr);
+  box-shadow:0 4px 14px rgba(245,166,35,.25);
+}
+.kot-btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 18px rgba(245,166,35,.35)}
+.kot-btn:disabled{opacity:.3;cursor:not-allowed;box-shadow:none}
 
-/* Summary (all previous rounds) */
-.summary-hd{padding:8px 12px 4px;font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;flex-shrink:0;display:flex;justify-content:space-between}
-.summary-list{flex:1;overflow-y:auto}
-.summary-item{display:flex;align-items:center;padding:5px 12px;border-bottom:1px solid var(--surf2);font-size:12px}
-.summary-item .s-name{flex:1;color:var(--text);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.summary-item .s-qty{color:var(--acc);font-weight:800;margin:0 6px;flex-shrink:0}
-.summary-item .s-total{color:var(--t2);min-width:52px;text-align:right;flex-shrink:0}
-.summary-empty-sm{padding:12px;font-size:12px;color:var(--t2);font-style:italic;text-align:center}
-
-/* Total + Actions */
-.summary-total{
-  padding:8px 12px;border-top:1.5px solid var(--bord);
+/* Summary of previous (sent) rounds */
+.summary-hd{
+  padding:14px 18px 8px;font-size:10px;font-weight:800;color:var(--t2);
+  text-transform:uppercase;letter-spacing:.8px;flex-shrink:0;
   display:flex;justify-content:space-between;align-items:center;
+  background:var(--surf);
+}
+.summary-hd-divider{flex:1;height:1px;background:var(--bord);margin:0 10px}
+.summary-list{flex:1;overflow-y:auto;background:var(--surf)}
+.summary-item{
+  display:flex;align-items:center;padding:8px 18px;
+  border-bottom:1px dashed var(--surf2);font-size:13px;
+}
+.summary-item .s-name{flex:1;color:var(--text);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.summary-item .s-qty{
+  color:var(--acc);font-weight:800;margin:0 12px;flex-shrink:0;
+  font-family:var(--font-h);min-width:24px;text-align:center;
+}
+.summary-item .s-total{color:var(--t2);min-width:70px;text-align:right;flex-shrink:0;font-weight:600}
+.summary-empty-sm{padding:22px;font-size:12px;color:var(--t3);font-style:italic;text-align:center}
+
+/* Total + Actions — sticky bottom block */
+.summary-total{
+  padding:16px 18px;
+  background:linear-gradient(180deg,var(--surf) 0%,var(--surf2) 100%);
+  border-top:1.5px solid var(--bord);
   flex-shrink:0;
 }
-.st-label{font-size:12px;color:var(--t2);font-weight:700}
-.st-amount{font-size:20px;font-weight:900;color:var(--acc);font-family:var(--font-h)}
-.bottom-actions{padding:8px 10px;border-top:1px solid var(--bord);display:flex;gap:6px;flex-shrink:0}
-.btn-void{padding:10px 14px;border-radius:10px;border:1px solid rgba(239,68,68,.3);background:rgba(239,68,68,.06);color:#EF4444;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font-h);flex-shrink:0}
-.btn-bill{
-  flex:1;padding:10px;border-radius:10px;
-  background:linear-gradient(135deg,#10B981,#059669);
-  color:#fff;border:none;font-size:13px;font-weight:800;
-  cursor:pointer;font-family:var(--font-h);display:flex;align-items:center;justify-content:center;gap:6px;
+.st-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.st-row.sub{font-size:12px;color:var(--t2);font-weight:600}
+.st-row.grand{margin-top:8px;padding-top:10px;border-top:1px dashed var(--bord)}
+.st-label{font-size:13px;color:var(--t2);font-weight:700}
+.st-grand-label{font-size:14px;color:var(--text);font-weight:800;text-transform:uppercase;letter-spacing:.6px}
+.st-amount{font-size:13px;color:var(--text);font-weight:700;font-family:var(--font-h)}
+.st-grand-amount{
+  font-size:28px;font-weight:900;color:var(--acc);
+  font-family:var(--font-h);line-height:1;letter-spacing:-1px;
 }
-.btn-bill:disabled{opacity:.35;cursor:not-allowed}
 
-/* Menu empty */
-.menu-empty{padding:30px 16px;text-align:center;color:var(--t2)}
-.menu-empty-em{font-size:32px;margin-bottom:8px}
+.bottom-actions{
+  padding:12px 18px 16px;background:var(--surf2);
+  display:flex;gap:8px;flex-shrink:0;
+}
+.btn-void{
+  padding:13px 18px;border-radius:11px;
+  border:1px solid rgba(239,68,68,.35);background:rgba(239,68,68,.08);
+  color:#EF4444;font-size:13px;font-weight:800;cursor:pointer;
+  font-family:var(--font-h);flex-shrink:0;transition:var(--tr);
+  display:flex;align-items:center;gap:5px;
+}
+.btn-void:hover{background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.5)}
+.btn-bill{
+  flex:1;padding:13px;border-radius:11px;
+  background:linear-gradient(135deg,#10B981,#059669);
+  color:#fff;border:none;font-size:14px;font-weight:800;
+  cursor:pointer;font-family:var(--font-h);
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  letter-spacing:.3px;transition:var(--tr);
+  box-shadow:0 4px 14px rgba(16,185,129,.25);
+}
+.btn-bill:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 20px rgba(16,185,129,.35)}
+.btn-bill:disabled{opacity:.3;cursor:not-allowed;background:var(--surf);color:var(--t3);box-shadow:none}
+
+/* Menu empty (left pane) */
+.menu-empty{padding:48px 24px;text-align:center;color:var(--t2)}
+.menu-empty-em{font-size:48px;margin-bottom:12px;opacity:.5}
 
 /* Toast */
 .toast-host{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:999;display:flex;flex-direction:column;gap:6px;align-items:center;pointer-events:none}
@@ -321,16 +450,21 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
     <!-- Header -->
     <div class="ro-hdr">
       <div class="ro-table-badge">
-        <div>
-          <div class="ro-table-label">Table</div>
-          <div class="ro-table-num" id="hdr-table">T—</div>
-        </div>
+        <div class="ro-table-label">Table</div>
+        <div class="ro-table-num" id="hdr-table">T—</div>
       </div>
       <div class="ro-meta">
-        <div class="ro-status" id="hdr-status">🟢 Open</div>
-        <div class="ro-time" id="hdr-time">—</div>
+        <div class="ro-status-row">
+          <span class="ro-status" id="hdr-status">Open</span>
+          <span class="ro-time" id="hdr-time">—</span>
+        </div>
+        <div class="ro-stat-chips">
+          <span class="ro-stat-chip">KOTs: <strong id="hdr-kot-count">0</strong></span>
+          <span class="ro-stat-chip">Items: <strong id="hdr-item-count">0</strong></span>
+          <span class="ro-stat-chip">Total: <strong id="hdr-total">₹0</strong></span>
+        </div>
       </div>
-      <button class="hdr-btn" onclick="window.location.href='tables.html'">← Tables</button>
+      <button class="hdr-btn" onclick="window.location.href='tables.html'">← <span class="lang-en">Tables</span><span class="lang-hi">टेबल</span></button>
     </div>
 
     <!-- Mobile pane switcher (≤767px). Hidden on desktop via CSS. -->
@@ -375,15 +509,34 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 
         <!-- Current round header -->
         <div class="round-hd">
-          <div>
-            <div class="round-title" id="round-title">🍽️ Current Round</div>
-            <div class="round-count" id="round-count">Add items from menu →</div>
+          <div class="round-hd-left">
+            <div class="round-title">🍳 <span class="lang-en">Current Round</span><span class="lang-hi">वर्तमान राउंड</span></div>
+            <div class="round-count" id="round-count"><span class="lang-en">Tap menu items to add →</span><span class="lang-hi">मेनू आइटम पर टैप करें →</span></div>
           </div>
+          <div class="round-badge" id="round-badge">0</div>
         </div>
 
         <!-- Current round items (being built) -->
         <div class="round-items" id="round-items">
-          <div class="round-empty-sm">No items yet — add from left</div>
+          <div class="round-empty-rich">
+            <div class="round-empty-rich-em">🍽️</div>
+            <div class="round-empty-rich-title"><span class="lang-en">Build the first order</span><span class="lang-hi">पहला ऑर्डर बनाएं</span></div>
+            <div class="round-empty-rich-msg"><span class="lang-en">Tap items from the menu to add them. Quantity stacks on repeat taps.</span><span class="lang-hi">मेनू से आइटम जोड़ने के लिए टैप करें। बार-बार टैप करने पर मात्रा बढ़ती है।</span></div>
+            <div class="round-empty-tips">
+              <div class="round-empty-tip">
+                <span class="round-empty-tip-em">📋</span>
+                <span><strong><span class="lang-en">Category chips</span><span class="lang-hi">कैटेगरी</span></strong> <span class="lang-en">filter the menu — try them to find items faster.</span><span class="lang-hi"> — मेनू को फ़िल्टर करती हैं।</span></span>
+              </div>
+              <div class="round-empty-tip">
+                <span class="round-empty-tip-em">🍳</span>
+                <span><strong><span class="lang-en">Send to Kitchen</span><span class="lang-hi">किचन भेजें</span></strong> <span class="lang-en">prints a KOT and starts cooking. You can send more rounds later.</span><span class="lang-hi"> KOT प्रिंट करता है।</span></span>
+              </div>
+              <div class="round-empty-tip">
+                <span class="round-empty-tip-em">🧾</span>
+                <span><strong><span class="lang-en">Generate Bill</span><span class="lang-hi">बिल बनाएं</span></strong> <span class="lang-en">when the guest is ready to pay — frees the table.</span><span class="lang-hi"> — टेबल फ्री करता है।</span></span>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Round note -->
@@ -394,27 +547,41 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
         <!-- KOT button -->
         <div class="kot-row">
           <button class="kot-btn" id="kot-btn" onclick="sendKOT()" disabled>
-            🍳 Send to Kitchen (KOT)
+            🍳 <span class="lang-en">Send to Kitchen (KOT)</span><span class="lang-hi">किचन भेजें (KOT)</span>
           </button>
         </div>
 
         <!-- All items summary (from previous rounds) -->
-        <div class="summary-hd" id="summary-hd">ORDER TOTAL</div>
+        <div class="summary-hd">
+          <span><span class="lang-en">Order Summary</span><span class="lang-hi">ऑर्डर सारांश</span></span>
+          <span class="summary-hd-divider"></span>
+          <span id="summary-rounds-info">—</span>
+        </div>
         <div class="summary-list" id="summary-list">
-          <div class="round-empty">No items yet</div>
+          <div class="summary-empty-sm"><span class="lang-en">No rounds sent yet</span><span class="lang-hi">अभी तक कोई राउंड नहीं भेजा गया</span></div>
         </div>
 
-        <!-- Running total -->
-        <div class="summary-total">
-          <div class="st-label">Total</div>
-          <div class="st-amount" id="grand-total">₹0</div>
+        <!-- Receipt-style totals -->
+        <div class="summary-total" id="summary-total">
+          <div class="st-row sub">
+            <div class="st-label"><span class="lang-en">Subtotal</span><span class="lang-hi">उप-योग</span></div>
+            <div class="st-amount" id="st-subtotal">₹0</div>
+          </div>
+          <div class="st-row sub" id="st-gst-row" style="display:none">
+            <div class="st-label"><span class="lang-en">GST</span><span class="lang-hi">GST</span></div>
+            <div class="st-amount" id="st-gst">₹0</div>
+          </div>
+          <div class="st-row grand">
+            <div class="st-grand-label"><span class="lang-en">Total</span><span class="lang-hi">कुल</span></div>
+            <div class="st-grand-amount" id="grand-total">₹0</div>
+          </div>
         </div>
 
         <!-- Generate Bill + Void -->
         <div class="bottom-actions">
-          <button class="btn-void" onclick="voidOrder()" title="Cancel order & free table">✕ Void</button>
+          <button class="btn-void" onclick="voidOrder()" title="Cancel order & free table">✕ <span class="lang-en">Void</span><span class="lang-hi">रद्द</span></button>
           <button class="btn-bill" id="bill-btn" onclick="generateBill()" disabled>
-            🧾 Generate Bill
+            🧾 <span class="lang-en">Generate Bill</span><span class="lang-hi">बिल बनाएं</span>
           </button>
         </div>
 
@@ -532,9 +699,12 @@ async function init(){
 // ── Header ───────────────────────────────────────────────────────
 function renderHeader(){
   if(!_order) return;
-  $('hdr-status').textContent = '🟢 Open';
-  $('hdr-time').textContent = 'Started ' + elapsed(_order.opened_at) + ' ago · ' +
-    (_order.kot_count||0) + ' KOT' + ((_order.kot_count||0)===1?'':'s') + ' sent';
+  // Status is "Open" by default; the green pulse dot is CSS-driven (::before).
+  $('hdr-status').textContent = 'Open';
+  $('hdr-time').textContent = 'Started ' + elapsed(_order.opened_at) + ' ago';
+  const hdrKot = $('hdr-kot-count');
+  if(hdrKot) hdrKot.textContent = _order.kot_count || 0;
+  // hdr-item-count and hdr-total are kept fresh by render() — don't overwrite.
 }
 
 // ── Load menu via authenticated POS RPC (gst_rate + hsn + is_available) ──
@@ -624,6 +794,38 @@ function renderMenu(q){
     return;
   }
 
+  // Category emoji map — gives each card character without photos.
+  const CAT_EMOJI = {
+    'starters':'🥗','starter':'🥗','appetizers':'🥗','snacks':'🥨',
+    'mains':'🍛','main course':'🍛','main':'🍛',
+    'breads':'🫓','bread':'🫓','roti':'🫓',
+    'rice':'🍚','biryani':'🍚',
+    'drinks':'🥤','beverages':'🥤','beverage':'🥤','cold drinks':'🥤',
+    'tea':'🍵','coffee':'☕',
+    'desserts':'🍰','dessert':'🍰','sweets':'🍮',
+    'pizza':'🍕','burger':'🍔','sandwich':'🥪','salad':'🥗',
+    'soup':'🍲','noodles':'🍜','pasta':'🍝',
+    'chicken':'🍗','fish':'🐟','seafood':'🦐','egg':'🥚',
+    'paneer':'🧀','dal':'🍛','curry':'🍛',
+    'south indian':'🥞','dosa':'🥞','idli':'🍘',
+    'chinese':'🥡','indo chinese':'🥡',
+    'menu':'🍽️',
+  };
+  function pickEmoji(name, cat){
+    const c = (cat||'').toLowerCase();
+    if(CAT_EMOJI[c]) return CAT_EMOJI[c];
+    const n = (name||'').toLowerCase();
+    for(const k in CAT_EMOJI){ if(n.includes(k)) return CAT_EMOJI[k]; }
+    return '🍽️';
+  }
+
+  // Map of items already in current round → qty (for the in-cart badge).
+  const inRound = {};
+  _roundItems.forEach(ri => {
+    const k = ri.service_id || ri.name;
+    if(k) inRound[k] = (inRound[k]||0) + (ri.qty||0);
+  });
+
   // Render as a tappable grid of cards. Cards are the entire hit target —
   // no separate "+" button — to maximise tap area on busy nights.
   el.innerHTML = '<div class="menu-grid">' +
@@ -635,12 +837,19 @@ function renderMenu(q){
       const onclickAttr = avail
         ? 'onclick="addFromMenu(' + safeJSON + ')"'
         : 'onclick="toast(\'' + safeName + ' not available\',\'e\')"';
-      return '<div class="menu-card ' + (avail?'':'unavail') + '" ' + onclickAttr + '>' +
-        (avail ? '' : '<span class="menu-card-tag">86\'d</span>') +
-        '<div class="menu-card-name">' + escHtml(i.name||'') + '</div>' +
-        (price ? '<div class="menu-card-price">' + fINR(price) +
-          (i.gst_rate>0 ? '<span class="menu-card-gst">+' + i.gst_rate + '%</span>' : '') +
-        '</div>' : '') +
+      const cartKey = i.id || i.name;
+      const inCartQty = inRound[cartKey] || 0;
+      const emoji = pickEmoji(i.name, i.category);
+      return '<div class="menu-card ' + (avail?'':'unavail') + (inCartQty>0?' in-cart':'') + '" ' + onclickAttr + '>' +
+        (avail ? (inCartQty>0 ? '<span class="menu-card-qty-badge">×' + inCartQty + '</span>' : '') : '<span class="menu-card-tag">86\'D</span>') +
+        '<div class="menu-card-top">' + emoji + '</div>' +
+        '<div class="menu-card-body">' +
+          '<div class="menu-card-name">' + escHtml(i.name||'') + '</div>' +
+          '<div class="menu-card-footer">' +
+            (price ? '<div class="menu-card-price">' + fINR(price) + '</div>' : '<div class="menu-card-price" style="color:var(--t3);font-size:13px">—</div>') +
+            (i.gst_rate>0 ? '<div class="menu-card-gst">+' + i.gst_rate + '%</div>' : '') +
+          '</div>' +
+        '</div>' +
       '</div>';
     }).join('') +
   '</div>';
@@ -667,6 +876,8 @@ function addFromMenu(item){
     });
   }
   renderRound();
+  // Refresh menu grid so the in-cart qty badge updates on cards.
+  renderMenu(document.getElementById('menu-search').value || '');
   updatePaneBadge();
 }
 
@@ -692,38 +903,57 @@ function changeQty(idx, delta){
   _roundItems[idx].qty = Math.max(0, _roundItems[idx].qty + delta);
   if(_roundItems[idx].qty === 0) _roundItems.splice(idx, 1);
   renderRound();
+  // Refresh menu grid so the in-cart qty badge stays in sync.
+  renderMenu(document.getElementById('menu-search').value || '');
   updatePaneBadge();
 }
 
 function renderRound(){
   const el    = $('round-items');
   const kotBtn = $('kot-btn');
-  const roundTitle = $('round-title');
   const roundCount = $('round-count');
+  const roundBadge = $('round-badge');
 
   const kotN = (_order?.kot_count || 0) + 1;
-  roundTitle.textContent = `🍽️ Round #${kotN}`;
+  const totalQty = _roundItems.reduce((s,i)=>s+i.qty,0);
+
+  if(roundBadge){
+    roundBadge.textContent = '#' + kotN;
+    if(totalQty === 0) roundBadge.style.opacity = '.5';
+    else roundBadge.style.opacity = '1';
+  }
 
   if(!_roundItems.length){
-    el.innerHTML = '<div class="round-empty-sm">Add items from left menu →</div>';
-    roundCount.textContent = 'No items yet';
+    // Only show the rich empty state when no rounds have been sent either —
+    // otherwise show a more compact "ready for next round" prompt.
+    const sentItems = Array.isArray(_order?.items) ? _order.items.length : 0;
+    if(sentItems === 0){
+      // The first-time rich empty state is hardcoded in the HTML; do nothing.
+      // (It's already in the DOM from page load and remains until first add.)
+    } else {
+      el.innerHTML = '<div class="round-empty-sm">' +
+        '<span class="lang-en">Ready for the next round — tap items to add</span>' +
+        '<span class="lang-hi">अगले राउंड के लिए तैयार — आइटम टैप करें</span>' +
+      '</div>';
+    }
+    roundCount.innerHTML = '<span class="lang-en">Tap menu items to add →</span><span class="lang-hi">मेनू आइटम पर टैप करें →</span>';
     kotBtn.disabled = true;
     return;
   }
 
-  roundCount.textContent = _roundItems.reduce((s,i)=>s+i.qty,0) + ' items';
+  roundCount.textContent = totalQty + ' item' + (totalQty===1?'':'s');
   kotBtn.disabled = false;
 
-  el.innerHTML = _roundItems.map((item, idx) => `
-    <div class="round-item">
-      <div class="ri-name">${escHtml(item.name)}</div>
-      <div class="qty-ctrl">
-        <button class="qb" onclick="changeQty(${idx},-1)">−</button>
-        <div class="qn">${item.qty}</div>
-        <button class="qb" onclick="changeQty(${idx},+1)">+</button>
-      </div>
-      ${item.price > 0 ? `<div class="ri-price">${fINR(item.price * item.qty)}</div>` : ''}
-    </div>`).join('');
+  el.innerHTML = _roundItems.map((item, idx) =>
+    '<div class="round-item">' +
+      '<div class="ri-name">' + escHtml(item.name) + '</div>' +
+      '<div class="qty-ctrl">' +
+        '<button class="qb" onclick="changeQty(' + idx + ',-1)">−</button>' +
+        '<div class="qn">' + item.qty + '</div>' +
+        '<button class="qb" onclick="changeQty(' + idx + ',+1)">+</button>' +
+      '</div>' +
+      (item.price > 0 ? '<div class="ri-price">' + fINR(item.price * item.qty) + '</div>' : '') +
+    '</div>').join('');
 }
 
 // ── Send KOT ──────────────────────────────────────────────────────
@@ -773,6 +1003,8 @@ async function sendKOT(){
   toast(`🍳 KOT-${String(kotN).padStart(3,'0')} sent to kitchen!`,'s');
 
   render();
+  // Reset menu qty badges since the round just cleared.
+  renderMenu(document.getElementById('menu-search').value || '');
   updatePaneBadge();
 }
 
@@ -813,40 +1045,76 @@ function render(){
   renderRound();
 
   const allItems = Array.isArray(_order?.items) ? _order.items : [];
-  const summaryEl  = $('summary-list');
-  const summaryHd  = $('summary-hd');
-  const billBtn    = $('bill-btn');
-  const grandTotal = $('grand-total');
+  const summaryEl     = $('summary-list');
+  const billBtn       = $('bill-btn');
+  const stSubtotal    = $('st-subtotal');
+  const stGstRow      = $('st-gst-row');
+  const stGst         = $('st-gst');
+  const grandTotal    = $('grand-total');
+  const hdrTotal      = $('hdr-total');
+  const hdrItemCount  = $('hdr-item-count');
+  const summaryRounds = $('summary-rounds-info');
 
   if(!allItems.length){
-    summaryEl.innerHTML = '<div class="round-empty" style="padding:14px;color:var(--t2);font-size:13px">No rounds sent yet</div>';
-    summaryHd.textContent = 'ORDER SUMMARY';
-    billBtn.disabled = true;
+    summaryEl.innerHTML = '<div class="summary-empty-sm"><span class="lang-en">No rounds sent yet</span><span class="lang-hi">अभी तक कोई राउंड नहीं</span></div>';
+    if(summaryRounds) summaryRounds.textContent = '—';
+    if(stSubtotal) stSubtotal.textContent = '₹0';
+    if(stGstRow) stGstRow.style.display = 'none';
     grandTotal.textContent = '₹0';
+    billBtn.disabled = true;
+    if(hdrTotal) hdrTotal.textContent = '₹0';
+    if(hdrItemCount) hdrItemCount.textContent = '0';
+    updatePaneBadge();
     return;
   }
 
-  // Aggregate items by name (across all rounds)
+  // Aggregate by name across all sent rounds. Keep gst_rate so we can
+  // show the GST split in the receipt-style total panel.
   const agg = {};
   allItems.forEach(it => {
-    const n = it.name||'';
-    if(!agg[n]) agg[n] = {name:n, qty:0, price: it.price||0, round: it.round||1};
-    agg[n].qty += (it.qty||1);
+    const key = it.service_id || it.name || '';
+    if(!agg[key]) agg[key] = {
+      name: it.name || '',
+      qty: 0,
+      price: it.price || 0,
+      gst_rate: it.gst_rate || 0,
+    };
+    agg[key].qty += (it.qty || 1);
   });
 
-  let total = 0;
+  let subtotal = 0;
+  let gstTotal = 0;
   summaryEl.innerHTML = Object.values(agg).map(it => {
-    const lineTotal = it.qty * (it.price||0);
-    total += lineTotal;
-    return `<div class="summary-item">
-      <span class="s-name">${escHtml(it.name)}</span>
-      <span class="s-qty">×${it.qty}</span>
-      ${it.price > 0 ? `<span class="s-total">${fINR(lineTotal)}</span>` : ''}
-    </div>`;
+    const lineSub = it.qty * (it.price||0);
+    const lineGst = lineSub * (it.gst_rate||0) / 100;
+    subtotal += lineSub;
+    gstTotal += lineGst;
+    return '<div class="summary-item">' +
+      '<span class="s-name">' + escHtml(it.name) + '</span>' +
+      '<span class="s-qty">×' + it.qty + '</span>' +
+      (it.price > 0 ? '<span class="s-total">' + fINR(lineSub) + '</span>' : '') +
+    '</div>';
   }).join('');
 
-  summaryHd.textContent = `ORDER — ${allItems.reduce((s,i)=>s+(i.qty||1),0)} items`;
-  grandTotal.textContent = fINR(total) || '₹—';
+  const itemCount  = allItems.reduce((s,i)=>s+(i.qty||1),0);
+  const kotCount   = _order?.kot_count || 0;
+  const grand      = subtotal + gstTotal;
+
+  if(summaryRounds){
+    summaryRounds.textContent = kotCount + ' KOT' + (kotCount===1?'':'s') + ' · ' + itemCount + ' items';
+  }
+  if(stSubtotal) stSubtotal.textContent = fINR(subtotal);
+  if(stGstRow){
+    if(gstTotal > 0){
+      stGstRow.style.display = '';
+      stGst.textContent = fINR(gstTotal);
+    } else {
+      stGstRow.style.display = 'none';
+    }
+  }
+  grandTotal.textContent = fINR(grand);
+  if(hdrTotal) hdrTotal.textContent = fINR(grand);
+  if(hdrItemCount) hdrItemCount.textContent = itemCount;
   billBtn.disabled = false;
   updatePaneBadge();
 }
