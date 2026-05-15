@@ -1374,8 +1374,8 @@ function renderRooms(){
   list.innerHTML = _rooms.map((r, i) => `
     <div class="room-item">
       <div class="room-item-info">
-        <div class="room-item-name">${esc(r.name)}</div>
-        <div class="room-item-meta">${r.description ? esc(r.description.slice(0,60)) + (r.description.length>60?'…':'') : ''}${r.capacity ? ' · ' + r.capacity + ' guests' : ''}</div>
+        <div class="room-item-name">${escHtml(r.name)}</div>
+        <div class="room-item-meta">${r.description ? escHtml(r.description.slice(0,60)) + (r.description.length>60?'…':'') : ''}${r.capacity ? ' · ' + r.capacity + ' guests' : ''}</div>
       </div>
       <div class="room-item-price">${r.price ? '₹'+Number(r.price).toLocaleString('en-IN')+'/night' : ''}</div>
       <button class="icon-btn" onclick="roomEdit(${i})" title="Edit">✏️</button>
@@ -1393,7 +1393,7 @@ function roomShowForm(idx){
       <div class="svc-form-row">
         <div>
           <label class="lbl">Room name <span class="req">*</span></label>
-          <input class="inp" id="rf-name" value="${esc(r.name||'')}" placeholder="e.g. Deluxe AC Room" maxlength="60">
+          <input class="inp" id="rf-name" value="${escHtml(r.name||'')}" placeholder="e.g. Deluxe AC Room" maxlength="60">
         </div>
         <div>
           <label class="lbl">Price per night (₹)</label>
@@ -1403,16 +1403,16 @@ function roomShowForm(idx){
       <div class="svc-form-row">
         <div>
           <label class="lbl">Max guests</label>
-          <input class="inp" id="rf-capacity" value="${esc(r.capacity||'')}" placeholder="2" maxlength="10">
+          <input class="inp" id="rf-capacity" value="${escHtml(r.capacity||'')}" placeholder="2" maxlength="10">
         </div>
         <div>
           <label class="lbl">Bed type</label>
-          <input class="inp" id="rf-bed" value="${esc(r.bed||'')}" placeholder="King / Twin / Double" maxlength="40">
+          <input class="inp" id="rf-bed" value="${escHtml(r.bed||'')}" placeholder="King / Twin / Double" maxlength="40">
         </div>
       </div>
       <div>
         <label class="lbl">Description</label>
-        <textarea class="inp" id="rf-desc" rows="2" maxlength="200" placeholder="Key features of this room…">${esc(r.description||'')}</textarea>
+        <textarea class="inp" id="rf-desc" rows="2" maxlength="200" placeholder="Key features of this room…">${escHtml(r.description||'')}</textarea>
       </div>
       <div class="svc-form-acts" style="margin-top:10px">
         <button class="btn btn-sm" type="button" onclick="roomCancelForm()">Cancel</button>
