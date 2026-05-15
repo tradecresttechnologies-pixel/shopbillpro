@@ -749,6 +749,39 @@ html,body{height:100%;width:100%;margin:0;padding:0;overflow:hidden;background:v
 .bw-pay-change-row > span:last-child,
 .bw-pay-bal-row > span:last-child{font-size:15px;font-family:var(--font-h);font-weight:800}
 
+/* Print toggle — looks like a switch + label combo */
+.bw-print-toggle{
+  display:flex;align-items:flex-start;gap:10px;cursor:pointer;
+  padding:11px 13px;border-radius:10px;
+  background:rgba(245,166,35,.06);border:1px solid rgba(245,166,35,.2);
+  margin-top:8px;transition:var(--tr);
+}
+.bw-print-toggle:hover{background:rgba(245,166,35,.1);border-color:rgba(245,166,35,.35)}
+.bw-print-toggle input{display:none}
+.bw-print-tg-box{
+  width:38px;height:22px;border-radius:11px;
+  background:var(--surf2);border:1px solid var(--bord);
+  position:relative;flex-shrink:0;transition:var(--tr);margin-top:2px;
+}
+.bw-print-tg-box::before{
+  content:'';position:absolute;top:1px;left:1px;
+  width:18px;height:18px;border-radius:50%;
+  background:var(--t3);transition:var(--tr);
+}
+.bw-print-toggle input:checked ~ .bw-print-tg-box{
+  background:linear-gradient(135deg,#F5A623,#FF8A00);
+  border-color:transparent;
+}
+.bw-print-toggle input:checked ~ .bw-print-tg-box::before{
+  left:17px;background:#0A0E1A;
+}
+.bw-print-tg-text{
+  font-size:12px;color:var(--text);font-weight:600;flex:1;line-height:1.45;
+  display:flex;flex-direction:column;gap:2px;
+}
+.bw-print-tg-text strong{font-weight:800;font-size:13px}
+.bw-print-tg-hint{font-size:10px;color:var(--t2);font-weight:600}
+
 /* Footer */
 .bw-foot{
   display:flex;align-items:center;gap:8px;
@@ -1658,6 +1691,18 @@ html,body{height:100%;width:100%;margin:0;padding:0;overflow:hidden;background:v
           <span id="bw-pay-bal-val">₹0</span>
         </div>
       </div>
+
+      <!-- Auto-print toggle. Default ON because every restaurant gives
+           a printed/PDF receipt to the customer; operator can flip off
+           for stub days or quick test bills. -->
+      <label class="bw-print-toggle">
+        <input type="checkbox" id="bw-print-on-save" checked>
+        <span class="bw-print-tg-box"></span>
+        <span class="bw-print-tg-text">
+          🖨 <strong><span class="lang-en">Auto-print receipt</span><span class="lang-hi">रसीद प्रिंट</span></strong>
+          <span class="bw-print-tg-hint"><span class="lang-en">opens printer dialog after saving</span><span class="lang-hi">सेव के बाद प्रिंटर डायलॉग खुलेगा</span></span>
+        </span>
+      </label>
     </div>
 
     <!-- Footer: Back / Next / Confirm -->
@@ -2829,6 +2874,146 @@ function onPayAmtInput(){
 }
 
 // ─────────────────────────────────────────────────────────────────
+// PRINT BILL — self-contained 80mm thermal-style receipt that also
+// renders cleanly on A4. Opens in a new window with auto-print.
+// Called from confirmAndSaveBill when the "Auto-print receipt"
+// toggle is on, OR manually if we expose a Print button later.
+// ─────────────────────────────────────────────────────────────────
+function printSavedBill(bill, items, totals, custName, custWA){
+  const shop = JSON.parse(localStorage.getItem('sbp_shop') || '{}');
+  const ist  = new Date().toLocaleString('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    day: '2-digit', month: 'short', year: '2-digit',
+    hour: '2-digit', minute: '2-digit',
+  });
+  const fI = (n) => '₹' + (Number(n) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const esc = (s) => String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+  const change  = Math.max(0, (bill.paid_amount || 0) - (bill.grand_total || 0));
+  const balance = Math.max(0, (bill.grand_total || 0) - (bill.paid_amount || 0));
+  const isPaid  = (bill.status || '') === 'Paid';
+
+  const itemsRows = items.map(it => {
+    const name = esc(it.nm || it.item_name || '');
+    const qty  = it.q || it.qty || 0;
+    const rate = it.r || it.rate || 0;
+    const tot  = it.tot || it.line_total || 0;
+    return `<tr>
+      <td class="ic-name">${name}</td>
+      <td class="ic-num">${qty}</td>
+      <td class="ic-num">${fI(rate)}</td>
+      <td class="ic-num">${fI(tot)}</td>
+    </tr>`;
+  }).join('');
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<title>${esc(bill.invoice_no || 'Bill')}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Helvetica Neue', Arial, sans-serif; color:#000; background:#fff; padding:8px}
+  .rcpt{max-width:340px;margin:0 auto;font-size:12px;line-height:1.35}
+  .center{text-align:center}
+  .shop-name{font-size:18px;font-weight:900;letter-spacing:.5px;margin-bottom:2px}
+  .shop-meta{font-size:11px;color:#444;margin-bottom:1px}
+  .hr{border:none;border-top:1px dashed #000;margin:8px 0}
+  .meta-row{display:flex;justify-content:space-between;font-size:11px;margin:1px 0}
+  .meta-row strong{font-weight:700}
+  table{width:100%;border-collapse:collapse;margin:6px 0}
+  th{font-size:10px;text-transform:uppercase;letter-spacing:.5px;font-weight:800;padding:4px 2px;border-bottom:1px solid #000;text-align:left}
+  th.ic-num{text-align:right}
+  td{font-size:11px;padding:5px 2px;border-bottom:1px dotted #ccc;vertical-align:top}
+  td.ic-name{font-weight:600}
+  td.ic-num{text-align:right;font-variant-numeric:tabular-nums}
+  .totals{margin-top:6px}
+  .tot-row{display:flex;justify-content:space-between;font-size:12px;margin:3px 0;font-variant-numeric:tabular-nums}
+  .tot-row.grand{font-size:15px;font-weight:900;border-top:1.5px solid #000;border-bottom:3px double #000;padding:6px 0;margin:6px 0;}
+  .pay-block{margin-top:6px;font-size:11px}
+  .pay-row{display:flex;justify-content:space-between;margin:2px 0}
+  .status-badge{display:inline-block;padding:3px 12px;border-radius:4px;font-size:11px;font-weight:900;letter-spacing:1px;margin:6px auto;text-transform:uppercase}
+  .status-paid{background:#000;color:#fff}
+  .status-credit{background:#fff;color:#000;border:2px solid #000}
+  .thanks{text-align:center;margin-top:10px;font-size:11px;font-weight:600;font-style:italic}
+  .footer-line{text-align:center;font-size:9px;color:#666;margin-top:8px;letter-spacing:.5px}
+  @page{size:80mm auto;margin:4mm}
+  @media print{body{padding:0}.rcpt{max-width:100%}}
+</style></head>
+<body>
+<div class="rcpt">
+
+  <div class="center">
+    <div class="shop-name">${esc(shop.name || 'Shop')}</div>
+    ${shop.address ? `<div class="shop-meta">${esc(shop.address)}</div>` : ''}
+    ${shop.phone   ? `<div class="shop-meta">📞 ${esc(shop.phone)}</div>` : ''}
+    ${shop.gstin   ? `<div class="shop-meta">GSTIN: ${esc(shop.gstin)}</div>` : ''}
+  </div>
+
+  <hr class="hr">
+
+  <div class="meta-row"><strong>Bill</strong><span>${esc(bill.invoice_no || '')}</span></div>
+  <div class="meta-row"><strong>Date</strong><span>${esc(ist)}</span></div>
+  ${bill.table_number ? `<div class="meta-row"><strong>Table</strong><span>T${esc(bill.table_number)}</span></div>` : ''}
+  <div class="meta-row"><strong>Customer</strong><span>${esc(custName || 'Walk-in')}</span></div>
+  ${custWA ? `<div class="meta-row"><strong>Phone</strong><span>${esc(custWA)}</span></div>` : ''}
+
+  <table>
+    <thead>
+      <tr>
+        <th>Item</th>
+        <th class="ic-num">Qty</th>
+        <th class="ic-num">Rate</th>
+        <th class="ic-num">Total</th>
+      </tr>
+    </thead>
+    <tbody>${itemsRows}</tbody>
+  </table>
+
+  <div class="totals">
+    <div class="tot-row"><span>Subtotal</span><span>${fI(totals.subtotal)}</span></div>
+    ${totals.gst       > 0 ? `<div class="tot-row"><span>GST</span><span>${fI(totals.gst)}</span></div>`         : ''}
+    ${totals.discount  > 0 ? `<div class="tot-row"><span>Discount</span><span>−${fI(totals.discount)}</span></div>` : ''}
+    <div class="tot-row grand"><span>TOTAL</span><span>${fI(totals.grand)}</span></div>
+  </div>
+
+  <div class="pay-block">
+    <div class="pay-row"><strong>Payment</strong><span>${esc(bill.payment_mode || '—')}</span></div>
+    <div class="pay-row"><strong>Paid</strong><span>${fI(bill.paid_amount)}</span></div>
+    ${change  > 0 ? `<div class="pay-row"><strong>Change</strong><span>${fI(change)}</span></div>`   : ''}
+    ${balance > 0 ? `<div class="pay-row"><strong>Balance</strong><span>${fI(balance)}</span></div>` : ''}
+  </div>
+
+  <div class="center">
+    <span class="status-badge ${isPaid ? 'status-paid' : 'status-credit'}">${isPaid ? '✓ PAID' : 'CREDIT'}</span>
+  </div>
+
+  <hr class="hr">
+
+  <div class="thanks">Thank you, visit again!</div>
+  <div class="footer-line">Powered by ShopBill Pro · shopbillpro.in</div>
+
+</div>
+<script>
+  window.addEventListener('load', function(){
+    setTimeout(function(){
+      try { window.print(); } catch(e){}
+    }, 350);
+  });
+<\/script>
+</body></html>`;
+
+  // open in a popup; user prints/saves PDF; window closes on its own
+  // after print dialog (most browsers' behaviour) or stays open as a copy
+  const w = window.open('', '_blank', 'width=420,height=720');
+  if(!w){
+    toast('🚫 Popup blocked — allow popups for printing','e', 4000);
+    return false;
+  }
+  w.document.write(html);
+  w.document.close();
+  return true;
+}
+
+// ─────────────────────────────────────────────────────────────────
 // FINAL: save bill, mark RO billed, free table, redirect
 // ─────────────────────────────────────────────────────────────────
 async function confirmAndSaveBill(){
@@ -2955,9 +3140,32 @@ async function confirmAndSaveBill(){
       } catch(e){ console.warn('[tables_free]', e); }
     }
 
+    // Auto-print receipt before redirecting (default ON for paid + credit).
+    const printOn = document.getElementById('bw-print-on-save')?.checked;
+    let printed = false;
+    if(printOn){
+      // Snapshot what we know — the inserted `bill` row plus the totals
+      // and item list we already have on the client. The print window
+      // is self-contained so no further DB calls are needed.
+      printed = printSavedBill(
+        bill,                                // includes invoice_no, paid_amount, table_number, payment_mode, status, grand_total
+        _bwItemsCache,                       // items with nm/q/r/tot/lineGST
+        _bwTotals,                           // subtotal/gst/discount/grand
+        custName,
+        custWA
+      );
+    }
+
     closeBillWizard();
-    toast('✅ Bill ' + invNo + ' saved · Table T' + _tableNum + ' freed', 's', 2500);
-    setTimeout(()=> { window.location.href = 'tables.html'; }, 900);
+    toast(
+      '✅ Bill ' + invNo + ' saved · Table T' + _tableNum + ' freed' + (printed ? ' · 🖨 printing…' : ''),
+      's',
+      printed ? 3500 : 2500
+    );
+
+    // Give the print popup a moment to open before navigating away.
+    // If the user blocks the popup printSavedBill already toasted them.
+    setTimeout(()=> { window.location.href = 'tables.html'; }, printed ? 1600 : 900);
 
   } catch(e){
     console.error('[bill save]', e);
