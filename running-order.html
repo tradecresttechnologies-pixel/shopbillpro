@@ -18,6 +18,7 @@ function isPro(){const p=_sbpPlanInfo().plan;return p==='pro'||p==='business';}
 </script>
 <script src="lang.js"></script>
 <script src="lib/sidebar-engine.js"></script>
+<script src="lib/auth-pin.js"></script>
 <script src="conversion.js"></script>
 <script>
 const SB_URL='https://jfqeirfrkjdkqqixivru.supabase.co';
@@ -80,7 +81,75 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
   background-repeat:no-repeat;background-position:10px center;
 }
 .menu-search:focus{outline:none;border-color:var(--acc)}
-.menu-list{flex:1;overflow-y:auto;padding:4px}
+
+/* ── BATCH 067-UX: restaurant POS layout ─────────────────────────────
+   Replaces the previous vertical list with category chips at the top
+   and a tappable grid of item cards below — matches how dine-in
+   ordering apps work in practice (waiters tap fast under pressure). */
+.menu-cats-bar{
+  display:flex;gap:6px;padding:8px 10px 6px;overflow-x:auto;flex-shrink:0;
+  background:var(--surf);border-bottom:1px solid var(--bord);
+  scrollbar-width:none;-ms-overflow-style:none;
+}
+.menu-cats-bar::-webkit-scrollbar{display:none}
+.menu-cat-chip{
+  padding:6px 13px;border-radius:18px;
+  background:var(--surf2);border:1px solid var(--bord);
+  color:var(--t2);font-size:12px;font-weight:700;
+  white-space:nowrap;cursor:pointer;flex-shrink:0;transition:var(--tr);
+  font-family:var(--font-h);
+}
+.menu-cat-chip:hover{border-color:var(--acc);color:var(--text)}
+.menu-cat-chip.on{
+  background:rgba(245,166,35,.15);border-color:var(--acc);color:var(--acc);
+}
+.menu-cat-chip-count{
+  font-size:10px;color:var(--t3);margin-left:4px;font-weight:700;
+  display:inline-block;background:rgba(255,255,255,.04);
+  padding:0 5px;border-radius:8px;line-height:1.6;
+}
+.menu-cat-chip.on .menu-cat-chip-count{color:var(--acc);background:rgba(245,166,35,.1)}
+
+.menu-list{flex:1;overflow-y:auto;padding:0}
+.menu-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(140px, 1fr));
+  gap:8px;padding:10px;
+}
+.menu-card{
+  background:var(--surf2);border:1px solid var(--bord);
+  border-radius:10px;padding:10px;cursor:pointer;
+  display:flex;flex-direction:column;
+  transition:var(--tr);position:relative;
+  min-height:78px;
+}
+.menu-card:hover{
+  border-color:var(--acc);transform:translateY(-1px);
+  box-shadow:0 4px 12px rgba(245,166,35,.08);
+}
+.menu-card:active{transform:translateY(0)}
+.menu-card.unavail{opacity:.45;cursor:not-allowed}
+.menu-card.unavail:hover{transform:none;box-shadow:none;border-color:var(--bord)}
+.menu-card-name{
+  font-size:13px;font-weight:700;color:var(--text);
+  line-height:1.25;margin-bottom:6px;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+  overflow:hidden;
+}
+.menu-card-price{
+  margin-top:auto;font-size:14px;font-weight:800;color:var(--acc);
+  font-family:var(--font-h);
+}
+.menu-card-gst{font-size:10px;font-weight:600;color:var(--t3);margin-left:3px}
+.menu-card-tag{
+  position:absolute;top:6px;right:6px;
+  background:rgba(239,68,68,.15);color:#EF4444;
+  padding:1px 6px;border-radius:6px;
+  font-size:9px;font-weight:800;letter-spacing:.3px;
+}
+
+/* Legacy list-style classes kept for backward compatibility with any
+   code that still references them; not used by the new grid renderer. */
 .menu-cat-hd{font-size:9px;font-weight:800;color:var(--t2);text-transform:uppercase;letter-spacing:.7px;padding:8px 8px 3px}
 .menu-item-row{
   display:flex;align-items:center;padding:9px 10px;border-radius:9px;
@@ -99,7 +168,19 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
   cursor:pointer;flex-shrink:0;transition:var(--tr);
 }
 .menu-item-add:hover{background:var(--acc);color:#0A0E1A}
-.custom-item-form{padding:8px;border-top:1px solid var(--bord);flex-shrink:0;background:var(--surf)}
+
+/* Custom item: collapsible. Saves vertical space — most operators don't
+   need it; the few who do click once to expand. */
+.custom-item-toggle{
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  padding:9px;background:var(--surf2);border:none;border-top:1px solid var(--bord);
+  color:var(--t2);font-size:11px;font-weight:700;font-family:var(--font-h);
+  cursor:pointer;width:100%;flex-shrink:0;transition:var(--tr);
+  letter-spacing:.3px;
+}
+.custom-item-toggle:hover{color:var(--acc);background:rgba(245,166,35,.04)}
+.custom-item-form{display:none;padding:10px;border-top:1px solid var(--bord);flex-shrink:0;background:var(--surf)}
+.custom-item-form.open{display:block}
 .ci-label{font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
 .ci-row{display:flex;gap:5px}
 .inp{padding:8px 10px;border-radius:8px;border:1px solid var(--bord);background:var(--surf2);color:var(--text);font-size:13px;font-family:var(--font-h)}
@@ -223,6 +304,12 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
   /* Order pane on mobile needs the actions to stay visible — tighten the
      summary list to leave room. */
   .summary-list{min-height:80px}
+  /* Tighter grid for phone widths — 2-col cards optimised for thumb-tap */
+  .menu-grid{grid-template-columns:repeat(2, 1fr);gap:6px;padding:8px}
+  .menu-card{padding:8px;min-height:68px}
+  .menu-card-name{font-size:12px}
+  .menu-card-price{font-size:13px}
+  .menu-cat-chip{padding:5px 11px;font-size:11px}
 }
 </style>
 </head>
@@ -257,6 +344,9 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 
       <!-- LEFT: Menu picker -->
       <div class="menu-pane">
+        <!-- Category chips (BATCH 067-UX). Populated by renderCategoryChips() on data load. -->
+        <div class="menu-cats-bar" id="menu-cats-bar"></div>
+
         <div class="menu-search-wrap">
           <input type="search" class="menu-search" id="menu-search"
             placeholder="Search menu items..."
@@ -265,9 +355,12 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
         <div class="menu-list" id="menu-list">
           <div class="menu-empty"><div class="menu-empty-em">⏳</div>Loading menu...</div>
         </div>
-        <!-- Custom item (for items not in the menu) -->
-        <div class="custom-item-form">
-          <div class="ci-label">Custom Item</div>
+        <!-- Custom item: collapsed by default. Click to expand for off-menu items. -->
+        <button class="custom-item-toggle" id="ci-toggle" type="button" onclick="toggleCustomItem()">
+          <span id="ci-toggle-label">+ Custom Item (not on menu)</span>
+          <span id="ci-toggle-arrow">▾</span>
+        </button>
+        <div class="custom-item-form" id="ci-form">
           <div class="ci-row">
             <input type="text" class="inp" id="ci-name" placeholder="Name" style="flex:1">
             <input type="number" class="inp" id="ci-qty" value="1" min="1" style="width:46px;text-align:center">
@@ -453,45 +546,104 @@ async function loadMenu(){
   renderMenu('');
 }
 
+// ── BATCH 067-UX: state + helpers for category chips + grid layout ──
+let _activeCategory = 'all';
+
+function toggleCustomItem(){
+  const form  = document.getElementById('ci-form');
+  const arrow = document.getElementById('ci-toggle-arrow');
+  const isOpen = form.classList.toggle('open');
+  if(arrow) arrow.textContent = isOpen ? '▴' : '▾';
+  if(isOpen) document.getElementById('ci-name').focus();
+}
+
+function filterByCategory(cat){
+  _activeCategory = cat;
+  renderCategoryChips();
+  renderMenu(document.getElementById('menu-search').value || '');
+}
+
+function renderCategoryChips(){
+  const bar = document.getElementById('menu-cats-bar');
+  if(!bar) return;
+  if(!_menuItems.length){ bar.innerHTML = ''; return; }
+
+  // Count per category. Items without a category fall into "Menu".
+  const counts = {};
+  _menuItems.forEach(i => {
+    const c = i.category || 'Menu';
+    counts[c] = (counts[c] || 0) + 1;
+  });
+  const cats = Object.keys(counts).sort();
+
+  bar.innerHTML =
+    '<button class="menu-cat-chip ' + (_activeCategory==='all' ? 'on' : '') + '" type="button" onclick="filterByCategory(\'all\')">' +
+      '<span class="lang-en">All</span><span class="lang-hi">सब</span> ' +
+      '<span class="menu-cat-chip-count">' + _menuItems.length + '</span>' +
+    '</button>' +
+    cats.map(c => {
+      const safe = String(c).replace(/'/g, "\\'");
+      return '<button class="menu-cat-chip ' + (_activeCategory===c ? 'on' : '') +
+             '" type="button" onclick="filterByCategory(\'' + safe + '\')">' +
+        escHtml(c) + ' <span class="menu-cat-chip-count">' + counts[c] + '</span>' +
+      '</button>';
+    }).join('');
+}
+
 function renderMenu(q){
+  // Refresh chips (counts/active state may have changed).
+  renderCategoryChips();
+
   const el = $('menu-list');
   let items = _menuItems;
-  if(q) items = items.filter(i => (i.name||'').toLowerCase().includes(q.toLowerCase()) || (i.category||'').toLowerCase().includes(q.toLowerCase()));
+
+  // Filter by active category first, then by search query.
+  if(_activeCategory !== 'all'){
+    items = items.filter(i => (i.category || 'Menu') === _activeCategory);
+  }
+  if(q){
+    const ql = q.toLowerCase();
+    items = items.filter(i =>
+      (i.name||'').toLowerCase().includes(ql) ||
+      (i.category||'').toLowerCase().includes(ql)
+    );
+  }
 
   if(!items.length){
     if(_menuItems.length){
-      el.innerHTML = `<div class="menu-empty"><div class="menu-empty-em">🔍</div><div style="font-size:13px;color:var(--t2)">No items match</div></div>`;
+      // Filter returned zero — likely search or wrong category
+      el.innerHTML = '<div class="menu-empty"><div class="menu-empty-em">🔍</div><div style="font-size:13px;color:var(--t2)">No items match</div></div>';
     } else {
-      el.innerHTML = `<div class="menu-empty"><div class="menu-empty-em">🍽️</div><div style="font-size:13px;color:var(--t2);margin-bottom:4px">No menu items yet</div><div style="font-size:11px;color:var(--t3);margin-bottom:10px">Add items in <strong>Menu</strong> first — they'll appear here for the waiter.</div><a href="menu.html" style="display:inline-block;padding:7px 14px;border-radius:9px;background:rgba(245,166,35,.12);border:1px solid rgba(245,166,35,.3);color:var(--acc);font-size:12px;font-weight:700;text-decoration:none">+ Open Menu</a></div>`;
+      // No menu at all — point operator to menu.html
+      el.innerHTML = '<div class="menu-empty"><div class="menu-empty-em">🍽️</div>' +
+        '<div style="font-size:13px;color:var(--t2);margin-bottom:4px">No menu items yet</div>' +
+        '<div style="font-size:11px;color:var(--t3);margin-bottom:10px">Add items in <strong>Menu</strong> first — they\'ll appear here for the waiter.</div>' +
+        '<a href="menu.html" style="display:inline-block;padding:7px 14px;border-radius:9px;background:rgba(245,166,35,.12);border:1px solid rgba(245,166,35,.3);color:var(--acc);font-size:12px;font-weight:700;text-decoration:none">+ Open Menu</a>' +
+      '</div>';
     }
     return;
   }
 
-  // Group by category
-  const cats = {};
-  items.forEach(i => {
-    const c = i.category || 'Menu';
-    if(!cats[c]) cats[c] = [];
-    cats[c].push(i);
-  });
-
-  el.innerHTML = Object.entries(cats).map(([cat, citems]) =>
-    `<div class="menu-cat-hd">${escHtml(cat)}</div>` +
-    citems.map(i => {
+  // Render as a tappable grid of cards. Cards are the entire hit target —
+  // no separate "+" button — to maximise tap area on busy nights.
+  el.innerHTML = '<div class="menu-grid">' +
+    items.map(i => {
       const price = typeof i.price === 'number' && i.price > 0 ? i.price : 0;
       const avail = i.is_available !== false;
+      const safeJSON = JSON.stringify(i).replace(/"/g,'&quot;');
+      const safeName = escHtml((i.name||'item').replace(/'/g,''));
       const onclickAttr = avail
-        ? `onclick="addFromMenu(${JSON.stringify(i).replace(/"/g,'&quot;')})"`
-        : `onclick="toast('${escHtml((i.name||'item').replace(/'/g,'')) } not available right now','e')"`;
-      return `<div class="menu-item-row ${avail?'':'unavail'}" ${onclickAttr}>
-        <div class="menu-item-info">
-          <div class="menu-item-name">${escHtml(i.name||'')}${avail?'':' <span style="color:#EF4444;font-size:10px;font-weight:700">· 86\'d</span>'}</div>
-          ${price ? `<div class="menu-item-price">${fINR(price)}${i.gst_rate>0?` <span style="color:var(--t3);font-weight:600">+${i.gst_rate}%</span>`:''}</div>` : ''}
-        </div>
-        <div class="menu-item-add">${avail?'+':'×'}</div>
-      </div>`;
-    }).join('')
-  ).join('');
+        ? 'onclick="addFromMenu(' + safeJSON + ')"'
+        : 'onclick="toast(\'' + safeName + ' not available\',\'e\')"';
+      return '<div class="menu-card ' + (avail?'':'unavail') + '" ' + onclickAttr + '>' +
+        (avail ? '' : '<span class="menu-card-tag">86\'d</span>') +
+        '<div class="menu-card-name">' + escHtml(i.name||'') + '</div>' +
+        (price ? '<div class="menu-card-price">' + fINR(price) +
+          (i.gst_rate>0 ? '<span class="menu-card-gst">+' + i.gst_rate + '%</span>' : '') +
+        '</div>' : '') +
+      '</div>';
+    }).join('') +
+  '</div>';
 }
 
 function filterMenu(q){ renderMenu(q); }
@@ -728,12 +880,16 @@ async function generateBill(){
     btn.disabled = false; btn.textContent = '🧾 Generate Bill'; return;
   }
 
-  // Build URL for billing.html with running order data
+  // Build URL for billing.html with running order data.
+  // BATCH 067-UX fix: NO `mode=pos` — POS mode swaps the DOM to a
+  // POS-cart view, but the prefill code in billing.html writes into
+  // manual mode's #items-wrap via addItem(). Leaving the page in
+  // manual mode (default) is what makes "items auto-appear in the
+  // bill" actually work.
   const url = new URL('billing.html', window.location.origin + window.location.pathname.replace('running-order.html',''));
   url.searchParams.set('running_order_id', _order.id);
   url.searchParams.set('table_id',  _tableId);
   url.searchParams.set('table_num', _tableNum);
-  url.searchParams.set('mode',      'pos');
 
   // Store items in sessionStorage for billing.html to read
   sessionStorage.setItem('sbp_ro_items', JSON.stringify(items));
@@ -743,7 +899,31 @@ async function generateBill(){
 
 // ── Void order ────────────────────────────────────────────────────
 async function voidOrder(){
-  if(!confirm(`Cancel order for Table T${_tableNum}?\n\nThis will free the table. Any sent KOTs should be communicated to the kitchen.`)) return;
+  // BATCH 067-UX: PIN-gate void. Matches the pattern used in bills.html /
+  // bookings.html / folio.html. The modal calls sbp_verify_pin server-side
+  // for the credential check; this client just ensures the user can't
+  // void without proving they're authorised (owner or staff with a PIN).
+  // If lib/auth-pin.js failed to load, fall through with a console warning
+  // rather than block the action — better than locking the operator out.
+  const kotN = _order?.kot_count || 0;
+  const itemN = (Array.isArray(_order?.items) ? _order.items : []).reduce((s,i)=>s+(i.qty||0), 0);
+
+  if(typeof window.SBPAuth !== 'undefined' && window.SBPAuth.requirePIN){
+    try {
+      await window.SBPAuth.requirePIN({
+        action:      'restaurant.void_running_order',
+        detail:      'Void Table T' + _tableNum + ' · ' + kotN + ' KOT' + (kotN===1?'':'s') + ' · ' + itemN + ' item' + (itemN===1?'':'s'),
+        reason_hint: 'Why is this order being voided?'
+      });
+    } catch(e){
+      // 'cancelled' or 'invalid_pin' — modal handled UX, just bail.
+      return;
+    }
+  } else {
+    console.warn('[RO] SBPAuth lib not loaded — falling back to confirm() for void');
+    if(!confirm('Cancel order for Table T' + _tableNum + '?\n\nThis will free the table. Any sent KOTs should be communicated to the kitchen.')) return;
+  }
+
   const { data, error } = await _sb.rpc('sbp_ro_void',{p_shop_id:_shopId, p_order_id:_order.id});
   if(error || !data?.ok){ toast('Void failed: '+(data?.error||error?.message||'?'),'e'); return; }
   toast('Table T'+_tableNum+' freed','s');
