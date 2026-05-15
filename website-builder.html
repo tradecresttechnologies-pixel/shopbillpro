@@ -252,53 +252,35 @@ body{
 .gal-url-block.on{display:block}
 
 /* ── Generate button area ── */
-.gen-card{
-  background:var(--surf); border:1px solid var(--bord);
-  border-radius:var(--r-lg); padding:22px;
-}
-.gen-card-hd{display:flex; align-items:center; gap:12px; margin-bottom:4px}
-.gen-card-icon{
-  width:38px; height:38px; border-radius:10px;
-  background:linear-gradient(135deg,var(--acc),#FF6B35);
-  display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0;
-}
-.gen-card h2{font-size:16px; font-weight:700; color:var(--text); margin:0}
-.gen-card > p{font-size:13px; color:var(--muted); margin-bottom:16px; line-height:1.55; margin-top:6px}
-.gen-stats{
-  display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:18px;
-}
-.gen-stat-box{
-  background:var(--surf2); border:1px solid var(--bord);
-  border-radius:10px; padding:11px 8px; text-align:center;
-}
-.gen-stat-v{font-size:20px; font-weight:800; color:var(--acc); line-height:1}
-.gen-stat-l{font-size:10px; color:var(--muted); margin-top:3px; text-transform:uppercase; letter-spacing:.5px; font-weight:600}
-.gen-divider{height:1px; background:var(--bord); margin:0 0 16px}
-.gen-btn{
-  width:100%; padding:13px; background:linear-gradient(135deg,var(--acc),#FF6B35);
-  color:#fff; border:0; border-radius:10px; font-size:14.5px; font-weight:700;
-  cursor:pointer; transition:all .15s; display:flex; align-items:center;
-  justify-content:center; gap:8px; font-family:inherit;
-}
-.gen-btn:hover:not(:disabled){transform:translateY(-1px); box-shadow:0 6px 20px rgba(245,166,35,.35)}
-.gen-btn:disabled{opacity:.5; cursor:not-allowed; transform:none}
-/* Push Live button */
-.push-live-btn{
-  width:100%; padding:13px; background:linear-gradient(135deg,#10B981,#059669);
-  color:#fff; border:0; border-radius:10px; font-size:14px; font-weight:700;
-  cursor:pointer; transition:all .15s; display:none; align-items:center;
-  justify-content:center; gap:8px; font-family:inherit; margin-top:8px;
-}
-.push-live-btn:hover{transform:translateY(-1px); box-shadow:0 6px 20px rgba(16,185,129,.4)}
-/* Live status badge */
-.live-badge{
-  display:none; align-items:center; gap:8px; padding:10px 13px;
-  background:rgba(16,185,129,.08); border:1px solid rgba(16,185,129,.25);
-  border-radius:10px; font-size:13px; margin-top:8px; color:var(--text);
-}
-.live-dot{width:8px;height:8px;border-radius:50%;background:#10B981;flex-shrink:0;
-  animation:pulse-dot 2s infinite; box-shadow:0 0 0 3px rgba(16,185,129,.2)}
+.gen-card{background:var(--surf);border:1px solid var(--bord);border-radius:var(--r-lg);padding:22px}
+.gen-card-hd{display:flex;align-items:center;gap:12px;margin-bottom:4px}
+.gen-card-icon{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--acc),#FF6B35);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.gen-card h2{font-size:16px;font-weight:700;color:var(--text);margin:0}
+.gen-card>p{font-size:13px;color:var(--muted);margin:6px 0 16px;line-height:1.55}
+.gen-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:18px}
+.gen-stat-box{background:var(--surf2);border:1px solid var(--bord);border-radius:10px;padding:11px 8px;text-align:center}
+.gen-stat-v{font-size:20px;font-weight:800;color:var(--acc);line-height:1}
+.gen-stat-l{font-size:10px;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:.5px;font-weight:600}
+.gen-divider{height:1px;background:var(--bord);margin:0 0 14px}
+.gen-btn{flex:1;padding:13px;background:linear-gradient(135deg,var(--acc),#FF6B35);color:#fff;border:0;border-radius:10px;font-size:14.5px;font-weight:700;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:8px;font-family:inherit}
+.gen-btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 20px rgba(245,166,35,.35)}
+.gen-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.push-live-btn{width:100%;padding:13px;background:linear-gradient(135deg,#10B981,#059669);color:#fff;border:0;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;transition:all .15s;align-items:center;justify-content:center;gap:8px;font-family:inherit;margin-top:8px;display:none}
+.push-live-btn:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(16,185,129,.4)}
+.live-badge{display:none;align-items:center;gap:8px;padding:10px 13px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.25);border-radius:10px;font-size:13px;margin-top:8px;color:var(--text)}
+.live-dot{width:8px;height:8px;border-radius:50%;background:#10B981;flex-shrink:0;animation:pulse-dot 2s infinite}
 @keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:.5}}
+.amenity-grid{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.amenity-group-lbl{width:100%;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin:10px 0 2px}
+.amenity-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;font-size:12.5px;font-weight:500;border:1px solid var(--bord);background:var(--surf2);color:var(--text);cursor:pointer;transition:.15s ease;user-select:none}
+.amenity-chip:hover{border-color:var(--acc);color:var(--acc)}
+.amenity-chip input[type=checkbox]{accent-color:var(--acc);width:13px;height:13px;cursor:pointer}
+.amenity-chip:has(input:checked){background:rgba(245,166,35,.12);border-color:var(--acc);color:var(--acc);font-weight:600}
+.room-item{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surf2);border-radius:10px;border:1px solid var(--bord);margin-bottom:6px}
+.room-item-info{flex:1;min-width:0}
+.room-item-name{font-weight:600;font-size:13.5px;color:var(--text)}
+.room-item-meta{font-size:12px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.room-item-price{font-weight:700;color:var(--acc);font-size:14px;white-space:nowrap}
 
 /* ── Preview pane (right column, sticky) ── */
 .preview{
@@ -869,76 +851,78 @@ body{
         </div>
       </div>
 
-      <!-- ── Generate ── -->
+      <!-- 8. Custom Domain -->
+      <div class="sec" id="sec-custom-domain">
+        <div class="sec-hd">
+          <div class="sec-hd-ic">&#127760;</div>
+          <div class="sec-hd-grow">
+            <h2><span class="lang-en">8. Custom Domain</span><span class="lang-hi">8. &#2325;&#2360;&#2381;&#2335;&#2350; &#2337;&#2379;&#2350;&#2375;&#2344;</span> <span class="pill pill-biz" style="font-size:10px">Business</span></h2>
+            <div class="sub"><span class="lang-en">Connect yourbusiness.com &#8212; fully automated</span></div>
+          </div>
+        </div>
+        <div class="sec-bd" id="domain-sec-bd">
+          <div id="domain-state-none">
+            <div class="form-row" style="margin-bottom:10px">
+              <label class="lbl">Your domain</label>
+              <input type="text" class="inp" id="custom-domain-input" placeholder="yourbusiness.com (without http or www)" maxlength="100" autocomplete="off" spellcheck="false">
+              <div class="helper">Buy from GoDaddy / Namecheap / Hostinger &#8212; ~&#8377;800/year</div>
+            </div>
+            <button type="button" class="btn btn-pri btn-sm" id="domain-connect-btn" onclick="handleDomainConnect()">&#128279; Connect Domain</button>
+          </div>
+          <div id="domain-state-pending" style="display:none">
+            <div style="background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.3);border-radius:12px;padding:16px;margin-bottom:12px">
+              <div style="font-weight:700;font-size:14px;margin-bottom:10px">&#9203; <span id="domain-pending-name" style="color:var(--acc)"></span> &#8212; Add DNS records</div>
+              <table style="width:100%;font-size:12px;border-collapse:collapse;margin-bottom:10px">
+                <tr style="color:var(--muted)"><th style="padding:4px 8px;border-bottom:1px solid var(--bord);text-align:left">Type</th><th style="padding:4px 8px;border-bottom:1px solid var(--bord);text-align:left">Name</th><th style="padding:4px 8px;border-bottom:1px solid var(--bord);text-align:left">Value</th></tr>
+                <tr><td style="padding:6px 8px;font-weight:700;color:var(--acc)">CNAME</td><td style="padding:6px 8px;font-family:monospace">www</td><td style="padding:6px 8px;font-family:monospace;font-size:11px">cname.vercel-dns.com</td></tr>
+                <tr><td style="padding:6px 8px;font-weight:700;color:var(--acc)">A</td><td style="padding:6px 8px;font-family:monospace">@</td><td style="padding:6px 8px;font-family:monospace">76.76.21.21</td></tr>
+              </table>
+              <div style="font-size:11.5px;color:var(--muted)">DNS takes 5&#8211;60 min. Click Check Status after updating.</div>
+            </div>
+            <div style="display:flex;gap:8px"><button type="button" class="btn btn-sm btn-pri" onclick="handleDomainVerify()">&#128260; Check Status</button><button type="button" class="btn btn-sm" onclick="handleDomainDisconnect()" style="opacity:.7">&#10060; Remove</button></div>
+          </div>
+          <div id="domain-state-active" style="display:none">
+            <div style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.3);border-radius:12px;padding:14px;margin-bottom:12px">
+              <div style="font-weight:700;font-size:14px;margin-bottom:4px">&#9989; Domain connected!</div>
+              <a id="domain-active-link" href="#" target="_blank" style="color:#10B981;font-weight:700;font-size:14px"></a>
+            </div>
+            <button type="button" class="btn btn-sm" onclick="handleDomainDisconnect()" style="opacity:.7">&#10060; Disconnect</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Generate -->
       <div class="gen-card">
-
-        <!-- Header -->
         <div class="gen-card-hd">
-          <div class="gen-card-icon">✨</div>
-          <div>
-            <h2><span class="lang-en">Generate Your Website</span><span class="lang-hi">वेबसाइट बनाएं</span></h2>
-          </div>
+          <div class="gen-card-icon">&#10024;</div>
+          <h2><span class="lang-en">Generate Your Website</span><span class="lang-hi">&#2357;&#2375;&#2348;&#2360;&#2366;&#2311;&#2335; &#2348;&#2344;&#2366;&#2319;&#2306;</span></h2>
         </div>
-        <p>
-          <span class="lang-en">ShopBill Pro AI creates a unique, professionally designed website from your inputs above. Takes 15–30 seconds.</span>
-          <span class="lang-hi">ShopBill Pro AI आपके इनपुट से वेबसाइट बनाएगा। 15–30 सेकंड।</span>
-        </p>
-
-        <!-- Stats -->
+        <p><span class="lang-en">ShopBill Pro AI creates a professionally designed website from your inputs. Takes 15&#8211;30 seconds.</span></p>
         <div class="gen-stats">
-          <div class="gen-stat-box">
-            <div class="gen-stat-v" id="gen-completed">0</div>
-            <div class="gen-stat-l"><span class="lang-en">Fields</span><span class="lang-hi">फील्ड</span></div>
-          </div>
-          <div class="gen-stat-box">
-            <div class="gen-stat-v" id="gen-services">0</div>
-            <div class="gen-stat-l"><span class="lang-en">Services</span><span class="lang-hi">सेवाएँ</span></div>
-          </div>
-          <div class="gen-stat-box">
-            <div class="gen-stat-v" id="gen-rooms">0</div>
-            <div class="gen-stat-l"><span class="lang-en">Rooms</span><span class="lang-hi">कमरे</span></div>
-          </div>
-          <div class="gen-stat-box">
-            <div class="gen-stat-v" id="gen-photos">0</div>
-            <div class="gen-stat-l"><span class="lang-en">Photos</span><span class="lang-hi">फोटो</span></div>
-          </div>
+          <div class="gen-stat-box"><div class="gen-stat-v" id="gen-completed">0</div><div class="gen-stat-l">Fields</div></div>
+          <div class="gen-stat-box"><div class="gen-stat-v" id="gen-services">0</div><div class="gen-stat-l">Services</div></div>
+          <div class="gen-stat-box"><div class="gen-stat-v" id="gen-rooms">0</div><div class="gen-stat-l">Rooms</div></div>
+          <div class="gen-stat-box"><div class="gen-stat-v" id="gen-photos">0</div><div class="gen-stat-l">Photos</div></div>
         </div>
-
         <div class="gen-divider"></div>
-
-        <!-- Step 1: Save + Generate -->
-        <div style="display:flex;gap:8px;margin-bottom:10px">
-          <button type="button" class="btn btn-sm" style="flex-shrink:0" onclick="handleSaveAll()">
-            💾 <span class="lang-en">Save</span><span class="lang-hi">सेव</span>
-          </button>
-          <button type="button" class="gen-btn" id="generate-btn" onclick="handleGenerate()" style="flex:1;padding:10px">
-            <span>✨</span>
+        <div style="display:flex;gap:8px;margin-bottom:0">
+          <button type="button" class="btn btn-sm" style="flex-shrink:0;padding:11px 14px" onclick="handleSaveAll()">&#128190; <span class="lang-en">Save</span></button>
+          <button type="button" class="gen-btn" id="generate-btn" onclick="handleGenerate()">
+            <span>&#10024;</span>
             <span class="lang-en" id="gen-btn-text-en">Generate Website</span>
-            <span class="lang-hi" id="gen-btn-text-hi">वेबसाइट बनाएं</span>
+            <span class="lang-hi" id="gen-btn-text-hi">&#2357;&#2375;&#2348;&#2360;&#2366;&#2311;&#2335; &#2348;&#2344;&#2366;&#2319;&#2306;</span>
           </button>
         </div>
-
-        <!-- Step 2: Push Live (shown after generation, before publishing) -->
-        <button type="button" class="push-live-btn" id="push-live-btn" onclick="handlePushLive()">
-          🚀 <span class="lang-en">Push Live — Publish Website</span>
-          <span class="lang-hi">लाइव करें</span>
-        </button>
-
-        <!-- Step 3: Live badge (shown when published) -->
+        <button type="button" class="push-live-btn" id="push-live-btn" onclick="handlePushLive()">&#128640; <span class="lang-en">Push Live &#8212; Publish Website</span></button>
         <div class="live-badge" id="live-badge">
           <div class="live-dot"></div>
           <div style="flex:1;min-width:0">
-            <div style="font-weight:600;font-size:13px">
-              <span class="lang-en">Website is Live</span>
-              <span class="lang-hi">वेबसाइट लाइव है</span>
-            </div>
+            <div style="font-weight:600;font-size:13px">Website is Live</div>
             <div id="live-badge-url" style="font-size:11.5px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
           </div>
-          <button type="button" class="btn btn-sm" id="unpublish-btn" onclick="handleUnpublish()" style="flex-shrink:0;font-size:11px;padding:5px 10px">
-            <span class="lang-en">Unpublish</span>
-          </button>
+          <button type="button" class="btn btn-sm" onclick="handleUnpublish()" style="flex-shrink:0;font-size:11px;padding:5px 10px">Unpublish</button>
         </div>
-
+        <button id="publish-btn" style="display:none" onclick="handlePublishToggle()"><span id="publish-btn-text"></span></button>
       </div>
 
     </div><!-- /builder-content -->
@@ -1721,19 +1705,11 @@ async function handleGenerate(){
       return;
     }
 
-    toast('Website generated! 🎉 Preview it on the right, then click Push Live when ready.');
+    toast('Website generated! Preview on the right, then click Push Live.');
     await loadWebsiteState();
-    updatePreview();
     updatePublishButton();
-    // Scroll preview into view on mobile
-    if (window.innerWidth < 1024) {
-      $('preview-pane')?.scrollIntoView({ behavior:'smooth', block:'nearest' });
-    }
-    // Change button text to "Regenerate" after first generation
-    const enText = $('gen-btn-text-en');
-    const hiText = $('gen-btn-text-hi');
-    if (enText) enText.textContent = 'Regenerate Website';
-    if (hiText) hiText.textContent = 'दोबारा बनाएं';
+    updatePreview();
+    const _eb=$('gen-btn-text-en'); if(_eb)_eb.textContent='Regenerate Website';
   } catch(e){
     toast('Generation error: ' + (e.message || e), 'e');
   } finally {
@@ -1741,79 +1717,105 @@ async function handleGenerate(){
   }
 }
 
-// ── Publish / Live flow (redesigned v4.9b) ───────────────────────
-// State machine:
-//   no draft   → only Generate button
-//   draft only → Generate (re-gen) + 🚀 Push Live button
-//   published  → Generate (re-gen) + ✅ Live badge + Unpublish
-
+// -- Publish / Live flow --
 async function handlePushLive(){
-  if (!_websiteState?.has_ai_draft){
-    toast('Generate your website first', 'w'); return;
-  }
-  loadingOn('Publishing your website…');
+  if (!_websiteState || !_websiteState.has_ai_draft){ toast('Generate your website first','w'); return; }
+  loadingOn('Publishing...');
   try {
     const { data, error } = await _sb.rpc('sbp_set_ai_website_published', { p_published: true });
-    if (error){ toast('Failed: ' + error.message, 'e'); return; }
-    if (!data?.ok){ toast('Failed: ' + (data?.error||'unknown'), 'e'); return; }
+    if (error){ toast('Failed: '+error.message,'e'); return; }
+    if (!data || !data.ok){ toast('Failed: '+(data&&data.error||'?'),'e'); return; }
     _websiteState.ai_published = true;
     if (data.slug) _websiteState.slug = data.slug;
-    updatePublishButton();
-    updatePreview();
-    toast('🎉 Your website is now live!', 's');
+    updatePublishButton(); updatePreview();
+    toast('Website is now live!','s');
   } finally { loadingOff(); }
 }
-
 async function handleUnpublish(){
-  loadingOn('Unpublishing…');
+  loadingOn('Unpublishing...');
   try {
     const { data, error } = await _sb.rpc('sbp_set_ai_website_published', { p_published: false });
-    if (error){ toast('Failed: ' + error.message, 'e'); return; }
-    if (!data?.ok){ toast('Failed: ' + (data?.error||'unknown'), 'e'); return; }
+    if (error){ toast('Failed: '+error.message,'e'); return; }
+    if (!data || !data.ok){ toast('Failed: '+(data&&data.error||'?'),'e'); return; }
     _websiteState.ai_published = false;
-    updatePublishButton();
-    updatePreview();
+    updatePublishButton(); updatePreview();
     toast('Website unpublished.');
   } finally { loadingOff(); }
 }
-
 async function handlePublishToggle(){
-  if (_websiteState?.ai_published) { await handleUnpublish(); }
+  if (_websiteState && _websiteState.ai_published){ await handleUnpublish(); }
   else { await handlePushLive(); }
 }
-
 function updatePublishButton(){
-  const hasDraft  = !!_websiteState?.has_ai_draft;
-  const isLive    = !!_websiteState?.ai_published;
-  const slug      = _websiteState?.slug || '';
-
-  const pushBtn   = $('push-live-btn');
-  const badge     = $('live-badge');
-  const badgeUrl  = $('live-badge-url');
-  const viewLive  = $('view-live');
-
+  const hasDraft=!!(_websiteState&&_websiteState.has_ai_draft);
+  const isLive=!!(_websiteState&&_websiteState.ai_published);
+  const slug=(_websiteState&&_websiteState.slug)||'';
+  const pushBtn=$('push-live-btn'), badge=$('live-badge'), badgeUrl=$('live-badge-url'), viewLive=$('view-live');
   if (!hasDraft){
-    if (pushBtn)  pushBtn.style.display  = 'none';
-    if (badge)    badge.style.display    = 'none';
-    if (viewLive) viewLive.style.display = 'none';
-    return;
+    if(pushBtn)pushBtn.style.display='none';
+    if(badge)badge.style.display='none';
+    if(viewLive)viewLive.style.display='none'; return;
   }
-
   if (isLive){
-    if (pushBtn)  pushBtn.style.display  = 'none';
-    if (badge)    badge.style.display    = 'flex';
-    if (badgeUrl && slug){
-      const url = 'app.shopbillpro.in/s/' + slug;
-      badgeUrl.innerHTML = '<a href="https://' + url +
-        '" target="_blank" style="color:var(--acc);text-decoration:none">' + url + ' ↗</a>';
-    }
-    if (viewLive){ viewLive.style.display = 'inline-flex'; viewLive.href = '/s/'+slug; }
+    if(pushBtn)pushBtn.style.display='none';
+    if(badge)badge.style.display='flex';
+    if(badgeUrl&&slug){ var u='app.shopbillpro.in/s/'+slug; badgeUrl.innerHTML='<a href="https://'+u+'" target="_blank" style="color:var(--acc);text-decoration:none">'+u+' &nearr;</a>'; }
+    if(viewLive){ viewLive.style.display='inline-flex'; viewLive.href='/s/'+slug; }
   } else {
-    if (pushBtn)  pushBtn.style.display  = 'flex';
-    if (badge)    badge.style.display    = 'none';
-    if (viewLive) viewLive.style.display = 'none';
+    if(pushBtn)pushBtn.style.display='flex';
+    if(badge)badge.style.display='none';
+    if(viewLive)viewLive.style.display='none';
   }
 }
+// -- Custom Domain --
+var _customDomain=null, _domainStatus='none';
+function domainShowState(status,domain){
+  _domainStatus=status; _customDomain=domain||null;
+  ['domain-state-none','domain-state-pending','domain-state-active'].forEach(function(id){var e=$(id);if(e)e.style.display='none';});
+  if(!status||status==='none'||status==='removed'){var e=$('domain-state-none');if(e)e.style.display='';}
+  else if(status.indexOf('pending')===0){var e=$('domain-state-pending');if(e)e.style.display='';var n=$('domain-pending-name');if(n)n.textContent=domain||'';}
+  else if(status==='active'){var e=$('domain-state-active');if(e)e.style.display='';var lnk=$('domain-active-link');if(lnk&&domain){lnk.textContent='https://'+domain;lnk.href='https://'+domain;}}
+}
+async function loadDomainState(){
+  try{var r=await _sb.rpc('sbp_get_custom_domain_info');if(r.data&&r.data.ok)domainShowState(r.data.status||'none',r.data.domain);}catch(e){}
+}
+async function handleDomainConnect(){
+  var input=$('custom-domain-input');
+  var raw=(input?input.value:'').trim().toLowerCase();
+  var domain=raw.replace(/^https?:\/\//,'').replace(/\/.*/,'').replace(/^www\./,'');
+  if(!domain){toast('Enter a domain name','e');return;}
+  if(!/^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/.test(domain)){toast('Invalid format. Use: yourbusiness.com','e');return;}
+  var btn=$('domain-connect-btn');if(btn){btn.disabled=true;btn.textContent='Connecting...';}
+  try{
+    var r1=await _sb.rpc('sbp_connect_custom_domain',{p_domain:domain});
+    if(r1.error||!r1.data||!r1.data.ok){toast((r1.data&&r1.data.message)||(r1.error&&r1.error.message)||'Failed','e');return;}
+    var r2=await _sb.functions.invoke('manage-domain',{body:{action:'connect',domain:domain}});
+    if(r2.error||!r2.data||!r2.data.ok){toast((r2.data&&r2.data.message)||(r2.error&&r2.error.message)||'Vercel error','e');domainShowState('pending_dns',domain);return;}
+    domainShowState(r2.data.configured?'active':'pending_dns',domain);
+    toast(r2.data.configured?'Domain connected!':'Domain registered. Add DNS records below.','s');
+  }catch(e){toast('Error: '+(e.message||e),'e');}
+  finally{if(btn){btn.disabled=false;btn.textContent='Connect Domain';}}
+}
+async function handleDomainVerify(){
+  if(!_customDomain)return; toast('Checking DNS...');
+  try{
+    var r=await _sb.functions.invoke('manage-domain',{body:{action:'verify',domain:_customDomain}});
+    if(r.error||!r.data||!r.data.ok){toast((r.data&&r.data.message)||(r.error&&r.error.message)||'Failed','e');return;}
+    domainShowState(r.data.status,_customDomain);
+    toast(r.data.message||(r.data.configured?'Live!':'DNS not ready - try again shortly.'),r.data.configured?'s':'w');
+  }catch(e){toast('Error: '+(e.message||e),'e');}
+}
+async function handleDomainDisconnect(){
+  if(!_customDomain)return;
+  showConfirm('Disconnect domain?','Remove '+_customDomain+' from your website?',async function(){
+    try{
+      await _sb.functions.invoke('manage-domain',{body:{action:'disconnect',domain:_customDomain}});
+      await _sb.rpc('sbp_disconnect_custom_domain');
+      domainShowState('none',null); toast('Domain disconnected.');
+    }catch(e){toast('Error: '+(e.message||e),'e');}
+  });
+}
+
 
 // ── Preview rendering ────────────────────────────────────────────
 function setPreviewMode(mode){
@@ -2006,6 +2008,7 @@ async function init(){
   await loadWebsiteState();
   await loadContentJson();
   await reloadServices();
+  await loadDomainState();
 
   // Wire up char counts and completion tracking
   ['shop-name','headline','description','c-phone','c-address','business-type'].forEach(id => {
