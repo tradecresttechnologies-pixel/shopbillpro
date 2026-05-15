@@ -330,24 +330,36 @@ html,body{height:100%;width:100%;margin:0;padding:0;overflow:hidden;background:v
    per-item delete button that triggers the PIN-gated void flow. */
 .summary-list{flex:1;overflow-y:auto;background:var(--surf);padding:8px}
 
-/* ── View toggle: By KOT / By Item ───────────────────────────────── */
+/* ── View toggle: By KOT / By Item ─────────────────────────────────
+   Now inline with the Order Summary header (single horizontal row)
+   to free vertical space in the order pane. */
+.summary-hd-row{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:12px 16px 10px;background:var(--surf);
+  border-bottom:1px solid var(--bord);flex-shrink:0;
+}
+.summary-hd-text{display:flex;flex-direction:column;gap:1px;min-width:0;flex:1}
+.summary-hd-lbl{
+  font-size:11px;font-weight:800;color:var(--t2);
+  text-transform:uppercase;letter-spacing:.7px;
+}
+.summary-hd-sub{font-size:11px;color:var(--t3);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .summary-view-tabs{
-  display:flex;gap:4px;
-  padding:8px 14px 0;background:var(--surf);
-  flex-shrink:0;
+  display:flex;gap:3px;background:var(--surf2);
+  padding:3px;border-radius:8px;
+  border:1px solid var(--bord);flex-shrink:0;
 }
 .svt{
-  flex:1;padding:8px 12px;background:var(--surf2);
-  border:1px solid var(--bord);border-radius:9px;
-  color:var(--t2);font-size:12px;font-weight:700;font-family:var(--font-h);
+  padding:5px 12px;background:transparent;
+  border:none;border-radius:6px;
+  color:var(--t2);font-size:11px;font-weight:700;font-family:var(--font-h);
   cursor:pointer;transition:var(--tr);
-  letter-spacing:.3px;
+  letter-spacing:.2px;line-height:1.4;
 }
-.svt:hover{color:var(--text);border-color:var(--t2)}
+.svt:hover{color:var(--text)}
 .svt.on{
   background:linear-gradient(135deg,#F5A623,#FF8A00);
-  border-color:transparent;color:#0A0E1A;
-  box-shadow:0 2px 8px rgba(245,166,35,.25);
+  color:#0A0E1A;box-shadow:0 2px 6px rgba(245,166,35,.25);
 }
 
 /* ── Aggregated item rows (By Item view) ─────────────────────────── */
@@ -714,6 +726,16 @@ html,body{height:100%;width:100%;margin:0;padding:0;overflow:hidden;background:v
   transform:translateY(-2px);box-shadow:0 6px 20px rgba(16,185,129,.4);
   color:#fff;background:linear-gradient(135deg,#10B981,#059669);
 }
+.rail-btn.kot{
+  background:linear-gradient(135deg,#FF6B35,#F5A623);
+  color:#0A0E1A;border-color:transparent;
+  box-shadow:0 4px 14px rgba(245,166,35,.25);
+}
+.rail-btn.kot:hover:not(:disabled){
+  transform:translateY(-2px);box-shadow:0 6px 20px rgba(245,166,35,.4);
+  color:#0A0E1A;background:linear-gradient(135deg,#FF6B35,#F5A623);
+}
+.rail-btn.kot:disabled{opacity:.35;cursor:not-allowed;transform:none;box-shadow:none;background:var(--surf2);color:var(--t3)}
 .rail-btn.danger{
   color:#EF4444;border-color:rgba(239,68,68,.3);background:rgba(239,68,68,.08);
 }
@@ -1036,36 +1058,30 @@ html,body{height:100%;width:100%;margin:0;padding:0;overflow:hidden;background:v
           </div>
         </div>
 
-        <!-- Round note -->
+        <!-- Round note (kept in pane — input is too wide for the 76px rail) -->
         <div class="round-note">
           <input type="text" id="round-note-inp" placeholder="Note for kitchen (e.g. less spicy, no onion)...">
         </div>
 
-        <!-- KOT button -->
-        <div class="kot-row">
-          <button class="kot-btn" id="kot-btn" onclick="sendKOT()" disabled>
-            🍳 <span class="lang-en">Send to Kitchen (KOT)</span><span class="lang-hi">किचन भेजें (KOT)</span>
-          </button>
-        </div>
+        <!-- KOT button moved to the action rail on the right (see #rail-kot-btn). -->
 
-        <!-- All items summary (from previous rounds) -->
-        <div class="summary-hd">
-          <span><span class="lang-en">Order Summary</span><span class="lang-hi">ऑर्डर सारांश</span></span>
-          <span class="summary-hd-divider"></span>
-          <span id="summary-rounds-info">—</span>
-        </div>
-        <!-- View toggle: By KOT (chronological) ↔ By Item (aggregated)
-             KOT view = what kitchen sees (rounds in time order).
-             Item view = what billing sees (totals per dish, with one
-             action button per row that drills into a breakdown picker
-             when an item spans multiple KOTs.) -->
-        <div class="summary-view-tabs">
-          <button class="svt on" id="svt-kot"  onclick="setSummaryView('kot')">
-            <span class="lang-en">By KOT</span><span class="lang-hi">KOT वार</span>
-          </button>
-          <button class="svt"    id="svt-item" onclick="setSummaryView('item')">
-            <span class="lang-en">By Item</span><span class="lang-hi">आइटम वार</span>
-          </button>
+        <!-- All items summary (from previous rounds).
+             Header now carries BOTH the summary label/count AND the
+             By KOT / By Item view tabs — saves vertical space (audit
+             feedback: "there is enough space on top of panel"). -->
+        <div class="summary-hd-row">
+          <div class="summary-hd-text">
+            <div class="summary-hd-lbl"><span class="lang-en">Order Summary</span><span class="lang-hi">ऑर्डर सारांश</span></div>
+            <div class="summary-hd-sub" id="summary-rounds-info">—</div>
+          </div>
+          <div class="summary-view-tabs">
+            <button class="svt on" id="svt-kot"  onclick="setSummaryView('kot')">
+              <span class="lang-en">By KOT</span><span class="lang-hi">KOT</span>
+            </button>
+            <button class="svt"    id="svt-item" onclick="setSummaryView('item')">
+              <span class="lang-en">By Item</span><span class="lang-hi">आइटम</span>
+            </button>
+          </div>
         </div>
         <div class="summary-list" id="summary-list">
           <div class="summary-empty-sm"><span class="lang-en">No rounds sent yet</span><span class="lang-hi">अभी तक कोई राउंड नहीं भेजा गया</span></div>
@@ -1121,6 +1137,15 @@ html,body{height:100%;width:100%;margin:0;padding:0;overflow:hidden;background:v
         <div class="rail-spacer"></div>
 
         <div class="rail-section">
+          <!-- Send to Kitchen lives at the top of the bottom-pinned
+               primary group so it's the most prominent action when a
+               round is being built. Disabled until current round has
+               items; carries an item-count badge. -->
+          <button class="rail-btn kot" id="kot-btn" onclick="sendKOT()" disabled title="Send current round to kitchen">
+            <span class="rail-btn-em">🍳</span>
+            <span><span class="lang-en">Send KOT</span><span class="lang-hi">KOT भेजें</span></span>
+            <span class="rail-badge" id="kot-btn-badge" style="display:none">0</span>
+          </button>
           <button class="rail-btn danger" onclick="voidOrder()" title="Cancel the whole order & free the table">
             <span class="rail-btn-em">✕</span>
             <span><span class="lang-en">Void Order</span><span class="lang-hi">रद्द करें</span></span>
@@ -1540,6 +1565,7 @@ function changeQty(idx, delta){
 function renderRound(){
   const el    = $('round-items');
   const kotBtn = $('kot-btn');
+  const kotBadge = $('kot-btn-badge');
   const roundCount = $('round-count');
   const roundBadge = $('round-badge');
 
@@ -1548,8 +1574,17 @@ function renderRound(){
 
   if(roundBadge){
     roundBadge.textContent = '#' + kotN;
-    if(totalQty === 0) roundBadge.style.opacity = '.5';
-    else roundBadge.style.opacity = '1';
+    roundBadge.style.opacity = totalQty === 0 ? '.5' : '1';
+  }
+
+  // ALWAYS reset the KOT button's canonical HTML — kills any stale
+  // "Sending..." text left over from a successful sendKOT() call.
+  // Disabled state is set below based on round contents.
+  if(kotBtn){
+    kotBtn.innerHTML =
+      '<span class="rail-btn-em">🍳</span>' +
+      '<span><span class="lang-en">Send KOT</span><span class="lang-hi">KOT भेजें</span></span>' +
+      '<span class="rail-badge" id="kot-btn-badge" style="' + (totalQty>0?'':'display:none') + '">' + totalQty + '</span>';
   }
 
   if(!_roundItems.length){
@@ -1563,12 +1598,12 @@ function renderRound(){
       '</div>';
     }
     roundCount.innerHTML = '<span class="lang-en">Tap menu items to add →</span><span class="lang-hi">मेनू आइटम पर टैप करें →</span>';
-    kotBtn.disabled = true;
+    if(kotBtn) kotBtn.disabled = true;
     return;
   }
 
   roundCount.textContent = totalQty + ' item' + (totalQty===1?'':'s');
-  kotBtn.disabled = false;
+  if(kotBtn) kotBtn.disabled = false;
 
   // Each row gets: name · qty controls · price · chef-note button.
   // Note button opens an inline input below the row. Note text goes
@@ -1627,8 +1662,11 @@ function setItemNote(idx, val){
 async function sendKOT(){
   if(!_roundItems.length){ toast('Add items first','e'); return; }
   const kotBtn = $('kot-btn');
+  // Show "sending" feedback — `renderRound()` rewrites button's
+  // innerHTML on completion (success OR failure), so we don't need
+  // to restore text here. This fixes the stuck "Sending..." bug.
   kotBtn.disabled = true;
-  kotBtn.textContent = '⏳ Sending...';
+  kotBtn.innerHTML = '<span class="rail-btn-em">⏳</span><span>Sending…</span>';
 
   const note = $('round-note-inp').value.trim();
   // Full item shape — gst_rate + hsn_sac_code + service_id persist into
@@ -1646,17 +1684,24 @@ async function sendKOT(){
     notes:        (i.notes && i.notes.trim()) ? i.notes.trim() : (note || undefined)
   }));
 
-  const { data, error } = await _sb.rpc('sbp_ro_add_items',{
-    p_shop_id:  _shopId,
-    p_order_id: _order.id,
-    p_items:    items,
-    p_notes:    note || null
-  });
+  let data, error;
+  try {
+    const res = await _sb.rpc('sbp_ro_add_items',{
+      p_shop_id:  _shopId,
+      p_order_id: _order.id,
+      p_items:    items,
+      p_notes:    note || null
+    });
+    data  = res.data;
+    error = res.error;
+  } catch(e){
+    error = e;
+  }
 
   if(error || !data?.ok){
     toast('KOT failed: '+(data?.error||error?.message||'?'),'e');
-    kotBtn.disabled = false;
-    kotBtn.textContent = '🍳 Send to Kitchen (KOT)';
+    // renderRound() resets the button to its canonical state.
+    renderRound();
     return;
   }
 
@@ -1664,13 +1709,15 @@ async function sendKOT(){
   const kotN = data.kot_number;
 
   // Print KOT slip
-  printKOTSlip(items, kotN, note);
+  try { printKOTSlip(items, kotN, note); } catch(e){ console.warn('Print failed', e); }
 
   // Clear round
   _roundItems = [];
   $('round-note-inp').value = '';
   toast(`🍳 KOT-${String(kotN).padStart(3,'0')} sent to kitchen!`,'s');
 
+  // render() → renderRound() resets the KOT button HTML to its
+  // canonical "🍳 Send KOT" state. No stale "Sending..." possible.
   render();
   // Reset menu qty badges since the round just cleared.
   renderMenu(document.getElementById('menu-search').value || '');
