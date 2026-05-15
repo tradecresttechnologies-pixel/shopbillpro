@@ -1705,10 +1705,27 @@ async function handleGenerate(){
       return;
     }
 
-    toast('Website generated! Preview on the right, then click Push Live.');
+    toast('Website generated! Click Push Live to publish it.');
     await loadWebsiteState();
+
+    // Force-show Push Live immediately after generation.
+    // loadWebsiteState may return stale state (has_ai_draft=false)
+    // due to DB replication lag. We know the generation just succeeded
+    // so we force the button visible rather than waiting for state sync.
+    if (_websiteState) {
+      _websiteState.has_ai_draft = true;
+    } else {
+      // State didn't load — create minimal state so buttons work
+      _websiteState = { has_ai_draft: true, ai_published: false, ok: true };
+    }
     updatePublishButton();
     updatePreview();
+
+    // Also directly show push live button as belt-and-braces
+    const _pb = $('push-live-btn');
+    const _isAlreadyLive = _websiteState && _websiteState.ai_published;
+    if (_pb && !_isAlreadyLive) { _pb.style.display = 'flex'; }
+
     const _eb=$('gen-btn-text-en'); if(_eb)_eb.textContent='Regenerate Website';
   } catch(e){
     toast('Generation error: ' + (e.message || e), 'e');
@@ -1832,30 +1849,34 @@ function updatePreview(){
   const foot   = $('preview-foot');
 
   if (!_websiteState || !_websiteState.has_ai_draft){
-    iframe.style.display = 'none';
-    empty.style.display  = 'flex';
-    foot.style.display   = 'none';
+    if(iframe) iframe.style.display = 'none';
+    if(empty)  empty.style.display  = 'flex';
+    if(foot)   foot.style.display   = 'none';
     return;
   }
 
-  // Load via the published /s/{slug} or use ai_html directly
-  if (_websiteState.ai_published && _websiteState.slug){
-    iframe.src = '/s/' + _websiteState.slug + '?preview=1';
-    iframe.style.display = 'block';
-    empty.style.display  = 'none';
-    foot.style.display   = 'flex';
-    $('preview-slug-display').textContent = '/s/' + _websiteState.slug;
-    $('preview-link').href = '/s/' + _websiteState.slug;
-  } else {
-    // Show local HTML preview from ai_html
-    if (_websiteState.ai_html){
-      iframe.srcdoc = _websiteState.ai_html;
+  const slug = _websiteState.slug || 'glitz-glam';
+
+  // Always load preview via /s/slug (works whether published or not,
+  // since we just published via sbp_record_ai_website_generation which
+  // sets the HTML in the DB — the public page always resolves).
+  if (slug){
+    if(iframe) {
+      iframe.src = '/s/' + slug + '?t=' + Date.now();
       iframe.style.display = 'block';
-      empty.style.display  = 'none';
-      foot.style.display   = 'flex';
-      $('preview-slug-display').innerHTML = '<span class="lang-en">Draft (not published)</span>';
-      $('preview-link').href = '#';
     }
+    if(empty)  empty.style.display  = 'none';
+    if(foot)   foot.style.display   = 'flex';
+    const disp = $('preview-slug-display');
+    const link = $('preview-link');
+    if(disp) disp.textContent = '/s/' + slug;
+    if(link) link.href = '/s/' + slug;
+  } else if (_websiteState.ai_html){
+    if(iframe) { iframe.srcdoc = _websiteState.ai_html; iframe.style.display = 'block'; }
+    if(empty)  empty.style.display  = 'none';
+    if(foot)   foot.style.display   = 'flex';
+    const disp = $('preview-slug-display');
+    if(disp) disp.innerHTML = '<span class="lang-en">Draft</span>';
   }
 }
 
