@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en" translate="no" class="notranslate">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="robots" content="index, follow">
+<title>Loading…</title>
+<link rel="icon" type="image/png" sizes="32x32" href="https://app.shopbillpro.in/icons/favicon-32x32.png">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Noto Sans',sans-serif;-webkit-font-smoothing:antialiased;background:#0A0A12;color:#F0EFF8}
+.loading{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-height:100vh;gap:16px;color:#8A8AA8;
+}
+.spin{
+  width:40px;height:40px;border:3px solid #2A2A3A;border-top-color:#F5A623;
+  border-radius:50%;animation:spin 1s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.error{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-height:100vh;gap:14px;text-align:center;padding:24px;
+}
+.error-emoji{font-size:56px;margin-bottom:4px}
+.error-title{font-size:22px;font-weight:800;color:#F0EFF8}
+.error-msg{font-size:14px;color:#8A8AA8;line-height:1.55;max-width:320px}
+.error-link{
+  display:inline-block;margin-top:8px;padding:11px 22px;
+  background:linear-gradient(135deg,#F5A623,#FF6B35);
+  color:#fff;font-weight:700;font-size:14px;text-decoration:none;
+  border-radius:12px;
+}
+/* Full-bleed iframe for the AI site */
+iframe{
+  position:fixed;inset:0;width:100%;height:100%;border:0;
+}
+</style>
+</head>
+<body>
+
+<div id="root">
+  <div class="loading">
+    <div class="spin"></div>
+    <div>Loading…</div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════════════════
+// domain-router.html — ShopBill Pro AI Website (Custom Domain Router)
+//
+// Served to visitors coming from a custom domain (e.g. glitzglamhotel.com)
+// that a shop owner has connected to their ShopBill Pro AI website.
+//
+// Flow:
+//   1. Read window.location.hostname (the custom domain)
+//   2. Call sbp_resolve_shop_by_domain(hostname) — anon RPC
+//   3. If found + AI mode → render AI HTML in sandboxed iframe
+//   4. If not found → show friendly error page
+//
+// This file handles custom domain traffic routed by vercel.json's
+// missing-host catch-all. s.html handles slug-based traffic on
+// app.shopbillpro.in/s/{slug}.
+// ════════════════════════════════════════════════════════════════════
+
+const SB_URL = 'https://jfqeirfrkjdkqqixivru.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmcWVpcmZya2pka3FxaXhpdnJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzNzQ4MzgsImV4cCI6MjA4OTk1MDgzOH0.akd4E0nil8ypLR4WOykkeYIL8g4uuNU6XdSVh_Y1utk';
+const sb = supabase.createClient(SB_URL, SB_KEY, {
+  auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
+});
+
+function escHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
+
+function showError(title, msg) {
+  document.getElementById('root').innerHTML = `
+    <div class="error">
+      <div class="error-emoji">🏪</div>
+      <div class="error-title">${escHtml(title)}</div>
+      <div class="error-msg">${escHtml(msg)}</div>
+      <a class="error-link" href="https://app.shopbillpro.in">
+        Get your own shop website →
+      </a>
+    </div>`;
+}
+
+function renderAiSite(data) {
+  // ── Build the runtime injection block (same pattern as s.html) ───
+  const SB_URL_JS  = JSON.stringify(SB_URL);
+  const SB_KEY_JS  = JSON.stringify(SB_KEY);
+  const SLUG_JS    = JSON.stringify(String(data.slug || ''));
+  // For live-site.js loaded via absolute URL so srcdoc iframes can fetch it
+  const liveJsUrl  = 'https://app.shopbillpro.in/lib/live-site.js';
+
+  const runtimeBlock =
+    '<base target="_self">' +
+    '<script>' +
+      'window.__SBP_SLUG=' + SLUG_JS + ';' +
+      'window.__SBP_URL='  + SB_URL_JS + ';' +
+      'window.__SBP_KEY='  + SB_KEY_JS + ';' +
+      // Smooth-scroll hash links inside iframe (prevents top-level nav)
+      'document.addEventListener("click",function(e){' +
+        'var a=e.target.closest&&e.target.closest("a");' +
+        'if(!a)return;' +
+        'var href=a.getAttribute("href")||"";' +
+        'if(href.charAt(0)==="#"){' +
+          'e.preventDefault();' +
+          'var t=document.getElementById(href.slice(1));' +
+          'if(t)t.scrollIntoView({behavior:"smooth",block:"start"});' +
+        '}' +
+      '},true);' +
+    '<\/script>' +
+    '<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"><\/script>' +
+    '<script src="' + liveJsUrl + '"><\/script>';
+
+  // Inject runtime block into <head> of the AI HTML
+  let html = data.ai_html;
+  if (/<head[^>]*>/i.test(html)) {
+    html = html.replace(/<head([^>]*)>/i, '<head$1>' + runtimeBlock);
+  } else if (/<html[^>]*>/i.test(html)) {
+    html = html.replace(/<html([^>]*)>/i, '<html$1><head>' + runtimeBlock + '</head>');
+  } else {
+    html = runtimeBlock + html;
+  }
+
+  // Update page title + meta
+  document.title = (data.shop_name || 'Shop');
+
+  // Clear loading UI + append sandboxed iframe
+  document.getElementById('root').innerHTML = '';
+
+  const ifr = document.createElement('iframe');
+  ifr.setAttribute('sandbox', 'allow-scripts allow-popups allow-popups-to-escape-sandbox allow-forms');
+  ifr.setAttribute('referrerpolicy', 'no-referrer');
+  ifr.srcdoc = html;
+  document.body.appendChild(ifr);
+
+  // Log page view
+  try { sb.rpc('sbp_log_shop_page_view', { p_slug: data.slug }); } catch(_){}
+}
+
+async function init() {
+  // Get the custom domain from the browser's address bar
+  const hostname = window.location.hostname.toLowerCase();
+
+  // Safety: if somehow accessed on shopbillpro.in itself, redirect to homepage
+  if (hostname.endsWith('shopbillpro.in') || hostname === 'localhost') {
+    window.location.replace('https://app.shopbillpro.in');
+    return;
+  }
+
+  try {
+    const { data, error } = await sb.rpc('sbp_resolve_shop_by_domain', {
+      p_domain: hostname
+    });
+
+    if (error) {
+      console.error('[domain-router] RPC error:', error);
+      showError(
+        'Something went wrong',
+        'Could not load this website. Please try again in a moment.'
+      );
+      return;
+    }
+
+    if (!data || !data.ok) {
+      const reason = data?.error;
+      if (reason === 'domain_not_found') {
+        showError(
+          'Website not found',
+          `No ShopBill Pro website is connected to "${hostname}". The shop owner may not have set up their website yet.`
+        );
+      } else {
+        showError(
+          'Website unavailable',
+          'This website is currently unavailable. Please try again later.'
+        );
+      }
+      return;
+    }
+
+    // Check it's an AI-published site
+    if (!data.ai_mode || !data.ai_html || data.ai_html.length < 50) {
+      showError(
+        'Website not published',
+        'The shop owner has not published their website yet.'
+      );
+      return;
+    }
+
+    renderAiSite(data);
+
+  } catch (e) {
+    console.error('[domain-router] init error:', e);
+    showError(
+      'Connection error',
+      'Could not connect to the server. Please check your internet connection and try again.'
+    );
+  }
+}
+
+init();
+</script>
+
+</body>
+</html>

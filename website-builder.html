@@ -841,6 +841,113 @@ body{
         </div>
       </div>
 
+      <!-- ── 8. Custom Domain (v4.9b) ── -->
+      <div class="sec" id="sec-custom-domain">
+        <div class="sec-hd">
+          <div class="sec-hd-ic">🌐</div>
+          <div class="sec-hd-grow">
+            <h2>
+              <span class="lang-en">8. Custom Domain</span>
+              <span class="lang-hi">8. कस्टम डोमेन</span>
+              <span class="pill" id="domain-plan-pill" style="margin-left:8px;background:rgba(245,166,35,.15);color:#F5A623;font-size:10px">Business</span>
+            </h2>
+            <div class="sub">
+              <span class="lang-en">Connect your own domain (e.g. yourbusiness.com) — fully automated</span>
+              <span class="lang-hi">अपना डोमेन जोड़ें (e.g. yourbusiness.com)</span>
+            </div>
+          </div>
+        </div>
+        <div class="sec-bd" id="domain-sec-bd">
+
+          <!-- State: no domain connected -->
+          <div id="domain-state-none">
+            <div class="form-row" style="margin-bottom:10px">
+              <label class="lbl">
+                <span class="lang-en">Your domain</span>
+                <span class="lang-hi">आपका डोमेन</span>
+              </label>
+              <input type="text" class="inp" id="custom-domain-input"
+                placeholder="yourbusiness.com (without http or www)"
+                maxlength="100" autocomplete="off" spellcheck="false">
+              <div class="helper">
+                <span class="lang-en">You must own this domain. Buy one from GoDaddy, Namecheap, or Hostinger for ~₹800/year.</span>
+              </div>
+            </div>
+            <button type="button" class="btn btn-pri btn-sm" id="domain-connect-btn" onclick="handleDomainConnect()">
+              🔗 <span class="lang-en">Connect Domain</span><span class="lang-hi">डोमेन जोड़ें</span>
+            </button>
+          </div>
+
+          <!-- State: pending DNS setup -->
+          <div id="domain-state-pending" style="display:none">
+            <div style="background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.3);border-radius:12px;padding:16px;margin-bottom:14px">
+              <div style="font-weight:700;font-size:14px;margin-bottom:10px">
+                ⏳ <span id="domain-pending-name" style="color:var(--acc)"></span>
+                — <span class="lang-en">Add these DNS records to activate</span>
+              </div>
+              <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
+                <span class="lang-en">Go to your domain registrar (GoDaddy / Namecheap / Hostinger) → DNS Settings → Add these records:</span>
+              </div>
+              <table style="width:100%;font-size:12px;border-collapse:collapse;margin-bottom:12px">
+                <thead>
+                  <tr style="color:var(--muted);text-align:left">
+                    <th style="padding:4px 8px;border-bottom:1px solid var(--bord)">Type</th>
+                    <th style="padding:4px 8px;border-bottom:1px solid var(--bord)">Name</th>
+                    <th style="padding:4px 8px;border-bottom:1px solid var(--bord)">Value</th>
+                    <th style="padding:4px 8px;border-bottom:1px solid var(--bord)">TTL</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style="padding:6px 8px;font-weight:700;color:var(--acc)">CNAME</td>
+                    <td style="padding:6px 8px;font-family:monospace">www</td>
+                    <td style="padding:6px 8px;font-family:monospace;font-size:11px">cname.vercel-dns.com</td>
+                    <td style="padding:6px 8px;color:var(--muted)">Auto</td>
+                  </tr>
+                  <tr>
+                    <td style="padding:6px 8px;font-weight:700;color:var(--acc)">A</td>
+                    <td style="padding:6px 8px;font-family:monospace">@</td>
+                    <td style="padding:6px 8px;font-family:monospace">76.76.21.21</td>
+                    <td style="padding:6px 8px;color:var(--muted)">Auto</td>
+                  </tr>
+                </tbody>
+              </table>
+              <div style="font-size:11.5px;color:var(--muted);line-height:1.6">
+                💡 <b>www</b> works on all registrars. The <b>@</b> (A record) makes the root domain work too.
+                DNS changes take 5–60 minutes to propagate.
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button type="button" class="btn btn-sm btn-pri" onclick="handleDomainVerify()">
+                🔄 <span class="lang-en">Check Status</span>
+              </button>
+              <button type="button" class="btn btn-sm" onclick="handleDomainDisconnect()" style="opacity:.7">
+                ❌ <span class="lang-en">Remove Domain</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- State: active -->
+          <div id="domain-state-active" style="display:none">
+            <div style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.3);border-radius:12px;padding:16px;margin-bottom:14px">
+              <div style="font-weight:700;font-size:15px;margin-bottom:6px">
+                ✅ <span class="lang-en">Domain connected!</span>
+              </div>
+              <div style="font-size:14px;color:var(--text);margin-bottom:4px">
+                🌐 <a id="domain-active-link" href="#" target="_blank" rel="noopener" style="color:#10B981;font-weight:700"></a>
+              </div>
+              <div style="font-size:12px;color:var(--muted)">
+                <span class="lang-en">SSL certificate is active. Customers can visit your website at this address.</span>
+              </div>
+            </div>
+            <button type="button" class="btn btn-sm" onclick="handleDomainDisconnect()" style="opacity:.7">
+              ❌ <span class="lang-en">Disconnect Domain</span>
+            </button>
+          </div>
+
+        </div>
+      </div>
+
       <!-- ── 6. Generate ── -->
       <div class="gen-card">
         <h2>
@@ -1627,6 +1734,161 @@ async function handleSaveAll(){
   }
 }
 
+// ── Custom Domain (v4.9b) ───────────────────────────────────────────
+
+let _customDomain = null;
+let _domainStatus = 'none';
+
+function domainShowState(status, domain) {
+  _domainStatus = status;
+  _customDomain = domain || null;
+
+  // Hide all states
+  ['domain-state-none','domain-state-pending','domain-state-active'].forEach(id => {
+    const el = $(id);
+    if (el) el.style.display = 'none';
+  });
+
+  if (status === 'none' || status === 'removed') {
+    const el = $('domain-state-none');
+    if (el) el.style.display = '';
+  } else if (status === 'pending_vercel' || status === 'pending_dns') {
+    const el = $('domain-state-pending');
+    if (el) el.style.display = '';
+    const nameEl = $('domain-pending-name');
+    if (nameEl) nameEl.textContent = domain || '';
+  } else if (status === 'active') {
+    const el = $('domain-state-active');
+    if (el) el.style.display = '';
+    const link = $('domain-active-link');
+    if (link && domain) {
+      link.textContent = 'https://' + domain;
+      link.href = 'https://' + domain;
+    }
+  }
+}
+
+async function loadDomainState() {
+  try {
+    const { data } = await _sb.rpc('sbp_get_custom_domain_info');
+    if (data?.ok) {
+      domainShowState(data.status || 'none', data.domain);
+    }
+  } catch(e) { console.warn('domain state load error:', e); }
+}
+
+async function handleDomainConnect() {
+  const input = $('custom-domain-input');
+  const domain = (input?.value || '').trim().toLowerCase()
+    .replace(/^https?:\/\//, '').replace(/\/.*$/, '').replace(/^www\./, '');
+
+  if (!domain) { toast('Enter a domain name', 'e'); return; }
+  if (!/^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/.test(domain)) {
+    toast('Invalid domain format. Use: yourbusiness.com', 'e');
+    return;
+  }
+
+  const btn = $('domain-connect-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Connecting…'; }
+
+  try {
+    // Step 1: Save to DB
+    const { data: rpcData, error: rpcErr } = await _sb.rpc('sbp_connect_custom_domain', {
+      p_domain: domain
+    });
+
+    if (rpcErr || !rpcData?.ok) {
+      const msg = rpcData?.message || rpcErr?.message || rpcData?.error || 'Failed to save domain';
+      toast(msg, 'e');
+      return;
+    }
+
+    // Step 2: Add to Vercel via edge function
+    const { data: efData, error: efErr } = await _sb.functions.invoke('manage-domain', {
+      body: { action: 'connect', domain }
+    });
+
+    if (efErr || !efData?.ok) {
+      const msg = efData?.message || efErr?.message || 'Vercel connection failed';
+      toast(msg, 'e');
+      // Still show pending_dns state — DB is saved, Vercel might have worked
+      domainShowState('pending_dns', domain);
+      return;
+    }
+
+    // Show appropriate state based on Vercel response
+    const newStatus = efData.configured ? 'active' : 'pending_dns';
+    domainShowState(newStatus, domain);
+
+    if (efData.configured) {
+      toast('🎉 Domain connected! Your website is live at ' + domain, 's');
+    } else {
+      toast('Domain registered. Now add the DNS records shown below.', 'i');
+    }
+
+  } catch(e) {
+    toast('Connection error: ' + (e.message || e), 'e');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '🔗 Connect Domain'; }
+  }
+}
+
+async function handleDomainVerify() {
+  if (!_customDomain) return;
+  toast('Checking DNS…', 'i');
+
+  try {
+    const { data, error } = await _sb.functions.invoke('manage-domain', {
+      body: { action: 'verify', domain: _customDomain }
+    });
+
+    if (error || !data?.ok) {
+      toast('Verification failed: ' + (data?.message || error?.message), 'e');
+      return;
+    }
+
+    domainShowState(data.status, _customDomain);
+    toast(data.message || (data.configured ? '✅ Domain is live!' : '⏳ DNS not propagated yet — try again in a few minutes.'), data.configured ? 's' : 'w');
+
+  } catch(e) {
+    toast('Error: ' + (e.message || e), 'e');
+  }
+}
+
+async function handleDomainDisconnect() {
+  if (!_customDomain) return;
+
+  const confirmed = await new Promise(resolve => {
+    showConfirm(
+      'Disconnect domain?',
+      `Remove ${_customDomain} from your website? Your site will still be available at app.shopbillpro.in/s/${_shopSlug || 'your-shop'}.`,
+      () => resolve(true),
+      () => resolve(false)
+    );
+  });
+
+  if (!confirmed) return;
+
+  try {
+    const { data, error } = await _sb.functions.invoke('manage-domain', {
+      body: { action: 'disconnect', domain: _customDomain }
+    });
+
+    if (error || !data?.ok) {
+      toast('Failed to disconnect: ' + (data?.message || error?.message), 'e');
+      return;
+    }
+
+    // Also update DB
+    await _sb.rpc('sbp_disconnect_custom_domain');
+    domainShowState('none', null);
+    toast('Domain disconnected.', 'i');
+
+  } catch(e) {
+    toast('Error: ' + (e.message || e), 'e');
+  }
+}
+
 // ── Generate AI website ─────────────────────────────────────────
 async function handleGenerate(){
   // Validate required fields
@@ -1906,6 +2168,23 @@ async function init(){
   await loadWebsiteState();
   await loadContentJson();
   await reloadServices();
+  // v4.9b: load custom domain state
+  await loadDomainState();
+
+  // Capture slug for domain disconnect message
+  if (_websiteState?.slug) window._shopSlug = _websiteState.slug;
+
+  // Hide custom domain section for non-Business plans (it's locked)
+  const domainSec = $('sec-custom-domain');
+  if (domainSec) {
+    const isBusiness = ['business','enterprise'].includes(planNorm);
+    if (!isBusiness) {
+      domainSec.querySelector('.sec-bd').innerHTML =
+        '<div style="font-size:13px;color:var(--muted);padding:8px 0">' +
+        '🔒 <span class="lang-en">Custom domains require the <a href="subscription.html" style="color:var(--acc)">Business plan (₹499/mo)</a>.</span>' +
+        '</div>';
+    }
+  }
 
   // Wire up char counts and completion tracking
   ['shop-name','headline','description','c-phone','c-address','business-type'].forEach(id => {

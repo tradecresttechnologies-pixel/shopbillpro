@@ -14,7 +14,20 @@
     }
   ],
   "rewrites": [
-    { "source": "/s/:slug", "destination": "/s" }
+    {
+      "source": "/:path*",
+      "missing": [
+        {
+          "type": "host",
+          "value": "(.+\\.)?shopbillpro\\.in"
+        }
+      ],
+      "destination": "/domain-router"
+    },
+    {
+      "source": "/s/:slug",
+      "destination": "/s"
+    }
   ],
   "headers": [
     {
