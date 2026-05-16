@@ -25,12 +25,48 @@ class AdminDB {
   // ─────────────────────────────────────────────────────────
 
   async getMetrics() {
-    if (!this.sb) return this._mock();
+    if (!this.sb) {
+      this._flagBackendError('Supabase library failed to load on this page.');
+      return this._mock();
+    }
     try {
       const { data, error } = await this.sb.rpc('admin_metrics', { p_admin_token: this._token() });
-      if (error) { console.warn('Metrics RPC error:', error); return this._mock(); }
+      if (error) {
+        console.warn('Metrics RPC error:', error);
+        this._flagBackendError('Admin backend rejected the request — your session token may be invalid or expired. Log out and sign in again.');
+        return this._mock();
+      }
+      this._clearBackendError();
       return data;
-    } catch (e) { console.warn(e); return this._mock(); }
+    } catch (e) {
+      console.warn(e);
+      this._flagBackendError('Could not reach the admin backend: ' + (e && e.message ? e.message : e));
+      return this._mock();
+    }
+  }
+
+  // Visible failure banner — replaces the old silent all-zero mock.
+  // Idempotent: one fixed banner, injected once, updated in place.
+  _flagBackendError(msg) {
+    try {
+      let el = document.getElementById('admin-backend-error');
+      if (!el) {
+        el = document.createElement('div');
+        el.id = 'admin-backend-error';
+        el.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;'
+          + 'background:#7f1d1d;color:#fff;font:600 13px/1.4 Outfit,system-ui,sans-serif;'
+          + 'padding:10px 16px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.4)';
+        (document.body || document.documentElement).prepend(el);
+      }
+      el.textContent = '⚠️ ' + msg + '  (Showing placeholder zeros — data is NOT live.)';
+      el.style.display = 'block';
+    } catch (_) { /* DOM not ready — console.warn already fired */ }
+  }
+  _clearBackendError() {
+    try {
+      const el = document.getElementById('admin-backend-error');
+      if (el) el.style.display = 'none';
+    } catch (_) {}
   }
 
   async listShops({ search='', plan='all', limit=100, offset=0 } = {}) {
@@ -300,6 +336,54 @@ class AdminDB {
     const { data, error } = await this.sb.rpc('get_beta_config');
     if (error) { console.warn('beta config:', error); return null; }
     return Array.isArray(data) ? data[0] : data;
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // Notifications (migration 069 — sbp_admin_notifications)
+  // Returns an ARRAY shaped to what admin-notifications.html
+  // already renders ({type,sentAt,title,message,sentBy,status}).
+  // ─────────────────────────────────────────────────────────
+  async getNotifications(limit = 20) {
+    if (!this.sb) { this._flagBackendError('Supabase library failed to load on this page.'); return []; }
+    try {
+      const { data, error } = await this.sb.rpc('admin_list_notifications', {
+        p_admin_token: this._token(), p_limit: limit
+      });
+      if (error) { console.warn('Notifications list error:', error); this._flagBackendError('Could not load notifications — backend error or invalid session token.'); return []; }
+      if (!data || data.ok !== true) { this._flagBackendError('Notifications request rejected: ' + ((data && data.error) || 'unknown')); return []; }
+      this._clearBackendError();
+      return data.notifications || [];
+    } catch (e) { console.warn(e); this._flagBackendError('Could not reach the admin backend.'); return []; }
+  }
+
+  async sendNotification(title, message, type = 'info', target = 'all', priority = 'normal') {
+    if (!this.sb) throw new Error('Supabase not initialized on this page');
+    const { data, error } = await this.sb.rpc('admin_send_notification', {
+      p_admin_token: this._token(),
+      p_title: title, p_message: message, p_type: type,
+      p_target: target, p_priority: priority
+    });
+    if (error) throw new Error(error.message);
+    if (!data || data.ok !== true) throw new Error((data && data.error) || 'send_failed');
+    return data;
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // Admin audit log (migration 069 — platform-wide view over
+  // sbp_audit_log). Returns ARRAY shaped to admin-audit.html
+  // ({timestamp,action,email,details}).
+  // ─────────────────────────────────────────────────────────
+  async listAuditLog({ limit = 500, offset = 0, search = '' } = {}) {
+    if (!this.sb) { this._flagBackendError('Supabase library failed to load on this page.'); return []; }
+    try {
+      const { data, error } = await this.sb.rpc('admin_list_audit_log', {
+        p_admin_token: this._token(), p_limit: limit, p_offset: offset, p_search: search
+      });
+      if (error) { console.warn('Audit log error:', error); this._flagBackendError('Could not load audit log — backend error or invalid session token.'); return []; }
+      if (!data || data.ok !== true) { this._flagBackendError('Audit log request rejected: ' + ((data && data.error) || 'unknown')); return []; }
+      this._clearBackendError();
+      return data.logs || [];
+    } catch (e) { console.warn(e); this._flagBackendError('Could not reach the admin backend.'); return []; }
   }
 }
 

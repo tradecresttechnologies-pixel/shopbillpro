@@ -7,6 +7,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png?v=2">
 <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180x180.png?v=2">
 <title>Notifications — Admin Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -455,18 +456,18 @@
 
       alert(`✓ Notification sent to ${target} users!`);
       document.getElementById('notificationForm').reset();
-      loadNotifications();
+      await loadNotifications();
 
       auth.logAction('notification_sent', { title, type, target, priority });
     });
 
     // Load notifications
-    function loadNotifications() {
-      const notifications = db.getNotifications(20);
+    async function loadNotifications() {
+      const notifications = await db.getNotifications(20);
       const list = document.getElementById('notificationsList');
       const empty = document.getElementById('emptyState');
 
-      if (notifications.length === 0) {
+      if (!notifications || notifications.length === 0) {
         list.innerHTML = '';
         empty.style.display = 'block';
         return;
