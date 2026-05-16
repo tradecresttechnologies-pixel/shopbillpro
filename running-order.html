@@ -536,6 +536,203 @@ html,body{height:100%;width:100%;margin:0;padding:0;overflow:hidden;background:v
 .kbk-btn-all:hover{transform:translateY(-1px);box-shadow:0 6px 16px rgba(239,68,68,.4)}
 .kbk-btn-all:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
 
+/* ── GUEST QR ORDER BANNER + REVIEW MODAL (BATCH 068) ───────────── */
+/* Blinking orange banner: shown when one or more guest orders are
+   pending. Pulses to grab the waiter's attention without being
+   completely obnoxious. */
+.go-banner{
+  display:flex;align-items:center;gap:14px;
+  margin:0;padding:13px 18px;
+  background:linear-gradient(135deg,#FF8A00,#F5A623);
+  color:#fff;cursor:pointer;
+  border-bottom:1px solid rgba(0,0,0,.15);
+  transition:var(--tr);
+  position:relative;overflow:hidden;
+  animation:goBannerPulse 1.8s ease-in-out infinite;
+}
+.go-banner:hover{filter:brightness(1.05)}
+.go-banner:active{transform:scale(.995)}
+@keyframes goBannerPulse{
+  0%, 100%{box-shadow:inset 0 0 0 0 rgba(255,255,255,0)}
+  50%     {box-shadow:inset 0 -3px 0 0 rgba(255,255,255,.4), 0 4px 12px rgba(255,138,0,.4)}
+}
+.go-banner-em{
+  font-size:24px;line-height:1;flex-shrink:0;
+  animation:goBannerBob 1.4s ease-in-out infinite;
+}
+@keyframes goBannerBob{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-3px) scale(1.1)}}
+.go-banner-text{flex:1;min-width:0}
+.go-banner-title{
+  font-family:var(--font-h);font-weight:800;font-size:14px;
+  letter-spacing:.3px;line-height:1.3;
+}
+.go-banner-sub{font-size:11px;opacity:.9;font-weight:600;margin-top:1px}
+.go-banner-arrow{font-size:24px;font-weight:900;opacity:.7;flex-shrink:0}
+
+/* Review modal overlay */
+.go-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1150;
+  display:none;align-items:center;justify-content:center;padding:20px;
+  backdrop-filter:blur(6px);
+}
+.go-overlay.open{display:flex}
+.go-modal-box{
+  background:var(--surf);border:1px solid var(--bord);border-radius:16px;
+  max-width:520px;width:100%;
+  max-height:92vh;display:flex;flex-direction:column;
+  box-shadow:0 24px 70px rgba(0,0,0,.6);
+  animation:kiModalIn .22s ease-out;overflow:hidden;
+}
+.go-reject-box{
+  background:var(--surf);border:1px solid var(--bord);border-radius:16px;
+  max-width:420px;width:100%;
+  box-shadow:0 24px 70px rgba(0,0,0,.6);
+  animation:kiModalIn .22s ease-out;
+}
+
+.go-modal-hd{
+  display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
+  padding:16px 18px;
+  background:linear-gradient(135deg,rgba(255,138,0,.08),rgba(245,166,35,.04));
+  border-bottom:1px solid var(--bord);
+  flex-shrink:0;
+}
+.go-modal-hd-left{display:flex;align-items:flex-start;gap:11px;flex:1;min-width:0}
+.go-modal-em{font-size:30px;line-height:1;flex-shrink:0}
+.go-modal-title{font-size:17px;font-weight:800;color:var(--text);font-family:var(--font-h)}
+.go-modal-sub{font-size:12px;color:var(--t2);font-weight:600;margin-top:1px}
+
+/* Stack of pending orders */
+.go-stack{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 18px;background:rgba(255,138,0,.05);
+  border-bottom:1px solid var(--bord);
+}
+.go-stack-label{font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px}
+.go-stack-dots{display:flex;gap:5px;flex:1}
+.go-stack-dot{
+  padding:4px 9px;border-radius:5px;
+  background:var(--surf2);border:1px solid var(--bord);
+  font-size:10px;font-weight:700;color:var(--t2);cursor:pointer;
+  font-family:var(--font-h);transition:var(--tr);
+}
+.go-stack-dot:hover{border-color:var(--acc);color:var(--acc)}
+.go-stack-dot.on{background:var(--acc);color:#0A0E1A;border-color:transparent}
+
+/* Guest info card */
+.go-guest-card{
+  margin:14px 18px 0;padding:11px 13px;
+  background:var(--surf2);border:1px solid var(--bord);border-radius:9px;
+  display:flex;align-items:center;gap:11px;flex-wrap:wrap;
+  font-size:12px;
+}
+.go-gc-table{
+  background:linear-gradient(135deg,#F5A623,#FF8A00);color:#0A0E1A;
+  font-family:var(--font-h);font-weight:900;font-size:13px;
+  padding:5px 10px;border-radius:7px;letter-spacing:.5px;
+}
+.go-gc-name{font-weight:700;color:var(--text)}
+.go-gc-phone{color:var(--t2);font-weight:600}
+.go-gc-time{margin-left:auto;color:var(--t3);font-size:11px;font-weight:600}
+.go-gc-anon{color:var(--t3);font-style:italic}
+
+/* Items list */
+.go-items{
+  flex:1;min-height:0;overflow-y:auto;
+  margin:12px 18px 0;
+  background:var(--surf2);border:1px solid var(--bord);border-radius:10px;
+}
+.go-item-row{
+  display:flex;align-items:flex-start;gap:10px;
+  padding:10px 12px;border-bottom:1px dashed var(--bord);
+}
+.go-item-row:last-child{border-bottom:none}
+.go-ir-main{flex:1;min-width:0}
+.go-ir-name{font-weight:700;color:var(--text);font-size:13px}
+.go-ir-note{
+  margin-top:4px;padding:5px 9px;border-radius:6px;
+  background:rgba(255,138,0,.08);border-left:2px solid var(--acc);
+  font-size:11px;color:var(--t2);font-style:italic;line-height:1.4;
+}
+.go-ir-qty{
+  background:rgba(245,166,35,.15);color:var(--acc);
+  font-family:var(--font-h);font-weight:800;font-size:13px;
+  padding:4px 10px;border-radius:6px;flex-shrink:0;min-width:38px;text-align:center;
+}
+.go-ir-amt{
+  font-family:var(--font-h);font-weight:700;font-size:13px;color:var(--text);
+  min-width:64px;text-align:right;flex-shrink:0;
+}
+
+/* Order-level note */
+.go-order-note{
+  margin:12px 18px 0;padding:10px 12px;
+  background:rgba(245,166,35,.06);border:1px solid rgba(245,166,35,.2);
+  border-radius:9px;font-size:12px;color:var(--text);line-height:1.5;
+}
+.go-order-note-lbl{
+  font-size:10px;font-weight:800;color:var(--acc);text-transform:uppercase;letter-spacing:.5px;
+  margin-bottom:3px;
+}
+
+/* Totals */
+.go-totals{
+  margin:12px 18px;padding:10px 14px;
+  background:linear-gradient(180deg,var(--surf2),var(--surf));
+  border:1.5px solid var(--bord);border-radius:10px;
+}
+.go-tot-row{display:flex;justify-content:space-between;font-size:12px;color:var(--t2);font-weight:600;margin:2px 0}
+.go-tot-row > span:last-child{color:var(--text);font-weight:700;font-family:var(--font-h)}
+.go-tot-grand{
+  border-top:1px dashed var(--bord);padding-top:6px;margin-top:4px;
+  font-size:14px;color:var(--text);font-weight:800;
+}
+.go-tot-grand > span:last-child{font-size:20px;color:var(--acc);letter-spacing:-0.3px}
+
+/* Action buttons row */
+.go-actions{
+  display:flex;gap:8px;padding:14px 18px;background:var(--surf2);
+  border-top:1px solid var(--bord);flex-shrink:0;
+}
+.go-act{
+  flex:1;padding:13px 8px;border-radius:10px;border:none;cursor:pointer;
+  font-family:var(--font-h);font-weight:800;font-size:12px;
+  letter-spacing:.3px;line-height:1.2;transition:var(--tr);
+  display:flex;align-items:center;justify-content:center;gap:5px;
+}
+.go-act-reject{
+  background:var(--surf);color:#EF4444;
+  border:1.5px solid rgba(239,68,68,.3);
+}
+.go-act-reject:hover{background:rgba(239,68,68,.08);border-color:#EF4444}
+.go-act-modify{
+  background:var(--surf);color:var(--text);
+  border:1.5px solid var(--bord);
+}
+.go-act-modify:hover{border-color:var(--t2)}
+.go-act-accept{
+  background:linear-gradient(135deg,#10B981,#059669);color:#fff;
+  flex:1.5;
+  box-shadow:0 4px 12px rgba(16,185,129,.3);
+}
+.go-act-accept:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 18px rgba(16,185,129,.45)}
+.go-act:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
+
+/* Reject presets */
+.go-reject-presets{display:flex;flex-wrap:wrap;gap:6px}
+.go-reject-preset{
+  padding:7px 11px;border-radius:7px;border:1px solid var(--bord);
+  background:var(--surf2);color:var(--t2);font-size:11px;font-weight:700;
+  font-family:var(--font-h);cursor:pointer;transition:var(--tr);
+}
+.go-reject-preset:hover{border-color:var(--acc);color:var(--acc)}
+
+@media(max-width:520px){
+  .go-overlay{padding:0}
+  .go-modal-box{max-width:100%;max-height:100vh;border-radius:0}
+  .go-reject-box{max-width:100%;border-radius:0}
+}
+
 /* ── BILL WIZARD (BATCH 067-UX-v4) ──────────────────────────────── */
 .bw-overlay{
   position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1100;
@@ -1319,6 +1516,23 @@ html,body{height:100%;width:100%;margin:0;padding:0;overflow:hidden;background:v
       <button class="hdr-btn" onclick="window.location.href='tables.html'">← <span class="lang-en">Tables</span><span class="lang-hi">टेबल</span></button>
     </div>
 
+    <!-- ─── Guest QR-order banner (BATCH 068) ─────────────────────
+         Shown when one or more pending guest orders exist for this
+         table. Realtime subscription on sbp_guest_orders pushes the
+         banner into view within ~1s of guest pressing "Send Order".
+         Tapping opens the review modal. -->
+    <div class="go-banner" id="go-banner" onclick="openGuestReview()" style="display:none">
+      <div class="go-banner-em">📱</div>
+      <div class="go-banner-text">
+        <div class="go-banner-title">
+          <span id="go-banner-count">1</span>
+          <span class="lang-en">guest request waiting</span><span class="lang-hi">गेस्ट ऑर्डर बाकी है</span>
+        </div>
+        <div class="go-banner-sub"><span class="lang-en">Tap to review and send to kitchen</span><span class="lang-hi">समीक्षा करने और किचन भेजने के लिए टैप करें</span></div>
+      </div>
+      <div class="go-banner-arrow">›</div>
+    </div>
+
     <!-- Mobile pane switcher (≤767px). Hidden on desktop via CSS. -->
     <div class="ro-pane-tabs" id="ro-pane-tabs">
       <button class="ro-ptab on" id="rop-menu" onclick="showPane('menu')">📋 <span class="lang-en">Menu</span><span class="lang-hi">मेनू</span></button>
@@ -1559,6 +1773,90 @@ html,body{height:100%;width:100%;margin:0;padding:0;overflow:hidden;background:v
        Step 3: Payment method + amount + settle
      On confirm: insert bill+items, mark RO billed, free table, redirect.
 ══════════════════════════════════════════════════════════════════ -->
+<!-- ════════════════════════════════════════════════════════════════
+     GUEST ORDER REVIEW MODAL (BATCH 068)
+     Staff reviews a guest's QR-placed order before it becomes a KOT.
+     Three actions: Accept (auto-fires KOT) · Reject (send waiter) ·
+     Modify (loads into current round for editing).
+══════════════════════════════════════════════════════════════════ -->
+<div class="go-overlay" id="go-modal" onclick="if(event.target.id==='go-modal')closeGuestReview()">
+  <div class="go-modal-box" role="dialog" aria-labelledby="go-modal-title">
+
+    <div class="go-modal-hd">
+      <div class="go-modal-hd-left">
+        <span class="go-modal-em">📱</span>
+        <div>
+          <div class="go-modal-title" id="go-modal-title">Guest Order</div>
+          <div class="go-modal-sub" id="go-modal-sub">From Table T— · G-0000</div>
+        </div>
+      </div>
+      <button class="bw-close" onclick="closeGuestReview()" title="Close">✕</button>
+    </div>
+
+    <!-- Pending stack indicator (when multiple pending) -->
+    <div class="go-stack" id="go-stack" style="display:none">
+      <div class="go-stack-label"><span class="lang-en">More waiting</span><span class="lang-hi">और बाकी</span>:</div>
+      <div class="go-stack-dots" id="go-stack-dots"></div>
+    </div>
+
+    <!-- Guest info -->
+    <div class="go-guest-card" id="go-guest-card"></div>
+
+    <!-- Items list -->
+    <div class="go-items" id="go-items"></div>
+
+    <!-- Order-level note -->
+    <div class="go-order-note" id="go-order-note" style="display:none"></div>
+
+    <!-- Totals -->
+    <div class="go-totals" id="go-totals"></div>
+
+    <!-- Actions footer -->
+    <div class="go-actions">
+      <button class="go-act go-act-reject" onclick="rejectGuestOrder()" title="Send a waiter to clarify">
+        ❌ <span class="lang-en">Send Waiter</span><span class="lang-hi">वेटर भेजें</span>
+      </button>
+      <button class="go-act go-act-modify" onclick="modifyGuestOrder()" title="Load these items into current round to edit">
+        ✏️ <span class="lang-en">Modify</span><span class="lang-hi">बदलें</span>
+      </button>
+      <button class="go-act go-act-accept" onclick="acceptGuestOrder()" title="Accept and fire KOT to kitchen">
+        ✅ <span class="lang-en">Accept & Send KOT</span><span class="lang-hi">स्वीकार करें</span>
+      </button>
+    </div>
+
+  </div>
+</div>
+
+<!-- Reject reason modal — appears on top of review modal -->
+<div class="go-overlay" id="go-reject-modal" onclick="if(event.target.id==='go-reject-modal')closeRejectModal()">
+  <div class="go-reject-box">
+    <div class="go-modal-hd">
+      <div class="go-modal-hd-left">
+        <span class="go-modal-em">🤚</span>
+        <div>
+          <div class="go-modal-title">Send Waiter</div>
+          <div class="go-modal-sub">Why are you sending a waiter?</div>
+        </div>
+      </div>
+      <button class="bw-close" onclick="closeRejectModal()">✕</button>
+    </div>
+    <div style="padding:18px 20px">
+      <div class="go-reject-presets">
+        <button class="go-reject-preset" onclick="setRejectReason('Need to confirm details with guest')">Need to confirm details</button>
+        <button class="go-reject-preset" onclick="setRejectReason('Item out of stock')">Item out of stock</button>
+        <button class="go-reject-preset" onclick="setRejectReason('Quantity needs adjustment')">Quantity issue</button>
+        <button class="go-reject-preset" onclick="setRejectReason('Guest wants to add more')">Wants to add more</button>
+      </div>
+      <label class="bw-lbl" style="margin-top:14px;display:block">Reason (will be saved for log)</label>
+      <input type="text" class="bw-inp" id="go-reject-reason" placeholder="Brief reason..." maxlength="120">
+      <div style="display:flex;gap:8px;margin-top:14px">
+        <button class="go-act go-act-modify" style="flex:1" onclick="closeRejectModal()">Cancel</button>
+        <button class="go-act go-act-reject" style="flex:2" onclick="confirmReject()">Send Waiter</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="bw-overlay" id="bw-modal" onclick="if(event.target.id==='bw-modal')closeBillWizard()">
   <div class="bw-modal" role="dialog" aria-labelledby="bw-title">
 
@@ -1872,6 +2170,14 @@ async function init(){
   await loadMenu();
   render();
   SBPSidebar.render('tables');
+
+  // ── BATCH 068: Guest QR orders ──
+  // Fetch any guest orders already pending for this table (in case
+  // staff opened the page after the guest already sent something).
+  await refreshPendingGuestOrders();
+  // Subscribe to realtime so new guest orders push the banner in
+  // immediately (no polling).
+  subscribeGuestOrders();
 
   // Update elapsed time every minute
   setInterval(renderHeader, 60000);
@@ -2535,6 +2841,365 @@ function render(){
 }
 
 // ── Generate Bill → go to billing.html pre-filled ─────────────────
+// ═══════════════════════════════════════════════════════════════════
+// BATCH 068 — GUEST QR ORDER HANDLING
+// ═══════════════════════════════════════════════════════════════════
+// State for pending guest orders. Only orders for THIS table are
+// shown in the banner — orders for other tables are visible from
+// tables.html (a future improvement; not in this batch).
+let _pendingGuests = [];           // [{id, guest_order_no, table_number, guest_name, guest_phone, items, notes, created_at}]
+let _activeGuestIdx = 0;           // index in _pendingGuests being reviewed
+let _guestChannel = null;          // realtime channel handle
+
+// Filter to orders for THIS table only (others shown on tables.html).
+function pendingForThisTable(){
+  return _pendingGuests.filter(g => String(g.table_number) === String(_tableNum));
+}
+
+async function refreshPendingGuestOrders(){
+  try {
+    const { data, error } = await _sb.rpc('sbp_guest_order_pending_list', {
+      p_shop_id: _shopId,
+    });
+    if(error){ console.warn('[guest pending]', error); return; }
+    if(data?.ok){
+      _pendingGuests = Array.isArray(data.pending) ? data.pending : [];
+      updateGuestBanner();
+    }
+  } catch(e){
+    console.warn('[guest pending err]', e);
+  }
+}
+
+function subscribeGuestOrders(){
+  if(_guestChannel){
+    try { _sb.removeChannel(_guestChannel); } catch(e){}
+  }
+  _guestChannel = _sb
+    .channel('guest-orders-' + _shopId)
+    // New guest order placed → INSERT
+    .on('postgres_changes', {
+      event:  'INSERT',
+      schema: 'public',
+      table:  'sbp_guest_orders',
+      filter: 'shop_id=eq.' + _shopId,
+    }, (payload) => {
+      const r = payload.new;
+      if(!r || r.status !== 'pending') return;
+      // Add to local list if not already there
+      if(!_pendingGuests.some(g => g.id === r.id)){
+        _pendingGuests.unshift({
+          id:              r.id,
+          guest_order_no:  r.guest_order_no,
+          table_number:    r.table_number,
+          guest_name:      r.guest_name,
+          guest_phone:     r.guest_phone,
+          items:           r.items,
+          notes:           r.notes,
+          created_at:      r.created_at,
+        });
+        updateGuestBanner();
+        // Audible/haptic cue for *this* table only — sound for other
+        // tables would be noisy and annoying.
+        if(String(r.table_number) === String(_tableNum)){
+          try { if(navigator.vibrate) navigator.vibrate([200, 80, 200]); } catch(e){}
+          toast('📱 New guest order on this table — tap banner to review','i', 4000);
+        }
+      }
+    })
+    // Status changes (accept/reject) elsewhere → UPDATE → drop from list
+    .on('postgres_changes', {
+      event:  'UPDATE',
+      schema: 'public',
+      table:  'sbp_guest_orders',
+      filter: 'shop_id=eq.' + _shopId,
+    }, (payload) => {
+      const r = payload.new;
+      if(!r) return;
+      if(r.status !== 'pending'){
+        _pendingGuests = _pendingGuests.filter(g => g.id !== r.id);
+        updateGuestBanner();
+      }
+    })
+    .subscribe();
+}
+
+function updateGuestBanner(){
+  const banner = document.getElementById('go-banner');
+  if(!banner) return;
+  const here = pendingForThisTable();
+  if(here.length === 0){
+    banner.style.display = 'none';
+    return;
+  }
+  banner.style.display = '';
+  document.getElementById('go-banner-count').textContent = here.length;
+}
+
+function openGuestReview(idx){
+  const here = pendingForThisTable();
+  if(here.length === 0){
+    toast('No pending guest orders','i');
+    return;
+  }
+  _activeGuestIdx = (typeof idx === 'number') ? idx : 0;
+  renderGuestReview();
+  document.getElementById('go-modal').classList.add('open');
+}
+
+function closeGuestReview(){
+  document.getElementById('go-modal').classList.remove('open');
+}
+
+function renderGuestReview(){
+  const here = pendingForThisTable();
+  if(!here.length){ closeGuestReview(); return; }
+  if(_activeGuestIdx >= here.length) _activeGuestIdx = 0;
+  const g = here[_activeGuestIdx];
+
+  document.getElementById('go-modal-title').textContent = 'Guest Order ' + g.guest_order_no;
+  document.getElementById('go-modal-sub').textContent =
+    'From Table T' + g.table_number + ' · ' + elapsedSince(g.created_at);
+
+  // Stack indicator (multiple pending for this table)
+  const stack = document.getElementById('go-stack');
+  const dots  = document.getElementById('go-stack-dots');
+  if(here.length > 1){
+    stack.style.display = '';
+    dots.innerHTML = here.map((og, i) =>
+      '<button class="go-stack-dot ' + (i === _activeGuestIdx ? 'on' : '') +
+      '" onclick="switchGuest(' + i + ')">' + escHtml(og.guest_order_no) + '</button>'
+    ).join('');
+  } else {
+    stack.style.display = 'none';
+  }
+
+  // Guest info
+  const card = document.getElementById('go-guest-card');
+  const hasName  = g.guest_name && g.guest_name.trim();
+  const hasPhone = g.guest_phone && g.guest_phone.trim();
+  card.innerHTML =
+    '<div class="go-gc-table">T' + escHtml(g.table_number) + '</div>' +
+    (hasName  ? '<div class="go-gc-name">👤 ' + escHtml(g.guest_name) + '</div>' : '') +
+    (hasPhone ? '<div class="go-gc-phone">📱 ' + escHtml(g.guest_phone) + '</div>' : '') +
+    (!hasName && !hasPhone ? '<div class="go-gc-anon">Anonymous guest</div>' : '') +
+    '<div class="go-gc-time">' + elapsedSince(g.created_at) + ' ago</div>';
+
+  // Items
+  const items = Array.isArray(g.items) ? g.items : [];
+  let subtotal = 0, gstTotal = 0;
+  const itemsHtml = items.map(it => {
+    const qty   = it.qty || 0;
+    const price = it.price || 0;
+    const gst   = it.gst_rate || 0;
+    const lineSub  = qty * price;
+    const lineGst  = lineSub * gst / 100;
+    const lineTot  = lineSub + lineGst;
+    subtotal += lineSub;
+    gstTotal += lineGst;
+    const noteHtml = (it.notes && it.notes.trim())
+      ? '<div class="go-ir-note">💬 ' + escHtml(it.notes.trim()) + '</div>' : '';
+    return '<div class="go-item-row">' +
+      '<div class="go-ir-main">' +
+        '<div class="go-ir-name">' + escHtml(it.name || '—') + '</div>' +
+        noteHtml +
+      '</div>' +
+      '<div class="go-ir-qty">×' + qty + '</div>' +
+      '<div class="go-ir-amt">' + fINR(lineTot) + '</div>' +
+    '</div>';
+  }).join('');
+  document.getElementById('go-items').innerHTML = itemsHtml ||
+    '<div style="padding:20px;text-align:center;color:var(--t3);font-size:12px">No items</div>';
+
+  // Order-level note
+  const noteEl = document.getElementById('go-order-note');
+  if(g.notes && g.notes.trim()){
+    noteEl.style.display = '';
+    noteEl.innerHTML =
+      '<div class="go-order-note-lbl">Order Note</div>' +
+      escHtml(g.notes.trim());
+  } else {
+    noteEl.style.display = 'none';
+  }
+
+  // Totals
+  const grand = subtotal + gstTotal;
+  document.getElementById('go-totals').innerHTML =
+    '<div class="go-tot-row"><span>Subtotal</span><span>' + fINR(subtotal) + '</span></div>' +
+    (gstTotal > 0 ? '<div class="go-tot-row"><span>GST</span><span>' + fINR(gstTotal) + '</span></div>' : '') +
+    '<div class="go-tot-row go-tot-grand"><span>TOTAL</span><span>' + fINR(grand) + '</span></div>';
+}
+
+function switchGuest(idx){
+  _activeGuestIdx = idx;
+  renderGuestReview();
+}
+
+// Friendly "5m ago" / "just now" formatter
+function elapsedSince(iso){
+  if(!iso) return '';
+  const ms = Date.now() - new Date(iso).getTime();
+  const s  = Math.floor(ms / 1000);
+  if(s < 30)  return 'just now';
+  if(s < 60)  return s + 's';
+  const m = Math.floor(s / 60);
+  if(m < 60)  return m + 'm';
+  const h = Math.floor(m / 60);
+  return h + 'h';
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Accept guest order → auto-fires KOT via sbp_guest_order_accept
+// (which internally calls sbp_ro_add_items, identical to manual send).
+// ─────────────────────────────────────────────────────────────────
+async function acceptGuestOrder(){
+  const here = pendingForThisTable();
+  if(!here.length) return;
+  const g = here[_activeGuestIdx];
+  const btns = document.querySelectorAll('.go-act');
+  btns.forEach(b => b.disabled = true);
+
+  try {
+    const { data, error } = await _sb.rpc('sbp_guest_order_accept', {
+      p_shop_id:        _shopId,
+      p_guest_order_id: g.id,
+    });
+    if(error) throw new Error(error.message);
+    if(!data?.ok){
+      throw new Error(data?.error || 'accept_failed');
+    }
+
+    toast('✅ KOT #' + String(data.kot_number).padStart(3,'0') + ' sent to kitchen','s');
+    // Remove from local list immediately (realtime update will confirm)
+    _pendingGuests = _pendingGuests.filter(x => x.id !== g.id);
+    updateGuestBanner();
+
+    // If more pending for this table, render next; else close
+    const remaining = pendingForThisTable();
+    if(remaining.length > 0){
+      _activeGuestIdx = 0;
+      renderGuestReview();
+    } else {
+      closeGuestReview();
+    }
+
+    // Refresh running order to pull the newly-added items
+    await refreshOrder();
+
+  } catch(e){
+    console.error('[guest accept]', e);
+    toast('❌ ' + (e.message || 'Could not accept'), 'e');
+  } finally {
+    btns.forEach(b => b.disabled = false);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Reject — opens reason picker
+// ─────────────────────────────────────────────────────────────────
+function rejectGuestOrder(){
+  document.getElementById('go-reject-reason').value = '';
+  document.getElementById('go-reject-modal').classList.add('open');
+}
+
+function closeRejectModal(){
+  document.getElementById('go-reject-modal').classList.remove('open');
+}
+
+function setRejectReason(text){
+  document.getElementById('go-reject-reason').value = text;
+}
+
+async function confirmReject(){
+  const here = pendingForThisTable();
+  if(!here.length){ closeRejectModal(); return; }
+  const g = here[_activeGuestIdx];
+  const reason = document.getElementById('go-reject-reason').value.trim()
+    || 'Waiter notified to assist';
+
+  try {
+    const { data, error } = await _sb.rpc('sbp_guest_order_reject', {
+      p_shop_id:        _shopId,
+      p_guest_order_id: g.id,
+      p_reason:         reason,
+    });
+    if(error) throw new Error(error.message);
+    if(!data?.ok) throw new Error(data?.error || 'reject_failed');
+
+    toast('🤚 Waiter dispatched — guest notified','s');
+    _pendingGuests = _pendingGuests.filter(x => x.id !== g.id);
+    updateGuestBanner();
+    closeRejectModal();
+
+    const remaining = pendingForThisTable();
+    if(remaining.length > 0){
+      _activeGuestIdx = 0;
+      renderGuestReview();
+    } else {
+      closeGuestReview();
+    }
+  } catch(e){
+    console.error('[guest reject]', e);
+    toast('❌ ' + (e.message || 'Could not reject'), 'e');
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Modify — pull guest items into current-round builder for editing.
+// Marks guest order accepted in the background after staff sends KOT
+// manually. Lighter version: we just load items into _roundItems and
+// close the modal — staff edits, then taps Send KOT as usual. We
+// also mark the guest order accepted via reject-with-reason="modified"
+// because there's no clean "merged after edit" state; this keeps the
+// audit trail clear.
+// ─────────────────────────────────────────────────────────────────
+async function modifyGuestOrder(){
+  const here = pendingForThisTable();
+  if(!here.length) return;
+  const g = here[_activeGuestIdx];
+
+  // Load items into current round (in addition to whatever's there)
+  const items = Array.isArray(g.items) ? g.items : [];
+  if(items.length === 0){ toast('No items to load','e'); return; }
+
+  items.forEach(it => {
+    // Match against menu to fill in product fields properly
+    const menuMatch = (_menuItems || []).find(m => m.id === it.service_id);
+    _roundItems.push({
+      service_id: it.service_id || null,
+      name:       it.name || (menuMatch?.name || ''),
+      qty:        it.qty || 1,
+      price:      it.price || (menuMatch?.price || 0),
+      gst_rate:   it.gst_rate || (menuMatch?.gst_rate || 0),
+      hsn_sac_code: it.hsn_sac_code || (menuMatch?.hsn_sac_code || null),
+      notes:      it.notes || '',
+      _noteOpen:  (it.notes && it.notes.trim()) ? true : false,
+    });
+  });
+
+  // Mark guest order accepted (so it leaves the pending queue) using
+  // reject with a "modified by staff" reason. Future enhancement: a
+  // dedicated 'modified' status. For now, reject-with-reason is the
+  // cleanest available state.
+  try {
+    await _sb.rpc('sbp_guest_order_reject', {
+      p_shop_id:        _shopId,
+      p_guest_order_id: g.id,
+      p_reason:         'Staff loaded items into round for editing',
+    });
+  } catch(e){ console.warn('[guest modify reject]', e); }
+
+  _pendingGuests = _pendingGuests.filter(x => x.id !== g.id);
+  updateGuestBanner();
+  closeGuestReview();
+
+  renderRound();
+  render();
+  toast('✏️ ' + items.length + ' items loaded — edit, then tap Send KOT','i', 4000);
+  // On mobile, switch to order pane so staff sees them
+  if(typeof showPane === 'function') showPane('order');
+}
+
 // ── Generate Bill: in-place wizard (BATCH 067-UX-v4) ─────────────
 // Old: redirected to billing.html with sessionStorage handoff (broken).
 // New: opens a 3-step modal here — Customer → Review+Discount → Payment.

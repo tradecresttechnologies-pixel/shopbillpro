@@ -1,0 +1,1052 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#FF8A00">
+<meta name="robots" content="noindex, nofollow">
+<title>Order — ShopBill Pro</title>
+
+<!--
+  ═══════════════════════════════════════════════════════════════════
+  QR Guest Menu (Batch 068)
+  ═══════════════════════════════════════════════════════════════════
+  Public, anonymous, mobile-first ordering page. Guests scan a QR
+  sticker on their table → land here. No app install, no login.
+
+  URL formats supported:
+    /qr/{slug}/{table_number}              (production, via Vercel rewrite)
+    /qr-menu.html?s={slug}&t={table_number} (direct/test)
+
+  Flow:
+    1. Resolve slug + table via sbp_guest_menu_get_public
+    2. Show menu (browse-only if table is 'free')
+    3. Build cart in-memory
+    4. Place order via sbp_guest_order_place (anon)
+    5. Watch status via Realtime + status RPC fallback
+  ═══════════════════════════════════════════════════════════════════
+-->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+<style>
+:root{
+  --acc:#FF8A00;
+  --acc-2:#F5A623;
+  --bg:#FFF7EE;
+  --surf:#FFFFFF;
+  --surf-2:#FFF1E0;
+  --bord:#F0E2CE;
+  --text:#1E1A14;
+  --t2:#6B5E4D;
+  --t3:#9C8F7A;
+  --green:#10B981;
+  --red:#EF4444;
+  --shadow:0 8px 24px rgba(0,0,0,.06);
+  --shadow-lg:0 12px 36px rgba(0,0,0,.12);
+  --tr:.18s ease;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{
+  font-family:'Inter',system-ui,sans-serif;
+  background:var(--bg);color:var(--text);
+  font-size:14px;line-height:1.5;
+  overscroll-behavior-y:contain;
+  padding-bottom:84px;          /* room for floating cart button */
+}
+.font-h{font-family:'Outfit',sans-serif;letter-spacing:-0.2px}
+
+/* ═══ Splash / loading states ═════════════════════════════════════ */
+#splash{
+  position:fixed;inset:0;background:var(--bg);
+  display:flex;align-items:center;justify-content:center;flex-direction:column;
+  gap:14px;z-index:2000;
+}
+#splash .sp-em{font-size:48px;animation:bob 1.2s ease-in-out infinite}
+#splash .sp-msg{font-size:14px;color:var(--t2);font-weight:600}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+
+/* ═══ Error state ════════════════════════════════════════════════ */
+.err-screen{
+  padding:40px 24px;text-align:center;max-width:420px;margin:0 auto;
+}
+.err-em{font-size:64px;margin-bottom:16px}
+.err-title{font-family:'Outfit',sans-serif;font-size:22px;font-weight:800;margin-bottom:8px}
+.err-msg{color:var(--t2);font-size:14px;line-height:1.6;margin-bottom:20px}
+.err-btn{
+  display:inline-block;padding:12px 26px;border:none;cursor:pointer;
+  background:linear-gradient(135deg,var(--acc-2),var(--acc));
+  color:#fff;border-radius:10px;font-weight:800;font-size:14px;
+  font-family:'Outfit',sans-serif;
+}
+
+/* ═══ Top bar ════════════════════════════════════════════════════ */
+.topbar{
+  position:sticky;top:0;z-index:100;
+  background:linear-gradient(135deg,#FFF1E0 0%,#FFE4C2 100%);
+  padding:18px 18px 14px;
+  border-bottom:1px solid var(--bord);
+  box-shadow:var(--shadow);
+}
+.tb-row{display:flex;align-items:center;gap:12px}
+.tb-table-badge{
+  background:linear-gradient(135deg,#F5A623,#FF8A00);
+  color:#fff;font-family:'Outfit',sans-serif;font-weight:900;
+  font-size:18px;padding:7px 13px;border-radius:10px;
+  box-shadow:0 4px 12px rgba(255,138,0,.25);
+  letter-spacing:.5px;flex-shrink:0;
+}
+.tb-shop{flex:1;min-width:0}
+.tb-shop-name{
+  font-family:'Outfit',sans-serif;font-weight:800;
+  font-size:17px;color:var(--text);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.tb-shop-sub{font-size:11px;color:var(--t2);font-weight:600;margin-top:2px}
+
+/* Locked-table banner — shown when can_order=false */
+.locked-banner{
+  margin:14px 0 -2px;padding:11px 14px;
+  background:rgba(245,166,35,.12);border:1px solid rgba(245,166,35,.3);
+  border-radius:10px;font-size:12px;color:#8a5a00;font-weight:600;
+  display:flex;align-items:flex-start;gap:9px;line-height:1.45;
+}
+.locked-banner .lb-em{font-size:16px;line-height:1.2;flex-shrink:0}
+
+/* ═══ Category chips ═════════════════════════════════════════════ */
+.cats-bar{
+  display:flex;gap:8px;padding:14px 16px;overflow-x:auto;
+  scrollbar-width:none;background:var(--surf);
+  border-bottom:1px solid var(--bord);
+}
+.cats-bar::-webkit-scrollbar{display:none}
+.cat-chip{
+  padding:8px 16px;border-radius:20px;
+  background:var(--surf-2);border:1.5px solid var(--bord);
+  font-size:13px;font-weight:700;color:var(--t2);
+  cursor:pointer;white-space:nowrap;flex-shrink:0;
+  font-family:'Outfit',sans-serif;transition:var(--tr);
+}
+.cat-chip.on{
+  background:linear-gradient(135deg,var(--acc-2),var(--acc));
+  color:#fff;border-color:transparent;
+  box-shadow:0 3px 10px rgba(255,138,0,.25);
+}
+
+/* ═══ Menu grid ══════════════════════════════════════════════════ */
+.menu-wrap{padding:14px 14px 24px}
+.menu-grid{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:10px;
+}
+@media(min-width:600px){
+  .menu-grid{grid-template-columns:repeat(3,1fr)}
+}
+@media(min-width:900px){
+  .menu-grid{grid-template-columns:repeat(4,1fr);max-width:1100px;margin:0 auto}
+}
+
+.menu-card{
+  background:var(--surf);border:1px solid var(--bord);
+  border-radius:14px;overflow:hidden;cursor:pointer;
+  transition:var(--tr);position:relative;
+  box-shadow:var(--shadow);
+  display:flex;flex-direction:column;
+}
+.menu-card:active{transform:scale(.97)}
+.menu-card.unavail{opacity:.55;cursor:not-allowed}
+.menu-card.unavail::after{
+  content:'Out of stock';position:absolute;top:8px;right:8px;
+  background:#fff;color:var(--red);font-size:9px;font-weight:800;
+  padding:3px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.5px;
+  border:1px solid var(--red);
+}
+.mc-imgwrap{
+  height:80px;background:linear-gradient(135deg,#FFF1E0,#FFE4C2);
+  display:flex;align-items:center;justify-content:center;
+  font-size:36px;position:relative;
+}
+.mc-imgwrap img{width:100%;height:100%;object-fit:cover}
+.mc-cart-badge{
+  position:absolute;top:6px;right:6px;
+  background:var(--green);color:#fff;
+  font-size:11px;font-weight:800;font-family:'Outfit',sans-serif;
+  min-width:22px;height:22px;border-radius:11px;
+  display:flex;align-items:center;justify-content:center;padding:0 6px;
+  box-shadow:0 2px 6px rgba(16,185,129,.4);
+  line-height:1;
+}
+.mc-body{padding:10px 12px;flex:1;display:flex;flex-direction:column;gap:5px}
+.mc-name{
+  font-family:'Outfit',sans-serif;font-weight:700;font-size:13px;
+  line-height:1.3;color:var(--text);
+  overflow:hidden;text-overflow:ellipsis;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+  min-height:34px;
+}
+.mc-desc{
+  font-size:10px;color:var(--t3);line-height:1.4;
+  overflow:hidden;text-overflow:ellipsis;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+}
+.mc-foot{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-top:auto;padding-top:4px;
+}
+.mc-price{
+  font-family:'Outfit',sans-serif;font-weight:800;font-size:15px;
+  color:var(--acc);
+}
+.mc-gst{font-size:9px;color:var(--t3);font-weight:600}
+.mc-add-em{
+  width:26px;height:26px;border-radius:50%;
+  background:linear-gradient(135deg,var(--acc-2),var(--acc));
+  color:#fff;font-weight:900;font-size:16px;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 2px 6px rgba(255,138,0,.3);
+}
+
+/* Empty menu */
+.menu-empty{
+  text-align:center;padding:50px 20px;color:var(--t3);
+}
+.menu-empty-em{font-size:42px;margin-bottom:10px}
+.menu-empty-msg{font-size:13px;font-weight:600}
+
+/* ═══ Floating cart button ═══════════════════════════════════════ */
+.cart-fab{
+  position:fixed;bottom:14px;left:14px;right:14px;
+  z-index:90;
+  background:linear-gradient(135deg,var(--acc-2),var(--acc));
+  color:#fff;border:none;cursor:pointer;
+  padding:15px 20px;border-radius:14px;
+  display:none;align-items:center;justify-content:space-between;gap:12px;
+  font-family:'Outfit',sans-serif;font-weight:800;font-size:15px;
+  box-shadow:0 8px 24px rgba(255,138,0,.4);
+  transition:var(--tr);
+}
+.cart-fab.show{display:flex;animation:fabPop .3s ease-out}
+.cart-fab:active{transform:translateY(2px)}
+@keyframes fabPop{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+.cf-left{display:flex;align-items:center;gap:10px}
+.cf-count{
+  background:rgba(255,255,255,.25);
+  width:30px;height:30px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:13px;font-weight:900;
+}
+.cf-amount{font-size:16px;letter-spacing:-.3px}
+.cf-arrow{font-size:18px}
+@media(min-width:600px){
+  .cart-fab{left:auto;right:24px;bottom:24px;width:auto;min-width:280px}
+}
+
+/* ═══ Cart bottom sheet ══════════════════════════════════════════ */
+.sheet-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.5);
+  z-index:200;display:none;
+  backdrop-filter:blur(4px);
+}
+.sheet-overlay.open{display:block}
+.sheet{
+  position:fixed;bottom:0;left:0;right:0;z-index:201;
+  background:var(--surf);border-radius:18px 18px 0 0;
+  max-height:92vh;display:none;flex-direction:column;
+  box-shadow:0 -8px 30px rgba(0,0,0,.15);
+  animation:sheetUp .25s ease-out;
+}
+.sheet.open{display:flex}
+@keyframes sheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.sheet-hd{
+  padding:14px 18px;border-bottom:1px solid var(--bord);
+  display:flex;align-items:center;justify-content:space-between;flex-shrink:0;
+}
+.sheet-title{font-family:'Outfit',sans-serif;font-weight:800;font-size:18px}
+.sheet-close{
+  width:32px;height:32px;border-radius:50%;
+  background:var(--surf-2);border:none;cursor:pointer;
+  font-size:18px;color:var(--t2);font-weight:700;
+  display:flex;align-items:center;justify-content:center;
+}
+.sheet-body{flex:1;overflow-y:auto;padding:8px 0}
+
+/* Cart items */
+.cart-item{
+  padding:12px 18px;border-bottom:1px dashed var(--bord);
+}
+.cart-item:last-child{border-bottom:none}
+.ci-row{display:flex;align-items:center;gap:10px}
+.ci-info{flex:1;min-width:0}
+.ci-name{
+  font-family:'Outfit',sans-serif;font-weight:700;font-size:14px;
+  color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.ci-price{font-size:12px;color:var(--t2);font-weight:600;margin-top:1px}
+.ci-qty-ctrl{
+  display:flex;align-items:center;gap:0;
+  background:var(--surf-2);border-radius:8px;padding:2px;flex-shrink:0;
+}
+.ci-q-btn{
+  width:30px;height:30px;border:none;cursor:pointer;
+  background:transparent;color:var(--acc);font-size:18px;font-weight:900;
+  display:flex;align-items:center;justify-content:center;
+}
+.ci-q-btn:active{background:#fff;border-radius:6px}
+.ci-q-val{
+  min-width:28px;text-align:center;font-family:'Outfit',sans-serif;
+  font-weight:800;font-size:14px;color:var(--text);
+}
+.ci-amt{
+  min-width:60px;text-align:right;font-family:'Outfit',sans-serif;
+  font-weight:700;font-size:13px;color:var(--text);flex-shrink:0;
+}
+
+/* Per-item note */
+.ci-note-row{margin-top:8px;display:flex;gap:8px;align-items:center}
+.ci-note-toggle{
+  background:transparent;border:1px solid var(--bord);cursor:pointer;
+  padding:4px 9px;border-radius:6px;font-size:11px;color:var(--t2);
+  font-weight:600;display:flex;align-items:center;gap:4px;
+}
+.ci-note-toggle.has{background:rgba(255,138,0,.1);color:var(--acc);border-color:var(--acc)}
+.ci-note-inp{
+  flex:1;padding:6px 10px;border:1px solid var(--bord);
+  border-radius:6px;font-size:12px;display:none;
+  background:var(--surf-2);font-family:inherit;
+}
+.ci-note-inp.show{display:block}
+
+/* Cart footer (totals + form) */
+.sheet-foot{
+  flex-shrink:0;padding:14px 18px 18px;
+  background:var(--surf-2);border-top:1px solid var(--bord);
+}
+.cart-totals{
+  display:flex;justify-content:space-between;align-items:center;
+  margin-bottom:14px;padding:10px 12px;
+  background:var(--surf);border-radius:10px;border:1px solid var(--bord);
+}
+.ct-lbl{font-size:11px;color:var(--t2);font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+.ct-val{
+  font-family:'Outfit',sans-serif;font-weight:900;font-size:22px;
+  color:var(--acc);letter-spacing:-.5px;
+}
+.ct-val-sub{font-size:10px;color:var(--t3);font-weight:600;text-align:right}
+
+.form-field{margin-bottom:10px}
+.form-lbl{font-size:10px;color:var(--t2);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;display:block}
+.form-inp{
+  width:100%;padding:11px 13px;border:1px solid var(--bord);
+  border-radius:9px;font-size:14px;background:var(--surf);
+  font-family:inherit;color:var(--text);
+}
+.form-inp:focus{outline:none;border-color:var(--acc)}
+.form-hint{font-size:10px;color:var(--t3);margin-top:3px;font-style:italic}
+
+.place-btn{
+  width:100%;padding:15px;border:none;cursor:pointer;
+  background:linear-gradient(135deg,var(--acc-2),var(--acc));
+  color:#fff;border-radius:12px;
+  font-family:'Outfit',sans-serif;font-weight:800;font-size:16px;
+  box-shadow:0 6px 20px rgba(255,138,0,.35);
+  transition:var(--tr);margin-top:6px;
+}
+.place-btn:active:not(:disabled){transform:translateY(1px)}
+.place-btn:disabled{opacity:.5;cursor:not-allowed;box-shadow:none}
+
+/* ═══ Status screen (after place) ════════════════════════════════ */
+.status-screen{
+  position:fixed;inset:0;background:var(--bg);z-index:300;
+  display:none;flex-direction:column;align-items:center;justify-content:center;
+  padding:30px 24px;text-align:center;
+}
+.status-screen.open{display:flex}
+.ss-em{font-size:80px;margin-bottom:18px;animation:ssPop .4s ease-out}
+@keyframes ssPop{from{transform:scale(.5);opacity:0}to{transform:scale(1);opacity:1}}
+.ss-em.spin{animation:spin 1.4s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ss-title{font-family:'Outfit',sans-serif;font-weight:900;font-size:28px;margin-bottom:10px;letter-spacing:-.5px}
+.ss-sub{font-size:14px;color:var(--t2);line-height:1.55;max-width:340px;margin-bottom:24px}
+.ss-card{
+  background:var(--surf);border:1px solid var(--bord);
+  border-radius:14px;padding:18px 22px;margin-bottom:20px;
+  box-shadow:var(--shadow);min-width:240px;
+}
+.ss-card-lbl{font-size:10px;color:var(--t2);font-weight:700;text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px}
+.ss-card-val{font-family:'Outfit',sans-serif;font-weight:900;font-size:24px;color:var(--text)}
+.ss-kot-num{color:var(--green);font-size:32px;margin-top:2px}
+.ss-status-pill{
+  display:inline-block;padding:6px 14px;border-radius:18px;
+  font-size:11px;font-weight:800;font-family:'Outfit',sans-serif;
+  letter-spacing:.6px;text-transform:uppercase;
+}
+.ss-pill-pending{background:rgba(245,166,35,.15);color:#8a5a00;border:1px solid rgba(245,166,35,.4)}
+.ss-pill-accepted{background:rgba(16,185,129,.15);color:#047857;border:1px solid rgba(16,185,129,.4)}
+.ss-pill-rejected{background:rgba(239,68,68,.1);color:#b91c1c;border:1px solid rgba(239,68,68,.4)}
+.ss-actions{display:flex;gap:10px;margin-top:6px}
+.ss-btn{
+  padding:11px 18px;border-radius:9px;cursor:pointer;border:none;
+  font-family:'Outfit',sans-serif;font-weight:700;font-size:13px;
+}
+.ss-btn-primary{background:linear-gradient(135deg,var(--acc-2),var(--acc));color:#fff}
+.ss-btn-ghost{background:var(--surf);color:var(--t2);border:1px solid var(--bord)}
+
+/* ═══ Toast ═════════════════════════════════════════════════════ */
+.toast{
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(120%);
+  background:var(--text);color:#fff;padding:11px 18px;border-radius:10px;
+  font-size:13px;font-weight:600;z-index:500;
+  box-shadow:var(--shadow-lg);transition:transform .25s ease;
+  max-width:90vw;text-align:center;
+}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.toast.err{background:var(--red)}
+.toast.ok{background:var(--green)}
+</style>
+</head>
+<body>
+
+<!-- Splash / loading -->
+<div id="splash">
+  <div class="sp-em">🍽️</div>
+  <div class="sp-msg">Loading menu...</div>
+</div>
+
+<!-- Main content area (hidden until loaded) -->
+<div id="main" style="display:none">
+
+  <div class="topbar">
+    <div class="tb-row">
+      <div class="tb-table-badge" id="tb-table">T—</div>
+      <div class="tb-shop">
+        <div class="tb-shop-name" id="tb-name">Shop name</div>
+        <div class="tb-shop-sub" id="tb-sub">Tap any item to add</div>
+      </div>
+    </div>
+    <div class="locked-banner" id="locked-banner" style="display:none">
+      <span class="lb-em">⏳</span>
+      <span><strong>Please wait for a staff member to seat you.</strong> Browse the menu while you wait — ordering opens once your table is active.</span>
+    </div>
+  </div>
+
+  <div class="cats-bar" id="cats-bar"></div>
+
+  <div class="menu-wrap">
+    <div class="menu-grid" id="menu-grid"></div>
+  </div>
+
+</div>
+
+<!-- Error screen -->
+<div id="err" style="display:none"></div>
+
+<!-- Floating cart -->
+<button class="cart-fab" id="cart-fab" onclick="openCart()">
+  <span class="cf-left">
+    <span class="cf-count" id="cf-count">0</span>
+    <span>View Order</span>
+  </span>
+  <span class="cf-amount" id="cf-amount">₹0</span>
+  <span class="cf-arrow">→</span>
+</button>
+
+<!-- Cart bottom sheet -->
+<div class="sheet-overlay" id="sheet-overlay" onclick="closeCart()"></div>
+<div class="sheet" id="sheet">
+  <div class="sheet-hd">
+    <div class="sheet-title">Your Order</div>
+    <button class="sheet-close" onclick="closeCart()">✕</button>
+  </div>
+
+  <div class="sheet-body" id="cart-body"></div>
+
+  <div class="sheet-foot">
+    <div class="cart-totals">
+      <div>
+        <div class="ct-lbl">Order Total</div>
+      </div>
+      <div>
+        <div class="ct-val" id="ct-val">₹0</div>
+        <div class="ct-val-sub" id="ct-val-sub">incl. GST</div>
+      </div>
+    </div>
+
+    <div class="form-field">
+      <label class="form-lbl">Any special notes for the kitchen?</label>
+      <input type="text" class="form-inp" id="order-notes"
+        placeholder="e.g. 'less spicy', 'no onion in salad'"
+        maxlength="200">
+    </div>
+
+    <div class="form-field">
+      <label class="form-lbl">Your name <span style="font-weight:500;color:var(--t3)">(optional)</span></label>
+      <input type="text" class="form-inp" id="guest-name"
+        placeholder="So staff knows who placed the order"
+        maxlength="60">
+    </div>
+
+    <div class="form-field">
+      <label class="form-lbl">Phone <span style="font-weight:500;color:var(--t3)">(optional)</span></label>
+      <input type="tel" class="form-inp" id="guest-phone"
+        placeholder="For WhatsApp receipt later"
+        inputmode="numeric" maxlength="15">
+      <div class="form-hint">We won't spam you. Used only if you want the bill on WhatsApp.</div>
+    </div>
+
+    <button class="place-btn" id="place-btn" onclick="placeOrder()">
+      Send Order to Staff →
+    </button>
+  </div>
+</div>
+
+<!-- Post-place status screen -->
+<div class="status-screen" id="status-screen">
+  <div class="ss-em" id="ss-em">⏳</div>
+  <div class="ss-title" id="ss-title">Order Sent!</div>
+  <div class="ss-sub" id="ss-sub">A staff member is reviewing your order. The kitchen will start cooking once they confirm.</div>
+
+  <div class="ss-card">
+    <div class="ss-card-lbl">Your Order Number</div>
+    <div class="ss-card-val" id="ss-order-no">G-0000</div>
+  </div>
+
+  <div class="ss-status-pill ss-pill-pending" id="ss-pill">Waiting for staff</div>
+
+  <div class="ss-actions" id="ss-actions"></div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+// Supabase anon client
+// ═══════════════════════════════════════════════════════════════════
+const SB_URL = 'https://jfqeirfrkjdkqqixivru.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmcWVpcmZya2pka3FxaXhpdnJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzNzQ4MzgsImV4cCI6MjA4OTk1MDgzOH0.akd4E0nil8ypLR4WOykkeYIL8g4uuNU6XdSVh_Y1utk';
+const sb = supabase.createClient(SB_URL, SB_KEY);
+
+// ═══════════════════════════════════════════════════════════════════
+// State
+// ═══════════════════════════════════════════════════════════════════
+let _slug = '';
+let _tableNumber = '';
+let _shop = null;          // {id, name, address, phone, currency}
+let _table = null;         // {id, number, status, can_order}
+let _menu = [];            // array of menu items
+let _cats = ['All'];       // category list
+let _activeCat = 'All';
+let _cart = {};            // { service_id: { qty, notes, item } }
+let _placedOrderId = null; // after place
+let _statusSub = null;     // realtime channel for the placed order
+
+// ═══════════════════════════════════════════════════════════════════
+// Helpers
+// ═══════════════════════════════════════════════════════════════════
+const $ = (id) => document.getElementById(id);
+const escHtml = (s) => String(s == null ? '' : s)
+  .replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fINR = (n) => '₹' + (Number(n) || 0).toLocaleString('en-IN', {
+  minimumFractionDigits: 0, maximumFractionDigits: 2
+});
+
+// Category emoji mapping (mirrors running-order so customers + staff see same icons)
+const CAT_EMOJI = {
+  'All':'🍽️', 'Mains':'🍛', 'Starters':'🥗', 'Soup':'🍜', 'Salad':'🥗',
+  'Breads':'🥖', 'Bread':'🥖', 'Rice':'🍚', 'Drinks':'🥤', 'Beverages':'🥤',
+  'Desserts':'🍰', 'Snacks':'🍿', 'Sides':'🍟', 'Veg':'🥬', 'Non-Veg':'🍗',
+  'Chinese':'🥢', 'Indian':'🍛', 'Italian':'🍕', 'Pizza':'🍕', 'Burger':'🍔',
+  'Tandoor':'🔥', 'Tea':'☕', 'Coffee':'☕', 'Juice':'🧃', 'Lassi':'🥛',
+  'Roti':'🥖', 'Naan':'🥖', 'Paratha':'🥖', 'Dal':'🍛', 'Sabzi':'🍛',
+  'Biryani':'🍚', 'Pulao':'🍚', 'Egg':'🥚', 'Chicken':'🍗', 'Mutton':'🍖',
+  'Fish':'🐟', 'Paneer':'🧀', 'Sweet':'🍬', 'Default':'🍴',
+};
+const catEmoji = (c) => CAT_EMOJI[c] || CAT_EMOJI['Default'];
+
+function toast(msg, kind){
+  const t = $('toast');
+  t.textContent = msg;
+  t.className = 'toast ' + (kind || '') + ' show';
+  setTimeout(()=> t.classList.remove('show'), 2400);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// URL parsing
+// Supports both /qr/{slug}/{table} (rewritten) and ?s=&t= (direct)
+// ═══════════════════════════════════════════════════════════════════
+function parseUrl(){
+  const params = new URLSearchParams(location.search);
+  let s = params.get('s') || '';
+  let t = params.get('t') || '';
+
+  if(!s || !t){
+    // Try pathname: /qr/{slug}/{table}
+    const path = location.pathname.replace(/^\/+|\/+$/g, '').split('/');
+    if(path[0] === 'qr' && path[1]){
+      s = path[1];
+      t = path[2] || '';
+    }
+  }
+  return { slug: s, table: t };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Initial load
+// ═══════════════════════════════════════════════════════════════════
+async function init(){
+  const { slug, table } = parseUrl();
+  if(!slug || !table){
+    return showError('🤷', 'Invalid QR code',
+      'This QR link is missing shop or table info. Ask staff for a fresh QR sticker.',
+      false);
+  }
+  _slug = slug;
+  _tableNumber = table;
+
+  try {
+    const { data, error } = await sb.rpc('sbp_guest_menu_get_public', {
+      p_slug: slug,
+      p_table_number: table,
+    });
+    if(error) throw new Error(error.message);
+
+    if(!data?.ok){
+      const err = data?.error || 'unknown';
+      const msgMap = {
+        'invalid_input':  ['🤷', 'Invalid QR', 'The QR is missing some info. Try the original sticker on your table.'],
+        'shop_not_found': ['🔍', 'Shop not found', 'This QR points to a shop we can\'t find. Ask staff for a new one.'],
+        'table_not_found':['🪑', 'Table not set up', 'This table number isn\'t configured. Please ask a waiter for help.'],
+      };
+      const [em, title, msg] = msgMap[err] || ['😕', 'Something went wrong', err];
+      return showError(em, title, msg, true);
+    }
+
+    _shop = data.shop;
+    _table = data.table;
+    _menu  = Array.isArray(data.menu) ? data.menu : [];
+
+    // Plan gate — if shop isn't on Business / trial expired, hide ordering
+    if(data.qr_enabled === false){
+      return showError('🔧', 'QR ordering is being set up',
+        _shop.name + ' is finishing their menu setup. Please order through a waiter for now.',
+        false);
+    }
+
+    if(_menu.length === 0){
+      return showError('📋', 'Menu coming soon',
+        _shop.name + ' hasn\'t finished adding their menu yet. Please ask a waiter for help.',
+        false);
+    }
+
+    renderTopbar();
+    renderCategories();
+    renderMenu();
+    document.getElementById('splash').style.display = 'none';
+    document.getElementById('main').style.display = '';
+
+  } catch(e){
+    console.error('[init]', e);
+    showError('⚠️', 'Connection issue',
+      'We couldn\'t load the menu. Check your phone\'s internet and try again.', true);
+  }
+}
+
+function showError(em, title, msg, withRetry){
+  $('splash').style.display = 'none';
+  $('main').style.display = 'none';
+  const errEl = $('err');
+  errEl.style.display = '';
+  errEl.innerHTML = '<div class="err-screen">' +
+    '<div class="err-em">' + em + '</div>' +
+    '<div class="err-title">' + escHtml(title) + '</div>' +
+    '<div class="err-msg">' + escHtml(msg) + '</div>' +
+    (withRetry ? '<button class="err-btn" onclick="location.reload()">Try Again</button>' : '') +
+  '</div>';
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Render: topbar
+// ═══════════════════════════════════════════════════════════════════
+function renderTopbar(){
+  $('tb-table').textContent = 'T' + _table.number;
+  $('tb-name').textContent  = _shop.name;
+  $('tb-sub').textContent   = 'Tap any item to add to your order';
+  const lb = $('locked-banner');
+  if(!_table.can_order){
+    lb.style.display = '';
+  } else {
+    lb.style.display = 'none';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Render: categories
+// ═══════════════════════════════════════════════════════════════════
+function renderCategories(){
+  const cats = new Set(['All']);
+  _menu.forEach(m => { if(m.category) cats.add(m.category); });
+  _cats = Array.from(cats);
+
+  $('cats-bar').innerHTML = _cats.map(c =>
+    `<div class="cat-chip${c === _activeCat ? ' on' : ''}" onclick="setCategory('${escHtml(c).replace(/'/g, "\\'")}')">` +
+      `<span style="margin-right:5px">${catEmoji(c)}</span>${escHtml(c)}` +
+    `</div>`
+  ).join('');
+}
+
+function setCategory(c){
+  _activeCat = c;
+  renderCategories();
+  renderMenu();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Render: menu grid
+// ═══════════════════════════════════════════════════════════════════
+function renderMenu(){
+  const visible = _activeCat === 'All' ? _menu :
+    _menu.filter(m => m.category === _activeCat);
+
+  if(visible.length === 0){
+    $('menu-grid').innerHTML =
+      '<div class="menu-empty" style="grid-column:1/-1">' +
+        '<div class="menu-empty-em">🍽️</div>' +
+        '<div class="menu-empty-msg">No items in this category</div>' +
+      '</div>';
+    return;
+  }
+
+  $('menu-grid').innerHTML = visible.map(m => {
+    const avail = m.is_available !== false;
+    const inCart = (_cart[m.id]?.qty) || 0;
+    const em = catEmoji(m.category);
+    const img = m.image_url ?
+      `<img src="${escHtml(m.image_url)}" alt="${escHtml(m.name)}" loading="lazy">` :
+      `<span>${em}</span>`;
+    return `<div class="menu-card ${avail?'':'unavail'}" onclick="${avail?`addToCart('${m.id}')`:'void(0)'}">` +
+      `<div class="mc-imgwrap">${img}` +
+        (inCart > 0 ? `<div class="mc-cart-badge">${inCart}</div>` : '') +
+      `</div>` +
+      `<div class="mc-body">` +
+        `<div class="mc-name">${escHtml(m.name)}</div>` +
+        (m.description ? `<div class="mc-desc">${escHtml(m.description)}</div>` : '') +
+        `<div class="mc-foot">` +
+          `<div>` +
+            `<div class="mc-price">${fINR(m.price)}</div>` +
+            (m.gst_rate > 0 ? `<div class="mc-gst">+${m.gst_rate}% GST</div>` : '') +
+          `</div>` +
+          (avail ? `<div class="mc-add-em">+</div>` : '') +
+        `</div>` +
+      `</div>` +
+    `</div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Cart
+// ═══════════════════════════════════════════════════════════════════
+function addToCart(serviceId){
+  const item = _menu.find(m => m.id === serviceId);
+  if(!item) return;
+  if(item.is_available === false) return;
+
+  if(!_cart[serviceId]){
+    _cart[serviceId] = { qty: 1, notes: '', item };
+  } else {
+    _cart[serviceId].qty += 1;
+  }
+  updateCartFAB();
+  renderMenu();   // refresh "in cart" badge
+  toast('Added to order', 'ok');
+}
+
+function removeFromCart(serviceId){
+  if(!_cart[serviceId]) return;
+  _cart[serviceId].qty -= 1;
+  if(_cart[serviceId].qty <= 0) delete _cart[serviceId];
+  updateCartFAB();
+  renderMenu();
+  renderCart();
+}
+
+function bumpCart(serviceId){
+  if(!_cart[serviceId]) return;
+  _cart[serviceId].qty += 1;
+  updateCartFAB();
+  renderMenu();
+  renderCart();
+}
+
+function toggleNoteInput(serviceId){
+  const inp = document.getElementById('note-inp-' + serviceId);
+  if(!inp) return;
+  inp.classList.toggle('show');
+  if(inp.classList.contains('show')) inp.focus();
+}
+
+function setItemNote(serviceId, val){
+  if(!_cart[serviceId]) return;
+  _cart[serviceId].notes = val;
+  // Reflect toggle highlight
+  const btn = document.getElementById('note-btn-' + serviceId);
+  if(btn) btn.classList.toggle('has', val.trim().length > 0);
+}
+
+function cartTotal(){
+  let sub = 0, gst = 0;
+  Object.values(_cart).forEach(c => {
+    const lineSub = c.qty * (c.item.price || 0);
+    sub += lineSub;
+    gst += lineSub * (c.item.gst_rate || 0) / 100;
+  });
+  return { sub, gst, grand: sub + gst };
+}
+
+function cartItemCount(){
+  return Object.values(_cart).reduce((s, c) => s + c.qty, 0);
+}
+
+function updateCartFAB(){
+  const fab = $('cart-fab');
+  const cnt = cartItemCount();
+  if(cnt === 0){ fab.classList.remove('show'); return; }
+  // Hide FAB if table can't order (locked)
+  if(!_table.can_order){ fab.classList.remove('show'); return; }
+  fab.classList.add('show');
+  $('cf-count').textContent = cnt;
+  $('cf-amount').textContent = fINR(cartTotal().grand);
+}
+
+function openCart(){
+  if(cartItemCount() === 0){ toast('Add some items first'); return; }
+  if(!_table.can_order){
+    toast('Please wait for staff to seat you'); return;
+  }
+  renderCart();
+  $('sheet-overlay').classList.add('open');
+  $('sheet').classList.add('open');
+}
+
+function closeCart(){
+  $('sheet-overlay').classList.remove('open');
+  $('sheet').classList.remove('open');
+}
+
+function renderCart(){
+  const body = $('cart-body');
+  const ids = Object.keys(_cart);
+  if(ids.length === 0){
+    closeCart();
+    return;
+  }
+
+  body.innerHTML = ids.map(id => {
+    const c = _cart[id];
+    const it = c.item;
+    const lineTot = c.qty * (it.price || 0) * (1 + (it.gst_rate || 0) / 100);
+    const hasNote = c.notes && c.notes.trim();
+    return `<div class="cart-item">` +
+      `<div class="ci-row">` +
+        `<div class="ci-info">` +
+          `<div class="ci-name">${escHtml(it.name)}</div>` +
+          `<div class="ci-price">${fINR(it.price)} each</div>` +
+        `</div>` +
+        `<div class="ci-qty-ctrl">` +
+          `<button class="ci-q-btn" onclick="removeFromCart('${id}')">−</button>` +
+          `<div class="ci-q-val">${c.qty}</div>` +
+          `<button class="ci-q-btn" onclick="bumpCart('${id}')">+</button>` +
+        `</div>` +
+        `<div class="ci-amt">${fINR(lineTot)}</div>` +
+      `</div>` +
+      `<div class="ci-note-row">` +
+        `<button class="ci-note-toggle ${hasNote?'has':''}" id="note-btn-${id}" onclick="toggleNoteInput('${id}')">` +
+          `💬 ${hasNote ? 'Edit note' : 'Add note'}` +
+        `</button>` +
+        `<input type="text" class="ci-note-inp ${hasNote?'show':''}" id="note-inp-${id}"` +
+          ` placeholder="e.g. less spicy, no garlic"` +
+          ` value="${escHtml(c.notes || '')}"` +
+          ` oninput="setItemNote('${id}', this.value)" maxlength="100">` +
+      `</div>` +
+    `</div>`;
+  }).join('');
+
+  const t = cartTotal();
+  $('ct-val').textContent = fINR(t.grand);
+  $('ct-val-sub').textContent = t.gst > 0
+    ? `${fINR(t.sub)} + ${fINR(t.gst)} GST`
+    : 'no GST';
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Place order
+// ═══════════════════════════════════════════════════════════════════
+async function placeOrder(){
+  if(cartItemCount() === 0){ toast('No items'); return; }
+  if(!_table.can_order){ toast('Please wait for staff to seat you'); return; }
+
+  const btn = $('place-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Sending...';
+
+  // Build items payload — only service_id + qty + notes. Server re-fetches
+  // price/gst/name so we don't even bother sending those.
+  const items = Object.entries(_cart).map(([id, c]) => ({
+    service_id: id,
+    qty: c.qty,
+    notes: (c.notes || '').trim() || undefined,
+  }));
+
+  const notes = $('order-notes').value.trim();
+  const name  = $('guest-name').value.trim();
+  const phone = $('guest-phone').value.trim();
+
+  try {
+    const { data, error } = await sb.rpc('sbp_guest_order_place', {
+      p_slug:         _slug,
+      p_table_number: _tableNumber,
+      p_items:        items,
+      p_notes:        notes || null,
+      p_phone:        phone || null,
+      p_name:         name  || null,
+    });
+    if(error) throw new Error(error.message);
+
+    if(!data?.ok){
+      const err = data?.error || 'unknown';
+      const errMsgMap = {
+        'plan_required':   'QR ordering isn\'t set up here yet. Please order through a waiter.',
+        'table_not_open':  'Please wait for staff to seat you — ordering opens once your table is active.',
+        'pending_exists':  'You already have an order pending review. Please wait for staff to confirm before adding more.',
+        'item_not_in_menu':'One item is no longer available. Please refresh and try again.',
+        'item_unavailable':'One item is out of stock. Please remove it and try again.',
+        'invalid_qty':     'Item quantity isn\'t valid. Try adjusting and resending.',
+        'too_many_items':  'Too many different items. Please order in smaller batches.',
+      };
+      throw new Error(errMsgMap[err] || ('Could not send order: ' + err));
+    }
+
+    // Success — switch to status screen
+    _placedOrderId = data.guest_order_id;
+    closeCart();
+    showStatusScreen(data.guest_order_no, 'pending');
+    subscribeToStatus(data.guest_order_id);
+
+  } catch(e){
+    console.error('[place]', e);
+    toast(e.message, 'err');
+    btn.disabled = false;
+    btn.textContent = 'Send Order to Staff →';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Status screen — pending / accepted / rejected
+// ═══════════════════════════════════════════════════════════════════
+function showStatusScreen(orderNo, status, kotNo, reason){
+  $('ss-order-no').textContent = orderNo || _placedOrderId || '—';
+  $('status-screen').classList.add('open');
+
+  const pill   = $('ss-pill');
+  const em     = $('ss-em');
+  const title  = $('ss-title');
+  const sub    = $('ss-sub');
+  const acts   = $('ss-actions');
+
+  if(status === 'accepted'){
+    em.textContent = '✅';
+    em.classList.remove('spin');
+    title.textContent = 'Confirmed!';
+    sub.innerHTML = 'The kitchen is preparing your order' +
+      (kotNo ? '. <strong>KOT #' + String(kotNo).padStart(3,'0') + '</strong> is in the queue.' : '.') +
+      '<br>Sit back, food is on the way.';
+    pill.className = 'ss-status-pill ss-pill-accepted';
+    pill.textContent = '✓ Sent to kitchen';
+    if(kotNo){
+      $('ss-order-no').innerHTML = orderNo + '<div class="ss-kot-num">KOT #' + String(kotNo).padStart(3,'0') + '</div>';
+    }
+    acts.innerHTML = '<button class="ss-btn ss-btn-primary" onclick="resetForNewOrder()">Order More</button>';
+  } else if(status === 'rejected'){
+    em.textContent = '🤚';
+    em.classList.remove('spin');
+    title.textContent = 'Staff wants to chat';
+    sub.innerHTML = (reason ? '<em>"' + escHtml(reason) + '"</em><br>' : '') +
+      'Please wait — a waiter is coming to help you finalize your order.';
+    pill.className = 'ss-status-pill ss-pill-rejected';
+    pill.textContent = 'Needs clarification';
+    acts.innerHTML = '<button class="ss-btn ss-btn-ghost" onclick="resetForNewOrder()">Back to Menu</button>';
+  } else {
+    em.textContent = '⏳';
+    em.classList.add('spin');
+    title.textContent = 'Order Sent!';
+    sub.textContent = 'A staff member is reviewing your order. The kitchen will start cooking once they confirm.';
+    pill.className = 'ss-status-pill ss-pill-pending';
+    pill.textContent = 'Waiting for staff';
+    acts.innerHTML = '';
+  }
+}
+
+function resetForNewOrder(){
+  // Tear down realtime sub
+  if(_statusSub){
+    try { sb.removeChannel(_statusSub); } catch(e){}
+    _statusSub = null;
+  }
+  _placedOrderId = null;
+  _cart = {};
+  $('order-notes').value = '';
+  $('status-screen').classList.remove('open');
+  updateCartFAB();
+  renderMenu();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Realtime subscription on placed order
+// ═══════════════════════════════════════════════════════════════════
+function subscribeToStatus(orderId){
+  // Tear down any prior sub
+  if(_statusSub){ try { sb.removeChannel(_statusSub); } catch(e){} }
+
+  _statusSub = sb
+    .channel('go-status-' + orderId)
+    .on('postgres_changes', {
+      event: 'UPDATE',
+      schema: 'public',
+      table: 'sbp_guest_orders',
+      filter: 'id=eq.' + orderId,
+    }, (payload) => {
+      const r = payload.new || {};
+      showStatusScreen(r.guest_order_no, r.status, r.accepted_kot_no, r.rejected_reason);
+    })
+    .subscribe();
+
+  // Fallback poll every 7s in case realtime isn't reachable
+  pollStatus(orderId);
+}
+
+async function pollStatus(orderId){
+  if(_placedOrderId !== orderId) return;   // user reset
+  try {
+    const { data } = await sb.rpc('sbp_guest_order_status', { p_guest_order_id: orderId });
+    if(data?.ok && data.status !== 'pending'){
+      showStatusScreen(data.guest_order_no, data.status, data.accepted_kot_no, data.rejected_reason);
+      return;   // stop polling
+    }
+  } catch(e){}
+  setTimeout(()=> pollStatus(orderId), 7000);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Boot
+// ═══════════════════════════════════════════════════════════════════
+init();
+</script>
+
+</body>
+</html>
