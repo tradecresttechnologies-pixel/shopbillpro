@@ -1730,6 +1730,57 @@ async function init(){
       }
     } catch(e){ console.warn('[init] shop-id recovery failed:', e); }
   }
+
+  // ── FIX (16-May): self-heal a logged-in-but-shopless account ──────
+  // Root cause (separate from the recovery above): signup DEFERS shop
+  // creation when email confirmation is on, or when the signup-time
+  // insert fails. The user can still end up authenticated and inside
+  // the app with NO shops row at all — so the cloud fetch above finds
+  // nothing and every shop-id resolver shows "Not logged in or no
+  // shop selected" / "Loading your shop URL...". (This was previously
+  // masked by the cross-account data leak — before that fix a prior
+  // account's cached shop wrongly filled in here.)
+  // We complete shop creation from the pending-shop buffer, falling
+  // back to the signup metadata persisted on auth.users (which also
+  // covers signing in on a different device).
+  if(!_shopId && navigator.onLine && _user){
+    try {
+      let pend = null;
+      try { pend = JSON.parse(localStorage.getItem('sbp_pending_shop')||'null'); } catch(_){}
+      const meta = _user.user_metadata || {};
+      const hasIntent = (pend && pend.name) || meta.shop || meta.name;
+      if(hasIntent){
+        const payload = {
+          owner_id:        _user.id,
+          name:            (pend && pend.name)            || meta.shop  || 'My Shop',
+          owner_name:      (pend && pend.owner_name)      || meta.name  || '',
+          phone:           (pend && pend.phone)           || meta.phone || '',
+          email:           (pend && pend.email)           || _user.email || '',
+          invoice_prefix:  (pend && pend.invoice_prefix)  || 'INV',
+          invoice_counter: (pend && pend.invoice_counter) || 1,
+          shop_type:       (pend && pend.shop_type)       || 'general_retail'
+        };
+        const { data: created, error: insErr } =
+          await _sb.from('shops').insert(payload).select().single();
+        if(!insErr && created){
+          let row = created;
+          try {
+            const { data: betaRow } = await _sb.rpc('apply_beta_plan', { p_shop_id: created.id });
+            if(betaRow) row = betaRow;
+          } catch(_){}
+          _shop   = row;
+          _shopId = row.id;
+          localStorage.setItem('sbp_shop', JSON.stringify(_shop));
+          localStorage.setItem('sbp_shop_id', _shopId);
+          localStorage.removeItem('sbp_pending_shop');
+          if(window.toast) toast('✅ Shop setup completed', 's', 2500);
+        } else {
+          console.warn('[init] shop self-heal insert failed:', insErr);
+        }
+      }
+    } catch(e){ console.warn('[init] shop self-heal failed:', e); }
+  }
+
   window._shopId = _shopId || null;
   window.SBP = window.SBP || {};
   window.SBP.shopId = _shopId || null;
