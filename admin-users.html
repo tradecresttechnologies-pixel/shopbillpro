@@ -121,10 +121,16 @@
           <option value="pro">Pro</option>
           <option value="business">Business</option>
         </select>
-        <button class="btn btn-act" style="padding:11px 16px" onclick="loadShops()">🔄 Refresh</button>
+        <button class="btn btn-act" style="padding:11px 16px" onclick="loadShops();loadSignups()">🔄 Refresh</button>
       </div>
 
       <div id="tableWrap"></div>
+
+      <div class="header" style="margin-top:30px">
+        <h1>Recent Signups <span id="pendingBadge" style="font-size:13px;font-weight:700;color:#F5A623"></span></h1>
+        <p>Every signup — including ones with no shop yet (email-confirm pending or setup incomplete). Name &amp; phone come from the signup form.</p>
+      </div>
+      <div id="signupsWrap"></div>
     </div>
   </div>
 
@@ -178,6 +184,17 @@
     </div>
   </div>
 
+  <!-- User / shop full-detail modal -->
+  <div class="modal" id="userModal">
+    <div class="modal-card" style="max-width:680px;max-height:88vh;overflow-y:auto">
+      <h3 id="userModalTitle">User Detail</h3>
+      <div id="userModalBody" style="font-size:13px;line-height:1.6">Loading…</div>
+      <div class="modal-actions">
+        <button class="btn btn-act" onclick="closeModal('userModal')">Close</button>
+      </div>
+    </div>
+  </div>
+
   <script src="admin-auth.js"></script>
   <script src="admin-db.js"></script>
   <script>
@@ -211,7 +228,7 @@
     let _searchTimer;
     document.getElementById('searchInput').addEventListener('input', () => {
       clearTimeout(_searchTimer);
-      _searchTimer = setTimeout(loadShops, 300);
+      _searchTimer = setTimeout(() => { loadShops(); loadSignups(); }, 300);
     });
     document.getElementById('planFilter').addEventListener('change', loadShops);
 
@@ -252,6 +269,7 @@
             <td>${fmtDate(s.created_at)}</td>
             <td>${fmtDate(s.last_activity)}</td>
             <td>
+              <button class="btn btn-act" onclick="openUserDetail({shopId:'${s.id}'})">Details</button>
               <button class="btn btn-act" onclick="openPlanModal('${s.id}','${(s.name||'').replace(/'/g,"\\'")}','${planNorm}')">Plan</button>
               ${s.suspended
                 ? `<button class="btn btn-success" onclick="openSuspendModal('${s.id}','${(s.name||'').replace(/'/g,"\\'")}',false)">Unsuspend</button>`
@@ -259,6 +277,136 @@
             </td>
           </tr>`;
         }).join('')}</tbody></table>`;
+    }
+
+    async function loadSignups(){
+      const search = document.getElementById('searchInput').value.trim();
+      const res = await db.listSignups({ search, limit: 150 });
+      const list = res.signups || [];
+      const badge = document.getElementById('pendingBadge');
+      if (badge) badge.textContent = res.pending_count ? `· ${res.pending_count} pending shop setup` : '';
+      const wrap = document.getElementById('signupsWrap');
+      if (!list.length){
+        wrap.innerHTML = '<div class="empty">No signups found.</div>';
+        return;
+      }
+      wrap.innerHTML = `<table class="table">
+        <thead><tr>
+          <th>Name</th><th>Phone</th><th>Email</th><th>Intended Shop</th><th>Role</th><th>Signed Up</th><th>Email</th><th>Status</th>
+        </tr></thead>
+        <tbody>${list.map(u => {
+          const pending = u.shop_status !== 'active';
+          const statusPill = pending
+            ? '<span class="pill suspended">PENDING</span>'
+            : '<span class="pill pro">ACTIVE</span>';
+          const mailPill = u.email_confirmed
+            ? '<span style="color:#10B981;font-size:11px">✓ confirmed</span>'
+            : '<span style="color:#F5A623;font-size:11px">⏳ unconfirmed</span>';
+          return `<tr style="cursor:pointer" onclick="openUserDetail({userId:'${u.user_id}'})">
+            <td><strong>${u.name||'—'}</strong></td>
+            <td>${u.phone||'—'}</td>
+            <td><span style="font-size:12px">${u.email||'—'}</span></td>
+            <td>${u.shop_name||'—'}</td>
+            <td>${u.role||'—'}</td>
+            <td>${fmtDate(u.created_at)}</td>
+            <td>${mailPill}</td>
+            <td>${statusPill}</td>
+          </tr>`;
+        }).join('')}</tbody></table>`;
+    }
+
+    // ── Full user/shop detail drill-down ──────────────────────────
+    async function openUserDetail(opts){
+      openModal('userModal');
+      document.getElementById('userModalTitle').textContent = 'User Detail';
+      document.getElementById('userModalBody').innerHTML = 'Loading…';
+      const d = await db.getUserDetail(opts || {});
+      if(!d || !d.ok){
+        document.getElementById('userModalBody').innerHTML =
+          '<div class="empty">Could not load these details.</div>';
+        return;
+      }
+      renderUserDetail(d);
+    }
+
+    function _row(label, val){
+      return `<div style="display:flex;justify-content:space-between;gap:14px;padding:5px 0;border-bottom:1px solid rgba(124,58,237,.12)">
+        <span style="color:#8A8AA8">${label}</span>
+        <span style="text-align:right;font-weight:600;word-break:break-word">${val==null||val===''?'—':val}</span></div>`;
+    }
+    function _section(title){
+      return `<div style="margin:18px 0 8px;font-size:13px;font-weight:800;color:#F5A623;letter-spacing:.4px">${title}</div>`;
+    }
+
+    function renderUserDetail(d){
+      const a = d.account || {};
+      const s = d.shop;
+      const st = d.stats || {};
+      document.getElementById('userModalTitle').textContent =
+        (a.meta_name || a.email || 'User') + (s ? ' · ' + (s.name||'') : ' · (no shop yet)');
+
+      let html = _section('👤 Account');
+      html += _row('Email', a.email);
+      html += _row('Signed up', fmtDate(a.signed_up_at));
+      html += _row('Email confirmed', a.email_confirmed
+        ? '<span style="color:#10B981">✓ '+fmtDate(a.confirmed_at)+'</span>'
+        : '<span style="color:#F5A623">⏳ not confirmed</span>');
+      html += _row('Last sign-in', fmtDate(a.last_sign_in_at));
+      html += _row('Name (signup form)', a.meta_name);
+      html += _row('Phone (signup form)', a.meta_phone);
+      html += _row('Role', a.meta_role);
+      if(a.meta_shop_type) html += _row('Type picked at signup', a.meta_shop_type);
+
+      if(!d.has_shop || !s){
+        html += _section('🏪 Shop');
+        html += '<div style="padding:10px;background:rgba(245,166,35,.1);border-radius:8px;color:#F5A623">No shop created yet — signup is incomplete (email-confirm pending or setup not finished).</div>';
+        document.getElementById('userModalBody').innerHTML = html;
+        return;
+      }
+
+      html += _section('🏪 Shop');
+      html += _row('Shop name', s.name);
+      html += _row('Business type', (s.shop_type_label||s.shop_type) +
+                   (s.macro ? ' <span style="color:#8A8AA8;font-weight:400">('+s.macro+')</span>' : ''));
+      html += _row('Plan', '<span class="pill '+(s.plan||'free')+'">'+(s.plan||'free').toUpperCase()+'</span>' +
+                   (s.is_beta_signup ? ' <span class="pill pro">BETA</span>' : ''));
+      html += _row('Plan expires', s.plan_expires_at ? fmtDate(s.plan_expires_at) : '—');
+      html += _row('Suspended', s.suspended
+        ? '<span style="color:#EF4444">YES — '+(s.suspended_reason||'')+'</span>' : 'No');
+      html += _row('Shop created', fmtDate(s.created_at));
+      if(s.shop_type_changed_at) html += _row('Type last changed', fmtDate(s.shop_type_changed_at));
+
+      html += _section('📊 Activity');
+      html += _row('Total bills', st.bill_count||0);
+      html += _row('Voided bills', st.voided_count||0);
+      html += _row('Total revenue', fmt(st.total_revenue||0));
+      html += _row('Customers', st.customer_count||0);
+      html += _row('Products', st.product_count||0);
+      html += _row('Last bill', st.last_bill_at ? fmtDate(st.last_bill_at) : '—');
+
+      const subs = d.subscriptions || [];
+      if(subs.length){
+        html += _section('💳 Subscriptions');
+        subs.forEach(x => {
+          html += _row(fmtDate(x.created_at) + ' · ' + (x.plan||'') ,
+            (x.status||'') + (x.amount ? ' · ₹'+x.amount : '') + (x.billing_cycle ? ' · '+x.billing_cycle : ''));
+        });
+      }
+
+      const hist = d.history || [];
+      html += _section('🕓 Recent History ('+hist.length+')');
+      if(!hist.length){
+        html += '<div style="color:#8A8AA8;padding:6px 0">No audited actions recorded for this shop.</div>';
+      } else {
+        hist.forEach(h => {
+          html += `<div style="padding:6px 0;border-bottom:1px solid rgba(124,58,237,.12)">
+            <div style="font-weight:600">${h.action||'—'}</div>
+            <div style="color:#8A8AA8;font-size:11px">${fmtDate(h.at)}${h.actor?' · '+h.actor:''}${h.reason?' · '+h.reason:''}</div>
+          </div>`;
+        });
+      }
+
+      document.getElementById('userModalBody').innerHTML = html;
     }
 
     function openPlanModal(id, name, currentPlan){
@@ -310,6 +458,7 @@
     }
 
     loadShops();
+    loadSignups();
   </script>
 
   <script>

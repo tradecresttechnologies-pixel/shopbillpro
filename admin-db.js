@@ -80,6 +80,36 @@ class AdminDB {
     } catch (e) { console.warn(e); return []; }
   }
 
+  // Recent signups incl. ones with no shops row yet (migration 070)
+  async listSignups({ search='', limit=100 } = {}) {
+    if (!this.sb) { this._flagBackendError('Supabase library failed to load on this page.'); return { signups: [], pending_count: 0 }; }
+    try {
+      const { data, error } = await this.sb.rpc('admin_list_signups', {
+        p_admin_token: this._token(), p_limit: limit, p_search: search
+      });
+      if (error) { console.warn('Signups list error:', error); this._flagBackendError('Could not load signups — backend error or invalid session token.'); return { signups: [], pending_count: 0 }; }
+      if (!data || data.ok !== true) { this._flagBackendError('Signups request rejected: ' + ((data && data.error) || 'unknown')); return { signups: [], pending_count: 0 }; }
+      this._clearBackendError();
+      return { signups: data.signups || [], pending_count: data.pending_count || 0 };
+    } catch (e) { console.warn(e); this._flagBackendError('Could not reach the admin backend.'); return { signups: [], pending_count: 0 }; }
+  }
+
+  // Full per-user / per-shop detail for the admin click-through.
+  // Pass { userId } from the Recent Signups table, or { shopId }
+  // from the Users & Shops table (that view has no auth user id).
+  async getUserDetail({ userId=null, shopId=null } = {}) {
+    if (!this.sb) { this._flagBackendError('Supabase library failed to load on this page.'); return null; }
+    try {
+      const { data, error } = await this.sb.rpc('admin_user_detail', {
+        p_admin_token: this._token(), p_user_id: userId, p_shop_id: shopId
+      });
+      if (error) { console.warn('User detail error:', error); this._flagBackendError('Could not load user detail — backend error or invalid session token.'); return null; }
+      if (!data || data.ok !== true) { this._flagBackendError('User detail rejected: ' + ((data && data.error) || 'unknown')); return null; }
+      this._clearBackendError();
+      return data;
+    } catch (e) { console.warn(e); this._flagBackendError('Could not reach the admin backend.'); return null; }
+  }
+
   async listSubscriptions({ status='all', limit=200 } = {}) {
     if (!this.sb) return [];
     try {
