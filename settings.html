@@ -1705,6 +1705,36 @@ async function init(){
   _user=session.user;
   _shopId=localStorage.getItem('sbp_shop_id');
   _shop=JSON.parse(localStorage.getItem('sbp_shop')||'{}');
+
+  // ── FIX (BugBatch 16-May): robust shop-id recovery ───────────────
+  // Symptom this fixes: partial sbp_shop cache (has name, no id) +
+  // sbp_shop_id never written → Change Business Type failed with
+  // "Not logged in or no shop selected" and the website card stayed
+  // stuck on "Loading your shop URL...". init() previously never
+  // recovered the id (only refreshShopPlan did, and it isn't called
+  // here). We backfill from the cached object, then from cloud, and
+  // expose it on window so every resolver in this file agrees.
+  if(!_shopId && _shop && _shop.id){
+    _shopId = _shop.id;
+    localStorage.setItem('sbp_shop_id', _shopId);
+  }
+  if(!_shopId && navigator.onLine){
+    try {
+      const { data: shops } = await _sb.from('shops')
+        .select('*').eq('owner_id', _user.id).limit(1);
+      if(shops && shops.length){
+        _shop   = shops[0];
+        _shopId = shops[0].id;
+        localStorage.setItem('sbp_shop', JSON.stringify(_shop));
+        localStorage.setItem('sbp_shop_id', _shopId);
+      }
+    } catch(e){ console.warn('[init] shop-id recovery failed:', e); }
+  }
+  window._shopId = _shopId || null;
+  window.SBP = window.SBP || {};
+  window.SBP.shopId = _shopId || null;
+  // ─────────────────────────────────────────────────────────────────
+
   _resetTimer();
 
   // Profile — show LOGGED-IN user, not shop owner
@@ -2303,7 +2333,7 @@ let _pspSlug = null;
 
 async function pspLoadSlug() {
   if (!window._sb) return;
-  const shopId = window._shopId || JSON.parse(localStorage.getItem('sbp_shop')||'{}').id;
+  const shopId = window._shopId || localStorage.getItem('sbp_shop_id') || JSON.parse(localStorage.getItem('sbp_shop')||'{}').id;
   if (!shopId) return;
   try {
     const { data, error } = await window._sb.from('sbp_shop_websites').select('slug').eq('shop_id', shopId).single();
@@ -2383,7 +2413,7 @@ if (document.readyState === 'loading') {
   async function _loadCurrentTypePill(){
     try {
       const sb = window._sb;
-      const shopId = localStorage.getItem('sbp_shop_id') || (JSON.parse(localStorage.getItem('sbp_shop')||'{}').id);
+      const shopId = window._shopId || localStorage.getItem('sbp_shop_id') || (JSON.parse(localStorage.getItem('sbp_shop')||'{}').id);
       if(!sb || !shopId) return;
 
       const { data, error } = await sb.rpc('sbp_get_my_shop_type', { p_shop_id: shopId });
@@ -2423,7 +2453,7 @@ if (document.readyState === 'loading') {
     // Soft pre-check: if already changed today, warn before opening wizard
     try {
       const sb = window._sb;
-      const shopId = localStorage.getItem('sbp_shop_id') || (JSON.parse(localStorage.getItem('sbp_shop')||'{}').id);
+      const shopId = window._shopId || localStorage.getItem('sbp_shop_id') || (JSON.parse(localStorage.getItem('sbp_shop')||'{}').id);
       if(sb && shopId){
         const { data } = await sb.rpc('sbp_get_my_shop_type', { p_shop_id: shopId });
         if (data && data.ok && !data.can_change_now){
@@ -2450,7 +2480,7 @@ if (document.readyState === 'loading') {
 
   async function _applyChange(newCode){
     const sb = window._sb;
-    const shopId = localStorage.getItem('sbp_shop_id') || (JSON.parse(localStorage.getItem('sbp_shop')||'{}').id);
+    const shopId = window._shopId || localStorage.getItem('sbp_shop_id') || (JSON.parse(localStorage.getItem('sbp_shop')||'{}').id);
     if(!sb || !shopId){
       if (window.toast) toast('Not logged in or no shop selected', 'e');
       return;
