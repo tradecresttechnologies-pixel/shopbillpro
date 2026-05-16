@@ -615,6 +615,62 @@ function sbpPurgeAccountData(){
   }catch(e){ console.warn('sbpPurgeAccountData failed:', e); }
 }
 
+/* ══ sbpEnsureShop — guarantee a shops row before entering the app ══
+   Root fix for the deferred-shop-creation gap: signup defers shop
+   creation (email-confirm on, or insert failed) and the user could be
+   dropped into the app with NO shops row → "Not logged in or no shop
+   selected" everywhere. This resolves it before redirect: use the
+   shops row if it exists, else rebuild from the pending-shop buffer,
+   else from the signup metadata on auth.users (covers cross-device).
+   Returns the shop id, or null if it genuinely could not be created. */
+async function sbpEnsureShop(user){
+  try{
+    var sid = localStorage.getItem('sbp_shop_id')
+              || (JSON.parse(localStorage.getItem('sbp_shop')||'{}').id);
+    if(sid) return sid;
+    if(!user || !navigator.onLine) return null;
+
+    // 1. Cloud — a row may already exist (e.g. created on another device)
+    const { data: shops } = await _sb.from('shops')
+      .select('*').eq('owner_id', user.id).limit(1);
+    if(shops && shops.length){
+      localStorage.setItem('sbp_shop', JSON.stringify(shops[0]));
+      localStorage.setItem('sbp_shop_id', shops[0].id);
+      return shops[0].id;
+    }
+
+    // 2. Rebuild from pending buffer, falling back to signup metadata
+    let pend = null;
+    try{ pend = JSON.parse(localStorage.getItem('sbp_pending_shop')||'null'); }catch(_){}
+    const meta = user.user_metadata || {};
+    if(!((pend && pend.name) || meta.shop || meta.name)) return null;
+
+    const payload = {
+      owner_id:        user.id,
+      name:            (pend && pend.name)            || meta.shop  || 'My Shop',
+      owner_name:      (pend && pend.owner_name)      || meta.name  || '',
+      phone:           (pend && pend.phone)           || meta.phone || '',
+      email:           (pend && pend.email)           || user.email || '',
+      invoice_prefix:  (pend && pend.invoice_prefix)  || 'INV',
+      invoice_counter: (pend && pend.invoice_counter) || 1,
+      shop_type:       (pend && pend.shop_type)       || 'general_retail'
+    };
+    const { data: created, error: insErr } =
+      await _sb.from('shops').insert(payload).select().single();
+    if(insErr || !created){ console.warn('[ensureShop] insert failed:', insErr); return null; }
+
+    let row = created;
+    try{
+      const { data: betaRow } = await _sb.rpc('apply_beta_plan', { p_shop_id: created.id });
+      if(betaRow) row = betaRow;
+    }catch(_){}
+    localStorage.setItem('sbp_shop', JSON.stringify(row));
+    localStorage.setItem('sbp_shop_id', row.id);
+    localStorage.removeItem('sbp_pending_shop');
+    return row.id;
+  }catch(e){ console.warn('[ensureShop] failed:', e); return null; }
+}
+
 /* ── LOGIN ── */
 async function doLogin(prefix){
   const p = prefix||'mob';
@@ -653,39 +709,27 @@ async function doLogin(prefix){
       // Read sbp_pending_shop from localStorage and create the shop now.
       let resumed = false;
       try {
-        const pendingRaw = localStorage.getItem('sbp_pending_shop');
-        if(pendingRaw){
-          const pending = JSON.parse(pendingRaw);
-          if(pending && pending.name){
-            console.log('[BUG-013] Resuming pending shop creation post email-confirm');
-            const insertPayload = {
-              owner_id: data.user.id,
-              name: pending.name,
-              owner_name: pending.owner_name || (data.user.user_metadata?.name || ''),
-              phone: pending.phone || '',
-              email: pending.email || emailFmt,
-              invoice_prefix: pending.invoice_prefix || 'INV',
-              invoice_counter: pending.invoice_counter || 1,
-              shop_type: pending.shop_type || 'general_retail'
-            };
-            const { data: newShop, error: insErr } = await _sb.from('shops').insert(insertPayload).select().single();
-            if(!insErr && newShop){
-              let shopRow = newShop;
-              // Apply beta plan if active
-              try {
-                const { data: betaShop, error: betaErr } = await _sb.rpc('apply_beta_plan', { p_shop_id: newShop.id });
-                if(!betaErr && betaShop) shopRow = betaShop;
-              } catch(e){ console.warn('[BUG-013] apply_beta_plan threw (non-fatal):', e); }
-              localStorage.setItem('sbp_shop', JSON.stringify(shopRow));
-              localStorage.setItem('sbp_shop_id', shopRow.id);
-              localStorage.setItem('sbp_role', pending.role || 'Admin');
-              localStorage.removeItem('sbp_pending_shop');
-              resumed = true;
-              toast(_lang==='hi'?'✅ खाता तैयार! आपका शॉप setup हो गया।':'✅ Account ready! Your shop is set up.','s');
-            } else {
-              console.warn('[BUG-013] resume insert failed:', insErr?.message);
-            }
-          }
+        let pending = {};
+        try { pending = JSON.parse(localStorage.getItem('sbp_pending_shop')||'{}') || {}; } catch(_){}
+        const meta = data.user.user_metadata || {};
+        // Robust, RLS-proof, idempotent server-side ensure. Uses the
+        // pending buffer if present, else the signup metadata stored
+        // on auth.users (covers signing in on a different device).
+        const { data: es, error: esErr } = await _sb.rpc('sbp_ensure_shop', {
+          p_shop_name:  pending.name       || meta.shop      || null,
+          p_owner_name: pending.owner_name || meta.name       || null,
+          p_phone:      pending.phone      || meta.phone      || null,
+          p_shop_type:  pending.shop_type  || meta.shop_type  || null
+        });
+        if(!esErr && es && es.ok && es.shop){
+          localStorage.setItem('sbp_shop', JSON.stringify(es.shop));
+          localStorage.setItem('sbp_shop_id', es.shop.id);
+          localStorage.setItem('sbp_role', pending.role || meta.role || 'Admin');
+          localStorage.removeItem('sbp_pending_shop');
+          resumed = true;
+          if(es.created){ toast(_lang==='hi'?'✅ खाता तैयार! आपका शॉप setup हो गया।':'✅ Account ready! Your shop is set up.','s'); }
+        } else {
+          console.warn('[BUG-013] sbp_ensure_shop failed:', esErr || (es && es.error));
         }
       } catch(e){ console.warn('[BUG-013] resume hook threw:', e); }
 
@@ -737,6 +781,19 @@ async function doLogin(prefix){
     }
     } // end if(!resumed)
     
+    // Root hardening (16-May): never enter the app shopless. If no shop
+    // resolved through any branch above, self-heal from pending/metadata.
+    if(!localStorage.getItem('sbp_shop_id')){
+      const _ensured = await sbpEnsureShop(data.user);
+      if(!_ensured){
+        toast(_lang==='hi'
+          ? '⚠️ खाता मिला पर शॉप सेटअप अधूरा है। कृपया दोबारा साइन अप करें या सपोर्ट से संपर्क करें।'
+          : '⚠️ Account found but shop setup is incomplete. Please sign up again or contact support.','e',6000);
+        setLoading(p+'-login-btn',false);
+        return;
+      }
+    }
+
     localStorage.setItem('sbp_last_activity',Date.now().toString());
     toast(_lang==='hi'?'✅ स्वागत है!':'✅ Welcome back!','s');
     // Housekeeper role gets a restricted standalone board — not the full dashboard
@@ -797,9 +854,19 @@ async function doSignup(prefix){
   }
   if(!pass||pass.length<6){toast('❌ '+(_lang==='hi'?'पासवर्ड कम से कम 6 अक्षर का होना चाहिए':'Password must be at least 6 characters'),'e');return;}
   if(pass!==pass2){toast('❌ '+(_lang==='hi'?'पासवर्ड मेल नहीं खाते':'Passwords do not match'),'e');return;}
+
+  // FIX (16-May): ask business type UP-FRONT. Previously pickShopType()
+  // ran AFTER the email-confirm early-return, so confirm-email signups
+  // were never asked and the shop defaulted to general_retail (e.g. a
+  // hospitality signup got the retail sidebar). Capturing it here makes
+  // the choice survive every path and ride along in auth metadata.
+  const _wiz = await pickShopType();
+  const _chosenType = (_wiz && _wiz.category) || 'general_retail';
+  if(_wiz && _wiz.otherText){ console.log('[1B-D] new signup picked Other:', _wiz.otherText); }
+
   setLoading(p+'-signup-btn',true);
   try{
-    const{data,error}=await _sb.auth.signUp({email,password:pass,options:{data:{name,shop,role,phone}}});
+    const{data,error}=await _sb.auth.signUp({email,password:pass,options:{data:{name,shop,role,phone,shop_type:_chosenType}}});
     if(error){toast('❌ '+error.message,'e');setLoading(p+'-signup-btn',false);return;}
 
     // ══ SECURITY (16-May): a signup is always a different account than
@@ -819,7 +886,7 @@ async function doSignup(prefix){
     if(!session){
       localStorage.setItem('sbp_pending_shop', JSON.stringify({
         name:shop, owner_name:name, phone:phone||'', email, role,
-        invoice_prefix:'INV', invoice_counter:1
+        invoice_prefix:'INV', invoice_counter:1, shop_type:_chosenType
       }));
       toast('✅ '+(_lang==='hi'?'खाता बना! अपना ईमेल confirm करें, फिर login करें।':'Account created! Confirm your email then log in.'),'s',6000);
       setLoading(p+'-signup-btn',false);
@@ -827,56 +894,51 @@ async function doSignup(prefix){
       return;
     }
 
-    // FIX #27 — check if shop already exists for this owner before inserting
+    // Robust, RLS-proof, idempotent shop creation via server RPC.
+    // Replaces the old client-side .from('shops').insert() which failed
+    // silently when shops RLS is dashboard-enabled, leaving the account
+    // permanently shopless. shop_type was already captured up-front.
     let shopRow;
-    const { data: existingShops } = await _sb.from('shops').select('id').eq('owner_id', userId).limit(1);
-    if(existingShops && existingShops.length){
-      const { data: full } = await _sb.from('shops').select('*').eq('id', existingShops[0].id).single();
-      shopRow = full;
-    } else {
-      // Batch 1B-D: ask new shopkeeper their business type via wizard
-      // Always returns (skip falls back to general_retail). Beta plan is applied after.
-      const wizResult = await pickShopType();
-      if(wizResult.otherText){
-        // Wizard already stashes "Other" requests in localStorage for follow-up — log here too
-        console.log('[1B-D] new signup picked Other:', wizResult.otherText);
-      }
-
-      const{data:newShop,error:shopErr}=await _sb.from('shops').insert({
-        owner_id:userId,name:shop,owner_name:name,phone:phone||'',email,
-        invoice_prefix:'INV',invoice_counter:1,
-        shop_type: wizResult.category || 'general_retail'
-      }).select().single();
-      if(shopErr){
+    try {
+      const { data: es, error: esErr } = await _sb.rpc('sbp_ensure_shop', {
+        p_shop_name: shop, p_owner_name: name,
+        p_phone: phone||'', p_shop_type: _chosenType
+      });
+      if(!esErr && es && es.ok && es.shop){
+        shopRow = es.shop;
+      } else {
+        console.warn('[signup] sbp_ensure_shop failed:', esErr || (es && es.error));
         localStorage.setItem('sbp_pending_shop', JSON.stringify({
           name:shop, owner_name:name, phone:phone||'', email, role,
-          invoice_prefix:'INV', invoice_counter:1,
-          shop_type: wizResult.category || 'general_retail'
+          invoice_prefix:'INV', invoice_counter:1, shop_type:_chosenType
         }));
-        console.warn('Shop insert failed (likely RLS / email confirm):', shopErr.message);
-      } else {
-        shopRow = newShop;
-
-        // Batch 1B-D: apply 60-day beta plan via RPC.
-        // Idempotent. Skips silently if beta_mode_active=false in admin_settings.
-        // Returns updated shop row so we get is_beta_signup=true, plan_expires_at, etc.
-        try {
-          const { data: betaShop, error: betaErr } = await _sb.rpc('apply_beta_plan', { p_shop_id: newShop.id });
-          if(!betaErr && betaShop){
-            shopRow = betaShop;
-          } else if(betaErr){
-            console.warn('[1B-D] apply_beta_plan failed (non-fatal):', betaErr.message);
-          }
-        } catch(e){
-          console.warn('[1B-D] apply_beta_plan threw (non-fatal):', e);
-        }
       }
+    } catch(e){
+      console.warn('[signup] sbp_ensure_shop threw:', e);
+      localStorage.setItem('sbp_pending_shop', JSON.stringify({
+        name:shop, owner_name:name, phone:phone||'', email, role,
+        invoice_prefix:'INV', invoice_counter:1, shop_type:_chosenType
+      }));
     }
 
     if(shopRow){
       localStorage.setItem('sbp_shop',JSON.stringify(shopRow));
       localStorage.setItem('sbp_shop_id',shopRow.id);
       localStorage.setItem('sbp_role',role);
+    } else {
+      // Root hardening (16-May): the insert was deferred/blocked. Don't
+      // drop the user into the app shopless — self-heal now.
+      const _ensured = await sbpEnsureShop(data.user);
+      if(_ensured){
+        localStorage.setItem('sbp_role',role);
+      } else {
+        toast(_lang==='hi'
+          ? '✅ खाता बना! कृपया अपना ईमेल confirm करके login करें।'
+          : '✅ Account created! Please confirm your email, then log in.','s',6000);
+        setLoading(p+'-signup-btn',false);
+        setTimeout(()=>showTab('login',prefix),2500);
+        return;
+      }
     }
     localStorage.setItem('sbp_last_activity',Date.now().toString());
     toast((_lang==='hi'?'✅ स्वागत है ':'✅ Welcome to ShopBill Pro, ')+name+'!','s');

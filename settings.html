@@ -1750,32 +1750,25 @@ async function init(){
       const meta = _user.user_metadata || {};
       const hasIntent = (pend && pend.name) || meta.shop || meta.name;
       if(hasIntent){
-        const payload = {
-          owner_id:        _user.id,
-          name:            (pend && pend.name)            || meta.shop  || 'My Shop',
-          owner_name:      (pend && pend.owner_name)      || meta.name  || '',
-          phone:           (pend && pend.phone)           || meta.phone || '',
-          email:           (pend && pend.email)           || _user.email || '',
-          invoice_prefix:  (pend && pend.invoice_prefix)  || 'INV',
-          invoice_counter: (pend && pend.invoice_counter) || 1,
-          shop_type:       (pend && pend.shop_type)       || 'general_retail'
-        };
-        const { data: created, error: insErr } =
-          await _sb.from('shops').insert(payload).select().single();
-        if(!insErr && created){
-          let row = created;
-          try {
-            const { data: betaRow } = await _sb.rpc('apply_beta_plan', { p_shop_id: created.id });
-            if(betaRow) row = betaRow;
-          } catch(_){}
-          _shop   = row;
-          _shopId = row.id;
+        // RLS-proof, idempotent server-side ensure (migration 070).
+        const { data: es, error: esErr } = await _sb.rpc('sbp_ensure_shop', {
+          p_shop_name:  (pend && pend.name)       || meta.shop      || null,
+          p_owner_name: (pend && pend.owner_name) || meta.name       || null,
+          p_phone:      (pend && pend.phone)      || meta.phone      || null,
+          p_shop_type:  (pend && pend.shop_type)  || meta.shop_type  || null
+        });
+        if(!esErr && es && es.ok && es.shop){
+          _shop   = es.shop;
+          _shopId = es.shop.id;
           localStorage.setItem('sbp_shop', JSON.stringify(_shop));
           localStorage.setItem('sbp_shop_id', _shopId);
           localStorage.removeItem('sbp_pending_shop');
-          if(window.toast) toast('✅ Shop setup completed', 's', 2500);
+          if(window.toast && es.created) toast('✅ Shop setup completed — reloading…', 's', 2500);
+          // shop_type may have changed what the sidebar should show;
+          // reload so the vertical sidebar renders correctly.
+          if(es.created){ setTimeout(function(){ window.location.reload(); }, 1500); }
         } else {
-          console.warn('[init] shop self-heal insert failed:', insErr);
+          console.warn('[init] sbp_ensure_shop failed:', esErr || (es && es.error));
         }
       }
     } catch(e){ console.warn('[init] shop self-heal failed:', e); }
