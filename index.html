@@ -589,6 +589,32 @@ function setLoading(btnId,loading){
   btn.classList.toggle('loading',loading);
 }
 
+/* ══ SECURITY: account-scoped storage purge (16-May) ══
+   Fixes a cross-account data leak — a new/different account signing in
+   on the same device inherited the previous account's cached bills,
+   customers, products, etc., because login/signup never cleared
+   localStorage and nothing tracked which account the device held.
+   Removes every sbp_* key EXCEPT device/UI prefs, the signup-resume
+   buffer, and the auth-uid marker. */
+function sbpPurgeAccountData(){
+  try{
+    var KEEP = {
+      'sbp_theme':1,'sbp_lang':1,'sbp_font_size':1,'sbp_digit_style':1,
+      'sbp_device_tag':1,'sbp_session_timeout':1,'sbp_sidebar_more_open':1,
+      'sbp_menu_view':1,'sbp_printer_enabled':1,'sbp_printer_type':1,
+      'sbp_default_share':1,'sbp_hide_gst':1,'sbp_pin_migration_dismissed_at':1,
+      'sbp_pending_shop':1,'sbp_auth_uid':1
+    };
+    var doomed = [];
+    for(var i=0;i<localStorage.length;i++){
+      var k = localStorage.key(i);
+      if(k && k.indexOf('sbp_')===0 && !KEEP[k]) doomed.push(k);
+    }
+    doomed.forEach(function(k){ try{ localStorage.removeItem(k); }catch(e){} });
+    console.log('[SECURITY] Purged '+doomed.length+' account-scoped keys on account change');
+  }catch(e){ console.warn('sbpPurgeAccountData failed:', e); }
+}
+
 /* ── LOGIN ── */
 async function doLogin(prefix){
   const p = prefix||'mob';
@@ -604,6 +630,17 @@ async function doLogin(prefix){
       setLoading(p+'-login-btn',false);return;
     }
     
+    // ══ SECURITY (16-May): purge the previous account's cached data on
+    // account change BEFORE any new state is written or any page renders
+    // from localStorage. Conditional on auth-uid change so a legitimate
+    // same-user re-login does NOT wipe data — critical for FREE tier,
+    // which is local-only with no cloud copy to restore from.
+    try{
+      var _prevUid = localStorage.getItem('sbp_auth_uid');
+      if(_prevUid !== data.user.id){ sbpPurgeAccountData(); }
+      localStorage.setItem('sbp_auth_uid', data.user.id);
+    }catch(e){ console.warn('account-change guard:', e); }
+
     // 1. Check if user is a shop owner
     const{data:shops}=await _sb.from('shops').select('*').eq('owner_id',data.user.id).limit(1);
     if(shops?.length){
@@ -764,6 +801,17 @@ async function doSignup(prefix){
   try{
     const{data,error}=await _sb.auth.signUp({email,password:pass,options:{data:{name,shop,role,phone}}});
     if(error){toast('❌ '+error.message,'e');setLoading(p+'-signup-btn',false);return;}
+
+    // ══ SECURITY (16-May): a signup is always a different account than
+    // whatever this device last held — purge unconditionally so the
+    // fresh account never inherits the prior account's cached data.
+    // Also drop any stale pending-shop from an earlier abandoned signup;
+    // this flow writes its own fresh one below if email-confirm is on.
+    try{
+      sbpPurgeAccountData();
+      localStorage.removeItem('sbp_pending_shop');
+      if(data.user && data.user.id) localStorage.setItem('sbp_auth_uid', data.user.id);
+    }catch(e){ console.warn('signup purge:', e); }
 
     // FIX #25 — handle email-confirmation flow (no session = email-confirm enabled)
     const session = data.session;
