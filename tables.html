@@ -99,6 +99,9 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 }
 .tcard-edit:hover{opacity:1;border-color:var(--acc)}
 .tcard-time{font-size:10px;color:var(--t2);margin-top:2px}
+.tcard-hint{font-size:10px;color:var(--t2);margin-top:7px;font-weight:600;opacity:.75;display:flex;align-items:center;justify-content:center;gap:4px}
+.tcard-hint::before{content:'👆';font-size:10px}
+.tcard:hover .tcard-hint{opacity:1;color:var(--acc)}
 /* Button */
 .btn-pri{padding:11px 20px;border-radius:10px;background:var(--acc);color:#0A0E1A;border:none;font-size:13px;font-weight:800;cursor:pointer;font-family:var(--font-h);transition:var(--tr);display:inline-flex;align-items:center;gap:6px}
 .btn-pri:hover{filter:brightness(1.08);transform:translateY(-1px)}
@@ -122,7 +125,9 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .modal-actions{display:flex;gap:8px;margin-top:20px}
 .modal-actions button{flex:1}
 /* Status modal */
-.st-opts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:14px 0}
+.st-opts{display:flex;flex-direction:column;margin:14px 0}
+.st-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:6px}
+@media(max-width:420px){.st-grid{grid-template-columns:1fr 1fr}}
 .st-opt{padding:14px;border-radius:12px;border:1.5px solid var(--bord);background:var(--surf2);cursor:pointer;transition:var(--tr);text-align:center;font-size:13px;font-weight:700}
 .st-opt:hover{border-color:var(--acc)}
 .st-opt.sel{border-color:var(--acc);background:rgba(245,166,35,.1)}
@@ -130,6 +135,27 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .st-opt.sel-red{border-color:#EF4444;background:rgba(239,68,68,.1);color:#EF4444}
 .st-opt.sel-yellow{border-color:#F5A623;background:rgba(245,166,35,.1);color:#F5A623}
 .st-opt.sel-purple{border-color:#6366F1;background:rgba(99,102,241,.1);color:#6366F1}
+.st-head{display:flex;align-items:center;gap:11px;margin:6px 0 4px}
+.st-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+.st-head-txt{font-size:12px;color:var(--t2);font-weight:600}
+.st-head-txt b{color:var(--text);font-weight:800}
+.st-primary{
+  width:100%;display:flex;align-items:center;gap:14px;text-align:left;
+  padding:16px 18px;border-radius:14px;border:none;cursor:pointer;
+  color:#fff;font-family:inherit;margin:14px 0 6px;transition:var(--tr);
+}
+.st-primary:active{transform:scale(.985)}
+.st-primary .ic{font-size:26px;line-height:1;flex-shrink:0}
+.st-primary .tx{flex:1}
+.st-primary .t1{font-size:16px;font-weight:800;line-height:1.2}
+.st-primary .t2{font-size:12px;font-weight:600;opacity:.9;margin-top:2px}
+.st-primary .ar{font-size:20px;opacity:.7}
+.st-primary.seat {background:linear-gradient(135deg,#10B981,#059669);box-shadow:0 8px 22px rgba(16,185,129,.32)}
+.st-primary.order{background:linear-gradient(135deg,#F5A623,#EA580C);box-shadow:0 8px 22px rgba(234,88,12,.30)}
+.st-primary.freeb{background:linear-gradient(135deg,#10B981,#059669);box-shadow:0 8px 22px rgba(16,185,129,.32)}
+.st-sub-label{font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.06em;margin:14px 2px 2px}
+.st-opt .so-ic{font-size:20px;margin-bottom:5px}
+.st-opt .so-sub{font-size:11px;color:var(--t2);font-weight:600;margin-top:3px}
 /* Empty state */
 .empty{text-align:center;padding:60px 20px}
 .empty-emoji{font-size:48px;margin-bottom:12px}
@@ -315,6 +341,12 @@ function render(){
           <div class="tcard-num">T${escHtml(t.table_number)}</div>
           <div class="tcard-cap">👥 ${t.capacity} seats</div>
           <div class="tcard-badge ${st.cls}">${st.label}</div>
+          <div class="tcard-hint">${
+            t.status==='free'     ? 'Tap to seat guests' :
+            t.status==='occupied' ? 'Tap for order &amp; options' :
+            t.status==='reserved' ? 'Tap to seat or free' :
+                                    'Tap to mark free'
+          }</div>
         </div>`;
     });
     html += '</div>';
@@ -453,59 +485,118 @@ async function printAllQR(){
 }
 
 // ── Table tap ─────────────────────────────────────────────────────
+// ── Unified table action sheet ────────────────────────────────────
+// Every table tap opens ONE consistent sheet. No surprise navigation.
+// The primary (big) button is the obvious next step for that status;
+// for a Free table that is "Seat Guests", which is also exactly what
+// unblocks QR self-ordering — the whole point of the system.
 function handleTableTap(tableId, status, tableNum){
-  if(status === 'free'){
-    // Open new bill for this table
-    window.location.href = `running-order.html?table_id=${encodeURIComponent(tableId)}&table_num=${encodeURIComponent(tableNum)}`;
-  } else if(status === 'occupied'){
-    // Table is occupied — show options
-    showOccupiedOptions(tableId, tableNum);
-  } else {
-    // Reserved / cleaning — show status change modal
-    showStatusModal(tableId, tableNum, status);
-  }
+  openTableSheet(tableId);
 }
 
-function showOccupiedOptions(tableId, tableNum){
+const _ST_META = {
+  free:     { dot:'#10B981', word:'Free' },
+  occupied: { dot:'#EF4444', word:'Occupied' },
+  reserved: { dot:'#F5A623', word:'Reserved' },
+  cleaning: { dot:'#6366F1', word:'Cleaning' },
+};
+
+function openTableSheet(tableId){
   const t = _tables.find(x => x.id === tableId);
-  $('st-modal-title').textContent = `Table ${tableNum} — Occupied`;
-  $('st-opts').innerHTML = `
-    <div class="st-opt" onclick="newBillForTable('${tableId}','${escHtml(tableNum)}')">
-      <div style="font-size:22px;margin-bottom:4px">🧾</div>
-      <div>New Bill</div>
-      <div style="font-size:11px;color:var(--t2);margin-top:3px">Add items</div>
-    </div>
-    <div class="st-opt sel-green" onclick="freeTable('${tableId}')">
-      <div style="font-size:22px;margin-bottom:4px">✅</div>
-      <div>Mark Free</div>
-      <div style="font-size:11px;margin-top:3px">Bill is settled</div>
-    </div>
-    <div class="st-opt sel-yellow" onclick="setStatus('${tableId}','reserved',this)">
-      <div style="font-size:22px;margin-bottom:4px">🕐</div>
-      <div>Reserve</div>
-    </div>
-    <div class="st-opt sel-purple" onclick="setStatus('${tableId}','cleaning',this)">
-      <div style="font-size:22px;margin-bottom:4px">🧹</div>
-      <div>Cleaning</div>
-    </div>`;
+  if(!t) return;
+  const num    = escHtml(t.table_number);
+  const status = t.status || 'free';
+  const meta   = _ST_META[status] || _ST_META.free;
+  const id     = tableId;
+
+  $('st-modal-title').textContent = `Table T${num}`;
+
+  // Header strip — capacity + live status
+  const head =
+    `<div class="st-head">` +
+      `<span class="st-dot" style="background:${meta.dot}"></span>` +
+      `<span class="st-head-txt">👥 ${t.capacity} seats` +
+        (t.section ? ` · ${escHtml(t.section)}` : '') +
+        ` &nbsp;·&nbsp; Currently <b>${meta.word}</b></span>` +
+    `</div>`;
+
+  // Build context-aware actions
+  const seatBtn =
+    `<button class="st-primary seat" onclick="seatGuests('${id}','${num}')">` +
+      `<span class="ic">🪑</span>` +
+      `<span class="tx"><div class="t1">Seat Guests</div>` +
+      `<div class="t2">Opens this table — QR ordering goes live instantly</div></span>` +
+      `<span class="ar">→</span>` +
+    `</button>`;
+
+  const orderBtn = (big) => big
+    ? `<button class="st-primary order" onclick="newBillForTable('${id}','${num}')">` +
+        `<span class="ic">🧾</span>` +
+        `<span class="tx"><div class="t1">View / Add Order</div>` +
+        `<div class="t2">Open the running order for this table</div></span>` +
+        `<span class="ar">→</span>` +
+      `</button>`
+    : `<div class="st-opt" onclick="newBillForTable('${id}','${num}')">` +
+        `<div class="so-ic">🧾</div><div>Take Order</div>` +
+        `<div class="so-sub">Staff bill now</div></div>`;
+
+  const freeOpt =
+    `<div class="st-opt sel-green" onclick="freeTable('${id}')">` +
+      `<div class="so-ic">✅</div><div>Mark Free</div>` +
+      `<div class="so-sub">Bill settled</div></div>`;
+  const reserveOpt =
+    `<div class="st-opt sel-yellow" onclick="setStatus('${id}','reserved',this)">` +
+      `<div class="so-ic">🕐</div><div>Reserve</div>` +
+      `<div class="so-sub">Pre-booked</div></div>`;
+  const cleanOpt =
+    `<div class="st-opt sel-purple" onclick="setStatus('${id}','cleaning',this)">` +
+      `<div class="so-ic">🧹</div><div>Cleaning</div>` +
+      `<div class="so-sub">Not available</div></div>`;
+  const seatOpt =
+    `<div class="st-opt sel-green" onclick="seatGuests('${id}','${num}')">` +
+      `<div class="so-ic">🪑</div><div>Seat Guests</div>` +
+      `<div class="so-sub">Opens QR</div></div>`;
+
+  let primary = '', grid = '';
+  if(status === 'free'){
+    primary = seatBtn;
+    grid = orderBtn(false) + reserveOpt + cleanOpt;
+  } else if(status === 'occupied'){
+    primary = orderBtn(true);
+    grid = freeOpt + reserveOpt + cleanOpt;
+  } else if(status === 'reserved'){
+    primary = seatBtn;
+    grid = orderBtn(false) + freeOpt + cleanOpt;
+  } else { // cleaning
+    primary =
+      `<button class="st-primary freeb" onclick="freeTable('${id}')">` +
+        `<span class="ic">✅</span>` +
+        `<span class="tx"><div class="t1">Mark Free</div>` +
+        `<div class="t2">Cleaning done — ready for guests</div></span>` +
+        `<span class="ar">→</span>` +
+      `</button>`;
+    grid = seatOpt + reserveOpt + orderBtn(false);
+  }
+
+  $('st-opts').innerHTML =
+    head + primary +
+    `<div class="st-sub-label">More options</div>` +
+    `<div class="st-grid">${grid}</div>`;
   openModal('status-modal');
 }
 
-function showStatusModal(tableId, tableNum, currentStatus){
-  $('st-modal-title').textContent = `Table ${tableNum}`;
-  const opts = [
-    { st:'free',     label:'✅ Free',      sub:'Available for guests', cls:'sel-green' },
-    { st:'occupied', label:'🔴 Occupied',  sub:'Guests seated', cls:'sel-red' },
-    { st:'reserved', label:'🕐 Reserved',  sub:'Pre-booked', cls:'sel-yellow' },
-    { st:'cleaning', label:'🧹 Cleaning',  sub:'Being cleaned', cls:'sel-purple' },
-  ];
-  $('st-opts').innerHTML = opts.map(o => `
-    <div class="st-opt ${o.st===currentStatus?o.cls:''}" onclick="setStatus('${tableId}','${o.st}',this)">
-      <div style="font-size:20px;margin-bottom:4px">${o.label.split(' ')[0]}</div>
-      <div>${o.label.split(' ').slice(1).join(' ')}</div>
-      <div style="font-size:11px;color:var(--t2);margin-top:3px">${o.sub}</div>
-    </div>`).join('');
-  openModal('status-modal');
+// Seat guests = mark occupied, stay on the tables screen, and tell
+// the user QR is now live. No forced navigation into the order screen.
+async function seatGuests(tableId, tableNum){
+  closeModal('status-modal');
+  const { data, error } = await _sb.rpc('sbp_tables_set_status', {
+    p_shop_id: _shopId, p_table_id: tableId, p_status: 'occupied'
+  });
+  if(error || !data?.ok){ toast('Failed: '+(data?.error||error?.message||'?'), 'e'); return; }
+  const idx = _tables.findIndex(t => t.id === tableId);
+  if(idx >= 0) _tables[idx].status = 'occupied';
+  toast(`🪑 Table T${tableNum} seated — QR ordering is now open`, 's');
+  render();
 }
 
 function newBillForTable(tableId, tableNum){
