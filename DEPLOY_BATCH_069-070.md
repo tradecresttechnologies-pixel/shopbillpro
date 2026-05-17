@@ -40,9 +40,10 @@ SELECT sbp_tables_free('<shop_uuid>','<table_uuid>');
 
 ### Step 2 — HTML  (commit + push, Vercel auto-deploys)
 ```
-tables.html        REPLACE  (repo root)
-qr-menu.html       REPLACE  (repo root) — only if prior cart/redesign
-                             batch not yet pushed
+tables.html          REPLACE  (repo root)
+running-order.html   REPLACE  (repo root)
+qr-menu.html         REPLACE  (repo root) — only if prior cart/redesign
+                               batch not yet pushed
 ```
 
 ---
@@ -84,3 +85,27 @@ All rollbacks are plain CREATE OR REPLACE, no data touched.
 - `sbp_running_orders` has no guest-name column; tile guest label is
   blank for staff-punched orders (total/items/time are exact).
 - No change to the locked QR rule or Batch 068.
+
+---
+
+## HTML FIXES IN THIS DROP (no SQL needed for these two)
+
+### running-order.html — Accept failure now diagnosable
+"Accept & Send KOT" silently showed a blank ❌. The client discarded
+`data.detail` from sbp_guest_order_accept. It now surfaces the real
+server code + detail (e.g. `ro_open_failed`, `kot_failed`,
+`not_authorized`) in the toast AND console. If accept still fails after
+this, the toast tells you exactly why — most likely cause is the known
+deploy-order dependency: 068's accept calls `sbp_ro_add_items` /
+`sbp_ro_open`; if Batch 067/065 RPCs aren't deployed, accept fails.
+Deploy 067 (and 065) before relying on guest-order accept.
+
+### tables.html — Floor-screen guest-order alert
+Guest orders previously only surfaced inside running-order.html. Now the
+Tables screen:
+- Fetches `sbp_guest_order_pending_list` on load and subscribes to
+  realtime on `sbp_guest_orders` (INSERT/UPDATE, this shop).
+- On a new order: vibrates, plays a short WebAudio chime, shows a toast,
+  a top orange alert bar, and a pulsing 🔔 badge on the exact table card.
+- Tapping the highlighted card opens the table → Resume Order →
+  running-order to Accept. Cleared automatically when accepted/rejected.

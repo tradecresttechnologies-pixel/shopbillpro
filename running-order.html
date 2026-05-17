@@ -3066,7 +3066,14 @@ async function acceptGuestOrder(){
     });
     if(error) throw new Error(error.message);
     if(!data?.ok){
-      throw new Error(data?.error || 'accept_failed');
+      // Surface the REAL server reason + any detail payload. 068 returns
+      // detail on ro_open_failed / kot_failed; hiding it made accept
+      // failures undiagnosable in the field.
+      const code = data?.error || 'accept_failed';
+      let det = '';
+      try { if(data?.detail) det = ' — ' + (data.detail.error || JSON.stringify(data.detail)); } catch(_){}
+      console.error('[guest accept] server rejected:', code, data?.detail || '');
+      throw new Error(code + det);
     }
 
     toast('✅ KOT #' + String(data.kot_number).padStart(3,'0') + ' sent to kitchen','s');

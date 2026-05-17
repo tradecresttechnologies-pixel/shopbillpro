@@ -102,6 +102,27 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .tcard-hint{font-size:10px;color:var(--t2);margin-top:7px;font-weight:600;opacity:.75;display:flex;align-items:center;justify-content:center;gap:4px}
 .tcard-hint::before{content:'👆';font-size:10px}
 .tcard:hover .tcard-hint{opacity:1;color:var(--acc)}
+#guest-alert-bar{
+  display:flex;align-items:center;gap:11px;cursor:pointer;
+  background:linear-gradient(135deg,#F5A623,#EA580C);color:#fff;
+  font-weight:800;font-size:13.5px;padding:13px 18px;border-radius:12px;
+  margin:0 0 16px;box-shadow:0 8px 22px rgba(234,88,12,.32);
+  animation:gabIn .3s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes gabIn{from{transform:translateY(-10px);opacity:0}to{transform:translateY(0);opacity:1}}
+.gab-pulse{font-size:18px;animation:gabPulse 1.1s ease-in-out infinite}
+@keyframes gabPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.25)}}
+.tcard.guest-pending{
+  border-color:#EA580C !important;
+  box-shadow:0 0 0 3px rgba(234,88,12,.18), 0 6px 20px rgba(234,88,12,.2);
+  animation:cardPulse 1.6s ease-in-out infinite;
+}
+@keyframes cardPulse{0%,100%{box-shadow:0 0 0 3px rgba(234,88,12,.18),0 6px 20px rgba(234,88,12,.2)}50%{box-shadow:0 0 0 6px rgba(234,88,12,.28),0 6px 22px rgba(234,88,12,.3)}}
+.tcard-guest-alert{
+  margin-top:9px;background:linear-gradient(135deg,#F5A623,#EA580C);
+  color:#fff;font-size:10.5px;font-weight:800;line-height:1.35;
+  padding:7px 9px;border-radius:9px;text-align:center;
+}
 .tcard.has-order{border-color:rgba(239,68,68,.55)}
 .tcard-order{margin-top:9px;padding-top:9px;border-top:1px dashed rgba(239,68,68,.3)}
 .to-amt{font-size:19px;font-weight:900;color:#EF4444;line-height:1}
@@ -215,6 +236,10 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
         <button class="tab on" data-tab="tables" onclick="switchTab('tables',this)">🍽️ <span class="lang-en">Tables</span></button>
         <button class="tab"    data-tab="qr"     onclick="switchTab('qr',this)">📱 <span class="lang-en">Table QR Codes</span></button>
       </div>
+      <div id="guest-alert-bar" style="display:none" onclick="document.getElementById('pane-tables').scrollIntoView({behavior:'smooth'})">
+        <span class="gab-pulse">🔔</span>
+        <span id="guest-alert-text">New guest order</span>
+      </div>
       <div id="pane-tables"></div>
       <div id="pane-qr" style="display:none"></div>
     </div>
@@ -295,10 +320,86 @@ function closeModal(id){$(id).classList.remove('open');}
 // ── Load ──────────────────────────────────────────────────────────
 async function reloadAll(){
   if(!_shopId){ document.getElementById('pane-tables').innerHTML='<div class="empty"><div class="empty-emoji">⚠️</div><div class="empty-title">No shop found</div><div class="empty-msg">Please log in again.</div></div>'; return; }
+  await refreshPendingGuests();   // populate guest-order map before render
   const { data, error } = await _sb.rpc('sbp_tables_list', { p_shop_id: _shopId });
   if(error || !data?.ok){ document.getElementById('pane-tables').innerHTML='<div class="empty"><div class="empty-emoji">⚠️</div><div class="empty-title">Could not load tables</div><div class="empty-msg">'+(error?.message||data?.error||'Unknown error')+'</div></div>'; return; }
   _tables = data.tables || [];
   render();
+}
+
+// ── Pending guest orders (QR menu → awaiting Accept) ──────────────
+// Surfaces guest orders on the FLOOR screen, not just inside the
+// running-order page. Map: { "11": {count, ids:[...]} } keyed by
+// table_number so render() can badge the right card.
+let _pendingGuestByTable = {};
+let _guestCh = null;
+
+async function refreshPendingGuests(){
+  try {
+    const { data, error } = await _sb.rpc('sbp_guest_order_pending_list', { p_shop_id: _shopId });
+    if(error || !data?.ok){ return; }
+    const map = {};
+    (data.pending || []).forEach(g => {
+      const k = String(g.table_number);
+      if(!map[k]) map[k] = { count:0, ids:[] };
+      map[k].count++;
+      map[k].ids.push(g.id);
+    });
+    _pendingGuestByTable = map;
+    updateGuestAlertBar();
+  } catch(e){ /* non-fatal */ }
+}
+
+function updateGuestAlertBar(){
+  const bar = document.getElementById('guest-alert-bar');
+  if(!bar) return;
+  const tables = Object.keys(_pendingGuestByTable);
+  const total  = tables.reduce((s,k)=>s+_pendingGuestByTable[k].count,0);
+  if(total === 0){ bar.style.display='none'; return; }
+  bar.style.display='';
+  const label = total === 1
+    ? `🔔 New guest order on Table T${tables[0]} — tap a highlighted table to review & accept`
+    : `🔔 ${total} new guest orders on ${tables.length} table${tables.length>1?'s':''} — tap a highlighted table to review & accept`;
+  document.getElementById('guest-alert-text').textContent = label;
+}
+
+function subscribeGuestOrders(){
+  if(!_shopId) return;
+  if(_guestCh){ try{ _sb.removeChannel(_guestCh); }catch(e){} }
+  _guestCh = _sb.channel('tables-guest-'+_shopId)
+    .on('postgres_changes', { event:'INSERT', schema:'public', table:'sbp_guest_orders', filter:'shop_id=eq.'+_shopId },
+      (p) => {
+        const r = p.new;
+        if(!r || r.status !== 'pending') return;
+        // Audible + haptic + visible — staff must notice from the floor.
+        try { if(navigator.vibrate) navigator.vibrate([200,90,200]); } catch(e){}
+        try { _guestBeep(); } catch(e){}
+        toast('🔔 New guest order — Table T'+r.table_number, 'i');
+        refreshPendingGuests();
+        reloadAll();
+      })
+    .on('postgres_changes', { event:'UPDATE', schema:'public', table:'sbp_guest_orders', filter:'shop_id=eq.'+_shopId },
+      (p) => {
+        const r = p.new;
+        if(!r) return;
+        if(r.status !== 'pending'){ refreshPendingGuests(); reloadAll(); }
+      })
+    .subscribe();
+}
+
+// Short, polite attention chime via WebAudio (no asset needed).
+let _ac = null;
+function _guestBeep(){
+  try {
+    _ac = _ac || new (window.AudioContext||window.webkitAudioContext)();
+    const o = _ac.createOscillator(), g = _ac.createGain();
+    o.type='sine'; o.frequency.value=880;
+    o.connect(g); g.connect(_ac.destination);
+    g.gain.setValueAtTime(0.0001, _ac.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.18, _ac.currentTime+0.03);
+    g.gain.exponentialRampToValueAtTime(0.0001, _ac.currentTime+0.5);
+    o.start(); o.stop(_ac.currentTime+0.5);
+  } catch(e){}
 }
 
 // ── Render ────────────────────────────────────────────────────────
@@ -380,14 +481,22 @@ function render(){
         : t.status==='cleaning' ? 'Tap to mark free'
         :                         'Tap for options';
 
+      // Pending guest order (sent from the QR menu, awaiting Accept)
+      const gp = _pendingGuestByTable[String(t.table_number)];
+      const guestAlert = gp ? `
+          <div class="tcard-guest-alert">
+            🔔 ${gp.count>1?gp.count+' new guest orders':'New guest order'} — tap to review
+          </div>` : '';
+
       html += `
-        <div class="tcard ${st.cls}${hasOrder?' has-order':''}" onclick="handleTableTap('${t.id}','${t.status}','${escHtml(t.table_number)}')">
+        <div class="tcard ${st.cls}${hasOrder?' has-order':''}${gp?' guest-pending':''}" onclick="handleTableTap('${t.id}','${t.status}','${escHtml(t.table_number)}')">
           <button class="tcard-edit" onclick="event.stopPropagation();openEditModal('${t.id}')">✎</button>
           <div class="tcard-num">T${escHtml(t.table_number)}</div>
           <div class="tcard-cap">👥 ${t.capacity} seats</div>
           <div class="tcard-badge ${st.cls}">${st.label}</div>
+          ${guestAlert}
           ${orderBlock}
-          <div class="tcard-hint">${hint}</div>
+          <div class="tcard-hint">${gp ? 'Tap to review &amp; accept' : hint}</div>
         </div>`;
     });
     html += '</div>';
@@ -785,6 +894,7 @@ async function deleteTable(){
   }
   if(!_shopId){ toast('No shop found — please log in again', 'e'); return; }
   await reloadAll();
+  subscribeGuestOrders();
 })();
 </script>
 </body>
