@@ -475,7 +475,7 @@ img{display:block}
 <button class="cart-fab" id="cart-fab" onclick="openCart()">
   <span class="cf-left">
     <span class="cf-count" id="cf-count">0</span>
-    <span>View Order</span>
+    <span id="cf-label">View Order</span>
   </span>
   <span class="cf-amount" id="cf-amount">₹0</span>
   <span class="cf-arrow">→</span>
@@ -512,6 +512,9 @@ img{display:block}
       <input type="tel" class="form-inp" id="guest-phone"
         placeholder="For WhatsApp receipt later" inputmode="numeric" maxlength="15">
       <div class="form-hint">We won't spam you. Used only if you want the bill on WhatsApp.</div>
+    </div>
+    <div id="lock-note" style="display:none;background:#FFF3DF;border:1px solid #F2D9A8;color:#7A4A06;font-size:12.5px;font-weight:700;line-height:1.5;padding:12px 14px;border-radius:12px;margin-bottom:10px;text-align:center">
+      ⏳ Ordering opens once staff seats you.<br><span style="font-weight:600">Your selection is saved — show this screen to a waiter.</span>
     </div>
     <button class="place-btn" id="place-btn" onclick="placeOrder()">
       Send Order to Staff →
@@ -963,19 +966,31 @@ function updateCartFAB(){
   const fab = $('cart-fab');
   const cnt = cartItemCount();
   if(cnt === 0){ fab.classList.remove('show'); return; }
-  // Hide FAB if table can't order (locked)
-  if(!_table.can_order){ fab.classList.remove('show'); return; }
+  // Always show the selection bar so the guest can see items + total,
+  // even before staff seats them. The actual "Send" is gated in the
+  // sheet (and server-side) — not by hiding the whole cart.
   fab.classList.add('show');
+  $('cf-label').textContent = _table.can_order ? 'View Order' : 'View Selection';
   $('cf-count').textContent = cnt;
   $('cf-amount').textContent = fINR(cartTotal().grand);
 }
 
+// Sync the sheet's send button + notice to the table's order state
+function syncOrderLock(){
+  const locked = !_table.can_order;
+  const btn = $('place-btn');
+  const note = $('lock-note');
+  if(note) note.style.display = locked ? '' : 'none';
+  if(btn){
+    btn.disabled = locked;
+    btn.textContent = locked ? 'Waiting to be seated…' : 'Send Order to Staff →';
+  }
+}
+
 function openCart(){
   if(cartItemCount() === 0){ toast('Add some items first'); return; }
-  if(!_table.can_order){
-    toast('Please wait for staff to seat you'); return;
-  }
   renderCart();
+  syncOrderLock();
   $('sheet-overlay').classList.add('open');
   $('sheet').classList.add('open');
 }
