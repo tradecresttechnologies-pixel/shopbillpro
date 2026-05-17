@@ -102,6 +102,11 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .tcard-hint{font-size:10px;color:var(--t2);margin-top:7px;font-weight:600;opacity:.75;display:flex;align-items:center;justify-content:center;gap:4px}
 .tcard-hint::before{content:'👆';font-size:10px}
 .tcard:hover .tcard-hint{opacity:1;color:var(--acc)}
+.tcard.has-order{border-color:rgba(239,68,68,.55)}
+.tcard-order{margin-top:9px;padding-top:9px;border-top:1px dashed rgba(239,68,68,.3)}
+.to-amt{font-size:19px;font-weight:900;color:#EF4444;line-height:1}
+.to-meta{font-size:9.5px;color:var(--t2);font-weight:600;margin-top:4px;display:flex;flex-wrap:wrap;justify-content:center;gap:4px}
+.to-guest{font-size:10px;color:var(--text);font-weight:700;margin-top:4px}
 /* Button */
 .btn-pri{padding:11px 20px;border-radius:10px;background:var(--acc);color:#0A0E1A;border:none;font-size:13px;font-weight:800;cursor:pointer;font-family:var(--font-h);transition:var(--tr);display:inline-flex;align-items:center;gap:6px}
 .btn-pri:hover{filter:brightness(1.08);transform:translateY(-1px)}
@@ -156,6 +161,11 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .st-sub-label{font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.06em;margin:14px 2px 2px}
 .st-opt .so-ic{font-size:20px;margin-bottom:5px}
 .st-opt .so-sub{font-size:11px;color:var(--t2);font-weight:600;margin-top:3px}
+.st-ordercard{background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.3);border-radius:12px;padding:13px 15px;margin:12px 0 2px}
+.soc-row{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.soc-amt{font-size:22px;font-weight:900;color:#EF4444;line-height:1}
+.soc-time{font-size:11px;color:var(--t2);font-weight:700}
+.soc-sub{font-size:11.5px;color:var(--text);font-weight:600;margin-top:6px}
 /* Empty state */
 .empty{text-align:center;padding:60px 20px}
 .empty-emoji{font-size:48px;margin-bottom:12px}
@@ -265,6 +275,16 @@ let _editId  = null;
 
 function $(id){ return document.getElementById(id); }
 function escHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function fINR(n){ return '₹'+(Number(n)||0).toLocaleString('en-IN',{minimumFractionDigits:0,maximumFractionDigits:2}); }
+function elapsed(iso){
+  if(!iso) return '';
+  const ms = Date.now() - new Date(iso).getTime();
+  if(isNaN(ms) || ms < 0) return '';
+  const m = Math.floor(ms/60000), h = Math.floor(m/60), d = Math.floor(h/24);
+  if(d >= 1) return d+'d '+(h%24)+'h';
+  if(h >= 1) return h+'h '+(m%60)+'m';
+  return Math.max(m,1)+'m';
+}
 function toast(msg,type='i'){const h=$('toast-host');const e=document.createElement('div');e.className='toast '+type;e.textContent=msg;h.appendChild(e);setTimeout(()=>{e.style.opacity='0';setTimeout(()=>e.remove(),200)},2500);}
 function openModal(id){$(id).classList.add('open');}
 function closeModal(id){$(id).classList.remove('open');}
@@ -335,18 +355,36 @@ function render(){
     html += '<div class="table-grid">';
     tables.forEach(t => {
       const st = ST_INFO[t.status] || ST_INFO.free;
+      const o  = t.order;   // present only when an open running order exists
+      const hasOrder = o && o.order_id;
+
+      const orderBlock = hasOrder ? `
+          <div class="tcard-order">
+            <div class="to-amt">${fINR(o.total)}</div>
+            <div class="to-meta">
+              <span>🧾 ${o.items_count||0} item${(o.items_count===1)?'':'s'}</span>
+              <span>·</span>
+              <span>KOT ${o.kot_count||0}</span>
+              <span>·</span>
+              <span>⏱ ${elapsed(o.opened_at)}</span>
+            </div>
+            ${o.guest_name ? `<div class="to-guest">👤 ${escHtml(o.guest_name)}</div>` : ''}
+          </div>` : '';
+
+      const hint = hasOrder ? 'Tap to resume order'
+        : t.status==='free'     ? 'Tap to seat guests'
+        : t.status==='reserved' ? 'Tap to seat or free'
+        : t.status==='cleaning' ? 'Tap to mark free'
+        :                         'Tap for options';
+
       html += `
-        <div class="tcard ${st.cls}" onclick="handleTableTap('${t.id}','${t.status}','${escHtml(t.table_number)}')">
+        <div class="tcard ${st.cls}${hasOrder?' has-order':''}" onclick="handleTableTap('${t.id}','${t.status}','${escHtml(t.table_number)}')">
           <button class="tcard-edit" onclick="event.stopPropagation();openEditModal('${t.id}')">✎</button>
           <div class="tcard-num">T${escHtml(t.table_number)}</div>
           <div class="tcard-cap">👥 ${t.capacity} seats</div>
           <div class="tcard-badge ${st.cls}">${st.label}</div>
-          <div class="tcard-hint">${
-            t.status==='free'     ? 'Tap to seat guests' :
-            t.status==='occupied' ? 'Tap for order &amp; options' :
-            t.status==='reserved' ? 'Tap to seat or free' :
-                                    'Tap to mark free'
-          }</div>
+          ${orderBlock}
+          <div class="tcard-hint">${hint}</div>
         </div>`;
     });
     html += '</div>';
@@ -508,19 +546,31 @@ function openTableSheet(tableId){
   const status = t.status || 'free';
   const meta   = _ST_META[status] || _ST_META.free;
   const id     = tableId;
+  const o      = t.order;                 // open running order, if any
+  const hasOrder = !!(o && o.order_id);
 
   $('st-modal-title').textContent = `Table T${num}`;
 
   // Header strip — capacity + live status
   const head =
     `<div class="st-head">` +
-      `<span class="st-dot" style="background:${meta.dot}"></span>` +
+      `<span class="st-dot" style="background:${hasOrder?'#EF4444':meta.dot}"></span>` +
       `<span class="st-head-txt">👥 ${t.capacity} seats` +
         (t.section ? ` · ${escHtml(t.section)}` : '') +
-        ` &nbsp;·&nbsp; Currently <b>${meta.word}</b></span>` +
+        ` &nbsp;·&nbsp; Currently <b>${hasOrder?'Occupied':meta.word}</b></span>` +
     `</div>`;
 
-  // Build context-aware actions
+  // Live order summary card (shown only when a running order is open)
+  const orderCard = hasOrder ? `
+    <div class="st-ordercard">
+      <div class="soc-row">
+        <span class="soc-amt">${fINR(o.total)}</span>
+        <span class="soc-time">⏱ ${elapsed(o.opened_at)} on table</span>
+      </div>
+      <div class="soc-sub">🧾 ${o.items_count||0} item${o.items_count===1?'':'s'} · KOT ${o.kot_count||0}${o.guest_name?' · 👤 '+escHtml(o.guest_name):''}</div>
+    </div>` : '';
+
+  // Building blocks
   const seatBtn =
     `<button class="st-primary seat" onclick="seatGuests('${id}','${num}')">` +
       `<span class="ic">🪑</span>` +
@@ -529,44 +579,64 @@ function openTableSheet(tableId){
       `<span class="ar">→</span>` +
     `</button>`;
 
-  const orderBtn = (big) => big
-    ? `<button class="st-primary order" onclick="newBillForTable('${id}','${num}')">` +
-        `<span class="ic">🧾</span>` +
-        `<span class="tx"><div class="t1">View / Add Order</div>` +
-        `<div class="t2">Open the running order for this table</div></span>` +
-        `<span class="ar">→</span>` +
-      `</button>`
-    : `<div class="st-opt" onclick="newBillForTable('${id}','${num}')">` +
-        `<div class="so-ic">🧾</div><div>Take Order</div>` +
-        `<div class="so-sub">Staff bill now</div></div>`;
+  const resumeBtn =
+    `<button class="st-primary order" onclick="newBillForTable('${id}','${num}')">` +
+      `<span class="ic">🧾</span>` +
+      `<span class="tx"><div class="t1">${hasOrder?'Resume Order':'View / Add Order'}</div>` +
+      `<div class="t2">${hasOrder?'Open the running order — '+fINR(o.total)+' so far':'Open the running order for this table'}</div></span>` +
+      `<span class="ar">→</span>` +
+    `</button>`;
 
-  const freeOpt =
-    `<div class="st-opt sel-green" onclick="freeTable('${id}')">` +
-      `<div class="so-ic">✅</div><div>Mark Free</div>` +
-      `<div class="so-sub">Bill settled</div></div>`;
-  const reserveOpt =
-    `<div class="st-opt sel-yellow" onclick="setStatus('${id}','reserved',this)">` +
-      `<div class="so-ic">🕐</div><div>Reserve</div>` +
-      `<div class="so-sub">Pre-booked</div></div>`;
-  const cleanOpt =
-    `<div class="st-opt sel-purple" onclick="setStatus('${id}','cleaning',this)">` +
-      `<div class="so-ic">🧹</div><div>Cleaning</div>` +
-      `<div class="so-sub">Not available</div></div>`;
+  const orderTile =
+    `<div class="st-opt" onclick="newBillForTable('${id}','${num}')">` +
+      `<div class="so-ic">🧾</div><div>${hasOrder?'Resume':'Take Order'}</div>` +
+      `<div class="so-sub">${hasOrder?'Open order':'Staff bill now'}</div></div>`;
+
+  // Destructive vs guarded: if money is on the table, Free/Reserve/
+  // Cleaning ask for a confirm tap. The running order is NEVER wiped
+  // (status changes don't void it) — the guard is purely to stop an
+  // accidental tap from hiding a live ₹ order off the floor view.
+  const freeOpt = hasOrder
+    ? `<div class="st-opt sel-green" onclick="guardStatus('${id}','${num}','free')">` +
+        `<div class="so-ic">✅</div><div>Mark Free</div>` +
+        `<div class="so-sub">Confirm — has order</div></div>`
+    : `<div class="st-opt sel-green" onclick="freeTable('${id}')">` +
+        `<div class="so-ic">✅</div><div>Mark Free</div>` +
+        `<div class="so-sub">Bill settled</div></div>`;
+  const reserveOpt = hasOrder
+    ? `<div class="st-opt sel-yellow" onclick="guardStatus('${id}','${num}','reserved')">` +
+        `<div class="so-ic">🕐</div><div>Reserve</div>` +
+        `<div class="so-sub">Confirm — has order</div></div>`
+    : `<div class="st-opt sel-yellow" onclick="setStatus('${id}','reserved',this)">` +
+        `<div class="so-ic">🕐</div><div>Reserve</div>` +
+        `<div class="so-sub">Pre-booked</div></div>`;
+  const cleanOpt = hasOrder
+    ? `<div class="st-opt sel-purple" onclick="guardStatus('${id}','${num}','cleaning')">` +
+        `<div class="so-ic">🧹</div><div>Cleaning</div>` +
+        `<div class="so-sub">Confirm — has order</div></div>`
+    : `<div class="st-opt sel-purple" onclick="setStatus('${id}','cleaning',this)">` +
+        `<div class="so-ic">🧹</div><div>Cleaning</div>` +
+        `<div class="so-sub">Not available</div></div>`;
   const seatOpt =
     `<div class="st-opt sel-green" onclick="seatGuests('${id}','${num}')">` +
       `<div class="so-ic">🪑</div><div>Seat Guests</div>` +
       `<div class="so-sub">Opens QR</div></div>`;
 
   let primary = '', grid = '';
-  if(status === 'free'){
+  if(hasOrder){
+    // An open check is in progress — resuming it is the only sane
+    // primary action regardless of the stored flag.
+    primary = resumeBtn;
+    grid = freeOpt + reserveOpt + cleanOpt;
+  } else if(status === 'free'){
     primary = seatBtn;
-    grid = orderBtn(false) + reserveOpt + cleanOpt;
+    grid = orderTile + reserveOpt + cleanOpt;
   } else if(status === 'occupied'){
-    primary = orderBtn(true);
+    primary = resumeBtn;
     grid = freeOpt + reserveOpt + cleanOpt;
   } else if(status === 'reserved'){
     primary = seatBtn;
-    grid = orderBtn(false) + freeOpt + cleanOpt;
+    grid = orderTile + freeOpt + cleanOpt;
   } else { // cleaning
     primary =
       `<button class="st-primary freeb" onclick="freeTable('${id}')">` +
@@ -575,14 +645,31 @@ function openTableSheet(tableId){
         `<div class="t2">Cleaning done — ready for guests</div></span>` +
         `<span class="ar">→</span>` +
       `</button>`;
-    grid = seatOpt + reserveOpt + orderBtn(false);
+    grid = seatOpt + reserveOpt + orderTile;
   }
 
   $('st-opts').innerHTML =
-    head + primary +
+    head + orderCard + primary +
     `<div class="st-sub-label">More options</div>` +
     `<div class="st-grid">${grid}</div>`;
   openModal('status-modal');
+}
+
+// Confirm guard for changing a table that has a live running order.
+// Two-tap: first tap arms, second within 4s commits. The order itself
+// is preserved either way (status change never voids it).
+let _guardArm = null;
+function guardStatus(tableId, tableNum, newStatus){
+  const key = tableId+':'+newStatus;
+  if(_guardArm === key){
+    _guardArm = null;
+    if(newStatus === 'free') freeTable(tableId);
+    else setStatus(tableId, newStatus);
+    return;
+  }
+  _guardArm = key;
+  toast(`Tap again to set T${tableNum} ${newStatus.toUpperCase()} — the order stays saved`, 'i');
+  setTimeout(()=>{ if(_guardArm===key) _guardArm=null; }, 4000);
 }
 
 // Seat guests = mark occupied, stay on the tables screen, and tell
