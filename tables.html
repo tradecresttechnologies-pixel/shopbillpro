@@ -325,14 +325,54 @@ function render(){
 }
 
 // ── QR Codes ─────────────────────────────────────────────────────
-function renderQR(){
+// The QR system resolves a shop by its WEBSITE slug (sbp_shop_websites.slug),
+// NOT the shop UUID. The `shops` table has no slug column, so the old
+// `shop.slug || shop.id` fallback always emitted the UUID → every QR
+// resolved to shop_not_found. We fetch + cache the real slug here.
+let _qrSlug = null;          // resolved website slug ('' = none set yet)
+async function getShopSlug(){
+  if(_qrSlug !== null) return _qrSlug;
+  try{
+    const { data, error } = await _sb
+      .from('sbp_shop_websites')
+      .select('slug')
+      .eq('shop_id', _shopId)
+      .maybeSingle();
+    if(error) throw error;
+    _qrSlug = (data && data.slug) ? String(data.slug).trim() : '';
+  }catch(e){
+    console.warn('[qr] slug lookup failed:', e);
+    _qrSlug = '';
+  }
+  return _qrSlug;
+}
+
+async function renderQR(){
   const pane = document.getElementById('pane-qr');
   if(!_tables.length){
     pane.innerHTML='<div class="empty"><div class="empty-emoji">📱</div><div class="empty-title">No tables yet</div><div class="empty-msg">Add tables first, then print QR codes for each one.</div></div>';
     return;
   }
+
+  pane.innerHTML='<div class="empty"><div class="empty-emoji">⏳</div><div class="empty-title">Loading QR codes…</div></div>';
   const shop = JSON.parse(localStorage.getItem('sbp_shop')||'{}');
-  const slug = shop.slug || shop.id || '';
+  const slug = await getShopSlug();
+
+  // No website slug yet → QR ordering can't resolve the shop. Tell the
+  // owner exactly what to do instead of printing broken UUID codes.
+  if(!slug){
+    pane.innerHTML =
+      '<div class="empty">'+
+        '<div class="empty-emoji">🌐</div>'+
+        '<div class="empty-title">Set up your shop web address first</div>'+
+        '<div class="empty-msg">Table QR ordering needs a public web address (slug) for your shop. '+
+        'Open <strong>Settings → Customer-Facing → Shop Website</strong> and publish your site / pick a web address, '+
+        'then come back here to print QR codes.</div>'+
+        '<a href="/settings#website" class="btn-pri" style="margin-top:14px;display:inline-block;text-decoration:none">Go to Website Settings</a>'+
+      '</div>';
+    return;
+  }
+
   const base = window.location.origin;
 
   let html = `<div style="margin-bottom:14px">
@@ -391,9 +431,10 @@ function printOneQR(tableNum, encodedUrl){
   w.document.close();
 }
 
-function printAllQR(){
+async function printAllQR(){
   const shop = JSON.parse(localStorage.getItem('sbp_shop')||'{}');
-  const slug = shop.slug || shop.id || '';
+  const slug = await getShopSlug();
+  if(!slug){ toast('Set up your shop web address in Settings first','e'); return; }
   const base = window.location.origin;
   const cards = _tables.map(t => {
     // BATCH 068: /qr/{slug}/{table_number} → routed to qr-menu.html via vercel.json
