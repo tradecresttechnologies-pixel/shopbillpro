@@ -166,6 +166,9 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .soc-amt{font-size:22px;font-weight:900;color:#EF4444;line-height:1}
 .soc-time{font-size:11px;color:var(--t2);font-weight:700}
 .soc-sub{font-size:11.5px;color:var(--text);font-weight:600;margin-top:6px}
+.st-locknote{display:flex;gap:12px;align-items:flex-start;background:rgba(99,102,241,.07);border:1px solid rgba(99,102,241,.28);border-radius:12px;padding:14px 16px;margin:14px 0 2px;font-size:12.5px;color:var(--t2);font-weight:600;line-height:1.55}
+.st-locknote .sl-ic{font-size:20px;line-height:1;flex-shrink:0;margin-top:1px}
+.st-locknote b{color:var(--text);font-weight:800}
 /* Empty state */
 .empty{text-align:center;padding:60px 20px}
 .empty-emoji{font-size:48px;margin-bottom:12px}
@@ -592,51 +595,56 @@ function openTableSheet(tableId){
       `<div class="so-ic">🧾</div><div>${hasOrder?'Resume':'Take Order'}</div>` +
       `<div class="so-sub">${hasOrder?'Open order':'Staff bill now'}</div></div>`;
 
-  // Destructive vs guarded: if money is on the table, Free/Reserve/
-  // Cleaning ask for a confirm tap. The running order is NEVER wiped
-  // (status changes don't void it) — the guard is purely to stop an
-  // accidental tap from hiding a live ₹ order off the floor view.
-  const freeOpt = hasOrder
-    ? `<div class="st-opt sel-green" onclick="guardStatus('${id}','${num}','free')">` +
-        `<div class="so-ic">✅</div><div>Mark Free</div>` +
-        `<div class="so-sub">Confirm — has order</div></div>`
-    : `<div class="st-opt sel-green" onclick="freeTable('${id}')">` +
-        `<div class="so-ic">✅</div><div>Mark Free</div>` +
-        `<div class="so-sub">Bill settled</div></div>`;
-  const reserveOpt = hasOrder
-    ? `<div class="st-opt sel-yellow" onclick="guardStatus('${id}','${num}','reserved')">` +
-        `<div class="so-ic">🕐</div><div>Reserve</div>` +
-        `<div class="so-sub">Confirm — has order</div></div>`
-    : `<div class="st-opt sel-yellow" onclick="setStatus('${id}','reserved',this)">` +
-        `<div class="so-ic">🕐</div><div>Reserve</div>` +
-        `<div class="so-sub">Pre-booked</div></div>`;
-  const cleanOpt = hasOrder
-    ? `<div class="st-opt sel-purple" onclick="guardStatus('${id}','${num}','cleaning')">` +
-        `<div class="so-ic">🧹</div><div>Cleaning</div>` +
-        `<div class="so-sub">Confirm — has order</div></div>`
-    : `<div class="st-opt sel-purple" onclick="setStatus('${id}','cleaning',this)">` +
-        `<div class="so-ic">🧹</div><div>Cleaning</div>` +
-        `<div class="so-sub">Not available</div></div>`;
+  // Status-change tiles. These are ONLY built for tables with no
+  // punched items. Once even one item is on the order the table is
+  // genuinely occupied and these are never shown — see hasOrder branch.
+  const freeOpt =
+    `<div class="st-opt sel-green" onclick="freeTable('${id}')">` +
+      `<div class="so-ic">✅</div><div>Mark Free</div>` +
+      `<div class="so-sub">Available</div></div>`;
+  const reserveOpt =
+    `<div class="st-opt sel-yellow" onclick="setStatus('${id}','reserved',this)">` +
+      `<div class="so-ic">🕐</div><div>Reserve</div>` +
+      `<div class="so-sub">Pre-booked</div></div>`;
+  const cleanOpt =
+    `<div class="st-opt sel-purple" onclick="setStatus('${id}','cleaning',this)">` +
+      `<div class="so-ic">🧹</div><div>Cleaning</div>` +
+      `<div class="so-sub">Not available</div></div>`;
   const seatOpt =
     `<div class="st-opt sel-green" onclick="seatGuests('${id}','${num}')">` +
       `<div class="so-ic">🪑</div><div>Seat Guests</div>` +
       `<div class="so-sub">Opens QR</div></div>`;
 
-  let primary = '', grid = '';
+  // Locked notice shown instead of status tiles when items are punched.
+  const lockedNote =
+    `<div class="st-locknote">` +
+      `<div class="sl-ic">🔒</div>` +
+      `<div><b>Status can't be changed — items are punched.</b><br>` +
+      `This table is occupied with a live order. To free it, settle the ` +
+      `bill or void the order — tap <b>Resume Order</b> above.</div>` +
+    `</div>`;
+
+  let primary = '', body = '';
   if(hasOrder){
-    // An open check is in progress — resuming it is the only sane
-    // primary action regardless of the stored flag.
+    // >= 1 active item → genuinely occupied. The ONLY way out is to
+    // settle (Generate Bill) or void the order, both via Resume Order.
+    // No Free/Reserve/Cleaning here, by design.
     primary = resumeBtn;
-    grid = freeOpt + reserveOpt + cleanOpt;
+    body = lockedNote;
   } else if(status === 'free'){
     primary = seatBtn;
-    grid = orderTile + reserveOpt + cleanOpt;
+    body = `<div class="st-sub-label">More options</div>` +
+           `<div class="st-grid">${orderTile + reserveOpt + cleanOpt}</div>`;
   } else if(status === 'occupied'){
+    // Seated but nothing punched yet (seatGuests set the flag, no RO
+    // items). Per the rule, status is still freely changeable.
     primary = resumeBtn;
-    grid = freeOpt + reserveOpt + cleanOpt;
+    body = `<div class="st-sub-label">More options</div>` +
+           `<div class="st-grid">${freeOpt + reserveOpt + cleanOpt}</div>`;
   } else if(status === 'reserved'){
     primary = seatBtn;
-    grid = orderTile + freeOpt + cleanOpt;
+    body = `<div class="st-sub-label">More options</div>` +
+           `<div class="st-grid">${orderTile + freeOpt + cleanOpt}</div>`;
   } else { // cleaning
     primary =
       `<button class="st-primary freeb" onclick="freeTable('${id}')">` +
@@ -645,31 +653,12 @@ function openTableSheet(tableId){
         `<div class="t2">Cleaning done — ready for guests</div></span>` +
         `<span class="ar">→</span>` +
       `</button>`;
-    grid = seatOpt + reserveOpt + orderTile;
+    body = `<div class="st-sub-label">More options</div>` +
+           `<div class="st-grid">${seatOpt + reserveOpt + orderTile}</div>`;
   }
 
-  $('st-opts').innerHTML =
-    head + orderCard + primary +
-    `<div class="st-sub-label">More options</div>` +
-    `<div class="st-grid">${grid}</div>`;
+  $('st-opts').innerHTML = head + orderCard + primary + body;
   openModal('status-modal');
-}
-
-// Confirm guard for changing a table that has a live running order.
-// Two-tap: first tap arms, second within 4s commits. The order itself
-// is preserved either way (status change never voids it).
-let _guardArm = null;
-function guardStatus(tableId, tableNum, newStatus){
-  const key = tableId+':'+newStatus;
-  if(_guardArm === key){
-    _guardArm = null;
-    if(newStatus === 'free') freeTable(tableId);
-    else setStatus(tableId, newStatus);
-    return;
-  }
-  _guardArm = key;
-  toast(`Tap again to set T${tableNum} ${newStatus.toUpperCase()} — the order stays saved`, 'i');
-  setTimeout(()=>{ if(_guardArm===key) _guardArm=null; }, 4000);
 }
 
 // Seat guests = mark occupied, stay on the tables screen, and tell

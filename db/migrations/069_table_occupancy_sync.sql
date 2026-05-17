@@ -18,12 +18,18 @@
 -- FIX (read-time derivation — non-destructive, backward compatible)
 --   sbp_tables_list now LEFT JOIN LATERAL the latest OPEN running order
 --   per table and returns:
---     • status          → 'occupied' whenever an open RO exists,
---                          otherwise the stored manual flag (reserved/
---                          cleaning/free). An open check ALWAYS wins.
+--     • status          → 'occupied' ONLY when an open RO has >= 1
+--                          active (non-voided) item. An empty RO shell
+--                          (opened, nothing punched) does NOT occupy —
+--                          the stored flag stands and the table can
+--                          still be freed / reserved / cleaned.
+--                          Otherwise the stored manual flag (reserved/
+--                          cleaning/free) is returned. A real check with
+--                          items ALWAYS wins.
 --     • stored_status   → the raw flag, kept for reference/debugging.
 --     • order           → { order_id, items_count, kot_count, total,
---                            opened_at, guest_name } or null.
+--                            opened_at, guest_name } — null unless the
+--                            open RO has >= 1 active item.
 --   The stored status column is never written here, so nothing is
 --   wiped and every existing flow keeps working. Drift heals itself
 --   on the next list call.
@@ -62,15 +68,21 @@ BEGIN
             to_jsonb(t)
             -- keep the raw flag visible
             || jsonb_build_object('stored_status', t.status)
-            -- effective status: an open running order forces 'occupied'
+            -- effective status: an open running order WITH at least one
+            -- active (non-voided) item forces 'occupied'. An empty
+            -- running-order shell (created, nothing punched) does NOT
+            -- occupy — the table keeps its stored flag and can still
+            -- be freed / reserved / cleaned.
             || jsonb_build_object(
                  'status',
-                 CASE WHEN ro.id IS NOT NULL THEN 'occupied' ELSE t.status END
+                 CASE WHEN ro.id IS NOT NULL AND ro.items_count > 0
+                      THEN 'occupied' ELSE t.status END
                )
-            -- order summary (null when no open running order)
+            -- order summary (null when no open RO, OR RO has 0 items)
             || jsonb_build_object(
                  'order',
-                 CASE WHEN ro.id IS NULL THEN NULL ELSE jsonb_build_object(
+                 CASE WHEN ro.id IS NULL OR ro.items_count = 0
+                      THEN NULL ELSE jsonb_build_object(
                    'order_id',     ro.id,
                    'opened_at',    ro.opened_at,
                    'kot_count',    ro.kot_count,

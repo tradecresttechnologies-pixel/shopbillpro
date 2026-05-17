@@ -43,19 +43,23 @@ qr-menu.html       REPLACE  (repo root) — only if Batch from prior session
 
 ## WHAT THIS BATCH DOES
 
-1. **Occupancy is now derived from the open check, not a manual flag.**
-   `sbp_tables_list` LEFT JOINs the latest open `sbp_running_orders` per
-   table. An open order forces effective `status = 'occupied'`,
-   overriding any drifted stored flag. Self-heals on every load
-   (retroactively fixes T10 and any other drifted table).
+1. **Occupancy is the open check WITH items — not a manual flag.**
+   `sbp_tables_list` LEFT JOINs the latest open `sbp_running_orders`
+   per table. The table is `occupied` ONLY when that order has >= 1
+   active (non-voided) item. An empty running-order shell (opened,
+   nothing punched) does NOT occupy — the table keeps its stored flag
+   and stays freely changeable. Self-heals on every load.
 
 2. **Order summary on the tile** — total (per-line GST, net of voided
-   qty), item count, KOT count, time-on-table. Big-brand POS behaviour.
+   qty), item count, KOT count, time-on-table. Only when items > 0.
 
-3. **Order-aware action sheet** — leads with "Resume Order — ₹X so far",
-   shows a red summary card, and guards Free/Reserve/Cleaning behind a
-   two-tap confirm when a live order is on the table (order is never
-   voided by a status change — guard is anti-fat-finger only).
+3. **Status changes are blocked once items are punched.** If even one
+   item is on the order, the action sheet shows ONLY "Resume Order"
+   plus a locked notice — no Free/Reserve/Cleaning. The only way to
+   free the table is to settle the bill or void the order (both via
+   Resume Order, both already free the table server-side). Tables with
+   zero punched items (incl. seated-but-not-ordered) remain freely
+   changeable, exactly as expected.
 
 ## ROLLBACK
 
