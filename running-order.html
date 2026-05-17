@@ -2175,6 +2175,12 @@ async function init(){
   // Fetch any guest orders already pending for this table (in case
   // staff opened the page after the guest already sent something).
   await refreshPendingGuestOrders();
+  // If something is already waiting for THIS table, pop the review
+  // modal immediately — staff shouldn't have to spot a banner and tap
+  // it. The banner remains as the fallback if they close the modal.
+  if(pendingForThisTable().length > 0){
+    openGuestReview();
+  }
   // Subscribe to realtime so new guest orders push the banner in
   // immediately (no polling).
   subscribeGuestOrders();
@@ -2903,7 +2909,12 @@ function subscribeGuestOrders(){
         // tables would be noisy and annoying.
         if(String(r.table_number) === String(_tableNum)){
           try { if(navigator.vibrate) navigator.vibrate([200, 80, 200]); } catch(e){}
-          toast('📱 New guest order on this table — tap banner to review','i', 4000);
+          toast('📱 New guest order on this table','i', 3000);
+          // Auto-pop the review so staff acts on it immediately,
+          // unless they're mid-review of another guest order.
+          const modalOpen = document.getElementById('go-modal')
+            ?.classList.contains('open');
+          if(!modalOpen){ openGuestReview(); }
         }
       }
     })
@@ -3090,7 +3101,21 @@ async function acceptGuestOrder(){
       closeGuestReview();
     }
 
-    // Refresh running order to pull the newly-added items
+    // Pull the newly-added items onto the panel. accept returns the
+    // running_order_id it appended to — adopt it so the panel reloads
+    // even if this page was opened before any running order existed
+    // (otherwise refreshOrder() early-returns on a null _order and the
+    // accept looks like "nothing happened" despite the 200 success).
+    if(data.running_order_id){
+      if(!_order || !_order.id || _order.id !== data.running_order_id){
+        try {
+          const r = await _sb.rpc('sbp_ro_get_by_id', {
+            p_shop_id: _shopId, p_order_id: data.running_order_id
+          });
+          if(r?.data?.ok && r.data.order){ _order = r.data.order; render(); }
+        } catch(_){}
+      }
+    }
     await refreshOrder();
 
   } catch(e){
