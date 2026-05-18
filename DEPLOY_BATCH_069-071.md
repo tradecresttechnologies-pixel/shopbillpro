@@ -170,3 +170,33 @@ Two guest-side bugs fixed (HTML only, no SQL):
    flaky restaurant wifi where realtime drops.
 
 Deploy: replace qr-menu.html at repo root (no SQL).
+
+---
+
+## FOUC / blink fix — ALL restaurant + hospitality pages (HTML only)
+
+**Symptom:** every restaurant-based sidebar page blinked on open —
+blank flash + raw bilingual title ("Tablesटेबल", both EN+HI spans
+visible) before content appeared.
+
+**Cause:** these pages were missing the lang-span CSS that dashboard.html
+has, AND had no pre-paint language script. The .lang-en/.lang-hi spans
+had default display until lang.js ran *after* paint → flash. Content
+also waited behind async init's network call.
+
+**Fix applied to 12 pages** (tables, rooms, bookings, running-order,
+walk-in, folio, housekeeping, kitchen, menu, services, appointments,
+compliance):
+1. 4-line lang-span CSS injected as the first rule in <style> so the
+   correct language shows at PARSE time (zero flash) — identical to the
+   canonical dashboard.html rule.
+2. Pre-paint `<script>` added in <head> right after the existing theme
+   pre-paint: sets `document.documentElement.lang` from
+   localStorage.sbp_lang synchronously BEFORE first paint.
+
+This is the documented project FOUC pattern (pre-paint inline script +
+parse-time CSS), now extended to the restaurant pages it was never
+applied to. Idempotent: pages that already had the CSS only received the
+pre-paint, no duplication. All 12 main scripts re-validated post-patch.
+
+**Deploy:** replace all 12 .html files at repo root. No SQL.

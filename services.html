@@ -11,6 +11,7 @@
 })();
 </script>
 
+<script>(function(){try{document.documentElement.lang=localStorage.getItem('sbp_lang')||'en';}catch(e){}})();</script>
 <meta charset="UTF-8">
 <meta name="google" content="notranslate">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -53,6 +54,11 @@ window.addEventListener('offline',()=>{window.SBP.online=false});
 </script>
 
 <style>
+.lang-hi{display:none!important}
+.lang-en{display:inline!important}
+html[lang="hi"] .lang-hi{display:inline!important}
+html[lang="hi"] .lang-en{display:none!important}
+
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{font-family:'Noto Sans','Noto Sans Devanagari',sans-serif;-webkit-font-smoothing:antialiased}
 :root{
