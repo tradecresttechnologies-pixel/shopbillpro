@@ -202,23 +202,31 @@ BEGIN
     -- ── B10/11. Table turnaround + utilisation (sessions) ───────────
     'table_turnaround', (
       SELECT jsonb_build_object(
-        'sessions',      COUNT(*),
-        'avg_minutes',   COALESCE(ROUND(AVG(
-                           EXTRACT(EPOCH FROM (billed_at - opened_at))/60.0)::numeric,1),0),
-        'turns',         COUNT(*)
-      ) FROM rs
+        'sessions',    sessions,
+        'avg_minutes', avg_minutes,
+        'turns',       sessions)
+      FROM (
+        SELECT
+          COUNT(*) AS sessions,
+          COALESCE(ROUND(AVG(
+            EXTRACT(EPOCH FROM (billed_at - opened_at))/60.0)::numeric,1),0) AS avg_minutes
+        FROM rs
+      ) y
     ),
     'table_utilisation', COALESCE((
-      SELECT jsonb_agg(u ORDER BY (u->>'turns')::int DESC)
+      SELECT jsonb_agg(
+        jsonb_build_object(
+          'table', table_number, 'turns', turns, 'avg_minutes', avg_minutes)
+        ORDER BY turns DESC)
       FROM (
-        SELECT jsonb_build_object(
-          'table', table_number,
-          'turns', COUNT(*),
-          'avg_minutes', COALESCE(ROUND(AVG(
-            EXTRACT(EPOCH FROM (billed_at - opened_at))/60.0)::numeric,1),0)
-        ) AS u
-        FROM rs GROUP BY table_number
-      ) x
+        SELECT
+          table_number,
+          COUNT(*) AS turns,
+          COALESCE(ROUND(AVG(
+            EXTRACT(EPOCH FROM (billed_at - opened_at))/60.0)::numeric,1),0) AS avg_minutes
+        FROM rs
+        GROUP BY table_number
+      ) y
     ), '[]'::jsonb),
 
     -- ── B12. Server / waiter performance ────────────────────────────
@@ -355,10 +363,10 @@ BEGIN
         'opened_at', opened_at,
         'mins_open', ROUND(EXTRACT(EPOCH FROM (now()-opened_at))/60.0)::int,
         'covers',    covers,
-        'server',    server_name))
+        'server',    server_name)
+        ORDER BY opened_at ASC)
       FROM sbp_running_orders
       WHERE shop_id = p_shop_id AND status='open'
-      ORDER BY opened_at ASC
     ), '[]'::jsonb)
 
   ) INTO v_out;

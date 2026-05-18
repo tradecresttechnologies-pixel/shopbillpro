@@ -486,3 +486,25 @@ correct (GROUP BY plain column / plain expression).
 
 RE-RUN db/migrations/077_restaurant_report.sql in Supabase (it is
 CREATE OR REPLACE — just run the updated file again). No other change.
+
+
+---
+
+## 077 FIX #2 — opened_at GROUP BY error
+
+Next error surfaced: sbp_running_orders.opened_at must appear in
+GROUP BY. Cause: table_utilisation did SELECT jsonb_build_object(
+...AVG(billed_at-opened_at)...) FROM rs GROUP BY table_number — the
+deeply nested aggregate inside jsonb_build_object under GROUP BY
+trips Postgres parser strictness. Also open_tables had a query-level
+ORDER BY opened_at outside jsonb_agg.
+
+FIX: table_utilisation + table_turnaround rewritten to the safe
+pattern (aggregate in inner subquery, jsonb built in outer query);
+open_tables ORDER BY moved INSIDE jsonb_agg(). Full file audited —
+the 7 pure-aggregate sections (sales_summary, discounts, tax_summary,
+kot_analysis, qr_funnel, day_close, voids) are valid as-is (aggregate
+only, no non-agg column, no GROUP BY needed).
+
+RE-RUN db/migrations/077_restaurant_report.sql in Supabase again
+(CREATE OR REPLACE, just run the updated file). Nothing else changed.
