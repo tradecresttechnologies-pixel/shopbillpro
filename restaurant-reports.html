@@ -99,11 +99,22 @@ tr.drillable td:first-child::after,.bar-row.drillable .bar-lbl::after{content:" 
 .dov-crumb{font-size:11.5px;color:var(--t2);font-weight:600;margin-bottom:12px}
 @keyframes pulse{0%,100%{opacity:.5}50%{opacity:.85}}
 .bnav-overlay{display:none}
-@media(max-width:760px){.content{padding:16px 14px}.bar-lbl{width:90px}.bar-val{width:74px}}
+.picker-wrap{background:var(--surf);border:1px solid var(--bord);border-radius:14px;padding:14px 16px;margin-bottom:18px;display:flex;flex-direction:column;gap:11px}
+.picker-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.pick-sel{font-weight:700;font-size:14px;min-width:280px;flex:1}
+#run-btn{margin-left:auto}
+.print-only{display:none}
+@media(max-width:760px){.content{padding:16px 14px}.bar-lbl{width:90px}.bar-val{width:74px}.pick-sel{min-width:100%}#run-btn{margin-left:0;width:100%}}
 @media print{
-  #dsb,.topbar,.period-bar,.no-print{display:none!important}
-  .sec{break-inside:avoid;border:1px solid #ccc}
+  #dsb,.topbar,.picker-wrap,.no-print,.dov{display:none!important}
+  /* only the generated report prints */
+  body *{visibility:hidden}
+  #print-area,#print-area *{visibility:visible}
+  #print-area{position:absolute;left:0;top:0;width:100%}
+  .print-only{display:block}
+  .sec{break-inside:avoid;border:1px solid #ccc;background:#fff}
   body{background:#fff;color:#000}
+  .drillable td:first-child::after,.bar-row.drillable .bar-lbl::after{content:""}
 }
 </style>
 </head>
@@ -121,7 +132,7 @@ tr.drillable td:first-child::after,.bar-row.drillable .bar-lbl::after{content:" 
     </div>
 
     <div class="content" id="content">
-      <!-- gate / body injected here -->
+      <div id="picker-mount"></div>
       <div id="report-root"></div>
     </div>
   </div>
@@ -143,6 +154,7 @@ tr.drillable td:first-child::after,.bar-row.drillable .bar-lbl::after{content:" 
 'use strict';
 const _shopId = localStorage.getItem('sbp_shop_id') || '';
 let _from=null,_to=null,_preset='30d';
+let _report='';                          // selected report id (picker)
 let _fCat='',_fItem='',_fTable='';      // active drill filters
 let _filterOpts={categories:[],items:[],tables:[]};
 function $(id){return document.getElementById(id);}
@@ -165,45 +177,108 @@ function setPreset(p){
   }
   document.querySelectorAll('.pchip').forEach(c=>c.classList.toggle('on',c.dataset.p===p));
   const cw=$('custom-wrap'); if(cw) cw.style.display=(p==='custom')?'flex':'none';
-  loadReport();
+  // NOTE: no auto-run — user presses Run (locked decision).
 }
 
-function periodBar(){
-  return `<div class="period-bar no-print">
-    <span class="pchip" data-p="today" onclick="setPreset('today')">Today</span>
-    <span class="pchip" data-p="7d" onclick="setPreset('7d')">7 days</span>
-    <span class="pchip on" data-p="30d" onclick="setPreset('30d')">30 days</span>
-    <span class="pchip" data-p="90d" onclick="setPreset('90d')">90 days</span>
-    <span class="pchip" data-p="custom" onclick="setPreset('custom')">Custom</span>
-    <span id="custom-wrap" style="display:none;gap:6px;align-items:center">
-      <input type="date" id="dt-from" class="dt-in" value="${_isoOffset(29)}">
-      <span style="color:var(--t2)">→</span>
-      <input type="date" id="dt-to" class="dt-in" value="${_today()}">
-      <button class="btn-pri" onclick="setPreset('custom')">Apply</button>
-    </span>
+// Reports the user can pick, grouped. id → engine report id.
+const REPORT_GROUPS=[
+  ['Sales', [
+    ['sales_summary','Sales Summary'],
+    ['daily_trend','Daily Sales Trend'],
+    ['day_part','Day-Part (Meal Period) Sales'],
+    ['payment_split','Payment Mode Split'],
+    ['discount','Discount Report'],
+  ]],
+  ['Tax', [
+    ['tax_summary','Tax / GST Summary'],
+  ]],
+  ['Items', [
+    ['itemised','Itemised Sales Report'],
+    ['category_mix','Category Mix'],
+  ]],
+  ['Tables', [
+    ['per_table','Revenue by Table'],
+    ['per_section','Revenue by Section'],
+    ['turnaround','Table Turnaround & Utilisation'],
+  ]],
+  ['Staff', [
+    ['server','Server / Waiter Performance'],
+  ]],
+  ['Operational', [
+    ['kot','KOT Analysis'],
+    ['qr_funnel','QR Order Funnel'],
+    ['day_close','Day-Close / Z-Report'],
+    ['open_tables','Open / Unsettled Tables'],
+  ]],
+  ['Audit', [
+    ['void','Void & Delete Audit'],
+  ]],
+  ['', [
+    ['all','— Show Everything (Dashboard) —'],
+  ]],
+];
+
+function pickerBar(){
+  const opts=REPORT_GROUPS.map(([grp,items])=>{
+    const o=items.map(([id,lbl])=>
+      `<option value="${id}"${_report===id?' selected':''}>${esc(lbl)}</option>`).join('');
+    return grp?`<optgroup label="${esc(grp)}">${o}</optgroup>`:o;
+  }).join('');
+  return `<div class="picker-wrap no-print">
+    <div class="picker-row">
+      <select class="dt-in pick-sel" id="rep-sel">
+        <option value="" ${!_report?'selected':''}>— Select a report —</option>
+        ${opts}
+      </select>
+    </div>
+    <div class="picker-row">
+      <span class="pchip" data-p="today" onclick="setPreset('today')">Today</span>
+      <span class="pchip" data-p="7d" onclick="setPreset('7d')">7 days</span>
+      <span class="pchip on" data-p="30d" onclick="setPreset('30d')">30 days</span>
+      <span class="pchip" data-p="90d" onclick="setPreset('90d')">90 days</span>
+      <span class="pchip" data-p="custom" onclick="setPreset('custom')">Custom</span>
+      <span id="custom-wrap" style="display:none;gap:6px;align-items:center">
+        <input type="date" id="dt-from" class="dt-in" value="${_isoOffset(29)}">
+        <span style="color:var(--t2)">→</span>
+        <input type="date" id="dt-to" class="dt-in" value="${_today()}">
+      </span>
+    </div>
+    <div class="picker-row">
+      <span style="font-size:12px;color:var(--t2);font-weight:700">Filter:</span>
+      <select class="dt-in" id="f-cat"></select>
+      <select class="dt-in" id="f-item"></select>
+      <select class="dt-in" id="f-table"></select>
+      <button class="btn-pri" id="run-btn" onclick="runReport()">▶ Run Report</button>
+    </div>
   </div>`;
 }
 
-function filterBar(){
+function fillFilterSelects(){
   const opt=(arr,sel)=>['<option value="">All</option>'].concat(
     (arr||[]).map(v=>`<option value="${esc(v)}"${v===sel?' selected':''}>${esc(v)}</option>`)
   ).join('');
-  const active=(_fCat||_fItem||_fTable);
-  return `<div class="period-bar no-print" style="margin-top:-6px">
-    <span style="font-size:12px;color:var(--t2);font-weight:700">Filter:</span>
-    <select class="dt-in" id="f-cat" onchange="applyFilter()">${opt(_filterOpts.categories,_fCat)}</select>
-    <select class="dt-in" id="f-item" onchange="applyFilter()">${opt(_filterOpts.items,_fItem)}</select>
-    <select class="dt-in" id="f-table" onchange="applyFilter()">${opt(_filterOpts.tables,_fTable)}</select>
-    ${active?`<button class="pchip" onclick="clearFilter()">✕ Clear filters</button>`:''}
-  </div>`;
+  const c=$('f-cat'),i=$('f-item'),t=$('f-table');
+  if(c) c.innerHTML=opt(_filterOpts.categories,_fCat);
+  if(i) i.innerHTML=opt(_filterOpts.items,_fItem);
+  if(t) t.innerHTML=opt(_filterOpts.tables,_fTable);
 }
-function applyFilter(){
+
+function runReport(){
+  const sel=$('rep-sel');
+  _report = sel ? sel.value : '';
+  if(!_report){
+    $('report-root').innerHTML=`<div class="sec"><div class="empty-s">Pick a report above, choose a date range, then press ▶ Run Report.</div></div>`;
+    return;
+  }
   _fCat   = $('f-cat')?.value   || '';
   _fItem  = $('f-item')?.value  || '';
   _fTable = $('f-table')?.value || '';
+  if(_preset==='custom'){
+    _from=$('dt-from')?.value||_from;
+    _to=$('dt-to')?.value||_to;
+  }
   loadReport();
 }
-function clearFilter(){ _fCat=_fItem=_fTable=''; loadReport(); }
 
 function kpi(label,val,cls){return `<div class="kpi"><div class="kpi-l">${esc(label)}</div><div class="kpi-v ${cls||''}">${val}</div></div>`;}
 function sec(icon,title,inner){return `<div class="sec"><div class="sec-h"><span class="ic">${icon}</span><span>${esc(title)}</span></div>${inner}</div>`;}
@@ -248,10 +323,7 @@ function showGate(){
 }
 
 function showSkeleton(){
-  $('report-root').innerHTML=periodBar()+
-    '<div class="skel"></div>'.repeat(6);
-  document.querySelectorAll('.pchip').forEach(c=>c.classList.toggle('on',c.dataset.p===_preset));
-  const cw=$('custom-wrap'); if(cw&&_preset==='custom') cw.style.display='flex';
+  $('report-root').innerHTML='<div class="skel"></div>'.repeat(4);
 }
 
 async function loadReport(){
@@ -259,48 +331,53 @@ async function loadReport(){
   showSkeleton();
   let data,error,vdata;
   try {
-    const [rep,vr] = await Promise.all([
-      _sb.rpc('sbp_restaurant_report',{
-        p_shop_id:_shopId, p_from:_from, p_to:_to,
+    // Always fetch the picked report via the wrapper (computes only
+    // what's needed). Void/audit + "Show Everything" also need the
+    // void RPC, so fetch it in parallel when relevant.
+    const needVoid = (_report==='void' || _report==='all');
+    const calls=[
+      _sb.rpc('sbp_restaurant_report_one',{
+        p_shop_id:_shopId, p_report:_report,
+        p_from:_from, p_to:_to,
         p_category:_fCat||null, p_item:_fItem||null, p_table:_fTable||null
-      }),
-      _sb.rpc('sbp_restaurant_void_report',{
-        p_shop_id:_shopId, p_from:_from, p_to:_to
       })
-    ]);
+    ];
+    calls.push(needVoid
+      ? _sb.rpc('sbp_restaurant_void_report',{p_shop_id:_shopId,p_from:_from,p_to:_to})
+      : Promise.resolve({data:null}));
+    const [rep,vr]=await Promise.all(calls);
     data=rep.data; error=rep.error;
     vdata=(vr&&vr.data&&vr.data.ok)?vr.data:null;
+
+    // Wrapper may say "this report lives in the void RPC" → use it.
+    if(data && data.ok && data.use_rpc==='sbp_restaurant_void_report'){
+      const v=await _sb.rpc('sbp_restaurant_void_report',{
+        p_shop_id:_shopId,p_from:_from,p_to:_to});
+      vdata=(v&&v.data&&v.data.ok)?v.data:null;
+      // synthesise a minimal data envelope so render() can run
+      data={ok:true, report:'void', range:{from:_from,to:_to},
+             filters:{}, filter_options:_filterOpts};
+    }
   } catch(e){ error={message:e.message}; }
   if(error || !data || !data.ok){
     const msg=(data&&data.error)||error?.message||'Could not load report';
     const det=data&&data.detail?(' — '+(data.detail.message||JSON.stringify(data.detail))):'';
-    $('report-root').innerHTML=periodBar()+`<div class="sec"><div class="empty-s">⚠️ ${esc(msg)}${esc(det)}</div></div>`;
-    bindPeriod();
+    $('report-root').innerHTML=`<div class="sec"><div class="empty-s">⚠️ ${esc(msg)}${esc(det)}</div></div>`;
     return;
   }
-  if(data.filter_options) _filterOpts=data.filter_options;
+  if(data.filter_options){ _filterOpts=data.filter_options; fillFilterSelects(); }
   render(data, vdata);
 }
 
 function render(d, vd){
   const s=d.sales_summary||{};
-  let H=periodBar()+filterBar();
   const fl=d.filters||{};
-  // Sections that cannot honor an item/category filter get this note
-  // so the page is consistent and the numbers are never misleading.
   const _ocNote = fl.item_or_cat_active ? 'not affected by item/category filter' : '';
-  const _tblNote = fl.table ? '' : '';
-  if(fl.category||fl.item||fl.table){
-    H+=`<div class="sec" style="padding:12px 16px;border-color:var(--acc)">
-      <div style="font-size:12.5px;color:var(--acc);font-weight:700">
-      🔎 Filtered: ${[fl.category&&('Category = '+esc(fl.category)),
-        fl.item&&('Item = '+esc(fl.item)),
-        fl.table&&('Table = '+esc(fl.table))].filter(Boolean).join('  ·  ')}
-      <span style="color:var(--t2);font-weight:600"> — figures below reflect this filter</span></div></div>`;
-  }
 
-  // A1 Sales summary
-  H+=sec('💰','Sales Summary',
+  // Each report id → a function returning its section HTML. Same
+  // builders as before; now individually addressable for the picker.
+  const R={};
+  R.sales_summary=()=>sec('💰','Sales Summary',
     `<div class="kpi-grid">
       ${kpi('Bills',num(s.bills))}
       ${kpi('Gross Sales',fINR(s.gross),'grn')}
@@ -313,43 +390,45 @@ function render(d, vd){
       ${kpi('Collected',fINR(s.paid))}
       ${kpi('Balance Due',fINR(s.balance_due),'red')}
     </div>`);
-
-  // A2 Daily trend
-  H+=sec('📅','Daily Sales Trend',
+  R.daily_trend=()=>sec('📅','Daily Sales Trend',
     tableEl([
       {h:'Date',k:'date'},
       {h:'Bills',k:'bills',num:true,fmt:r=>num(r.bills)},
       {h:'Gross',k:'gross',num:true,fmt:r=>fINR(r.gross)},
       {h:'AOV',k:'aov',num:true,fmt:r=>fINR(r.aov)}
     ], d.daily_trend, {dim:'day', key:r=>r.date}));
-
-  // A3 Day-part
-  H+=sec('🕐','Day-Part Sales',
+  R.day_part=()=>sec('🕐','Day-Part Sales',
     barList((d.day_part||[]).map(p=>({l:p.part.replace(/^\d\s/,''),v:p.gross,b:p.bills})),'l','v',fINR));
-
-  // A5 Payment split
-  H+=sec('💳','Payment Mode Split',
+  R.payment_split=()=>sec('💳','Payment Mode Split',
     tableEl([
       {h:'Mode',k:'mode'},
       {h:'Bills',k:'bills',num:true,fmt:r=>num(r.bills)},
       {h:'Amount',k:'amount',num:true,fmt:r=>fINR(r.amount)}
     ], d.payment_split, {dim:'payment', key:r=>r.mode}));
-
-  // A6 Discounts + A7 Tax (combined KPI strip)
-  const dc=d.discounts||{}, tx=d.tax_summary||{};
-  H+=sec('🏷️','Discounts & Tax',
+  R.tax_summary=()=>{ const tx=d.tax_summary||{}; return sec('🧾','Tax / GST Summary',
     `<div class="kpi-grid">
-      ${kpi('Total Discount',fINR(dc.total_discount),'red')}
-      ${kpi('Bills w/ Discount',num(dc.bills_with_disc))}
-      ${kpi('Avg Discount',fINR(dc.avg_disc))}
       ${kpi('Total GST',fINR(tx.total_gst))}
       ${kpi('CGST',fINR(tx.cgst))}
       ${kpi('SGST',fINR(tx.sgst))}
       ${kpi('Taxable Value',fINR(tx.taxable))}
-    </div>`);
-
-  // B8 Per-table
-  H+=sec('🍽️','Revenue by Table',
+    </div>`); };
+  R.discount=()=>{ const dc=d.discounts||{}; return sec('🏷️','Discount Report',
+    `<div class="kpi-grid">
+      ${kpi('Total Discount',fINR(dc.total_discount),'red')}
+      ${kpi('Bills w/ Discount',num(dc.bills_with_disc))}
+      ${kpi('Avg Discount',fINR(dc.avg_disc))}
+    </div>`+
+    (d.discount_detail&&d.discount_detail.length?
+      `<div style="margin-top:16px;font-size:12px;color:var(--t2);font-weight:700;margin-bottom:6px">Per-Bill Discounts</div>`+
+      tableEl([
+        {h:'Invoice',k:'invoice_no'},
+        {h:'When',k:'at'},
+        {h:'Table',k:'table',fmt:r=>esc(r.table||'—')},
+        {h:'Bill Total',k:'grand_total',num:true,fmt:r=>fINR(r.grand_total)},
+        {h:'Discount',k:'discount',num:true,fmt:r=>fINR(r.discount)},
+        {h:'%',k:'disc_pct',num:true,fmt:r=>num(r.disc_pct)+'%'}
+      ], d.discount_detail):'')); };
+  R.per_table=()=>sec('🍽️','Revenue by Table',
     tableEl([
       {h:'Table',k:'table'},
       {h:'Bills',k:'bills',num:true,fmt:r=>num(r.bills)},
@@ -357,14 +436,9 @@ function render(d, vd){
       {h:'Gross',k:'gross',num:true,fmt:r=>fINR(r.gross)},
       {h:'AOV',k:'aov',num:true,fmt:r=>fINR(r.aov)}
     ], d.per_table, {dim:'table', key:r=>r.table}));
-
-  // B9 Per-section
-  H+=sec('📍','Revenue by Section',
+  R.per_section=()=>sec('📍','Revenue by Section',
     barList((d.per_section||[]).map(x=>({l:x.section,v:x.gross})),'l','v',fINR));
-
-  // B10/11 Turnaround + utilisation
-  const tt=d.table_turnaround||{};
-  H+=secN('⏱️','Table Turnaround',
+  R.turnaround=()=>{ const tt=d.table_turnaround||{}; return secN('⏱️','Table Turnaround & Utilisation',
     `<div class="kpi-grid">
       ${kpi('Sessions',num(tt.sessions))}
       ${kpi('Avg Time / Table',(tt.avg_minutes||0)+' min','acc')}
@@ -375,10 +449,8 @@ function render(d, vd){
       {h:'Table',k:'table'},
       {h:'Turns',k:'turns',num:true,fmt:r=>num(r.turns)},
       {h:'Avg Min',k:'avg_minutes',num:true,fmt:r=>num(r.avg_minutes)}
-    ], d.table_utilisation)+`</div>`, _ocNote);
-
-  // B12 Server performance
-  H+=sec('🧑‍🍳','Server Performance',
+    ], d.table_utilisation)+`</div>`, _ocNote); };
+  R.server=()=>sec('🧑‍🍳','Server / Waiter Performance',
     tableEl([
       {h:'Server',k:'server'},
       {h:'Bills',k:'bills',num:true,fmt:r=>num(r.bills)},
@@ -386,46 +458,28 @@ function render(d, vd){
       {h:'Gross',k:'gross',num:true,fmt:r=>fINR(r.gross)},
       {h:'AOV',k:'aov',num:true,fmt:r=>fINR(r.aov)}
     ], d.server_performance, {dim:'server', key:r=>r.server}));
-
-  // C13 Top / bottom items
-  H+=sec('🔝','Top Selling Items',
+  R.itemised=()=>sec('🔝','Itemised Sales Report',
     tableEl([
       {h:'Item',k:'name'},
       {h:'Qty',k:'qty',num:true,fmt:r=>num(r.qty)},
       {h:'Revenue',k:'revenue',num:true,fmt:r=>fINR(r.revenue)}
-    ], d.top_items, {dim:'item', key:r=>r.name}));
-  H+=sec('🔻','Slowest Items',
-    tableEl([
-      {h:'Item',k:'name'},
-      {h:'Qty',k:'qty',num:true,fmt:r=>num(r.qty)},
-      {h:'Revenue',k:'revenue',num:true,fmt:r=>fINR(r.revenue)}
-    ], d.bottom_items, {dim:'item', key:r=>r.name}));
-
-  // C14 Category mix
-  H+=sec('📦','Category Mix',
+    ], d.top_items, {dim:'item', key:r=>r.name})+
+    (d.bottom_items&&d.bottom_items.length?
+      `<div style="margin-top:16px;font-size:12px;color:var(--t2);font-weight:700;margin-bottom:6px">Slowest Movers</div>`+
+      tableEl([
+        {h:'Item',k:'name'},
+        {h:'Qty',k:'qty',num:true,fmt:r=>num(r.qty)},
+        {h:'Revenue',k:'revenue',num:true,fmt:r=>fINR(r.revenue)}
+      ], d.bottom_items, {dim:'item', key:r=>r.name}):''));
+  R.category_mix=()=>sec('📦','Category Mix',
     barList((d.category_mix||[]).map(c=>({l:c.category,v:c.revenue,_cat:c.category})),'l','v',fINR,{dim:'category',key:r=>r._cat}));
-
-  // C16 Voids
-  const v=d.voids||{};
-  H+=sec('🚫','Voids & Wastage',
-    `<div class="kpi-grid">
-      ${kpi('Voided Bills',num(v.voided_bills),'red')}
-      ${kpi('Voided Amount',fINR(v.voided_amount),'red')}
-      ${kpi('Voided Items Value',fINR(v.voided_items_value),'red')}
-    </div>`);
-
-  // C17 KOT analysis
-  const k=d.kot_analysis||{};
-  H+=secN('🧾','KOT Analysis',
+  R.kot=()=>{ const k=d.kot_analysis||{}; return secN('🧾','KOT Analysis',
     `<div class="kpi-grid">
       ${kpi('Sessions',num(k.sessions))}
       ${kpi('Total KOTs',num(k.total_kots))}
       ${kpi('Avg KOTs / Table',k.avg_kots||0,'acc')}
-    </div>`, _ocNote);
-
-  // D18 QR funnel
-  const q=d.qr_funnel||{};
-  H+=secN('📱','QR Order Funnel',
+    </div>`, _ocNote); };
+  R.qr_funnel=()=>{ const q=d.qr_funnel||{}; return secN('📱','QR Order Funnel',
     `<div class="kpi-grid">
       ${kpi('Placed',num(q.placed))}
       ${kpi('Accepted',num(q.accepted),'grn')}
@@ -433,18 +487,13 @@ function render(d, vd){
       ${kpi('Rejected',num(q.rejected),'red')}
       ${kpi('Pending',num(q.pending))}
       ${kpi('Expired',num(q.expired))}
-    </div>`, 'whole period — not filtered');
-
-  // D20 QR reject reasons
-  H+=secN('❓','QR Rejection Reasons',
-    tableEl([
-      {h:'Reason',k:'reason'},
-      {h:'Count',k:'count',num:true,fmt:r=>num(r.count)}
-    ], d.qr_reject_reasons), 'whole period — not filtered');
-
-  // E21 Day-close
-  const dcl=d.day_close||{};
-  H+=secN('💼',"Today's Day-Close",
+    </div>`,'whole period — not filtered')+
+    secN('❓','QR Rejection Reasons',
+      tableEl([
+        {h:'Reason',k:'reason'},
+        {h:'Count',k:'count',num:true,fmt:r=>num(r.count)}
+      ], d.qr_reject_reasons),'whole period — not filtered'); };
+  R.day_close=()=>{ const dcl=d.day_close||{}; return secN('💼',"Day-Close / Z-Report",
     `<div class="kpi-grid">
       ${kpi('Date',esc(dcl.date||'—'))}
       ${kpi('Bills',num(dcl.bills))}
@@ -453,21 +502,18 @@ function render(d, vd){
       ${kpi('UPI',fINR(dcl.upi))}
       ${kpi('Card',fINR(dcl.card))}
       ${kpi('Credit',fINR(dcl.credit),'red')}
-    </div>`, "today's snapshot");
-
-  // E22 Open tables
-  H+=sec('🔓','Open / Unsettled Tables',
+    </div>`, "today's snapshot"); };
+  R.open_tables=()=>sec('🔓','Open / Unsettled Tables',
     tableEl([
       {h:'Table',k:'table'},
       {h:'Mins Open',k:'mins_open',num:true,fmt:r=>num(r.mins_open)},
       {h:'Covers',k:'covers',num:true,fmt:r=>r.covers==null?'—':num(r.covers)},
       {h:'Server',k:'server',fmt:r=>esc(r.server||'—')}
     ], d.open_tables));
-
-  // ── Void & Delete audit report (from sbp_audit_log) ──
-  if(vd){
+  R.void=()=>{
+    if(!vd) return `<div class="empty-s">No void/delete activity in this period</div>`;
     const vs=vd.summary||{};
-    H+=sec('🗑️','Void & Delete Audit',
+    return sec('🗑️','Void & Delete Audit',
       `<div class="kpi-grid">
         ${kpi('Bills Voided',num(vs.bills_voided),'red')}
         ${kpi('Bills Deleted',num(vs.bills_deleted),'red')}
@@ -494,11 +540,54 @@ function render(d, vd){
         {h:'Reason',k:'reason'},
         {h:'Authorized',k:'authorized_by',fmt:r=>esc(r.authorized_by)+(r.auth_method&&r.auth_method!=='none'?` (${esc(r.auth_method)})`:'')}
       ], vd.events));
+  };
+
+  // Order for "Show Everything"
+  const ALL=['sales_summary','daily_trend','day_part','payment_split',
+    'tax_summary','discount','per_table','per_section','turnaround',
+    'server','itemised','category_mix','kot','qr_funnel','day_close',
+    'open_tables','void'];
+
+  let body='';
+  const fb=(fl.category||fl.item||fl.table)?
+    `<div class="sec" style="padding:12px 16px;border-color:var(--acc)">
+      <div style="font-size:12.5px;color:var(--acc);font-weight:700">
+      🔎 Filtered: ${[fl.category&&('Category = '+esc(fl.category)),
+        fl.item&&('Item = '+esc(fl.item)),
+        fl.table&&('Table = '+esc(fl.table))].filter(Boolean).join('  ·  ')}</div></div>`:'';
+
+  if(_report==='all'){
+    body=fb+ALL.map(id=>R[id]?R[id]():'').join('');
+  } else if(R[_report]){
+    body=fb+R[_report]();
+  } else {
+    body=`<div class="empty-s">Unknown report: ${esc(_report)}</div>`;
   }
 
-  $('report-root').innerHTML=H;
-  bindPeriod();
+  $('report-root').innerHTML=
+    `<div id="print-area">`+
+      `<div class="print-only print-head"></div>`+
+      body+
+    `</div>`+
+    `<div class="no-print" style="margin-top:18px;text-align:center">
+      <button class="btn-pri" onclick="printReport()">🖨️ Print this report</button>
+    </div>`;
+  // Print header (shop + report + range) — only visible when printing
+  const ph=document.querySelector('.print-head');
+  if(ph){
+    const rng=d.range||{};
+    ph.innerHTML=`<div style="font-weight:800;font-size:16px">${esc(_reportLabel())}</div>
+      <div style="font-size:12px;color:#555">${esc(rng.from||'')} → ${esc(rng.to||'')}`+
+      ((fl.category||fl.item||fl.table)?`  ·  Filtered`:'')+`</div><hr>`;
+  }
 }
+
+function _reportLabel(){
+  const o=document.getElementById('rep-sel');
+  if(o&&o.selectedIndex>=0) return o.options[o.selectedIndex].text;
+  return 'Report';
+}
+function printReport(){ window.print(); }
 
 function bindPeriod(){
   document.querySelectorAll('.pchip').forEach(c=>c.classList.toggle('on',c.dataset.p===_preset));
@@ -592,7 +681,12 @@ function drillBack(){
 (async function init(){
   try { SBPSidebar.render('restaurant_reports'); } catch(e){}
   if(!isBiz()){ showGate(); return; }
+  // Mount the persistent picker (stays put; not re-rendered per run).
+  $('picker-mount').innerHTML=pickerBar();
   setPreset('30d');
+  document.querySelectorAll('.pchip').forEach(c=>c.classList.toggle('on',c.dataset.p===_preset));
+  fillFilterSelects();
+  $('report-root').innerHTML=`<div class="sec"><div class="empty-s">Pick a report, choose a date range, then press ▶ Run Report.</div></div>`;
 })();
 </script>
 </body>
