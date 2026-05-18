@@ -456,8 +456,8 @@ html[lang="hi"] .lang-en{display:none!important}
 
   <!-- Free plan lock -->
   <div id="locked" class="locked" style="display:none">
-    <h3>📋 Folio Management — Pro feature</h3>
-    <p>Full hotel folio with extras catalog, multi-payment ledger, and audit log. Upgrade to unlock.</p>
+    <h3>📋 Folio Management — Business</h3>
+    <p>Full hotel folio with extras catalog, multi-payment ledger, and audit log — part of the Business plan (₹499/mo). Hotels get a 60-day free trial.</p>
     <button class="btn-pri-md" onclick="window.location.href='subscription.html'">⚡ Upgrade</button>
   </div>
 
@@ -1725,7 +1725,7 @@ async function init(){
     return;
   }
 
-  if(!isPro()){
+  if(!isBiz()){
     $('#locked').style.display = 'block';
     return;
   }

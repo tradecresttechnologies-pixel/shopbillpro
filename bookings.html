@@ -226,7 +226,7 @@ body{background:var(--bg);color:var(--text);min-height:100dvh;overflow-x:hidden}
   <div id="locked-banner" class="locked-banner" style="display:none">
     <div class="lb-t">🔒 <span class="lang-en">Hospitality is a Pro feature</span></div>
     <div class="lb-m"><span class="lang-en">Take bookings, check guests in/out, generate folios. Available on Pro &amp; Business plans.</span></div>
-    <button class="btn-upgrade" onclick="window.location.href='subscription.html'">🚀 Upgrade to Pro — ₹99/mo</button>
+    <button class="btn-upgrade" onclick="window.location.href='subscription.html'">🚀 Upgrade to Business — ₹499/mo</button>
   </div>
 
   <div id="no-rooms-banner" class="locked-banner" style="display:none">
@@ -460,7 +460,7 @@ async function init(){
   _shop=JSON.parse(localStorage.getItem('sbp_shop')||'{}');
   _shopId=localStorage.getItem('sbp_shop_id')||_shop.id;
 
-  if(isFree()){
+  if(!isBiz()){
     $('#loader').style.display='none';
     $('#locked-banner').style.display='block';
     return;

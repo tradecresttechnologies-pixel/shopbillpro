@@ -245,8 +245,8 @@ input[type=checkbox]:checked + .tog::after{transform:translateX(18px);background
 
   <!-- Free plan lock -->
   <div id="locked" class="locked" style="display:none">
-    <h3>🏨 Walk-in is a Pro feature</h3>
-    <p>Atomic create-booking + check-in for guests with no reservation. Upgrade to unlock.</p>
+    <h3>🏨 Walk-in — Business</h3>
+    <p>Walk-in booking + check-in is part of the Business plan (₹499/mo). Hotels get a 60-day free trial.</p>
     <button class="btn-pri" onclick="window.location.href='subscription.html'">⚡ Upgrade</button>
   </div>
 
@@ -819,7 +819,7 @@ async function init(){
     return;
   }
 
-  if(!isPro()){
+  if(!isBiz()){
     $('#locked').style.display = 'block';
     return;
   }

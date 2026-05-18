@@ -425,6 +425,22 @@ function startAutoRefresh() {
   const theme = localStorage.getItem('sbp_theme') || 'dark';
   document.getElementById('theme-btn').textContent = theme === 'light' ? '🌙' : '☀️';
 
+  // Plan gate: housekeeping is part of the hotel/Business suite.
+  // Self-contained (page has no shared plan helpers); mirrors the
+  // canonical _sbpPlanInfo logic incl. enterprise→business + expiry.
+  // Trial hotels have plan='business' so they pass.
+  {
+    const s = JSON.parse(localStorage.getItem('sbp_shop') || '{}');
+    let plan = (s.plan || 'free').toLowerCase();
+    if (plan === 'enterprise') plan = 'business';
+    const exp = s.plan_expires_at;
+    if (exp && plan !== 'free' && new Date(exp) < new Date()) plan = 'free';
+    if (plan !== 'business') {
+      document.body.innerHTML = '<div style="max-width:460px;margin:80px auto;text-align:center;font-family:system-ui;color:#F1F5F9;background:#121826;padding:40px 28px;border-radius:16px;border:1px solid #252F44"><div style="font-size:42px">🧹</div><div style="font-family:Outfit,sans-serif;font-size:19px;font-weight:800;margin:12px 0 8px">Housekeeping — Business</div><div style="font-size:13px;color:#94A3B8;line-height:1.6;margin-bottom:22px">Housekeeping management is part of the Business plan (₹499/mo). Hotels get a 60-day free trial.</div><button onclick="window.location.href=\'subscription.html\'" style="background:#F5A623;color:#0A0E1A;border:none;border-radius:10px;padding:11px 20px;font-weight:800;cursor:pointer">Upgrade to Business</button></div>';
+      return;
+    }
+  }
+
   const ok = await checkAuth();
   if (!ok) return;
 

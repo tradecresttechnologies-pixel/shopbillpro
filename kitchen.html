@@ -529,8 +529,8 @@ function startTimer(){
 
 // ── Init ──────────────────────────────────────────────────────────
 (async function init(){
-  if(!isPro()){
-    document.getElementById('kds-grid').innerHTML=`<div class="kds-empty" style="grid-column:1/-1"><div class="kds-empty-icon">👨‍🍳</div><div class="kds-empty-title">Kitchen Display</div><div class="kds-empty-msg">Upgrade to Pro or Business to use the Kitchen Display System.</div></div>`;
+  if(!isBiz()){
+    document.getElementById('kds-grid').innerHTML=`<div class="kds-empty" style="grid-column:1/-1"><div class="kds-empty-icon">👨‍🍳</div><div class="kds-empty-title">Kitchen Display — Business</div><div class="kds-empty-msg">The Kitchen Display System is part of the Business plan (₹499/mo). Restaurants get a 60-day free trial.</div></div>`;
     SBPSidebar.render('kitchen');
     return;
   }

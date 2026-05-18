@@ -2187,6 +2187,12 @@ function updatePaneBadge(){
 // ── Init ──────────────────────────────────────────────────────────
 async function init(){
   if(!_tableId || !_shopId){ toast('Missing table info','e'); return; }
+  // Plan gate: dine-in running order is Business-only (restaurants get
+  // a 60-day trial during which plan='business', so trial users pass).
+  if(!isBiz()){
+    document.body.innerHTML='<div style="max-width:460px;margin:80px auto;text-align:center;font-family:system-ui;color:#F1F5F9;background:#121826;padding:40px 28px;border-radius:16px;border:1px solid #252F44"><div style="font-size:42px">🍽️</div><div style="font-family:Outfit,sans-serif;font-size:19px;font-weight:800;margin:12px 0 8px">Table Service — Business</div><div style="font-size:13px;color:#94A3B8;line-height:1.6;margin-bottom:22px">Dine-in table billing is part of the Business plan (₹499/mo). Restaurants get a 60-day free trial.</div><button onclick="window.location.href=\'subscription.html\'" style="background:#F5A623;color:#0A0E1A;border:none;border-radius:10px;padding:11px 20px;font-weight:800;cursor:pointer">Upgrade to Business</button></div>';
+    return;
+  }
 
   $('hdr-table').textContent = 'T' + _tableNum;
   document.title = 'Table T' + _tableNum + ' — Running Order';

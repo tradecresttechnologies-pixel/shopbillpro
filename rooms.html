@@ -208,9 +208,9 @@ body{background:var(--bg);color:var(--text);min-height:100dvh;overflow-x:hidden}
   <div id="loader" class="loader"><div class="spinner"></div><div style="font-size:11px;color:var(--t2)">Loading…</div></div>
 
   <div id="locked-banner" class="locked-banner" style="display:none">
-    <div class="lb-t">🔒 <span class="lang-en">Hospitality is a Pro feature</span><span class="lang-hi">हॉस्पिटैलिटी Pro फीचर है</span></div>
-    <div class="lb-m"><span class="lang-en">Manage room inventory, take bookings, and issue checkout bills. Available on Pro &amp; Business plans.</span></div>
-    <button class="btn-upgrade" onclick="window.location.href='subscription.html'">🚀 Upgrade to Pro — ₹99/mo</button>
+    <div class="lb-t">🔒 <span class="lang-en">Hospitality — Business plan</span><span class="lang-hi">हॉस्पिटैलिटी — बिज़नेस प्लान</span></div>
+    <div class="lb-m"><span class="lang-en">Room inventory, bookings, and checkout billing are part of the Business plan (₹499/mo). Hotels get a 60-day free trial.</span></div>
+    <button class="btn-upgrade" onclick="window.location.href='subscription.html'">🚀 Upgrade to Business — ₹499/mo</button>
   </div>
 
   <div id="main" style="display:none">
@@ -322,7 +322,7 @@ async function init(){
   _shop=JSON.parse(localStorage.getItem('sbp_shop')||'{}');
   _shopId=localStorage.getItem('sbp_shop_id')||_shop.id;
 
-  if(isFree()){
+  if(!isBiz()){
     $('#loader').style.display='none';
     $('#locked-banner').style.display='block';
     return;

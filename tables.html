@@ -968,8 +968,8 @@ async function deleteTable(){
 
 // ── Init ──────────────────────────────────────────────────────────
 (async function init(){
-  if(!isPro()){
-    document.getElementById('pane-tables').innerHTML=`<div class="plan-lock"><div class="plan-lock-icon">🍽️</div><div class="plan-lock-title">Table Management</div><div class="plan-lock-msg">Upgrade to Pro or Business to manage restaurant tables, track status, and link bills to tables.</div><button class="btn-pri" onclick="window.location.href='subscription.html'">Upgrade Now</button></div>`;
+  if(!isBiz()){
+    document.getElementById('pane-tables').innerHTML=`<div class="plan-lock"><div class="plan-lock-icon">🍽️</div><div class="plan-lock-title">Table Management — Business</div><div class="plan-lock-msg">Restaurant table management is part of the Business plan (₹499/mo). Restaurants get a 60-day free trial.</div><button class="btn-pri" onclick="window.location.href='subscription.html'">Upgrade to Business</button></div>`;
     SBPSidebar.render('tables');
     return;
   }
