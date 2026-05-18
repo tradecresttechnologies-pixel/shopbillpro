@@ -1,3 +1,26 @@
+# ⚠️ READ FIRST — why the two issues you saw happen
+
+## "Restaurant Reports not in sidebar"
+The sidebar needs BOTH, and BOTH must be deployed:
+  1. db/migrations/075_register_restaurant_reports_module.sql  → RUN IN SUPABASE
+  2. lib/sidebar-engine.js                                     → PUSH (overwrites old)
+If either is missing the link will NOT appear. Verify after deploy:
+  SELECT profile, module_code, status FROM sbp_module_profiles
+  WHERE module_code='restaurant_reports';   -- must return active rows
+Hard-refresh the app (Ctrl+Shift+R) — sidebar-engine.js is cached.
+
+## "Whole page blinking"
+Cause: tables.html called SBPSidebar.render() AFTER `await reloadAll()`,
+so the page painted with an empty 220px sidebar gap until the network
+finished. FIXED: tables.html now renders the sidebar synchronously
+BEFORE the await. Other restaurant pages already did this (verified) —
+the blink was specific to tables.html. Re-push tables.html.
+
+CAPTURE VERIFIED: bill at 02:04 shows covers=1, server_name=Owner,
+customer_id set. Phase A + 076 confirmed working end to end.
+
+────────────────────────────────────────────────────────────────────
+
 # Batch 069 + 070 + 071 — Table Occupancy & Session Timer Fixes
 
 Folder paths below are **repo-relative**. Drop each file at the same path

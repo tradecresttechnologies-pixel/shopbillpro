@@ -974,6 +974,9 @@ async function deleteTable(){
     return;
   }
   if(!_shopId){ toast('No shop found — please log in again', 'e'); return; }
+  // Paint the sidebar BEFORE any await — otherwise the page shows a
+  // blank 220px gap until the post-network render, which is the blink.
+  try { SBPSidebar.render('tables'); } catch(e){}
   await reloadAll();
   subscribeGuestOrders();
 })();
