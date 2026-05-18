@@ -2222,6 +2222,29 @@ async function init(){
     }
   } catch(e){ /* non-fatal */ }
 
+  // Apply customer captured at Seat Guests (name/mobile), if any.
+  // 076's sbp_ro_set_customer dedupes by phone server-side and only
+  // creates a saved customer when a valid mobile is present.
+  try {
+    const cuk = 'sbp_seat_cust_' + _tableId;
+    const rawC = sessionStorage.getItem(cuk);
+    if(rawC && _order && !_order.customer_id){
+      const c = JSON.parse(rawC);
+      if(c && (c.n || c.p)){
+        const r = await _sb.rpc('sbp_ro_set_customer', {
+          p_shop_id: _shopId, p_order_id: _order.id,
+          p_name: c.n || '', p_phone: c.p || ''
+        });
+        if(r?.data?.ok){
+          _order.cust_name   = r.data.cust_name;
+          _order.cust_phone  = r.data.cust_phone;
+          _order.customer_id = r.data.customer_id;
+        }
+      }
+      sessionStorage.removeItem(cuk);
+    }
+  } catch(e){ /* non-fatal */ }
+
   // Robust covers capture: a table can be opened via Seat Guests OR
   // Take Order / Resume — only the first path prompts. If this is a
   // FRESH session (not resumed) and covers is still unset, ask here so
@@ -3218,6 +3241,26 @@ async function acceptGuestOrder(){
       closeGuestReview();
     }
 
+    // Auto-carry the QR guest's typed name/phone onto the session so
+    // staff doesn't re-enter it at billing. 076's RPC dedupes by phone
+    // and only saves a customer when a valid mobile was given.
+    try {
+      const gName  = (g.guest_name  || '').trim();
+      const gPhone = (g.guest_phone || '').trim();
+      const roId   = data.running_order_id;
+      if(roId && (gName || gPhone)){
+        const rc = await _sb.rpc('sbp_ro_set_customer', {
+          p_shop_id: _shopId, p_order_id: roId,
+          p_name: gName, p_phone: gPhone
+        });
+        if(rc?.data?.ok && _order){
+          _order.cust_name   = rc.data.cust_name;
+          _order.cust_phone  = rc.data.cust_phone;
+          _order.customer_id = rc.data.customer_id;
+        }
+      }
+    } catch(_){ /* non-fatal — customer can still be set at billing */ }
+
     // Pull the newly-added items onto the panel. accept returns the
     // running_order_id it appended to — adopt it so the panel reloads
     // even if this page was opened before any running order existed
@@ -3415,6 +3458,26 @@ function openBillWizard(){
   const discEl = document.getElementById('bw-disc-input');if(discEl) discEl.value = '';
   const sugEl  = document.getElementById('bw-cust-suggest'); if(sugEl){ sugEl.style.display='none'; sugEl.innerHTML=''; }
   const stEl   = document.getElementById('bw-cust-status'); if(stEl){ stEl.textContent=''; stEl.classList.remove('found'); }
+
+  // Prefill from the session customer captured at Seat Guests or
+  // auto-carried from the QR guest — so staff never re-types it.
+  if(_order && (_order.cust_name || _order.cust_phone)){
+    if(nameEl) nameEl.value = _order.cust_name || '';
+    if(waEl)   waEl.value   = _order.cust_phone || '';
+    if(_order.customer_id){
+      _bwCustomer = {
+        id:        _order.customer_id,
+        name:      _order.cust_name || '',
+        whatsapp:  _order.cust_phone || '',
+        phone:     _order.cust_phone || '',
+      };
+      if(stEl){ stEl.textContent = '✓ Saved customer'; stEl.classList.add('found'); }
+    } else if(_order.cust_name || _order.cust_phone){
+      _bwCustomer = { isNew: true,
+        name: _order.cust_name || '', whatsapp: _order.cust_phone || '',
+        phone: _order.cust_phone || '' };
+    }
+  }
 
   renderBillWizardItems();
   recomputeBillTotal();

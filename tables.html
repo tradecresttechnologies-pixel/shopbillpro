@@ -796,7 +796,7 @@ function seatGuests(tableId, tableNum){
   const body = $('st-opts');
   $('st-modal-title').textContent = `Seat Guests · Table T${tableNum}`;
   const quick = [1,2,3,4,5,6,8].map(n =>
-    `<button class="cv-pick" onclick="_doSeat('${tableId}','${tableNum}',${n})">${n}</button>`
+    `<button class="cv-pick" onclick="_seatStep2('${tableId}','${tableNum}',${n})">${n}</button>`
   ).join('');
   body.innerHTML =
     `<div class="cv-wrap">` +
@@ -809,17 +809,42 @@ function seatGuests(tableId, tableNum){
         `<input id="cv-input" type="number" min="1" max="99" inputmode="numeric" ` +
           `placeholder="Enter guest count" class="cv-input">` +
         `<button class="btn-pri" style="width:100%;margin-top:10px" ` +
-          `onclick="_doSeat('${tableId}','${tableNum}',parseInt(document.getElementById('cv-input').value,10))">Seat</button>` +
+          `onclick="_seatStep2('${tableId}','${tableNum}',parseInt(document.getElementById('cv-input').value,10))">Next</button>` +
       `</div>` +
-      `<button class="cv-skip" onclick="_doSeat('${tableId}','${tableNum}',null)">Skip — not sure</button>` +
+      `<button class="cv-skip" onclick="_seatStep2('${tableId}','${tableNum}',null)">Skip guest count</button>` +
     `</div>`;
 }
 function _seatCustom(tableId, tableNum){
   const c = document.getElementById('cv-custom');
   if(c){ c.style.display = 'block'; const i = document.getElementById('cv-input'); if(i) i.focus(); }
 }
-async function _doSeat(tableId, tableNum, covers){
+// Step 2: optional customer name + mobile. Most diners are anonymous,
+// so "Skip — walk-in" is prominent. A saved customer is created only
+// when a valid mobile is given (server-side guardrail in 076).
+function _seatStep2(tableId, tableNum, covers){
   if(covers !== null && (isNaN(covers) || covers < 1 || covers > 99)) covers = null;
+  const body = $('st-opts');
+  body.innerHTML =
+    `<div class="cv-wrap">` +
+      `<div class="cv-q">Customer details <span style="font-size:12px;color:var(--t2);font-weight:600">(optional)</span></div>` +
+      `<div class="cv-sub">Add a mobile to save this customer for history, loyalty &amp; WhatsApp bill. Leave blank for a walk-in.</div>` +
+      `<input id="seat-cust-name" type="text" class="cv-input" style="margin-bottom:10px" ` +
+        `placeholder="Customer name" autocomplete="off">` +
+      `<input id="seat-cust-phone" type="tel" inputmode="numeric" class="cv-input" ` +
+        `placeholder="Mobile number" autocomplete="off">` +
+      `<button class="btn-pri" style="width:100%;margin-top:14px" ` +
+        `onclick="_doSeat('${tableId}','${tableNum}',${covers===null?'null':covers},true)">Seat &amp; Save</button>` +
+      `<button class="cv-skip" onclick="_doSeat('${tableId}','${tableNum}',${covers===null?'null':covers},false)">Skip — walk-in</button>` +
+    `</div>`;
+  setTimeout(()=>{ const n=document.getElementById('seat-cust-name'); if(n) n.focus(); }, 50);
+}
+async function _doSeat(tableId, tableNum, covers, withCust){
+  if(covers !== null && (isNaN(covers) || covers < 1 || covers > 99)) covers = null;
+  let cName = '', cPhone = '';
+  if(withCust){
+    cName  = (document.getElementById('seat-cust-name')?.value || '').trim();
+    cPhone = (document.getElementById('seat-cust-phone')?.value || '').trim();
+  }
   closeModal('status-modal');
   const { data, error } = await _sb.rpc('sbp_tables_set_status', {
     p_shop_id: _shopId, p_table_id: tableId, p_status: 'occupied'
@@ -830,7 +855,13 @@ async function _doSeat(tableId, tableNum, covers){
   if(covers !== null){
     try { sessionStorage.setItem('sbp_seat_covers_'+tableId, String(covers)); } catch(e){}
   }
-  toast(`🪑 Table T${tableNum} seated${covers?` · ${covers} guests`:''} — QR ordering is now open`, 's');
+  if(cName || cPhone){
+    try {
+      sessionStorage.setItem('sbp_seat_cust_'+tableId, JSON.stringify({n:cName, p:cPhone}));
+    } catch(e){}
+  }
+  const tag = (cName||cPhone) ? ` · ${cName||'customer'}` : '';
+  toast(`🪑 Table T${tableNum} seated${covers?` · ${covers} guests`:''}${tag} — QR ordering is now open`, 's');
   render();
 }
 
