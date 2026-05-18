@@ -557,6 +557,42 @@ let _menu = [];            // array of menu items
 let _cats = ['All'];       // category list
 let _activeCat = 'All';
 let _cart = {};            // { service_id: { qty, notes, item } }
+
+// ── Cart persistence ────────────────────────────────────────────────
+// The cart is the guest's work; a reload, accidental back-swipe, or the
+// browser reclaiming the tab must NOT wipe it. sessionStorage survives
+// reload, is scoped to this tab/session, and auto-clears when the guest
+// closes the tab — exactly right for a per-visit QR cart. Keyed by
+// slug+table so two tabs / two tables never collide.
+function _cartKey(){ return 'sbp_qcart_' + _slug + '_' + _tableNumber; }
+function saveCart(){
+  try { sessionStorage.setItem(_cartKey(), JSON.stringify(_cart)); } catch(e){}
+}
+function clearCart(){
+  _cart = {};
+  try { sessionStorage.removeItem(_cartKey()); } catch(e){}
+}
+function loadCart(){
+  try {
+    const raw = sessionStorage.getItem(_cartKey());
+    if(!raw) return;
+    const saved = JSON.parse(raw);
+    if(saved && typeof saved === 'object'){
+      // Re-validate against the freshly loaded menu: drop items no
+      // longer on the menu, refresh price/name from the live item so a
+      // price change can't desync the displayed total.
+      const clean = {};
+      Object.keys(saved).forEach(id => {
+        const live = _menu.find(m => String(m.id) === String(id));
+        const row  = saved[id];
+        if(live && row && row.qty > 0){
+          clean[id] = { qty: row.qty, notes: row.notes || '', item: live };
+        }
+      });
+      _cart = clean;
+    }
+  } catch(e){ /* corrupt cache — start empty */ }
+}
 let _placedOrderId = null; // after place
 let _statusSub = null;     // realtime channel for the placed order
 let _search = '';          // live menu search query
@@ -661,7 +697,10 @@ async function init(){
 
     renderTopbar();
     renderCategories();
+    loadCart();          // restore any in-progress order from this session
     renderMenu();
+    updateCartFAB();     // show the cart bar if items were restored
+    subscribeTableStatus();   // react live when staff seats the guest
     document.getElementById('splash').style.display = 'none';
     document.getElementById('main').style.display = '';
 
@@ -911,6 +950,7 @@ function addToCart(serviceId){
   } else {
     _cart[serviceId].qty += 1;
   }
+  saveCart();
   updateCartFAB();
   renderMenu();   // refresh "in cart" badge
   toast('Added to order', 'ok');
@@ -920,6 +960,7 @@ function removeFromCart(serviceId){
   if(!_cart[serviceId]) return;
   _cart[serviceId].qty -= 1;
   if(_cart[serviceId].qty <= 0) delete _cart[serviceId];
+  saveCart();
   updateCartFAB();
   renderMenu();
   renderCart();
@@ -928,6 +969,7 @@ function removeFromCart(serviceId){
 function bumpCart(serviceId){
   if(!_cart[serviceId]) return;
   _cart[serviceId].qty += 1;
+  saveCart();
   updateCartFAB();
   renderMenu();
   renderCart();
@@ -943,6 +985,7 @@ function toggleNoteInput(serviceId){
 function setItemNote(serviceId, val){
   if(!_cart[serviceId]) return;
   _cart[serviceId].notes = val;
+  saveCart();
   // Reflect toggle highlight
   const btn = document.getElementById('note-btn-' + serviceId);
   if(btn) btn.classList.toggle('has', val.trim().length > 0);
@@ -1095,6 +1138,7 @@ async function placeOrder(){
 
     // Success — switch to status screen
     _placedOrderId = data.guest_order_id;
+    clearCart();   // order is in; don't let a refresh resurrect it
     closeCart();
     showStatusScreen(data.guest_order_no, 'pending');
     subscribeToStatus(data.guest_order_id);
@@ -1160,12 +1204,61 @@ function resetForNewOrder(){
     _statusSub = null;
   }
   _placedOrderId = null;
-  _cart = {};
+  clearCart();
   $('order-notes').value = '';
   $('status-screen').classList.remove('open');
   updateCartFAB();
   renderMenu();
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// Live table status — react when staff seats the guest (no refresh)
+// ═══════════════════════════════════════════════════════════════════
+let _tableSub = null;
+function applyTableState(status){
+  const prev = _table.can_order;
+  _table.status    = status;
+  _table.can_order = (status === 'occupied' || status === 'reserved');
+  if(_table.can_order === prev) return;   // no change
+  // Re-skin the gated UI in place
+  renderTopbar();
+  syncOrderLock();
+  updateCartFAB();
+  if(_table.can_order){
+    toast('✅ Your table is ready — you can send your order now', 'ok');
+  }
+}
+function subscribeTableStatus(){
+  if(!_table || !_table.id) return;
+  if(_tableSub){ try { sb.removeChannel(_tableSub); } catch(e){} }
+  _tableSub = sb
+    .channel('tbl-status-' + _table.id)
+    .on('postgres_changes', {
+      event:  'UPDATE',
+      schema: 'public',
+      table:  'sbp_restaurant_tables',
+      filter: 'id=eq.' + _table.id,
+    }, (payload) => {
+      const r = payload.new;
+      if(r && r.status) applyTableState(r.status);
+    })
+    .subscribe();
+
+  // Safety net: realtime can drop on flaky restaurant wifi. Poll the
+  // public RPC every 20s as a fallback so the guest is never stuck on
+  // "waiting" after staff has actually seated them.
+  if(_tablePoll) clearInterval(_tablePoll);
+  _tablePoll = setInterval(async () => {
+    if(_table.can_order){ clearInterval(_tablePoll); return; }
+    try {
+      const { data } = await sb.rpc('sbp_guest_menu_get_public', {
+        p_slug: _slug, p_table_number: _tableNumber,
+      });
+      if(data?.ok && data.table) applyTableState(data.table.status);
+    } catch(e){ /* ignore; next tick retries */ }
+  }, 20000);
+}
+let _tablePoll = null;
 
 // ═══════════════════════════════════════════════════════════════════
 // Realtime subscription on placed order

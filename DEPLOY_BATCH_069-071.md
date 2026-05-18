@@ -149,3 +149,24 @@ The badge persists until the order is accepted/rejected — that is
 correct (it's still pending). It clears the instant accept succeeds.
 Because accept was failing (the 400), it never cleared. 071 fixes the
 accept, which fixes the lingering notification.
+
+---
+
+## qr-menu.html — UPDATE (cart persistence + live seating)
+
+Two guest-side bugs fixed (HTML only, no SQL):
+
+1. **Cart survived nothing.** A reload / back-swipe / tab reclaim wiped
+   the whole selection. Cart now persists in sessionStorage keyed by
+   slug+table: restored on load (re-validated against the live menu,
+   prices refreshed), saved after every add/remove/qty/note change,
+   and cleared only on successful order or explicit reset.
+2. **Seating didn't activate the open page.** The guest page only read
+   table status at load, so "Seat Guests" left them stuck on
+   "Waiting to be seated" until manual refresh. It now subscribes to
+   realtime UPDATE on sbp_restaurant_tables (filter id=eq.table) and
+   re-skins the gated UI in place the instant staff seats them
+   ("✅ Your table is ready"). 20s public-RPC poll fallback covers
+   flaky restaurant wifi where realtime drops.
+
+Deploy: replace qr-menu.html at repo root (no SQL).
