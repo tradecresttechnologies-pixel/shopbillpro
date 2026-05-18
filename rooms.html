@@ -33,6 +33,7 @@ const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZ
 const _sb=supabase.createClient(SB_URL,SB_KEY,{auth:{autoRefreshToken:true,persistSession:true,detectSessionInUrl:false}});
 window._sb=_sb;
 </script>
+<link rel="stylesheet" href="/styles.css"><!-- BATCH UI-1: canonical design system -->
 <style>
 .lang-hi{display:none!important}
 .lang-en{display:inline!important}

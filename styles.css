@@ -15,20 +15,23 @@
   --acc3:     #10B981;   /* Green — success/paid */
   --cyan:     #06B6D4;   /* Cyan — info */
   --amber:    #F59E0B;   /* Amber — warning */
+  --acc4:     #3B82F6;   /* Blue — info/links (promoted from folio/compliance, BATCH UI-1) */
+  --rose:     #F43F5E;   /* Rose — accent (promoted from folio/compliance, BATCH UI-1) */
 
-  /* Dark Theme (default) */
-  --bg:       #0F0F14;
-  --surf:     #18181F;
-  --surf2:    #22222C;
-  --surf3:    #2C2C38;
-  --bord:     #2E2E3A;
-  --text:     #F1F0F5;
-  --t2:       #9090A8;
-  --t3:       #5C5C70;
+  /* Dark Theme (default) — reconciled to de-facto 30-page palette (BATCH UI-1) */
+  --bg:       #0A0A12;
+  --surf:     #13131C;
+  --surf2:    #1C1C28;
+  --surf3:    #252534;
+  --bord:     #2A2A3A;
+  --text:     #F0EFF8;
+  --t2:       #8A8AA8;
+  --t3:       #4A4A60;
 
   /* Typography */
   --font-h:   'Outfit', sans-serif;
   --font-b:   'Noto Sans', 'Noto Sans Devanagari', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;  /* promoted, BATCH UI-1 */
 
   /* Spacing & Shape */
   --rs:       12px;
@@ -48,14 +51,15 @@
 
 /* Light Theme */
 [data-theme="light"] {
-  --bg:    #F5F4FF;
+  /* reconciled to de-facto 28-page light palette (BATCH UI-1) */
+  --bg:    #F0EEFF;
   --surf:  #FFFFFF;
-  --surf2: #F0EEF9;
-  --surf3: #E8E6F5;
-  --bord:  #DDD9F0;
-  --text:  #12111A;
-  --t2:    #6B6880;
-  --t3:    #9D9AB0;
+  --surf2: #F5F2FF;
+  --surf3: #EDE9FF;
+  --bord:  #DDD8F5;
+  --text:  #0F0E18;
+  --t2:    #5E5A7A;
+  --t3:    #A09CC0;
   --shadow:  0 4px 24px rgba(245,166,35,.12);
   --shadow2: 0 2px 12px rgba(0,0,0,.08);
 }
