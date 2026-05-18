@@ -780,12 +780,25 @@ function openTableSheet(tableId){
 // the user QR is now live. No forced navigation into the order screen.
 async function seatGuests(tableId, tableNum){
   closeModal('status-modal');
+  // Party size prompt — covers is required for per-cover reporting.
+  // Editable later at billing; blank/invalid = "not recorded".
+  let covers = null;
+  const ans = window.prompt(`How many guests at Table T${tableNum}?  (leave blank if unsure)`, '');
+  if(ans !== null){
+    const n = parseInt(ans, 10);
+    if(!isNaN(n) && n >= 1 && n <= 99) covers = n;
+  }
   const { data, error } = await _sb.rpc('sbp_tables_set_status', {
     p_shop_id: _shopId, p_table_id: tableId, p_status: 'occupied'
   });
   if(error || !data?.ok){ toast('Failed: '+(data?.error||error?.message||'?'), 'e'); return; }
   const idx = _tables.findIndex(t => t.id === tableId);
   if(idx >= 0) _tables[idx].status = 'occupied';
+  // Stash covers so running-order can apply it once sbp_ro_open creates
+  // the session (covers lives on the running order, not the table).
+  if(covers !== null){
+    try { sessionStorage.setItem('sbp_seat_covers_'+tableId, String(covers)); } catch(e){}
+  }
   toast(`🪑 Table T${tableNum} seated — QR ordering is now open`, 's');
   render();
 }
