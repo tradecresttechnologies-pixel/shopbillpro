@@ -582,6 +582,11 @@ html,body{height:100%;width:100%;margin:0;padding:0;overflow:hidden;background:v
   backdrop-filter:blur(6px);
 }
 .go-overlay.open{display:flex}
+.cv-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}
+.cv-pick{padding:15px 0;border-radius:11px;border:1.5px solid var(--bord);background:var(--surf2);color:var(--text);font-family:var(--font-h);font-size:17px;font-weight:800;cursor:pointer;transition:.15s}
+.cv-pick:hover{border-color:var(--acc);color:var(--acc)}
+.cv-pick:active{transform:scale(.95)}
+.cv-pick.sel{background:var(--acc);color:#0A0E1A;border-color:var(--acc)}
 .go-modal-box{
   background:var(--surf);border:1px solid var(--bord);border-radius:16px;
   max-width:520px;width:100%;
@@ -1864,6 +1869,32 @@ html,body{height:100%;width:100%;margin:0;padding:0;overflow:hidden;background:v
   </div>
 </div>
 
+<div class="go-overlay" id="cv-modal" onclick="if(event.target.id==='cv-modal')_cvClose()">
+  <div class="go-reject-box">
+    <div class="go-modal-hd">
+      <div class="go-modal-hd-left">
+        <span class="go-modal-em">👥</span>
+        <div>
+          <div class="go-modal-title">Guests at this table</div>
+          <div class="go-modal-sub" id="cv-modal-sub">Used for per-cover sales reports</div>
+        </div>
+      </div>
+      <button class="bw-close" onclick="_cvClose()">✕</button>
+    </div>
+    <div style="padding:18px 20px">
+      <div class="cv-grid" id="cv-grid"></div>
+      <div style="margin-top:12px">
+        <input type="number" class="bw-inp" id="cv-input" min="1" max="99"
+          inputmode="numeric" placeholder="Or enter a custom number">
+      </div>
+      <div style="display:flex;gap:8px;margin-top:14px">
+        <button class="go-act go-act-modify" style="flex:1" onclick="_cvSkip()">Skip / Clear</button>
+        <button class="go-act go-act-accept" style="flex:2" onclick="_cvConfirm()">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="bw-overlay" id="bw-modal" onclick="if(event.target.id==='bw-modal')closeBillWizard()">
   <div class="bw-modal" role="dialog" aria-labelledby="bw-title">
 
@@ -2191,6 +2222,15 @@ async function init(){
     }
   } catch(e){ /* non-fatal */ }
 
+  // Robust covers capture: a table can be opened via Seat Guests OR
+  // Take Order / Resume — only the first path prompts. If this is a
+  // FRESH session (not resumed) and covers is still unset, ask here so
+  // guest count is captured no matter how the table was opened. This
+  // is the true "when the table is opened" point.
+  if(!data.resumed && _order && (_order.covers == null)){
+    _cvOpen();   // native styled modal, not a browser prompt
+  }
+
   // Load menu
   await loadMenu();
   render();
@@ -2231,13 +2271,21 @@ function renderHeader(){
 // Set / correct guest count any time (covers required for per-cover
 // reporting; "editable at billing" — this is reachable throughout the
 // session, including from the billing flow).
-async function editCovers(){
+// Native covers modal — replaces browser prompt() on every path
+// (fresh open + manual edit via the 👥 chip).
+function _cvOpen(){
   if(!_order || !_order.id) return;
-  const cur = (_order.covers != null && _order.covers >= 1) ? String(_order.covers) : '';
-  const ans = window.prompt('Number of guests at this table? (blank to clear)', cur);
-  if(ans === null) return;                 // cancelled
-  let n = parseInt(ans, 10);
-  if(isNaN(n) || n < 1) n = null;          // clear / invalid → not recorded
+  const cur = (_order.covers != null && _order.covers >= 1) ? _order.covers : null;
+  const grid = document.getElementById('cv-grid');
+  grid.innerHTML = [1,2,3,4,5,6,8,10].map(n =>
+    `<button class="cv-pick${cur===n?' sel':''}" onclick="_cvConfirm(${n})">${n}</button>`
+  ).join('');
+  const inp = document.getElementById('cv-input');
+  if(inp) inp.value = cur || '';
+  document.getElementById('cv-modal').classList.add('open');
+}
+function _cvClose(){ document.getElementById('cv-modal').classList.remove('open'); }
+async function _cvApply(n){
   try {
     const { data, error } = await _sb.rpc('sbp_ro_set_covers', {
       p_shop_id: _shopId, p_order_id: _order.id, p_covers: n
@@ -2250,6 +2298,23 @@ async function editCovers(){
     renderHeader();
     toast(n ? `👥 ${n} guests set` : 'Guest count cleared', 's');
   } catch(e){ toast('Could not update guests', 'e'); }
+  _cvClose();
+}
+function _cvConfirm(n){
+  // n passed from a quick-pick button; else read the custom input
+  if(typeof n !== 'number'){
+    const v = parseInt(document.getElementById('cv-input').value, 10);
+    n = (!isNaN(v) && v >= 1 && v <= 99) ? v : null;
+  }
+  _cvApply(n);
+}
+function _cvSkip(){ _cvApply(null); }
+
+// 👥 chip → opens the same native modal (covers editable any time,
+// incl. at billing — "editable at billing" requirement).
+function editCovers(){
+  if(!_order || !_order.id) return;
+  _cvOpen();
 }
 
 // ── Load menu via authenticated POS RPC (gst_rate + hsn + is_available) ──

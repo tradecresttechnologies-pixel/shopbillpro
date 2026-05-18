@@ -158,6 +158,18 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .modal-actions button{flex:1}
 /* Status modal */
 .st-opts{display:flex;flex-direction:column;margin:14px 0}
+.cv-wrap{padding:6px 2px 2px}
+.cv-q{font-family:var(--font-h);font-size:18px;font-weight:800;color:var(--text);margin-bottom:4px}
+.cv-sub{font-size:12px;color:var(--t2);line-height:1.5;margin-bottom:16px}
+.cv-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}
+.cv-pick{padding:16px 0;border-radius:12px;border:1.5px solid var(--bord);background:var(--surf2);color:var(--text);font-family:var(--font-h);font-size:18px;font-weight:800;cursor:pointer;transition:var(--tr)}
+.cv-pick:hover{border-color:var(--acc);color:var(--acc);transform:translateY(-1px)}
+.cv-pick:active{transform:scale(.95)}
+.cv-pick.cv-more{font-size:14px;background:var(--surf);color:var(--t2)}
+.cv-input{width:100%;padding:13px 14px;border:1.5px solid var(--bord);border-radius:11px;background:var(--surf2);color:var(--text);font-family:var(--font-h);font-size:16px;font-weight:700}
+.cv-input:focus{outline:none;border-color:var(--acc)}
+.cv-skip{width:100%;margin-top:16px;padding:11px;background:none;border:none;color:var(--t2);font-size:12.5px;font-weight:700;cursor:pointer;font-family:var(--font-h);text-decoration:underline}
+.cv-skip:hover{color:var(--text)}
 .st-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:6px}
 @media(max-width:420px){.st-grid{grid-template-columns:1fr 1fr}}
 .st-opt{padding:14px;border-radius:12px;border:1.5px solid var(--bord);background:var(--surf2);cursor:pointer;transition:var(--tr);text-align:center;font-size:13px;font-weight:700}
@@ -778,28 +790,47 @@ function openTableSheet(tableId){
 
 // Seat guests = mark occupied, stay on the tables screen, and tell
 // the user QR is now live. No forced navigation into the order screen.
-async function seatGuests(tableId, tableNum){
+// Seat Guests → native in-sheet covers step (no browser prompt).
+// Swaps the action sheet to a styled guest-count picker, then seats.
+function seatGuests(tableId, tableNum){
+  const body = $('st-opts');
+  $('st-modal-title').textContent = `Seat Guests · Table T${tableNum}`;
+  const quick = [1,2,3,4,5,6,8].map(n =>
+    `<button class="cv-pick" onclick="_doSeat('${tableId}','${tableNum}',${n})">${n}</button>`
+  ).join('');
+  body.innerHTML =
+    `<div class="cv-wrap">` +
+      `<div class="cv-q">How many guests?</div>` +
+      `<div class="cv-sub">Used for per-cover sales reports. You can change it later from the 👥 chip.</div>` +
+      `<div class="cv-grid">${quick}` +
+        `<button class="cv-pick cv-more" onclick="_seatCustom('${tableId}','${tableNum}')">9+</button>` +
+      `</div>` +
+      `<div id="cv-custom" style="display:none;margin-top:12px">` +
+        `<input id="cv-input" type="number" min="1" max="99" inputmode="numeric" ` +
+          `placeholder="Enter guest count" class="cv-input">` +
+        `<button class="btn-pri" style="width:100%;margin-top:10px" ` +
+          `onclick="_doSeat('${tableId}','${tableNum}',parseInt(document.getElementById('cv-input').value,10))">Seat</button>` +
+      `</div>` +
+      `<button class="cv-skip" onclick="_doSeat('${tableId}','${tableNum}',null)">Skip — not sure</button>` +
+    `</div>`;
+}
+function _seatCustom(tableId, tableNum){
+  const c = document.getElementById('cv-custom');
+  if(c){ c.style.display = 'block'; const i = document.getElementById('cv-input'); if(i) i.focus(); }
+}
+async function _doSeat(tableId, tableNum, covers){
+  if(covers !== null && (isNaN(covers) || covers < 1 || covers > 99)) covers = null;
   closeModal('status-modal');
-  // Party size prompt — covers is required for per-cover reporting.
-  // Editable later at billing; blank/invalid = "not recorded".
-  let covers = null;
-  const ans = window.prompt(`How many guests at Table T${tableNum}?  (leave blank if unsure)`, '');
-  if(ans !== null){
-    const n = parseInt(ans, 10);
-    if(!isNaN(n) && n >= 1 && n <= 99) covers = n;
-  }
   const { data, error } = await _sb.rpc('sbp_tables_set_status', {
     p_shop_id: _shopId, p_table_id: tableId, p_status: 'occupied'
   });
   if(error || !data?.ok){ toast('Failed: '+(data?.error||error?.message||'?'), 'e'); return; }
   const idx = _tables.findIndex(t => t.id === tableId);
   if(idx >= 0) _tables[idx].status = 'occupied';
-  // Stash covers so running-order can apply it once sbp_ro_open creates
-  // the session (covers lives on the running order, not the table).
   if(covers !== null){
     try { sessionStorage.setItem('sbp_seat_covers_'+tableId, String(covers)); } catch(e){}
   }
-  toast(`🪑 Table T${tableNum} seated — QR ordering is now open`, 's');
+  toast(`🪑 Table T${tableNum} seated${covers?` · ${covers} guests`:''} — QR ordering is now open`, 's');
   render();
 }
 
