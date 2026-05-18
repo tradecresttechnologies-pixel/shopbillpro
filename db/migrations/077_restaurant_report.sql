@@ -113,24 +113,25 @@ BEGIN
 
     -- ── A3. Day-part (hourly buckets) ───────────────────────────────
     'day_part', COALESCE((
-      SELECT jsonb_agg(p ORDER BY p->>'part')
+      SELECT jsonb_agg(
+        jsonb_build_object('part', part, 'bills', bills, 'gross', gross)
+        ORDER BY part)
       FROM (
-        SELECT jsonb_build_object(
-          'part', CASE
+        SELECT
+          CASE
             WHEN h BETWEEN 6  AND 11 THEN '1 Breakfast (6-11)'
             WHEN h BETWEEN 12 AND 16 THEN '2 Lunch (12-16)'
             WHEN h BETWEEN 17 AND 21 THEN '3 Dinner (17-21)'
-            ELSE '4 Late (22-5)' END,
-          'bills', COUNT(*),
-          'gross', COALESCE(SUM(grand_total),0)
-        ) AS p
+            ELSE '4 Late (22-5)' END AS part,
+          COUNT(*)                       AS bills,
+          COALESCE(SUM(grand_total),0)   AS gross
         FROM (
           SELECT grand_total,
             EXTRACT(HOUR FROM (created_at AT TIME ZONE 'Asia/Kolkata'))::int AS h
           FROM rb
         ) hb
         GROUP BY 1
-      ) x
+      ) y
     ), '[]'::jsonb),
 
     -- ── A5. Payment mode split ──────────────────────────────────────
@@ -183,18 +184,19 @@ BEGIN
 
     -- ── B9. Per-section revenue (join tables for section) ───────────
     'per_section', COALESCE((
-      SELECT jsonb_agg(s ORDER BY (s->>'gross')::numeric DESC)
+      SELECT jsonb_agg(
+        jsonb_build_object('section', section, 'bills', bills, 'gross', gross)
+        ORDER BY gross DESC)
       FROM (
-        SELECT jsonb_build_object(
-          'section', COALESCE(NULLIF(trim(t.section),''),'Main'),
-          'bills',   COUNT(*),
-          'gross',   COALESCE(SUM(b.grand_total),0)
-        ) AS s
+        SELECT
+          COALESCE(NULLIF(trim(t.section),''),'Main') AS section,
+          COUNT(*)                          AS bills,
+          COALESCE(SUM(b.grand_total),0)    AS gross
         FROM rb b
         LEFT JOIN sbp_restaurant_tables t
           ON t.shop_id = p_shop_id AND t.table_number = b.table_number
         GROUP BY 1
-      ) x
+      ) y
     ), '[]'::jsonb),
 
     -- ── B10/11. Table turnaround + utilisation (sessions) ───────────
@@ -221,17 +223,20 @@ BEGIN
 
     -- ── B12. Server / waiter performance ────────────────────────────
     'server_performance', COALESCE((
-      SELECT jsonb_agg(s ORDER BY (s->>'gross')::numeric DESC)
+      SELECT jsonb_agg(
+        jsonb_build_object(
+          'server', server, 'bills', bills, 'gross', gross,
+          'covers', covers,
+          'aov', CASE WHEN bills>0 THEN ROUND(gross/bills,2) ELSE 0 END)
+        ORDER BY gross DESC)
       FROM (
-        SELECT jsonb_build_object(
-          'server', COALESCE(NULLIF(trim(server_name),''),'Unattributed'),
-          'bills',  COUNT(*),
-          'gross',  COALESCE(SUM(grand_total),0),
-          'covers', COALESCE(SUM(COALESCE(covers,0)),0),
-          'aov',    CASE WHEN COUNT(*)>0 THEN ROUND(SUM(grand_total)/COUNT(*),2) ELSE 0 END
-        ) AS s
+        SELECT
+          COALESCE(NULLIF(trim(server_name),''),'Unattributed') AS server,
+          COUNT(*)                              AS bills,
+          COALESCE(SUM(grand_total),0)          AS gross,
+          COALESCE(SUM(COALESCE(covers,0)),0)   AS covers
         FROM rb GROUP BY 1
-      ) x
+      ) y
     ), '[]'::jsonb),
 
     -- ── C13. Top / bottom items ─────────────────────────────────────
@@ -262,15 +267,16 @@ BEGIN
 
     -- ── C14. Category mix (bill_items.kind) ─────────────────────────
     'category_mix', COALESCE((
-      SELECT jsonb_agg(c ORDER BY (c->>'revenue')::numeric DESC)
+      SELECT jsonb_agg(
+        jsonb_build_object('category', category, 'qty', qty, 'revenue', revenue)
+        ORDER BY revenue DESC)
       FROM (
-        SELECT jsonb_build_object(
-          'category', COALESCE(NULLIF(trim(kind),''),'Uncategorised'),
-          'qty',      COALESCE(SUM(qty),0),
-          'revenue',  COALESCE(SUM(line_total),0)
-        ) AS c
+        SELECT
+          COALESCE(NULLIF(trim(kind),''),'Uncategorised') AS category,
+          COALESCE(SUM(qty),0)         AS qty,
+          COALESCE(SUM(line_total),0)  AS revenue
         FROM ri GROUP BY 1
-      ) x
+      ) y
     ), '[]'::jsonb),
 
     -- ── C16. Voids / wastage ────────────────────────────────────────

@@ -466,3 +466,23 @@ so it no longer 404s — ship them together.
 2. App: restaurant sidebar → Restaurant Reports → loads, all sections,
    date presets work. Non-Business sees the upgrade lock.
 3. Numbers reconcile against a known day's bills.
+
+
+---
+
+## 077 FIX — "aggregate functions are not allowed in GROUP BY"
+
+Sidebar link now works (078 done). The RPC threw because 4 sections
+(day_part, per_section, server_performance, category_mix) did
+SELECT jsonb_build_object(...COUNT/SUM...) ... GROUP BY 1 — GROUP BY 1
+pointed at the whole jsonb object which CONTAINS the aggregates.
+
+FIX: each rewritten to aggregate in an inner query grouped by the
+plain dimension (part/section/server/category), then wrap in
+jsonb_build_object in the outer query (no GROUP BY there). Pattern now
+matches the already-working sections (daily_trend/payment_split use
+GROUP BY <plain col>). per_table/top_items/qr_reject were already
+correct (GROUP BY plain column / plain expression).
+
+RE-RUN db/migrations/077_restaurant_report.sql in Supabase (it is
+CREATE OR REPLACE — just run the updated file again). No other change.
