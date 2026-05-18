@@ -84,6 +84,19 @@ table.rt td.num,table.rt th.num{text-align:right;font-variant-numeric:tabular-nu
 .plan-lock-title{font-family:var(--font-h);font-size:19px;font-weight:800;margin-bottom:8px}
 .plan-lock-msg{font-size:13px;color:var(--t2);margin-bottom:22px;line-height:1.6}
 .skel{background:var(--surf2);border-radius:10px;height:80px;animation:pulse 1.3s ease-in-out infinite;margin-bottom:14px}
+tr.drillable,.bar-row.drillable{cursor:pointer;transition:.12s}
+tr.drillable:hover td{background:var(--surf2)}
+.bar-row.drillable:hover .bar-lbl{color:var(--acc)}
+tr.drillable td:first-child::after,.bar-row.drillable .bar-lbl::after{content:" ›";color:var(--t3);font-weight:700}
+.dov{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(3px);z-index:120;display:none;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto}
+.dov.open{display:flex}
+.dov-box{background:var(--surf);border:1px solid var(--bord);border-radius:16px;max-width:760px;width:100%;padding:0;max-height:88vh;display:flex;flex-direction:column}
+.dov-hd{display:flex;align-items:center;gap:10px;padding:16px 20px;border-bottom:1px solid var(--bord);position:sticky;top:0;background:var(--surf);border-radius:16px 16px 0 0}
+.dov-hd .t{font-family:var(--font-h);font-weight:800;font-size:15px}
+.dov-bk{background:var(--surf2);border:1px solid var(--bord);color:var(--text);border-radius:8px;padding:6px 11px;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font-h)}
+.dov-x{margin-left:auto;background:none;border:none;color:var(--t2);font-size:22px;cursor:pointer;padding:0 4px}
+.dov-bd{padding:16px 20px;overflow-y:auto}
+.dov-crumb{font-size:11.5px;color:var(--t2);font-weight:600;margin-bottom:12px}
 @keyframes pulse{0%,100%{opacity:.5}50%{opacity:.85}}
 .bnav-overlay{display:none}
 @media(max-width:760px){.content{padding:16px 14px}.bar-lbl{width:90px}.bar-val{width:74px}}
@@ -113,12 +126,25 @@ table.rt td.num,table.rt th.num{text-align:right;font-variant-numeric:tabular-nu
     </div>
   </div>
 </div>
+
+<div class="dov" id="drill-ov" onclick="if(event.target.id==='drill-ov')closeDrill()">
+  <div class="dov-box">
+    <div class="dov-hd">
+      <button class="dov-bk" id="dov-back" onclick="drillBack()" style="display:none">‹ Back</button>
+      <span class="t" id="dov-title">Detail</span>
+      <button class="dov-x" onclick="closeDrill()">×</button>
+    </div>
+    <div class="dov-bd" id="dov-body"></div>
+  </div>
+</div>
 <div class="bnav-overlay" id="bnav-overlay" onclick="SBPSidebar.closeDrawer&&SBPSidebar.closeDrawer()"></div>
 
 <script>
 'use strict';
 const _shopId = localStorage.getItem('sbp_shop_id') || '';
 let _from=null,_to=null,_preset='30d';
+let _fCat='',_fItem='',_fTable='';      // active drill filters
+let _filterOpts={categories:[],items:[],tables:[]};
 function $(id){return document.getElementById(id);}
 function fINR(n){const x=Number(n)||0;return '₹'+x.toLocaleString('en-IN',{minimumFractionDigits:0,maximumFractionDigits:2});}
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
@@ -158,20 +184,55 @@ function periodBar(){
   </div>`;
 }
 
+function filterBar(){
+  const opt=(arr,sel)=>['<option value="">All</option>'].concat(
+    (arr||[]).map(v=>`<option value="${esc(v)}"${v===sel?' selected':''}>${esc(v)}</option>`)
+  ).join('');
+  const active=(_fCat||_fItem||_fTable);
+  return `<div class="period-bar no-print" style="margin-top:-6px">
+    <span style="font-size:12px;color:var(--t2);font-weight:700">Filter:</span>
+    <select class="dt-in" id="f-cat" onchange="applyFilter()">${opt(_filterOpts.categories,_fCat)}</select>
+    <select class="dt-in" id="f-item" onchange="applyFilter()">${opt(_filterOpts.items,_fItem)}</select>
+    <select class="dt-in" id="f-table" onchange="applyFilter()">${opt(_filterOpts.tables,_fTable)}</select>
+    ${active?`<button class="pchip" onclick="clearFilter()">✕ Clear filters</button>`:''}
+  </div>`;
+}
+function applyFilter(){
+  _fCat   = $('f-cat')?.value   || '';
+  _fItem  = $('f-item')?.value  || '';
+  _fTable = $('f-table')?.value || '';
+  loadReport();
+}
+function clearFilter(){ _fCat=_fItem=_fTable=''; loadReport(); }
+
 function kpi(label,val,cls){return `<div class="kpi"><div class="kpi-l">${esc(label)}</div><div class="kpi-v ${cls||''}">${val}</div></div>`;}
 function sec(icon,title,inner){return `<div class="sec"><div class="sec-h"><span class="ic">${icon}</span><span>${esc(title)}</span></div>${inner}</div>`;}
-function tableEl(cols,rows){
+function secN(icon,title,inner,note){
+  const n=note?`<span style="margin-left:auto;font-size:10.5px;color:var(--t3);font-weight:600;white-space:nowrap">${esc(note)}</span>`:'';
+  return `<div class="sec"><div class="sec-h" style="display:flex;align-items:center"><span class="ic">${icon}</span><span>${esc(title)}</span>${n}</div>${inner}</div>`;
+}
+function tableEl(cols,rows,drill){
   if(!rows||!rows.length) return `<div class="empty-s">No data for this period</div>`;
   const th=cols.map(c=>`<th class="${c.num?'num':''}">${esc(c.h)}</th>`).join('');
-  const tr=rows.map(r=>'<tr>'+cols.map(c=>`<td class="${c.num?'num':''}">${c.fmt?c.fmt(r):esc(r[c.k])}</td>`).join('')+'</tr>').join('');
+  const tr=rows.map(r=>{
+    const dattr = drill
+      ? (drill.dim==='__bill'
+          ? ` class="drillable" onclick="drillToBill(${JSON.stringify(String(drill.key(r))).replace(/"/g,'&quot;')})"`
+          : ` class="drillable" onclick="openDrill('${drill.dim}', ${JSON.stringify(String(drill.key(r))).replace(/"/g,'&quot;')})"`)
+      : '';
+    return `<tr${dattr}>`+cols.map(c=>`<td class="${c.num?'num':''}">${c.fmt?c.fmt(r):esc(r[c.k])}</td>`).join('')+'</tr>';
+  }).join('');
   return `<table class="rt"><thead><tr>${th}</tr></thead><tbody>${tr}</tbody></table>`;
 }
-function barList(rows,labelKey,valKey,fmt){
+function barList(rows,labelKey,valKey,fmt,drill){
   if(!rows||!rows.length) return `<div class="empty-s">No data for this period</div>`;
   const max=Math.max(...rows.map(r=>Number(r[valKey])||0),1);
   return rows.map(r=>{
     const v=Number(r[valKey])||0,pct=Math.max(2,Math.round(v/max*100));
-    return `<div class="bar-row"><div class="bar-lbl">${esc(r[labelKey])}</div>
+    const dattr = drill
+      ? ` class="bar-row drillable" onclick="openDrill('${drill.dim}', ${JSON.stringify(String(drill.key(r))).replace(/"/g,'&quot;')})"`
+      : ' class="bar-row"';
+    return `<div${dattr}><div class="bar-lbl">${esc(r[labelKey])}</div>
       <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
       <div class="bar-val">${fmt?fmt(v):num(v)}</div></div>`;
   }).join('');
@@ -196,11 +257,19 @@ function showSkeleton(){
 async function loadReport(){
   if(!_shopId){ $('report-root').innerHTML='<div class="empty-s">No shop found — please log in again.</div>'; return; }
   showSkeleton();
-  let data,error;
+  let data,error,vdata;
   try {
-    ({data,error}=await _sb.rpc('sbp_restaurant_report',{
-      p_shop_id:_shopId, p_from:_from, p_to:_to
-    }));
+    const [rep,vr] = await Promise.all([
+      _sb.rpc('sbp_restaurant_report',{
+        p_shop_id:_shopId, p_from:_from, p_to:_to,
+        p_category:_fCat||null, p_item:_fItem||null, p_table:_fTable||null
+      }),
+      _sb.rpc('sbp_restaurant_void_report',{
+        p_shop_id:_shopId, p_from:_from, p_to:_to
+      })
+    ]);
+    data=rep.data; error=rep.error;
+    vdata=(vr&&vr.data&&vr.data.ok)?vr.data:null;
   } catch(e){ error={message:e.message}; }
   if(error || !data || !data.ok){
     const msg=(data&&data.error)||error?.message||'Could not load report';
@@ -209,12 +278,26 @@ async function loadReport(){
     bindPeriod();
     return;
   }
-  render(data);
+  if(data.filter_options) _filterOpts=data.filter_options;
+  render(data, vdata);
 }
 
-function render(d){
+function render(d, vd){
   const s=d.sales_summary||{};
-  let H=periodBar();
+  let H=periodBar()+filterBar();
+  const fl=d.filters||{};
+  // Sections that cannot honor an item/category filter get this note
+  // so the page is consistent and the numbers are never misleading.
+  const _ocNote = fl.item_or_cat_active ? 'not affected by item/category filter' : '';
+  const _tblNote = fl.table ? '' : '';
+  if(fl.category||fl.item||fl.table){
+    H+=`<div class="sec" style="padding:12px 16px;border-color:var(--acc)">
+      <div style="font-size:12.5px;color:var(--acc);font-weight:700">
+      🔎 Filtered: ${[fl.category&&('Category = '+esc(fl.category)),
+        fl.item&&('Item = '+esc(fl.item)),
+        fl.table&&('Table = '+esc(fl.table))].filter(Boolean).join('  ·  ')}
+      <span style="color:var(--t2);font-weight:600"> — figures below reflect this filter</span></div></div>`;
+  }
 
   // A1 Sales summary
   H+=sec('💰','Sales Summary',
@@ -238,7 +321,7 @@ function render(d){
       {h:'Bills',k:'bills',num:true,fmt:r=>num(r.bills)},
       {h:'Gross',k:'gross',num:true,fmt:r=>fINR(r.gross)},
       {h:'AOV',k:'aov',num:true,fmt:r=>fINR(r.aov)}
-    ], d.daily_trend));
+    ], d.daily_trend, {dim:'day', key:r=>r.date}));
 
   // A3 Day-part
   H+=sec('🕐','Day-Part Sales',
@@ -250,7 +333,7 @@ function render(d){
       {h:'Mode',k:'mode'},
       {h:'Bills',k:'bills',num:true,fmt:r=>num(r.bills)},
       {h:'Amount',k:'amount',num:true,fmt:r=>fINR(r.amount)}
-    ], d.payment_split));
+    ], d.payment_split, {dim:'payment', key:r=>r.mode}));
 
   // A6 Discounts + A7 Tax (combined KPI strip)
   const dc=d.discounts||{}, tx=d.tax_summary||{};
@@ -273,7 +356,7 @@ function render(d){
       {h:'Covers',k:'covers',num:true,fmt:r=>num(r.covers)},
       {h:'Gross',k:'gross',num:true,fmt:r=>fINR(r.gross)},
       {h:'AOV',k:'aov',num:true,fmt:r=>fINR(r.aov)}
-    ], d.per_table));
+    ], d.per_table, {dim:'table', key:r=>r.table}));
 
   // B9 Per-section
   H+=sec('📍','Revenue by Section',
@@ -281,7 +364,7 @@ function render(d){
 
   // B10/11 Turnaround + utilisation
   const tt=d.table_turnaround||{};
-  H+=sec('⏱️','Table Turnaround',
+  H+=secN('⏱️','Table Turnaround',
     `<div class="kpi-grid">
       ${kpi('Sessions',num(tt.sessions))}
       ${kpi('Avg Time / Table',(tt.avg_minutes||0)+' min','acc')}
@@ -292,7 +375,7 @@ function render(d){
       {h:'Table',k:'table'},
       {h:'Turns',k:'turns',num:true,fmt:r=>num(r.turns)},
       {h:'Avg Min',k:'avg_minutes',num:true,fmt:r=>num(r.avg_minutes)}
-    ], d.table_utilisation)+`</div>`);
+    ], d.table_utilisation)+`</div>`, _ocNote);
 
   // B12 Server performance
   H+=sec('🧑‍🍳','Server Performance',
@@ -302,7 +385,7 @@ function render(d){
       {h:'Covers',k:'covers',num:true,fmt:r=>num(r.covers)},
       {h:'Gross',k:'gross',num:true,fmt:r=>fINR(r.gross)},
       {h:'AOV',k:'aov',num:true,fmt:r=>fINR(r.aov)}
-    ], d.server_performance));
+    ], d.server_performance, {dim:'server', key:r=>r.server}));
 
   // C13 Top / bottom items
   H+=sec('🔝','Top Selling Items',
@@ -310,17 +393,17 @@ function render(d){
       {h:'Item',k:'name'},
       {h:'Qty',k:'qty',num:true,fmt:r=>num(r.qty)},
       {h:'Revenue',k:'revenue',num:true,fmt:r=>fINR(r.revenue)}
-    ], d.top_items));
+    ], d.top_items, {dim:'item', key:r=>r.name}));
   H+=sec('🔻','Slowest Items',
     tableEl([
       {h:'Item',k:'name'},
       {h:'Qty',k:'qty',num:true,fmt:r=>num(r.qty)},
       {h:'Revenue',k:'revenue',num:true,fmt:r=>fINR(r.revenue)}
-    ], d.bottom_items));
+    ], d.bottom_items, {dim:'item', key:r=>r.name}));
 
   // C14 Category mix
   H+=sec('📦','Category Mix',
-    barList((d.category_mix||[]).map(c=>({l:c.category,v:c.revenue})),'l','v',fINR));
+    barList((d.category_mix||[]).map(c=>({l:c.category,v:c.revenue,_cat:c.category})),'l','v',fINR,{dim:'category',key:r=>r._cat}));
 
   // C16 Voids
   const v=d.voids||{};
@@ -333,16 +416,16 @@ function render(d){
 
   // C17 KOT analysis
   const k=d.kot_analysis||{};
-  H+=sec('🧾','KOT Analysis',
+  H+=secN('🧾','KOT Analysis',
     `<div class="kpi-grid">
       ${kpi('Sessions',num(k.sessions))}
       ${kpi('Total KOTs',num(k.total_kots))}
       ${kpi('Avg KOTs / Table',k.avg_kots||0,'acc')}
-    </div>`);
+    </div>`, _ocNote);
 
   // D18 QR funnel
   const q=d.qr_funnel||{};
-  H+=sec('📱','QR Order Funnel',
+  H+=secN('📱','QR Order Funnel',
     `<div class="kpi-grid">
       ${kpi('Placed',num(q.placed))}
       ${kpi('Accepted',num(q.accepted),'grn')}
@@ -350,18 +433,18 @@ function render(d){
       ${kpi('Rejected',num(q.rejected),'red')}
       ${kpi('Pending',num(q.pending))}
       ${kpi('Expired',num(q.expired))}
-    </div>`);
+    </div>`, 'whole period — not filtered');
 
   // D20 QR reject reasons
-  H+=sec('❓','QR Rejection Reasons',
+  H+=secN('❓','QR Rejection Reasons',
     tableEl([
       {h:'Reason',k:'reason'},
       {h:'Count',k:'count',num:true,fmt:r=>num(r.count)}
-    ], d.qr_reject_reasons));
+    ], d.qr_reject_reasons), 'whole period — not filtered');
 
   // E21 Day-close
   const dcl=d.day_close||{};
-  H+=sec('💼',"Today's Day-Close",
+  H+=secN('💼',"Today's Day-Close",
     `<div class="kpi-grid">
       ${kpi('Date',esc(dcl.date||'—'))}
       ${kpi('Bills',num(dcl.bills))}
@@ -370,7 +453,7 @@ function render(d){
       ${kpi('UPI',fINR(dcl.upi))}
       ${kpi('Card',fINR(dcl.card))}
       ${kpi('Credit',fINR(dcl.credit),'red')}
-    </div>`);
+    </div>`, "today's snapshot");
 
   // E22 Open tables
   H+=sec('🔓','Open / Unsettled Tables',
@@ -381,6 +464,38 @@ function render(d){
       {h:'Server',k:'server',fmt:r=>esc(r.server||'—')}
     ], d.open_tables));
 
+  // ── Void & Delete audit report (from sbp_audit_log) ──
+  if(vd){
+    const vs=vd.summary||{};
+    H+=sec('🗑️','Void & Delete Audit',
+      `<div class="kpi-grid">
+        ${kpi('Bills Voided',num(vs.bills_voided),'red')}
+        ${kpi('Bills Deleted',num(vs.bills_deleted),'red')}
+        ${kpi('Items Voided (service)',num(vs.items_voided),'red')}
+        ${kpi('Items Deleted',num(vs.items_deleted),'red')}
+        ${kpi('Payments Voided',num(vs.payments_voided),'red')}
+        ${kpi('Voided Value',fINR(vs.voided_value),'red')}
+        ${kpi('Deleted Value',fINR(vs.deleted_value),'red')}
+        ${kpi('Total Events',num(vs.total_events))}
+      </div>
+      <div style="margin-top:16px;font-size:12px;color:var(--t2);font-weight:700;margin-bottom:6px">By Staff</div>`+
+      tableEl([
+        {h:'Staff',k:'actor'},
+        {h:'Events',k:'events',num:true,fmt:r=>num(r.events)},
+        {h:'Value',k:'value',num:true,fmt:r=>fINR(r.value)}
+      ], vd.by_actor)+
+      `<div style="margin-top:16px;font-size:12px;color:var(--t2);font-weight:700;margin-bottom:6px">Full Trail (most recent first)</div>`+
+      tableEl([
+        {h:'When',k:'at'},
+        {h:'Action',k:'action'},
+        {h:'Ref',k:'ref'},
+        {h:'Amount',k:'amount',num:true,fmt:r=>fINR(r.amount)},
+        {h:'By',k:'actor'},
+        {h:'Reason',k:'reason'},
+        {h:'Authorized',k:'authorized_by',fmt:r=>esc(r.authorized_by)+(r.auth_method&&r.auth_method!=='none'?` (${esc(r.auth_method)})`:'')}
+      ], vd.events));
+  }
+
   $('report-root').innerHTML=H;
   bindPeriod();
 }
@@ -388,6 +503,90 @@ function render(d){
 function bindPeriod(){
   document.querySelectorAll('.pchip').forEach(c=>c.classList.toggle('on',c.dataset.p===_preset));
   const cw=$('custom-wrap'); if(cw&&_preset==='custom') cw.style.display='flex';
+}
+
+// ── Click-through drill: section row → bills → bill items ──
+let _drillCtx=null;   // remembers level-2 so Back works from level-3
+const _DIM_LABEL={table:'Table',server:'Server',payment:'Payment',
+  day:'Day',item:'Item',category:'Category'};
+
+function closeDrill(){ $('drill-ov').classList.remove('open'); _drillCtx=null; }
+
+async function openDrill(dim, val){
+  _drillCtx={dim,val};
+  $('dov-back').style.display='none';
+  $('dov-title').textContent=(_DIM_LABEL[dim]||dim)+': '+val;
+  $('dov-body').innerHTML='<div class="skel"></div><div class="skel"></div>';
+  $('drill-ov').classList.add('open');
+  let r;
+  try{
+    r=await _sb.rpc('sbp_restaurant_drill',{
+      p_shop_id:_shopId, p_mode:'bills', p_dim:dim, p_val:String(val),
+      p_from:_from, p_to:_to
+    });
+  }catch(e){ r={data:{ok:false,error:e.message}}; }
+  const d=r&&r.data;
+  if(!d||!d.ok){
+    $('dov-body').innerHTML=`<div class="empty-s">⚠️ ${esc((d&&d.error)||'Could not load')}${d&&d.detail?(' — '+esc(d.detail.message||JSON.stringify(d.detail))):''}</div>`;
+    return;
+  }
+  const bills=d.bills||[];
+  let body=`<div class="dov-crumb">${esc(_DIM_LABEL[dim]||dim)} “${esc(val)}” · ${bills.length} bill(s)</div>`;
+  if(!bills.length){ body+='<div class="empty-s">No bills</div>'; }
+  else{
+    body+=tableEl([
+      {h:'Invoice',k:'invoice_no'},
+      {h:'When',k:'at'},
+      {h:'Table',k:'table',fmt:r=>esc(r.table||'—')},
+      {h:'Covers',k:'covers',num:true,fmt:r=>r.covers==null?'—':num(r.covers)},
+      {h:'Server',k:'server',fmt:r=>esc(r.server||'—')},
+      {h:'Pay',k:'payment_mode',fmt:r=>esc(r.payment_mode||'—')},
+      {h:'Total',k:'grand_total',num:true,fmt:r=>fINR(r.grand_total)}
+    ], bills.map(b=>({...b,_bid:b.bill_id})),
+       {dim:'__bill', key:r=>r._bid});
+  }
+  $('dov-body').innerHTML=body;
+}
+
+// drill from a bill row → its line items (level 3)
+async function drillToBill(billId){
+  $('dov-back').style.display='';
+  $('dov-title').textContent='Bill detail';
+  $('dov-body').innerHTML='<div class="skel"></div><div class="skel"></div>';
+  let r;
+  try{
+    r=await _sb.rpc('sbp_restaurant_drill',{
+      p_shop_id:_shopId, p_mode:'items', p_bill_id:billId
+    });
+  }catch(e){ r={data:{ok:false,error:e.message}}; }
+  const d=r&&r.data;
+  if(!d||!d.ok){
+    $('dov-body').innerHTML=`<div class="empty-s">⚠️ ${esc((d&&d.error)||'Could not load')}</div>`;
+    return;
+  }
+  const b=d.bill||{}, items=d.items||[];
+  let body=`<div class="dov-crumb">Invoice ${esc(b.invoice_no||'—')} · ${esc(b.at||'')} · Table ${esc(b.table||'—')} · ${esc(b.server||'—')}</div>
+    <div class="kpi-grid" style="margin-bottom:14px">
+      ${kpi('Customer',esc(b.customer||'Walk-in'))}
+      ${kpi('Covers',b.covers==null?'—':num(b.covers))}
+      ${kpi('Payment',esc(b.payment_mode||'—'))}
+      ${kpi('Discount',fINR(b.discount),'red')}
+      ${kpi('GST',fINR(b.gst))}
+      ${kpi('Grand Total',fINR(b.grand_total),'grn')}
+    </div>`;
+  body+=tableEl([
+    {h:'Item',k:'name'},
+    {h:'Category',k:'category'},
+    {h:'Qty',k:'qty',num:true,fmt:r=>num(r.qty)},
+    {h:'Rate',k:'rate',num:true,fmt:r=>fINR(r.rate)},
+    {h:'GST',k:'gst',num:true,fmt:r=>fINR(r.gst)},
+    {h:'Total',k:'total',num:true,fmt:r=>fINR(r.total)}
+  ], items);
+  $('dov-body').innerHTML=body;
+}
+
+function drillBack(){
+  if(_drillCtx) openDrill(_drillCtx.dim,_drillCtx.val);
 }
 
 (async function init(){
