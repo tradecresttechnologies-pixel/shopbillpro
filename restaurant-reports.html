@@ -49,16 +49,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-b);-webkit-fo
 #app-layout{display:flex;min-height:100vh}
 #dsb{flex-shrink:0}
 #main-col{flex:1;min-width:0;display:flex;flex-direction:column}
-/* BATCH HOTFIX (scroll): #app-layout flex + #main-col with no scroll
-   container -> report content taller than viewport could not scroll.
-   Make #main-col the scroller. Additive; respects existing flex rule. */
-#app-layout{height:100vh;overflow:hidden}
-#main-col{height:100vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
-@media(max-width:1023px){
-  #app-layout{height:auto;overflow:visible}
-  #main-col{margin-left:0;height:auto;overflow-y:visible}
-  html,body{height:auto;min-height:100%;overflow-y:auto}
-}
 .topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 22px;border-bottom:1px solid var(--bord);background:var(--surf);position:sticky;top:0;z-index:20}
 .topbar-title{font-family:var(--font-h);font-size:18px;font-weight:800}
 .btn-sec{padding:9px 16px;border-radius:10px;background:var(--surf2);color:var(--text);border:1px solid var(--bord);font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font-h);transition:var(--tr)}
@@ -135,8 +125,15 @@ tr.drillable td:first-child::after,.bar-row.drillable .bar-lbl::after{content:" 
   <div id="main-col">
 
     <div class="topbar">
-      <div class="topbar-title">📈 <span class="lang-en">Restaurant Reports</span><span class="lang-hi">रेस्तरां रिपोर्ट</span></div>
-      <div style="display:flex;gap:8px">
+      <!-- BATCH HOTFIX (topbar): page used non-standard .topbar-title
+           (no CSS -> flat/unstyled) and had NO back button. Rebuilt to
+           the standard .tb-l/.tb-title/.tb-r structure used by every
+           other page so it inherits shared styles + gets a back button. -->
+      <div class="tb-l">
+        <div class="back-btn" onclick="window.location.href='dashboard.html'" title="Back">←</div>
+        <div class="tb-title">📈 <span class="lang-en">Restaurant Reports</span><span class="lang-hi">रेस्तरां रिपोर्ट</span></div>
+      </div>
+      <div class="tb-r" style="display:flex;gap:8px">
         <button class="btn-sec no-print" onclick="window.print()" title="Print">🖨️</button>
         <button class="btn-sec no-print" onclick="loadReport()" title="Refresh">↻</button>
       </div>
@@ -690,7 +687,7 @@ function drillBack(){
 }
 
 (async function init(){
-  try { (function(){try{if(!window.SBPSidebar||typeof window.SBPSidebar.render!=='function')return;window.SBPSidebar.render({layout:'desktop',currentPage:'restaurant_reports'});}catch(e){console.warn('[restaurant-reports] sidebar:',e);}})(); } catch(e){}
+  try { SBPSidebar.render('restaurant_reports'); } catch(e){}
   if(!isBiz()){ showGate(); return; }
   // Mount the persistent picker (stays put; not re-rendered per run).
   $('picker-mount').innerHTML=pickerBar();
