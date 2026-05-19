@@ -672,6 +672,65 @@ html,body{height:100%;overflow:hidden}
   #app{margin-left:220px!important;max-width:calc(100vw - 220px)!important;width:calc(100vw - 220px)!important}
   .bnav{display:none!important}
 }
+
+/* ===== PWA INSTALL BANNER (added: clear app-download option) ===== */
+#sbp-install-banner{
+  display:none;align-items:center;gap:14px;
+  margin:0;padding:13px 18px;
+  background:linear-gradient(135deg, color-mix(in srgb, var(--acc) 16%, var(--surf)),
+                                     color-mix(in srgb, var(--acc) 6%, var(--surf)));
+  border-bottom:1px solid color-mix(in srgb, var(--acc) 35%, transparent);
+  color:var(--text);font-size:13.5px;font-weight:600;
+}
+#sbp-install-banner.show{display:flex}
+#sbp-install-banner .sib-ic{
+  font-size:22px;width:30px;text-align:center;flex-shrink:0;
+}
+#sbp-install-banner .sib-txt{flex:1;min-width:0;line-height:1.35}
+#sbp-install-banner .sib-txt small{
+  display:block;font-weight:500;color:var(--t2);font-size:11.5px;margin-top:1px;
+}
+#sbp-install-banner .sib-cta{
+  flex-shrink:0;padding:8px 16px;border-radius:9px;border:none;cursor:pointer;
+  background:linear-gradient(135deg,var(--acc),#FF8A00);color:#0A0E1A;
+  font-size:13px;font-weight:800;letter-spacing:.2px;
+  transition:filter .15s ease,transform .15s cubic-bezier(.4,0,.2,1);
+}
+#sbp-install-banner .sib-cta:hover{filter:brightness(1.06)}
+#sbp-install-banner .sib-cta:active{transform:scale(.97)}
+#sbp-install-banner .sib-x{
+  flex-shrink:0;width:30px;height:30px;border:none;cursor:pointer;
+  background:transparent;color:var(--t2);font-size:18px;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .15s ease;
+}
+#sbp-install-banner .sib-x:hover{background:color-mix(in srgb, var(--t3) 20%, transparent)}
+#sbp-ios-sheet{
+  display:none;position:fixed;inset:0;z-index:9999;
+  background:rgba(0,0,0,.55);align-items:flex-end;justify-content:center;
+}
+#sbp-ios-sheet.show{display:flex}
+#sbp-ios-sheet .ios-card{
+  background:var(--surf);color:var(--text);
+  width:100%;max-width:460px;border-radius:18px 18px 0 0;
+  padding:22px 22px calc(22px + env(safe-area-inset-bottom));
+  border:1px solid var(--bord);
+}
+#sbp-ios-sheet h3{margin:0 0 6px;font-size:17px;font-weight:800}
+#sbp-ios-sheet p{margin:8px 0;font-size:14px;color:var(--t2);line-height:1.5}
+#sbp-ios-sheet .ios-step{
+  display:flex;align-items:center;gap:10px;margin:10px 0;font-size:14px;
+}
+#sbp-ios-sheet .ios-step b{color:var(--acc)}
+#sbp-ios-sheet .ios-done{
+  margin-top:16px;width:100%;padding:12px;border:none;border-radius:11px;
+  background:var(--surf2);color:var(--text);font-weight:700;cursor:pointer;font-size:14px;
+}
+@media(min-width:560px){
+  #sbp-ios-sheet{align-items:center}
+  #sbp-ios-sheet .ios-card{border-radius:18px;margin:0 16px}
+}
+/* ===== /PWA INSTALL BANNER ===== */
 </style>
 <link rel="stylesheet" href="fix.css">
 </head>
@@ -680,6 +739,28 @@ html,body{height:100%;overflow:hidden}
 
   <!-- Offline Bar -->
   <div id="offline-bar"></div>
+<!-- PWA install banner: clear download/install option for all users -->
+<div id="sbp-install-banner" role="region" aria-label="Install app">
+  <span class="sib-ic">⬇️</span>
+  <div class="sib-txt">
+    <span class="lang-en">Install ShopBill Pro on your device</span><span class="lang-hi">अपने डिवाइस पर ShopBill Pro इंस्टॉल करें</span>
+    <small><span class="lang-en">Faster access, works offline, full-screen — like a real app.</span><span class="lang-hi">तेज़ एक्सेस, ऑफ़लाइन चलता है।</span></small>
+  </div>
+  <button class="sib-cta" id="sbp-install-go" type="button">
+    <span class="lang-en">Install App</span><span class="lang-hi">इंस्टॉल करें</span>
+  </button>
+  <button class="sib-x" id="sbp-install-x" type="button" aria-label="Dismiss">×</button>
+</div>
+<div id="sbp-ios-sheet" role="dialog" aria-modal="true">
+  <div class="ios-card">
+    <h3><span class="lang-en">Add to Home Screen</span><span class="lang-hi">होम स्क्रीन पर जोड़ें</span></h3>
+    <p><span class="lang-en">Install ShopBill Pro for app-like, full-screen access:</span><span class="lang-hi">ShopBill Pro को इंस्टॉल करने के लिए:</span></p>
+    <div class="ios-step">1️⃣ <span class="lang-en">Tap the <b>Share</b> button in Safari</span><span class="lang-hi">Safari में <b>Share</b> बटन दबाएं</span></div>
+    <div class="ios-step">2️⃣ <span class="lang-en">Choose <b>Add to Home Screen</b></span><span class="lang-hi"><b>Add to Home Screen</b> चुनें</span></div>
+    <div class="ios-step">3️⃣ <span class="lang-en">Tap <b>Add</b> — done!</span><span class="lang-hi"><b>Add</b> दबाएं — हो गया!</span></div>
+    <button class="ios-done" id="sbp-ios-done" type="button"><span class="lang-en">Got it</span><span class="lang-hi">ठीक है</span></button>
+  </div>
+</div>
 
   <!-- Top Bar -->
   <div class="topbar">
@@ -1681,5 +1762,76 @@ function renderBizAlerts() {
 </script>
 <!-- BATCH 1B-E-FIX: restore beta banner wiring (lost in 1B-E Combined merge) -->
 <script src="lib/beta-banner.js"></script>
+
+<script>
+/* PWA install banner logic. Real one-tap install via beforeinstallprompt
+   (Chrome/Edge/Android/desktop); iOS Safari gets Add-to-Home instructions
+   (Apple exposes no install API). Hidden if already installed. Dismiss is
+   session-only -> reappears next login until the app is actually installed. */
+(function(){
+  var banner=document.getElementById('sbp-install-banner');
+  if(!banner) return;
+  var goBtn=document.getElementById('sbp-install-go');
+  var xBtn=document.getElementById('sbp-install-x');
+  var iosSheet=document.getElementById('sbp-ios-sheet');
+  var iosDone=document.getElementById('sbp-ios-done');
+  var deferredPrompt=null;
+
+  function isStandalone(){
+    return window.matchMedia('(display-mode: standalone)').matches
+      || window.navigator.standalone===true
+      || document.referrer.indexOf('android-app://')===0;
+  }
+  function isIOS(){
+    return /iphone|ipad|ipod/i.test(navigator.userAgent)
+      && !window.MSStream;
+  }
+  var dismissed=function(){
+    try{return sessionStorage.getItem('sbp_install_dismissed')==='1';}catch(e){return false;}
+  };
+  function show(){ if(!isStandalone() && !dismissed()) banner.classList.add('show'); }
+  function hide(){ banner.classList.remove('show'); }
+
+  // Already installed -> never show.
+  if(isStandalone()){ return; }
+
+  // Chrome/Edge/Android/desktop: capture the install prompt.
+  window.addEventListener('beforeinstallprompt', function(e){
+    e.preventDefault();
+    deferredPrompt=e;
+    show();
+  });
+
+  // iOS: no event ever fires -> show banner with instructions path.
+  if(isIOS()){ show(); }
+
+  goBtn.addEventListener('click', function(){
+    if(deferredPrompt){
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then(function(c){
+        if(c && c.outcome==='accepted'){ hide(); }
+        deferredPrompt=null;
+      });
+    } else if(isIOS()){
+      iosSheet.classList.add('show');
+    } else {
+      // Fallback (rare): browser didn't fire the event yet.
+      iosSheet.classList.add('show');
+    }
+  });
+
+  xBtn.addEventListener('click', function(){
+    hide();
+    try{ sessionStorage.setItem('sbp_install_dismissed','1'); }catch(e){}
+  });
+  if(iosDone){ iosDone.addEventListener('click', function(){ iosSheet.classList.remove('show'); }); }
+  if(iosSheet){ iosSheet.addEventListener('click', function(e){ if(e.target===iosSheet) iosSheet.classList.remove('show'); }); }
+
+  // Successful install -> hide for good this session.
+  window.addEventListener('appinstalled', function(){ hide();
+    try{ sessionStorage.setItem('sbp_install_dismissed','1'); }catch(e){}
+  });
+})();
+</script>
 </body>
 </html>
