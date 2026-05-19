@@ -39,6 +39,8 @@ html[data-theme='light']{
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font-h),-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
+/* BATCH HOTFIX (scroll): body was height:100% with no scroll container -> room list taller than viewport could not scroll. Let the body grow and scroll; sticky .hdr still works. Additive only. */
+html,body{height:auto;min-height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch}
 
 /* ── Header ── */
 .hdr{
