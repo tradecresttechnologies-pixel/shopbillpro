@@ -776,10 +776,11 @@ function imgKeyword(m){
   return CAT_KW[m.category]||CAT_KW['Default'];
 }
 function autoImgUrl(m){
-  if(m.image_url) return m.image_url;
-  const kw=imgKeyword(m);
-  const seed=_hash(m.id||m.name||'x')%4999;
-  return 'https://loremflickr.com/600/480/'+encodeURIComponent(kw)+'?lock='+seed;
+  /* QR-MENU IMG FIX: only ever use a REAL uploaded image. No
+     auto-fetched stock/keyword imagery (loremflickr) - items with
+     no uploaded photo fall back to the branded emoji tile instead
+     of a random mismatched picture. Returns '' when none. */
+  return (m && m.image_url) ? m.image_url : '';
 }
 
 // Veg / non-veg inference (Indian menus expect the mark). Best-effort
@@ -905,9 +906,11 @@ function renderMenu(){
     const photo =
       `<div class="dish-photo">` +
         `<div class="dish-fallback" style="${tileVars(m)}"><span>${em}</span></div>` +
-        `<img src="${escHtml(autoImgUrl(m))}" alt="${escHtml(m.name)}" loading="lazy" ` +
-          `referrerpolicy="no-referrer" onload="this.classList.add('on')" ` +
-          `onerror="this.remove()">` +
+        (autoImgUrl(m)
+          ? `<img src="${escHtml(autoImgUrl(m))}" alt="${escHtml(m.name)}" loading="lazy" `
+            + `referrerpolicy="no-referrer" onload="this.classList.add('on')" `
+            + `onerror="this.remove()">`
+          : ``) +
         `<span class="diet ${veg?'veg':'non'}"><i></i></span>` +
         (avail ? '' : `<span class="out-tag">Sold out</span>`) +
         (inCart > 0 ? `<span class="cart-chip">✓ ${inCart}</span>` : '') +
