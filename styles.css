@@ -1316,3 +1316,22 @@ body {
 @media (min-width: 1024px) {
   body { overflow-y: auto !important; }
 }
+/* BATCH HOTFIX (universal no-horizontal-overflow / auto-compress):
+   Pages whose layout has a wide fixed track (e.g. .wrap with a 380px
+   grid column) or wide child would overflow horizontally on small
+   screens -> content pushed off-screen / clipped on the left, looking
+   like 'not compressed to mobile'. Enforce that nothing exceeds the
+   viewport width at <=1023px. Scoped to mobile so desktop multi-col
+   layouts are untouched. Last-in-cascade + !important so no per-page
+   rule can re-introduce the overflow. */
+html, body { overflow-x: hidden !important; max-width: 100% !important; }
+@media (max-width: 1023px) {
+  #app, #app-layout, #main-col, .wrap, .sections, .sec, .content,
+  .topbar, .picker-wrap, .card, .fsec, .tot-box {
+    max-width: 100% !important;
+  }
+  /* Collapse any 2-col grid that still has a fixed wide track. */
+  .wrap { grid-template-columns: 1fr !important; }
+  /* Belt-and-braces: clip stray horizontal bleed at the shell. */
+  #app, #app-layout, #main-col { overflow-x: hidden !important; }
+}
