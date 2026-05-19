@@ -77,10 +77,8 @@ html:root {
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 html {
-  /* BATCH HOTFIX (scroll/mobile-2): html{height:100%} capped the html
-     element at viewport height; body{min-height:100%} then resolved
-     against that fixed height = body still trapped on mobile (no desktop
-     media override at <1024px). min-height lets the document grow. */
+  /* SCROLL FIX (clean revert): min-height not height:100% so the
+     document can grow taller than the viewport and scroll. */
   min-height: 100%;
   font-size: 15px;
   -webkit-text-size-adjust: 100%;
@@ -91,22 +89,17 @@ body {
   font-family: var(--font-b);
   background: var(--bg);
   color: var(--text);
-  /* BATCH HOTFIX (scroll/mobile): was height:100%;overflow:hidden which
-     traps EVERY page on mobile (no desktop media override at <1024px).
-     min-height + overflow-y:auto lets the body grow and scroll. Pages
-     using the fixed-shell inner-scroller pattern override body/#app in
-     their own inline <style> (loads after this file) -> unaffected. */
-  min-height: 100%;
+  /* SCROLL FIX (clean revert): was height:100%;overflow:hidden which
+     trapped every page that has no inner .sb scroller. Plain
+     min-height + overflow-y:auto = the document scrolls normally,
+     touch included. No !important, no media overrides, no
+     overscroll/touch-action rules (those caused regressions).
+     Pages with an inner .sb scroller are unaffected: their #app
+     inline style still sets its own height/overflow. */
+  min-height: 100vh;
   overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  /* BATCH HOTFIX (touch-scroll): overscroll-behavior:none on the BODY
-     scroller blocked the touch/swipe scroll gesture on mobile (the
-     scrollbar still worked -> "moves with side scroller, not from
-     screen"). contain prevents scroll-chaining without killing the
-     gesture. .sb (inner scrollers) keep their own contain. */
-  overscroll-behavior: contain;
 }
 
 input, select, textarea, button {
@@ -121,15 +114,13 @@ img { max-width: 100%; display: block; }
 #app {
   display: flex;
   flex-direction: column;
-  /* BATCH HOTFIX (scroll): was height:100vh;overflow:hidden which trapped
-     every page lacking an inner scroll container (loyalty, website-builder,
-     etc.). min-height + overflow-y:auto lets #app grow and scroll. Pages
-     using the fixed-shell inner-scroller pattern override #app in their own
-     inline <style> (loads after this file) so they are unaffected. */
-  min-height: 100dvh;
+  /* SCROLL FIX (clean revert): was height:100vh;overflow:hidden
+     (a hard trap on pages with no inner scroller). min-height +
+     overflow:visible lets content flow into the body scroller.
+     Inner-scroller pages override #app in their own inline
+     <style> (loads after this file) so they are unaffected. */
   min-height: 100vh;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
+  overflow: visible;
   position: relative;
 }
 
@@ -1281,82 +1272,4 @@ img { max-width: 100%; display: block; }
 }
 @media(max-width:360px){
   .sc-val,.sv{font-size:18px}
-}
-
-
-/* ============================================================
-   BATCH HOTFIX (universal scroll safety) - appended LAST so it
-   wins the cascade. Guarantees on EVERY page that loads this
-   stylesheet: the document can always grow and scroll, and the
-   touch/swipe gesture is never blocked. Does NOT force overflow
-   on #app, so the deliberate inner-scroller pages (dashboard/
-   bills/customers: #app{display:flex;height:100vh;overflow:hidden}
-   + .sb scroller) keep working unchanged. The body-level
-   guarantee alone makes trapped pages reachable.
-   ============================================================ */
-html {
-  min-height: 100% !important;
-  height: auto !important;
-}
-body {
-  min-height: 100% !important;
-  height: auto !important;
-  overflow-y: auto !important;
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch !important;
-  overscroll-behavior: contain !important;
-  touch-action: pan-y !important;
-}
-/* Inner scrollers must keep scrolling smoothly on touch. */
-.sb, .sheet, .sheet-body, .sheet-center, [data-scroll] {
-  -webkit-overflow-scrolling: touch !important;
-  touch-action: pan-y !important;
-}
-/* Desktop with fixed sidebar: body still scrolls, sidebar gutter kept. */
-@media (min-width: 1024px) {
-  body { overflow-y: auto !important; }
-}
-/* BATCH HOTFIX (universal no-horizontal-overflow / auto-compress):
-   Pages whose layout has a wide fixed track (e.g. .wrap with a 380px
-   grid column) or wide child would overflow horizontally on small
-   screens -> content pushed off-screen / clipped on the left, looking
-   like 'not compressed to mobile'. Enforce that nothing exceeds the
-   viewport width at <=1023px. Scoped to mobile so desktop multi-col
-   layouts are untouched. Last-in-cascade + !important so no per-page
-   rule can re-introduce the overflow. */
-/* CORRECTED: overflow-x:hidden ONLY on html/body. Putting it on
-   #app/#main-col made their overflow-y compute to auto -> a nested
-   scroll container that captured & killed vertical touch scrolling.
-   Children are constrained by max-width instead (no scroll-context
-   side effect). */
-html, body { overflow-x: hidden !important; max-width: 100% !important; }
-@media (max-width: 1023px) {
-  #app, #app-layout, #main-col, .wrap, .sections, .sec, .content,
-  .topbar, .picker-wrap, .card, .fsec, .tot-box {
-    max-width: 100% !important;
-  }
-  /* Collapse any 2-col grid that still has a fixed wide track. */
-  .wrap { grid-template-columns: 1fr !important; }
-  /* Children may not exceed the line box; prevents horizontal bleed
-     WITHOUT creating a scroll container on the vertical scrollers. */
-  #app *, #main-col *, .wrap * { max-width: 100% !important; }
-  img, video, canvas, iframe, table { max-width: 100% !important; height: auto; }
-  /* CORRECTED-2: body is the SINGLE scroll container on mobile.
-     Giving #app/#app-layout/#main-col overflow-y:auto made them their
-     OWN scrollers (they have min-height, no fixed height) -> content
-     trapped in a short box ("only 1/3 showing") + nested scrollers
-     fighting the touch gesture. Shells MUST be overflow:visible; only
-     body scrolls. */
-  html, body {
-    overflow-y: auto !important;
-    touch-action: pan-y !important;
-    -webkit-overflow-scrolling: touch !important;
-  }
-  #app, #app-layout, #main-col {
-    overflow-y: visible !important;
-    overflow-x: visible !important;
-    height: auto !important;
-    min-height: 0 !important;
-    touch-action: pan-y !important;
-  }
 }
