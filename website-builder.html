@@ -1305,11 +1305,13 @@ async function svcAddTemplate(idx){
 }
 
 async function reloadServices(){
-  const res = await SBPServices.list(_shopId);
-  _services = res.ok ? (res.services || []) : [];
-  renderServices();
-  renderQuickAddTemplates();
-  updateCompletion();
+  try {
+    const res = await SBPServices.list(_shopId);
+    _services = res && res.ok ? (res.services || []) : [];
+  } catch(e){ console.warn('services load error:', e); _services = _services || []; }
+  try { renderServices(); } catch(e){ console.warn('renderServices:', e); }
+  try { renderQuickAddTemplates(); } catch(e){ console.warn('renderQuickAddTemplates:', e); }
+  try { updateCompletion(); } catch(e){ console.warn('updateCompletion:', e); }
 }
 
 // ── ROOMS (v4.8c) — local state only, saved to content_json ─────────
