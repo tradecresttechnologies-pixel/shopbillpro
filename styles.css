@@ -7,8 +7,15 @@
 
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Noto+Sans:wght@300;400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap');
 
-/* ── CSS Variables ── */
-:root {
+/* ── CSS Variables ──
+   BATCH UI-4: selectors raised to html:root (0,0,1,1) so this canonical
+   token set outranks every per-page inline :root{} (0,0,1,0) regardless of
+   source order. Per-page inline token blocks become harmless dead overrides
+   (same as UI-3 did for .dsb-*). No page edits; one-file, reversible.
+   Values are the UI-1-reconciled de-facto palette, so the 30 standard pages
+   render pixel-identical; the 3 drifted pages (running-order/kitchen/
+   housekeeping) are pulled onto the standard palette — the intended fix. */
+html:root {
   /* Brand Colors */
   --acc:      #F5A623;   /* Gold — primary */
   --acc2:     #EF4444;   /* Red — danger/overdue */
@@ -49,8 +56,10 @@
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-/* Light Theme */
-[data-theme="light"] {
+/* Light Theme — BATCH UI-4: raised to :root[data-theme="light"] (0,0,2,0)
+   so it outranks per-page [data-theme="light"] AND [data-theme='light']
+   (both 0,0,1,0) regardless of quote style or source order. */
+:root[data-theme="light"] {
   /* reconciled to de-facto 28-page light palette (BATCH UI-1) */
   --bg:    #F0EEFF;
   --surf:  #FFFFFF;
