@@ -1324,6 +1324,11 @@ body {
    viewport width at <=1023px. Scoped to mobile so desktop multi-col
    layouts are untouched. Last-in-cascade + !important so no per-page
    rule can re-introduce the overflow. */
+/* CORRECTED: overflow-x:hidden ONLY on html/body. Putting it on
+   #app/#main-col made their overflow-y compute to auto -> a nested
+   scroll container that captured & killed vertical touch scrolling.
+   Children are constrained by max-width instead (no scroll-context
+   side effect). */
 html, body { overflow-x: hidden !important; max-width: 100% !important; }
 @media (max-width: 1023px) {
   #app, #app-layout, #main-col, .wrap, .sections, .sec, .content,
@@ -1332,6 +1337,15 @@ html, body { overflow-x: hidden !important; max-width: 100% !important; }
   }
   /* Collapse any 2-col grid that still has a fixed wide track. */
   .wrap { grid-template-columns: 1fr !important; }
-  /* Belt-and-braces: clip stray horizontal bleed at the shell. */
-  #app, #app-layout, #main-col { overflow-x: hidden !important; }
+  /* Children may not exceed the line box; prevents horizontal bleed
+     WITHOUT creating a scroll container on the vertical scrollers. */
+  #app *, #main-col *, .wrap * { max-width: 100% !important; }
+  img, video, canvas, iframe, table { max-width: 100% !important; height: auto; }
+  /* Keep vertical touch scroll alive on the shells (explicitly, in case
+     any other rule disturbed it). */
+  html, body, #app, #app-layout, #main-col {
+    overflow-y: auto !important;
+    touch-action: pan-y !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
 }
