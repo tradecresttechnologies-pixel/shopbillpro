@@ -381,30 +381,115 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
 .offer-items-list{max-height:200px;overflow-y:auto}
 
 /* ── Desktop Sidebar ── */
+/* ============================================================
+   SIDEBAR REDESIGN v2 — rolled out (approved on dashboard).
+   Modern app aesthetic: no native scrollbar, accent-bar active
+   state, smooth hover, polished header/footer. Pure CSS; engine,
+   DOM, mobile drawer, and any per-page #dsb position override are
+   intentionally preserved (see POSITION_KEEP note per page).
+   ============================================================ */
 #dsb{
-  position:fixed;left:0;top:0;bottom:0;width:220px;
-  background:var(--surf);border-right:1px solid var(--bord);
-  display:flex;flex-direction:column;z-index:200;overflow-y:auto;
+  position:fixed;left:0;top:0;bottom:0;width:236px;
+  background: var(--surf);
+  border-right:1px solid color-mix(in srgb, var(--bord) 60%, transparent);
+  display:flex;flex-direction:column;z-index:200;
+  overflow:hidden;
+  box-shadow:1px 0 0 color-mix(in srgb, var(--bord) 40%, transparent);
 }
 .dsb-logo{
-  display:flex;align-items:center;gap:10px;
-  padding:20px 16px 14px;border-bottom:1px solid var(--bord);
+  display:flex;align-items:center;gap:11px;
+  padding:20px 18px 16px;
+  border-bottom:1px solid color-mix(in srgb, var(--bord) 55%, transparent);
+  flex-shrink:0;
 }
-.dsb-brand{font-family:var(--font-h);font-size:15px;font-weight:800;color:var(--acc)}
-.dsb-nav{flex:1;padding:10px 8px;display:flex;flex-direction:column;gap:2px;overflow-y:auto}
+.dsb-logo img,.dsb-logo svg{width:26px;height:26px;border-radius:7px;flex-shrink:0}
+.dsb-brand{
+  font-family:var(--font-h);font-size:15.5px;font-weight:800;
+  color:var(--text);letter-spacing:-.2px;line-height:1;
+}
+.dsb-brand .accent,.dsb-brand b{color:var(--acc)}
+.dsb-nav{
+  flex:1;min-height:0;padding:12px 10px;
+  display:flex;flex-direction:column;gap:3px;
+  overflow-y:auto;overflow-x:hidden;
+  scrollbar-width:thin;
+  scrollbar-color: color-mix(in srgb, var(--t3) 55%, transparent) transparent;
+  -webkit-overflow-scrolling:touch;scroll-behavior:smooth;
+}
+.dsb-nav::-webkit-scrollbar{width:6px}
+.dsb-nav::-webkit-scrollbar-track{background:transparent}
+.dsb-nav::-webkit-scrollbar-thumb{
+  background: color-mix(in srgb, var(--t3) 45%, transparent);border-radius:99px;
+}
+.dsb-nav:hover::-webkit-scrollbar-thumb{
+  background: color-mix(in srgb, var(--t3) 70%, transparent);
+}
 .dsb-item{
-  display:flex;align-items:center;gap:10px;
-  padding:9px 12px;border-radius:10px;cursor:pointer;
-  text-decoration:none;color:var(--t2);font-size:13px;font-weight:600;
-  transition:.15s ease;white-space:nowrap;border:none;background:none;width:100%;
+  position:relative;display:flex;align-items:center;gap:12px;
+  padding:10px 13px;border-radius:11px;cursor:pointer;
+  text-decoration:none;color:var(--t2);
+  font-size:13.5px;font-weight:600;letter-spacing:-.1px;
+  transition:background .16s ease,color .16s ease,transform .12s ease;
+  white-space:nowrap;border:none;background:none;width:100%;
 }
-.dsb-item:hover{background:var(--surf2);color:var(--text)}
-.dsb-item.active{background:rgba(245,166,35,.12);color:var(--acc)}
-.dsb-item.fab-sb{background:linear-gradient(135deg,#F5A623,#FF8A00);color:#fff;margin:4px 0 8px;font-weight:700}
-.dsb-item.fab-sb:hover{opacity:.88}
-.dsb-ic{font-size:17px;width:22px;text-align:center;flex-shrink:0}
-.dsb-footer{padding:8px;border-top:1px solid var(--bord)}
-.dsb-ver{font-size:10px;color:var(--t3);text-align:center;padding:8px 0 4px}
+.dsb-item:hover{background: color-mix(in srgb, var(--surf2) 85%, transparent);color:var(--text)}
+.dsb-item:active{transform:scale(.985)}
+.dsb-item.active{
+  background: color-mix(in srgb, var(--acc) 14%, transparent);
+  color:var(--acc);font-weight:700;
+}
+.dsb-item.active::before{
+  content:"";position:absolute;left:-10px;top:50%;
+  width:3px;height:62%;transform:translateY(-50%);
+  background:var(--acc);border-radius:0 3px 3px 0;
+  box-shadow:0 0 10px color-mix(in srgb, var(--acc) 60%, transparent);
+}
+.dsb-item .lang-en,.dsb-item .lang-hi{display:inline}
+.dsb-item.fab-sb{
+  background:linear-gradient(135deg,var(--acc),#FF8A00);
+  color:#0A0E1A;margin:2px 0 10px;font-weight:800;
+  box-shadow:0 6px 16px color-mix(in srgb, var(--acc) 38%, transparent);
+}
+.dsb-item.fab-sb:hover{filter:brightness(1.05);color:#0A0E1A}
+.dsb-item.fab-sb::before{display:none}
+.dsb-item.coming-soon{opacity:.5;cursor:default}
+.dsb-item.coming-soon:hover{background:none;color:var(--t2)}
+.dsb-ic{
+  font-size:18px;width:24px;text-align:center;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+}
+.dsb-badge{
+  margin-left:auto;font-size:9px;font-weight:800;letter-spacing:.4px;
+  border-radius:5px;padding:2px 6px;line-height:1;
+}
+.dsb-sep{height:1px;background:color-mix(in srgb, var(--bord) 55%, transparent);margin:9px 14px}
+.dsb-more-label,.dsb-more-toggle{
+  font-size:10.5px;font-weight:700;letter-spacing:.6px;
+  text-transform:uppercase;color:var(--t3);
+}
+.dsb-more-toggle{
+  display:flex;align-items:center;gap:8px;padding:9px 13px;
+  cursor:pointer;border-radius:10px;transition:background .15s ease;
+}
+.dsb-more-toggle:hover{background:color-mix(in srgb, var(--surf2) 70%, transparent)}
+.dsb-more-arr{margin-left:auto;transition:transform .2s ease;font-size:11px}
+.dsb-more-group.open .dsb-more-arr{transform:rotate(180deg)}
+.dsb-footer{
+  padding:10px 10px 12px;flex-shrink:0;
+  border-top:1px solid color-mix(in srgb, var(--bord) 55%, transparent);
+}
+.dsb-logout{
+  display:flex;align-items:center;gap:12px;width:100%;
+  padding:10px 13px;border-radius:11px;cursor:pointer;
+  background:none;border:none;text-decoration:none;
+  color:var(--t2);font-size:13.5px;font-weight:600;
+  transition:background .15s ease,color .15s ease;
+}
+.dsb-logout:hover{background: color-mix(in srgb, #EF4444 14%, transparent);color:#EF4444}
+.dsb-ver{
+  font-size:10px;color:var(--t3);text-align:center;
+  padding:9px 0 2px;letter-spacing:.4px;opacity:.75;
+}
 @media(max-width:1023px){#dsb{display:none!important}}
 
 /* ── BATCH 1B-F-Scale: Mobile Drawer (full menu, slides in from right) ── */
