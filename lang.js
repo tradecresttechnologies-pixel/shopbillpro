@@ -16,6 +16,27 @@ const SBP_TRANSLATIONS = {
     'Suppliers': 'सप्लायर', 'Recurring': 'आवर्ती',
     'Templates': 'टेम्पलेट', 'Logout': 'लॉग आउट',
 
+    // ── Team / Roles / Audit (BATCH UI-5 — team.html coverage) ──
+    'Current Team': 'वर्तमान टीम',
+    'Invite Team Member': 'टीम सदस्य आमंत्रित करें',
+    'Role Permissions': 'भूमिका अनुमतियाँ',
+    'Staff Activity Log': 'स्टाफ गतिविधि लॉग',
+    'Authorized Users': 'अधिकृत उपयोगकर्ता',
+    'Audit Log': 'ऑडिट लॉग',
+    'Full Name': 'पूरा नाम',
+    'Remove': 'हटाएं',
+    'Feature': 'सुविधा',
+    'Role': 'भूमिका',
+    'Multi-User Access': 'मल्टी-यूज़र एक्सेस',
+    'What Each Role Can Do': 'प्रत्येक भूमिका क्या कर सकती है',
+    'No activity recorded yet': 'अभी तक कोई गतिविधि दर्ज नहीं',
+    'No activity recorded yet.': 'अभी तक कोई गतिविधि दर्ज नहीं।',
+    'Loading team...': 'टीम लोड हो रही है...',
+    'Loading activity...': 'गतिविधि लोड हो रही है...',
+    'Add cashiers, managers and viewers': 'कैशियर, मैनेजर और व्यूअर जोड़ें',
+    'Migrate now': 'अभी माइग्रेट करें',
+    'Later': 'बाद में',
+
     // ── Dashboard ──
     "Today\'s Sales": 'आज की बिक्री',
     'Total Bills': 'कुल बिल',

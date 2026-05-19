@@ -21,6 +21,9 @@
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Noto+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<!-- BATCH UI-5: bilingual system (was missing on team.html — closed the i18n gap) -->
+<script src="lang.js"></script>
+<script src="conversion.js"></script>
 <!-- BATCH 1B-C/F-Scale: smart sidebar engine -->
 <script src="lib/sidebar-engine.js"></script>
 
@@ -84,18 +87,7 @@ body{background:var(--bg);color:var(--text);overflow-y:auto}
 .ni{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 4px;cursor:pointer;text-decoration:none;color:var(--t2);gap:3px;min-height:56px}
 .ni-ic{font-size:20px}.ni-lb{font-size:10px;font-weight:600}
 .nav-fab{width:44px;height:44px;background:linear-gradient(135deg,var(--acc),#FF8A00);border-radius:14px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:24px}
-#dsb{position:fixed;left:0;top:0;bottom:0;width:220px;background:var(--surf);border-right:1px solid var(--bord);display:flex;flex-direction:column;z-index:200;overflow-y:auto}
-.dsb-logo{display:flex;align-items:center;gap:10px;padding:18px 16px 12px;border-bottom:1px solid var(--bord)}
-.dsb-brand{font-family:var(--font-h);font-size:15px;font-weight:800;color:var(--acc)}
-.dsb-nav{flex:1;padding:8px;display:flex;flex-direction:column;gap:2px;overflow-y:auto}
-.dsb-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;cursor:pointer;text-decoration:none;color:var(--t2);font-size:13px;font-weight:600;transition:.15s ease;white-space:nowrap;border:none;background:none;width:100%}
-.dsb-item:hover{background:var(--surf2);color:var(--text)}
-.dsb-item.active{background:rgba(245,166,35,.12);color:var(--acc)}
-.dsb-item.fab-sb{background:linear-gradient(135deg,#F5A623,#FF8A00);color:#fff;margin:4px 0 8px;font-weight:700}
-.dsb-ic{font-size:17px;width:22px;text-align:center;flex-shrink:0}
-.dsb-footer{padding:8px;border-top:1px solid var(--bord)}
-.dsb-ver{font-size:10px;color:var(--t3);text-align:center;padding:6px 0 2px}
-@media(max-width:1023px){#dsb{display:none!important}}
+@media(max-width:1023px){}
 @media(max-width:1023px){body{overflow:auto!important}#app{height:auto!important;min-height:100dvh!important}}
 
 
