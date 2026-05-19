@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en" translate="no" class="notranslate">
+<head>
+<script>
+// FIX — Pre-paint theme application (eliminates dark→light flash)
+(function(){
+  try {
+    var t = localStorage.getItem('sbp_theme');
+    if (t === 'light') document.documentElement.setAttribute('data-theme','light');
+  } catch(e) {}
+})();
+</script>
+
+<meta charset="UTF-8">
+<meta name="google" content="notranslate">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#F5A623">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png?v=2">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180x180.png?v=2">
+<title>ShopBill Pro — Recurring Bills</title>
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Noto+Sans:wght@300;400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+// FIX #3 — IST-aware date (UTC toISOString shifts -5:30 in India)
+function sbpFmt(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function sbpToday(){return sbpFmt(new Date());}
+function sbpYM(){return sbpToday().slice(0,7);}
+function sbpY(){return sbpToday().slice(0,4);}
+</script>
+
+
+
+<script src="lang.js"></script>
+<script src="conversion.js"></script>
+
+
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:'Noto Sans','Noto Sans Devanagari',sans-serif;-webkit-font-smoothing:antialiased;}
+:root{--acc:#F5A623;--acc2:#EF4444;--acc3:#10B981;--cyan:#06B6D4;--amber:#F59E0B;--bg:#0A0A12;--surf:#13131C;--surf2:#1C1C28;--surf3:#252534;--bord:#2A2A3A;--text:#F0EFF8;--t2:#8A8AA8;--t3:#4A4A60;--font-h:'Outfit',sans-serif;--rs:12px;--rs2:18px;--tr:.18s ease;--safe-top:env(safe-area-inset-top,0px);--safe-bottom:env(safe-area-inset-bottom,0px)}
+[data-theme="light"]{--bg:#F0EEFF;--surf:#FFF;--surf2:#F5F2FF;--surf3:#EDE9FF;--bord:#DDD8F5;--text:#0F0E18;--t2:#5E5A7A;--t3:#A09CC0}
+body{background:var(--bg);color:var(--text)}
+#app{display:flex;flex-direction:column;height:100dvh;overflow:hidden}
+.sb{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;padding-top:calc(10px + var(--safe-top));background:var(--surf);border-bottom:1px solid var(--bord);flex-shrink:0;min-height:54px}
+.tb-l{display:flex;align-items:center;gap:10px;flex:1}.tb-r{display:flex;align-items:center;gap:7px}
+.tb-title{font-family:var(--font-h);font-size:17px;font-weight:800}
+.back-btn{width:34px;height:34px;border-radius:10px;background:var(--surf2);border:1px solid var(--bord);display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer;transition:var(--tr)}
+.back-btn:active{transform:scale(.93)}
+.ic-btn{width:34px;height:34px;border-radius:10px;background:var(--surf2);border:1px solid var(--bord);display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;transition:var(--tr)}
+.ic-btn:active{transform:scale(.93)}
+
+/* Due Today Banner */
+.due-banner{background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.2);border-radius:var(--rs);margin:12px 14px;padding:12px 13px;display:none;cursor:pointer}
+.due-banner.show{display:flex;align-items:center;gap:10px}
+.due-banner h4{font-size:13px;font-weight:700;color:var(--acc2);margin-bottom:2px}
+.due-banner p{font-size:11px;color:var(--t2)}
+
+/* Recurring Cards */
+.rec-card{background:var(--surf);border:1px solid var(--bord);border-radius:var(--rs2);margin:0 14px 10px;overflow:hidden;transition:var(--tr)}
+.rc-header{padding:13px;cursor:pointer}
+.rc-header:active{background:var(--surf2)}
+.rc-top{display:flex;align-items:center;gap:11px;margin-bottom:8px}
+.rc-emoji{font-size:24px;width:40px;text-align:center;flex-shrink:0}
+.rc-nm{font-family:var(--font-h);font-size:14px;font-weight:800}
+.rc-cust{font-size:11px;color:var(--t2);margin-top:2px}
+.rc-right{margin-left:auto;text-align:right;flex-shrink:0}
+.rc-amt{font-family:var(--font-h);font-size:16px;font-weight:900;color:var(--acc)}
+.rc-freq{font-size:10px;color:var(--t2);margin-top:2px;font-weight:700}
+.rc-status-row{display:flex;align-items:center;justify-content:space-between;font-size:11px}
+.rc-next{color:var(--t2)}
+.rc-status-badge{padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700;text-transform:uppercase}
+.rc-status-badge.active{background:rgba(16,185,129,.1);color:var(--acc3);border:1px solid rgba(16,185,129,.2)}
+.rc-status-badge.paused{background:rgba(245,158,11,.1);color:var(--amber);border:1px solid rgba(245,158,11,.2)}
+.rc-status-badge.due{background:rgba(239,68,68,.1);color:var(--acc2);border:1px solid rgba(239,68,68,.2)}
+.rc-expand{display:none;padding:0 13px 13px;border-top:1px solid var(--bord);padding-top:10px}
+.rc-items{font-size:12px;color:var(--t2);line-height:1.8;margin-bottom:10px}
+.rc-actions{display:flex;gap:7px}
+.ra-btn{flex:1;padding:9px 6px;border-radius:var(--rs);font-family:var(--font-h);font-size:11px;font-weight:700;cursor:pointer;text-align:center;border:1.5px solid;transition:var(--tr)}
+.ra-btn:active{transform:scale(.95)}
+.ra-btn.gen{background:rgba(16,185,129,.1);border-color:rgba(16,185,129,.3);color:var(--acc3)}
+.ra-btn.pause{background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.3);color:var(--amber)}
+.ra-btn.edit{background:rgba(245,166,35,.1);border-color:rgba(245,166,35,.3);color:var(--acc)}
+.ra-btn.del{background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.3);color:var(--acc2)}
+
+/* Forms */
+.ff{margin-bottom:12px}
+.ff label{display:block;font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.ff input,.ff select{width:100%;background:var(--surf2);border:1.5px solid var(--bord);border-radius:var(--rs);padding:11px 13px;color:var(--text);font-size:14px;outline:none;transition:var(--tr);appearance:none;font-family:'Noto Sans',sans-serif}
+.ff input:focus,.ff select:focus{border-color:var(--acc);background:var(--surf);box-shadow:0 0 0 3px rgba(245,166,35,.12)}
+.ff input::placeholder{color:var(--t3)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+/* Item row */
+.ri-row{background:var(--surf2);border:1px solid var(--bord);border-radius:var(--rs);padding:9px;margin-bottom:8px;display:grid;grid-template-columns:2fr .8fr .8fr auto;gap:6px;align-items:end}
+.ri-ff{margin:0}
+.ri-ff label{display:block;font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px}
+.ri-ff input,.ri-ff select{width:100%;background:var(--surf);border:1.5px solid var(--bord);border-radius:8px;padding:8px 10px;color:var(--text);font-size:13px;outline:none;appearance:none;font-family:'Noto Sans',sans-serif}
+.ri-ff input:focus,.ri-ff select:focus{border-color:var(--acc)}
+.rm-btn{width:28px;height:28px;border-radius:7px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);color:var(--acc2);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;align-self:end;margin-bottom:1px}
+
+.btn-pri{width:100%;padding:14px;border-radius:var(--rs);background:linear-gradient(135deg,var(--acc),#FF8A00);border:none;color:#0A0E1A;font-family:var(--font-h);font-size:15px;font-weight:700;cursor:pointer;transition:.2s;box-shadow:0 4px 16px rgba(245,166,35,.4);display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-pri:active{transform:scale(.97)}
+.btn-sec{width:100%;padding:12px;border-radius:var(--rs);background:var(--surf2);border:1.5px solid var(--bord);color:var(--text);font-family:var(--font-h);font-size:14px;font-weight:700;cursor:pointer}
+.add-item-btn{width:100%;padding:10px;border-radius:var(--rs);border:1.5px dashed var(--bord);background:transparent;color:var(--acc);font-family:var(--font-h);font-size:13px;font-weight:700;cursor:pointer;margin-bottom:12px}
+
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:500;display:none;align-items:flex-end;backdrop-filter:blur(4px)}
+.overlay.open{display:flex;animation:fadeIn .18s ease}
+.sheet{width:100%;max-height:92dvh;background:var(--surf);border-radius:var(--rs2) var(--rs2) 0 0;padding:16px 16px calc(16px + var(--safe-bottom));overflow-y:auto;animation:slideUp .28s cubic-bezier(.4,0,.2,1)}
+.handle{width:36px;height:4px;border-radius:2px;background:var(--surf3);margin:0 auto 16px}
+.sheet-title{font-family:var(--font-h);font-size:18px;font-weight:800;margin-bottom:14px}
+
+.bnav{display:flex;align-items:stretch;background:var(--surf);border-top:1px solid var(--bord);flex-shrink:0;padding-bottom:var(--safe-bottom);z-index:100}
+.ni{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 4px;gap:3px;cursor:pointer;transition:var(--tr);position:relative;min-height:56px;user-select:none}
+.ni-ic{font-size:20px;line-height:1}.ni-lb{font-size:10px;color:var(--t2);font-weight:600;white-space:nowrap}
+.ni.on .ni-lb{color:var(--acc)}
+.ni.on::after{content:'';position:absolute;top:0;left:20%;right:20%;height:2.5px;border-radius:0 0 4px 4px;background:var(--acc)}
+.ni:active{background:var(--surf2)}
+.nav-fab{width:48px;height:48px;border-radius:16px;background:linear-gradient(135deg,var(--acc),#FF8A00);color:#0A0E1A;font-size:22px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(245,166,35,.5);margin-bottom:4px}
+
+#toast-container{position:fixed;bottom:calc(72px + var(--safe-bottom));left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none}
+.toast{background:var(--surf3);color:var(--text);padding:10px 18px;border-radius:20px;font-size:13px;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.45);border:1px solid var(--bord);white-space:nowrap;max-width:calc(100vw - 40px);animation:toastIn .22s ease}
+.toast.s{background:rgba(16,185,129,.15);border-color:rgba(16,185,129,.3);color:var(--acc3)}
+.toast.e{background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.3);color:var(--acc2)}
+.toast.i{background:rgba(245,166,35,.15);border-color:rgba(245,166,35,.3);color:#FF8A00}
+
+.empty-state{text-align:center;padding:48px 20px}.spacer{height:80px}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+@keyframes toastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@media(min-width:640px){#app{max-width:480px;margin:0 auto;box-shadow:0 0 80px rgba(0,0,0,.6)}}
+
+/* ══ Desktop Sidebar ══ */
+#dsb{position:fixed;left:0;top:0;bottom:0;width:220px;background:var(--surf);border-right:1px solid var(--bord);display:flex;flex-direction:column;z-index:200;overflow-y:auto}
+.dsb-logo{display:flex;align-items:center;gap:10px;padding:18px 16px 12px;border-bottom:1px solid var(--bord)}
+.dsb-brand{font-family:var(--font-h);font-size:15px;font-weight:800;color:var(--acc)}
+.dsb-nav{flex:1;padding:8px;display:flex;flex-direction:column;gap:2px;overflow-y:auto}
+.dsb-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;cursor:pointer;text-decoration:none;color:var(--t2);font-size:13px;font-weight:600;transition:.15s ease;white-space:nowrap;border:none;background:none;width:100%}
+.dsb-item:hover{background:var(--surf2);color:var(--text)}
+.dsb-item.active{background:rgba(245,166,35,.12);color:var(--acc)}
+.dsb-item.fab-sb{background:linear-gradient(135deg,#F5A623,#FF8A00);color:#fff;margin:4px 0 8px;font-weight:700}
+.dsb-ic{font-size:17px;width:22px;text-align:center;flex-shrink:0}
+.dsb-footer{padding:8px;border-top:1px solid var(--bord)}
+.dsb-ver{font-size:10px;color:var(--t3);text-align:center;padding:6px 0 2px}
+@media(max-width:1023px){#dsb{display:none!important}}
+@media(min-width:640px) and (max-width:1023px){#app{max-width:600px;margin:0 auto}}
+@media(min-width:1024px){
+  
+  #app{margin-left:220px!important;max-width:calc(100vw - 220px)!important;width:calc(100vw - 220px)!important;box-shadow:none!important}
+  .bnav{display:none!important}
+}
+
+/* ══ Language ══ */
+.lang-hi{display:none!important}
+.lang-en{display:inline!important}
+html[lang="hi"] .lang-hi{display:inline!important}
+html[lang="hi"] .lang-en{display:none!important}
+
+
+
+@media(max-width:1023px){
+    #app{height:100dvh!important;display:flex!important;flex-direction:column!important;overflow:hidden!important}
+  .bnav{position:fixed!important;bottom:0!important;left:0!important;right:0!important;z-index:100!important}
+  .sb{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+}
+
+
+
+
+
+
+/* ══ PWA SCROLL SYSTEM ══ */
+html,body{height:100%;overflow:hidden}
+#app{height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+.sb{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:0;overscroll-behavior:contain}
+.bnav{flex-shrink:0}
+@media(min-width:1024px){
+  #app{margin-left:220px!important;max-width:calc(100vw - 220px)!important;width:calc(100vw - 220px)!important}
+  .bnav{display:none!important}
+}
+</style>
+<link rel="stylesheet" href="fix.css">
+</head>
+<body>
+<script>(function(){var ds=localStorage.getItem("sbp_digit_style")||"default";var fs=parseInt(localStorage.getItem("sbp_font_size")||"15");var fm={default:"inherit",mono:"Courier New,monospace",rounded:"DM Sans,sans-serif",sharp:"Outfit,sans-serif"};var st=document.getElementById("sbp-font-override");if(!st){st=document.createElement("style");st.id="sbp-font-override";document.head.appendChild(st);}st.textContent="body{font-size:"+fs+"px}.sc-val,.cm-val,.bc-amt,.cust-bal-val,.cms-val,.cart-total-val,.pos-item-price,.tot-row span:last-child,.gst-row span,.stat-val,.stat-num,.report-val,.bill-total,.bdoc-inv-no,.bc-inv,.lv{font-family:"+fm[ds]+"!important}";})();</script>
+<div id="app">
+  <div id="sbpBetaBanner"></div>
+
+  <div class="topbar">
+    <div class="tb-l">
+      <div class="back-btn" onclick="goTo('settings.html')">←</div>
+      <div class="tb-title">🔄 Recurring Bills</div>
+    </div>
+    <div class="tb-r">
+      <div class="ic-btn" onclick="toggleTheme()" id="theme-btn">☀️</div>
+      <div class="ic-btn" onclick="openAddRec()" title="New Recurring">＋</div>
+    </div>
+  </div>
+
+  <div class="sb">
+    <!-- Due Today Banner -->
+    <div class="due-banner" id="due-banner" onclick="generateAllDue()">
+      <div style="font-size:24px">⏰</div>
+      <div>
+        <h4 id="due-banner-h">Bills Due Today</h4>
+        <p id="due-banner-p">Tap to generate all due bills</p>
+      </div>
+      <div style="margin-left:auto;font-size:20px;color:var(--t3)">›</div>
+    </div>
+
+    <div id="rec-list" style="padding:4px 0 12px"></div>
+    <div class="spacer"></div>
+  </div>
+
+  <div class="bnav">
+    <div class="ni" onclick="goTo('dashboard.html')"><span class="ni-ic">🏠</span><span class="ni-lb"><span class="lang-en">Home</span><span class="lang-hi">होम</span></span></div>
+    <div class="ni" onclick="goTo('bills.html')"><span class="ni-ic">🧾</span><span class="ni-lb"><span class="lang-en">Bills</span><span class="lang-hi">बिल</span></span></div>
+    <div class="ni" onclick="goTo('billing.html')" style="align-items:center;justify-content:center"><div class="nav-fab">＋</div></div>
+    <div class="ni" onclick="goTo('marketing.html')"><span class="ni-ic">📢</span><span class="ni-lb"><span class="lang-en">Marketing</span><span class="lang-hi">मार्केटिंग</span></span></div>
+    <div class="ni on" onclick="goTo('settings.html')"><span class="ni-ic">☰</span><span class="ni-lb"><span class="lang-en">More</span><span class="lang-hi">अधिक</span></span></div>
+  </div>
+</div>
+
+<!-- ADD / EDIT RECURRING MODAL -->
+<div class="overlay" id="add-rec-modal">
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="sheet-title" id="add-rec-title">🔄 New Recurring Bill</div>
+
+    <div class="row2">
+      <div class="ff"><label>Schedule Name *</label><input type="text" id="rec-nm" placeholder="e.g. Monthly Milk"></div>
+      <div class="ff"><label>Emoji</label><input type="text" id="rec-emoji" placeholder="🔄" style="text-align:center;font-size:20px" maxlength="2"></div>
+    </div>
+    <div class="ff"><label>Customer *</label>
+      <select id="rec-cust"><option value="">— Select customer —</option></select>
+    </div>
+    <div class="row2">
+      <div class="ff"><label>Frequency</label>
+        <select id="rec-freq">
+          <option value="daily">Daily</option>
+          <option value="weekly">Weekly</option>
+          <option value="monthly" selected>Monthly</option>
+          <option value="quarterly">Every 3 Months</option>
+          <option value="custom">Custom Days</option>
+        </select>
+      </div>
+      <div class="ff"><label>Every (days) — if custom</label><input type="number" id="rec-custom-days" placeholder="e.g. 45" min="1" style="display:none"></div>
+    </div>
+    <div class="row2">
+      <div class="ff"><label>Start / Next Bill Date *</label><input type="date" id="rec-start-date"></div>
+      <div class="ff"><label>End Date (optional)</label><input type="date" id="rec-end-date" placeholder="Leave blank = forever"></div>
+    </div>
+    <div class="ff"><label>Payment Mode</label>
+      <select id="rec-paymode">
+        <option>Cash</option><option>UPI / QR</option><option>Credit</option><option>Bank Transfer</option>
+      </select>
+    </div>
+
+    <div style="font-family:var(--font-h);font-size:13px;font-weight:800;margin-bottom:10px">Items</div>
+    <div id="rec-items-wrap"></div>
+    <button class="add-item-btn" onclick="addRecItem()">＋ Add Item</button>
+
+    <div class="ff"><label>Auto-send WhatsApp on generate</label>
+      <select id="rec-auto-wa">
+        <option value="no">No — I'll send manually</option>
+        <option value="yes">Yes — Auto open WhatsApp</option>
+      </select>
+    </div>
+    <input type="hidden" id="rec-edit-idx" value="-1">
+    <button class="btn-pri" onclick="saveRec()">✅ Save Schedule</button>
+    <button class="btn-sec" onclick="closeModal('add-rec-modal')" style="margin-top:8px">Cancel</button>
+    <div style="height:8px"></div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script>
+const SB_URL='https://jfqeirfrkjdkqqixivru.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmcWVpcmZya2pka3FxaXhpdnJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzNzQ4MzgsImV4cCI6MjA4OTk1MDgzOH0.akd4E0nil8ypLR4WOykkeYIL8g4uuNU6XdSVh_Y1utk';
+const _sb=supabase.createClient(SB_URL,SB_KEY);
+let _theme=localStorage.getItem('sbp_theme')||'dark';
+let _custs=JSON.parse(localStorage.getItem('sbp_customers')||'[]');
+let _recurring=JSON.parse(localStorage.getItem('sbp_recurring')||'[]');
+let _editIdx=-1;
+const TODAY=sbpToday();
+
+const SESSION_TIMEOUT=parseInt(localStorage.getItem('sbp_session_timeout')||'30');
+let _actTimer;
+function _resetTimer(){clearTimeout(_actTimer);localStorage.setItem('sbp_last_activity',Date.now().toString());_actTimer=setTimeout(async()=>{await _sb.auth.signOut();window.location.href='index.html';},SESSION_TIMEOUT*60*1000)}
+['click','touchstart','keypress','scroll'].forEach(e=>document.addEventListener(e,_resetTimer,{passive:true}));
+
+function goTo(p){window.location.href=p}
+function toast(msg,type='',dur=3000){const c=document.getElementById('toast-container');const t=document.createElement('div');t.className='toast'+(type?' '+type:'');t.textContent=msg;c.appendChild(t);setTimeout(()=>{t.style.opacity='0';t.style.transition='.2s';setTimeout(()=>t.remove(),220);},dur)}
+function toggleTheme(){_theme=_theme==='dark'?'light':'dark';localStorage.setItem('sbp_theme',_theme);document.documentElement.setAttribute('data-theme',_theme==='light'?'light':'');document.getElementById('theme-btn').textContent=_theme==='light'?'🌙':'☀️'}
+function openModal(id){const el=document.getElementById(id);el.classList.add('open');el.style.display='flex';el.addEventListener('click',e=>{if(e.target===el)closeModal(id);},{once:true})}
+function closeModal(id){const el=document.getElementById(id);el.classList.remove('open');el.style.display='none'}
+function fINR(n){return '₹'+(parseFloat(n)||0).toLocaleString('en-IN',{maximumFractionDigits:0})}
+function fDate(d){try{return new Date(d).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});}catch{return d}}
+function save(){localStorage.setItem('sbp_recurring',JSON.stringify(_recurring))}
+
+function nextDate(r){
+  const freq=r.freq;const from=new Date(r.nextDate||r.startDate||TODAY);
+  const n=new Date(from);
+  if(freq==='daily')n.setDate(n.getDate()+1);
+  else if(freq==='weekly')n.setDate(n.getDate()+7);
+  else if(freq==='monthly')n.setMonth(n.getMonth()+1);
+  else if(freq==='quarterly')n.setMonth(n.getMonth()+3);
+  else n.setDate(n.getDate()+(parseInt(r.customDays)||30));
+  return sbpFmt(n);
+}
+
+function isDue(r){return r.status==='active'&&(r.nextDate||r.startDate)<=TODAY}
+
+function calcTotal(items){return items.reduce((s,it)=>{const q=parseFloat(it.q||1),r=parseFloat(it.r||0),g=parseFloat(it.g||0);return s+(q*r)*(1+g/100);},0)}
+
+function renderRecurring(){
+  const el=document.getElementById('rec-list');
+  const due=_recurring.filter(r=>isDue(r));
+  if(due.length){
+    document.getElementById('due-banner').classList.add('show');
+    document.getElementById('due-banner-h').textContent=due.length+' Bill'+(due.length>1?'s':'')+' Due Today';
+    document.getElementById('due-banner-p').textContent='Tap to generate all due bills at once';
+  }else{
+    document.getElementById('due-banner').classList.remove('show');
+  }
+
+  if(!_recurring.length){
+    el.innerHTML=`<div class="empty-state">
+      <div style="font-size:48px;margin-bottom:12px">🔄</div>
+      <div style="font-family:var(--font-h);font-size:15px;font-weight:700;margin-bottom:6px">No recurring bills</div>
+      <div style="font-size:12px;color:var(--t2);margin-bottom:16px">Auto-generate monthly bills for<br>milk, tiffin, rent, cable etc.</div>
+      <button onclick="openAddRec()" style="padding:11px 24px;border-radius:var(--rs);background:linear-gradient(135deg,var(--acc),#FF8A00);border:none;color:#0A0E1A;font-family:var(--font-h);font-size:14px;font-weight:700;cursor:pointer">🔄 Create First Schedule</button>
+    </div>`;
+    return;
+  }
+
+  const freqLabel={daily:'Daily',weekly:'Weekly',monthly:'Monthly',quarterly:'Every 3 Months',custom:'Every X Days'};
+  el.innerHTML=_recurring.map((r,i)=>{
+    const total=calcTotal(r.items||[]);
+    const due=isDue(r);
+    const statusClass=r.status==='paused'?'paused':due?'due':'active';
+    const statusLabel=r.status==='paused'?'⏸ Paused':due?'⏰ Due Today':'✅ Active';
+    return `<div class="rec-card">
+      <div class="rc-header" onclick="toggleExpand('re-${i}')">
+        <div class="rc-top">
+          <div class="rc-emoji">${r.emoji||'🔄'}</div>
+          <div style="flex:1;min-width:0">
+            <div class="rc-nm">${r.name}</div>
+            <div class="rc-cust">👤 ${r.custName||'—'} · ${freqLabel[r.freq]||r.freq}</div>
+          </div>
+          <div class="rc-right">
+            <div class="rc-amt">${fINR(total)}</div>
+            <div class="rc-freq">${freqLabel[r.freq]||r.freq}</div>
+          </div>
+        </div>
+        <div class="rc-status-row">
+          <span class="rc-next">📅 Next: ${fDate(r.nextDate||r.startDate)}</span>
+          <span class="rc-status-badge ${statusClass}">${statusLabel}</span>
+        </div>
+      </div>
+      <div class="rc-expand" id="re-${i}">
+        <div class="rc-items">${(r.items||[]).map(it=>`${it.nm||'Item'} × ${it.q||1} @ ₹${it.r||0}`).join('<br>')}</div>
+        <div class="rc-actions">
+          <div class="ra-btn gen" onclick="generateBill(${i})">🧾 Generate Now</div>
+          <div class="ra-btn pause" onclick="togglePause(${i})">${r.status==='paused'?'▶ Resume':'⏸ Pause'}</div>
+          <div class="ra-btn edit" onclick="openEditRec(${i})">✏️ Edit</div>
+          <div class="ra-btn del" onclick="deleteRec(${i})">🗑️ Delete</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('')+'<div class="spacer"></div>';
+}
+
+function toggleExpand(id){const el=document.getElementById(id);if(el)el.style.display=el.style.display==='none'||!el.style.display?'block':'none'}
+
+// ── Add / Edit ──
+function openAddRec(){
+  _editIdx=-1;
+  document.getElementById('add-rec-title').textContent='🔄 New Recurring Bill';
+  ['rec-nm','rec-end-date'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
+  document.getElementById('rec-emoji').value='🔄';
+  document.getElementById('rec-freq').value='monthly';
+  document.getElementById('rec-paymode').value='Cash';
+  document.getElementById('rec-start-date').value=TODAY;
+  document.getElementById('rec-auto-wa').value='no';
+  document.getElementById('rec-edit-idx').value=-1;
+  document.getElementById('rec-items-wrap').innerHTML='';
+  document.getElementById('rec-custom-days').style.display='none';
+  fillCustSel();addRecItem();
+  openModal('add-rec-modal');
+}
+
+function openEditRec(idx){
+  const r=_recurring[idx];if(!r)return;
+  _editIdx=idx;
+  document.getElementById('add-rec-title').textContent='✏️ Edit Schedule';
+  document.getElementById('rec-nm').value=r.name||'';
+  document.getElementById('rec-emoji').value=r.emoji||'🔄';
+  document.getElementById('rec-freq').value=r.freq||'monthly';
+  document.getElementById('rec-paymode').value=r.paymode||'Cash';
+  document.getElementById('rec-start-date').value=r.nextDate||r.startDate||TODAY;
+  document.getElementById('rec-end-date').value=r.endDate||'';
+  document.getElementById('rec-auto-wa').value=r.autoWA||'no';
+  document.getElementById('rec-edit-idx').value=idx;
+  document.getElementById('rec-items-wrap').innerHTML='';
+  fillCustSel(r.custId);
+  (r.items||[]).forEach(it=>addRecItem(it));
+  if(!(r.items?.length))addRecItem();
+  openModal('add-rec-modal');
+}
+
+document.addEventListener('change',e=>{
+  if(e.target.id==='rec-freq'){
+    document.getElementById('rec-custom-days').style.display=e.target.value==='custom'?'block':'none';
+  }
+});
+
+function fillCustSel(selected=''){
+  const sel=document.getElementById('rec-cust');
+  sel.innerHTML='<option value="">— Select customer —</option>'+_custs.map(c=>`<option value="${c.id}"${(c.id===selected||String(c.id)===String(selected))?' selected':''}>${c.name}</option>`).join('');
+  if(selected)sel.value=selected;
+}
+
+function addRecItem(it={}){
+  const wrap=document.getElementById('rec-items-wrap');
+  const d=document.createElement('div');d.className='ri-row';
+  d.innerHTML=`
+    <div class="ri-ff"><label>Item Name</label><input type="text" class="ri-nm" placeholder="Item name" value="${it.nm||''}"></div>
+    <div class="ri-ff"><label>Qty</label><input type="number" class="ri-q" placeholder="1" min="0.1" step="any" value="${it.q||1}"></div>
+    <div class="ri-ff"><label>Rate ₹</label><input type="number" class="ri-r" placeholder="0" min="0" step="any" value="${it.r||''}"></div>
+    <button class="rm-btn" onclick="this.closest('.ri-row').remove()">×</button>`;
+  wrap.appendChild(d);
+}
+
+function saveRec(){
+  const name=document.getElementById('rec-nm').value.trim();
+  const custId=document.getElementById('rec-cust').value;
+  if(!name){toast('Schedule name is required','e');return}
+  if(!custId){toast('Select a customer','e');return}
+  const items=[];
+  document.querySelectorAll('#rec-items-wrap .ri-row').forEach(row=>{
+    const nm=row.querySelector('.ri-nm').value.trim();
+    const q=parseFloat(row.querySelector('.ri-q').value)||1;
+    const r=parseFloat(row.querySelector('.ri-r').value)||0;
+    if(nm||r)items.push({nm,q,r,g:0});
+  });
+  if(!items.length){toast('Add at least one item','e');return}
+  const cust=_custs.find(c=>c.id===custId||String(c.id)===custId);
+  const freq=document.getElementById('rec-freq').value;
+  const customDays=parseInt(document.getElementById('rec-custom-days').value)||30;
+  const rec={
+    name,emoji:document.getElementById('rec-emoji').value||'🔄',
+    custId,custName:cust?.name||'',custWA:cust?.whatsapp||cust?.phone||'',
+    freq,customDays,paymode:document.getElementById('rec-paymode').value,
+    startDate:document.getElementById('rec-start-date').value||TODAY,
+    nextDate:document.getElementById('rec-start-date').value||TODAY,
+    endDate:document.getElementById('rec-end-date').value||null,
+    autoWA:document.getElementById('rec-auto-wa').value,
+    items,status:'active',generatedCount:0,createdAt:new Date().toISOString()
+  };
+  const idx=parseInt(document.getElementById('rec-edit-idx').value);
+  if(idx>=0&&idx<_recurring.length){_recurring[idx]={..._recurring[idx],...rec};toast('✅ Schedule updated','s');}
+  else{_recurring.unshift(rec);toast('✅ Recurring bill created','s');}
+  save();renderRecurring();closeModal('add-rec-modal');
+}
+
+function togglePause(idx){
+  _recurring[idx].status=_recurring[idx].status==='paused'?'active':'paused';
+  save();renderRecurring();toast(_recurring[idx].status==='active'?'▶ Schedule resumed':'⏸ Schedule paused');
+}
+
+function deleteRec(idx){
+  if(!confirm('Delete "'+_recurring[idx].name+'"?'))return;
+  _recurring.splice(idx,1);save();renderRecurring();toast('🗑️ Deleted','i');
+}
+
+function generateBill(idx){
+  const r=_recurring[idx];if(!r)return;
+  const params=new URLSearchParams({
+    tpl:'1',nm:r.custName||'',wa:r.custWA||'',
+    paymode:r.paymode||'Cash',date:TODAY,
+    note:'Recurring: '+r.name,
+    items:JSON.stringify(r.items||[])
+  });
+  // Update next date
+  _recurring[idx].nextDate=nextDate(r);
+  _recurring[idx].generatedCount=(r.generatedCount||0)+1;
+  _recurring[idx].lastGenerated=TODAY;
+  // Check end date
+  if(r.endDate&&_recurring[idx].nextDate>r.endDate)_recurring[idx].status='paused';
+  save();
+  toast('🧾 Generating bill for '+r.custName,'s');
+  setTimeout(()=>goTo('billing.html?'+params.toString()),400);
+}
+
+function generateAllDue(){
+  const due=_recurring.filter(r=>isDue(r));
+  if(!due.length){toast('No bills due today','i');return}
+  // FIX #21 — Each generateBill triggers a redirect that cancels the previous one,
+  // so only the last bill survives. Instead, persist all as drafts and open the first.
+  toast('⏰ Preparing '+due.length+' bill'+(due.length>1?'s':'')+'...','s',2500);
+  const drafts = JSON.parse(localStorage.getItem('sbp_recurring_drafts')||'[]');
+  due.forEach(r => {
+    drafts.push({
+      template_id: r.id || r.name,
+      custName: r.custName || '',
+      custWA: r.custWA || '',
+      paymode: r.paymode || 'Cash',
+      date: sbpToday(),
+      note: 'Recurring: '+(r.name||''),
+      items: r.items || [],
+      created_at: new Date().toISOString()
+    });
+  });
+  localStorage.setItem('sbp_recurring_drafts', JSON.stringify(drafts));
+  // Open the first one for review (others remain as drafts)
+  const firstIdx = _recurring.findIndex(x => x === due[0]);
+  if(firstIdx >= 0){
+    setTimeout(()=>generateBill(firstIdx), 800);
+    if(due.length > 1){
+      setTimeout(()=>toast('💡 '+(due.length-1)+' more recurring bill'+(due.length-1>1?'s':'')+' saved as drafts','i',5000), 1500);
+    }
+  }
+}
+
+function init(){
+  if(_theme==='light'){document.documentElement.setAttribute('data-theme','light');document.getElementById('theme-btn').textContent='🌙'}
+  renderRecurring();
+  _resetTimer();
+  // Auth check in background - does not block UI
+  setTimeout(function(){
+    _sb.auth.getSession().then(function(res){
+      if(!res.data.session){
+        var l=parseInt(localStorage.getItem('sbp_last_activity')||'0');
+        if(!l||Date.now()-l>3600000){window.location.href='index.html';}
+      }
+    }).catch(function(){});
+  }, 100);
+}
+init();
+
+(function(){
+  if(window.innerWidth<1024)return;
+  var page=window.location.pathname.split('/').pop()||'dashboard.html';
+  var nav=[
+    {ic:'🏠',lb:'Dashboard',url:'dashboard.html'},
+    {ic:'🧾',lb:'New Bill',url:'billing.html',fab:true},
+    {ic:'📋',lb:'Bills',url:'bills.html'},
+    {ic:'👥',lb:'Customers',url:'customers.html'},
+    {ic:'📦',lb:'Inventory',url:'stock.html'},
+    {ic:'📊',lb:'Reports',url:'reports.html'},
+    {ic:'🛒',lb:'POS Admin',url:'pos-admin.html'},
+    {ic:'💬',lb:'WhatsApp',url:'wa-center.html'},
+    {ic:'📢',lb:'Marketing',url:'marketing.html'},
+    {ic:'💰',lb:'Cash Register',url:'cash-register.html'},
+    {ic:'🚚',lb:'Suppliers',url:'supplier.html'},
+    {ic:'🔄',lb:'Recurring',url:'recurring.html'},
+    {ic:'🗂️',lb:'Templates',url:'bill-templates.html'},
+    {ic:'👥',lb:'Team & Users',url:'team.html'},
+    {ic:'🚀',lb:'Plans & Pricing',url:'subscription.html'},
+    {ic:'⚙️',lb:'Settings',url:'settings.html'},
+  ];
+  var sb=document.createElement('div');sb.id='dsb';
+  sb.innerHTML='<div class="dsb-logo"><svg width="22" height="24" viewBox="0 0 56 62" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M28 2L4 14V32C4 46 28 60 28 60C28 60 52 46 52 32V14L28 2Z" fill="url(#sg1)"/><rect x="18" y="18" width="20" height="26" rx="2" fill="#0A0E1A" fill-opacity=".6"/><rect x="18" y="18" width="20" height="26" rx="2" stroke="#fff" stroke-width="1.5" fill="none"/><line x1="22" y1="24" x2="34" y2="24" stroke="#F5A623" stroke-width="1.5" stroke-linecap="round"/><line x1="22" y1="28" x2="30" y2="28" stroke="rgba(255,255,255,.4)" stroke-width="1" stroke-linecap="round"/><line x1="22" y1="31" x2="32" y2="31" stroke="rgba(255,255,255,.4)" stroke-width="1" stroke-linecap="round"/><line x1="22" y1="34" x2="28" y2="34" stroke="rgba(255,255,255,.4)" stroke-width="1" stroke-linecap="round"/><circle cx="32" cy="37" r="5" fill="#F5A623"/><polyline points="30,37 31.5,38.5 34.5,35.5" fill="none" stroke="#0A0E1A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><defs><linearGradient id="sg1" x1="4" y1="2" x2="52" y2="60" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#F5A623"/><stop offset="100%" stop-color="#FF6B35"/></linearGradient></defs></svg><span class="dsb-brand">ShopBill Pro</span></div><div class="dsb-nav">'+nav.map(function(n){var c='dsb-item'+(page===n.url?' active':'')+(n.fab?' fab-sb':'');return '<a class="'+c+'" href="'+n.url+'"><span class="dsb-ic">'+n.ic+'</span><span>'+n.lb+'</span></a>';}).join('')+'</div><div class="dsb-footer"><button class="dsb-item" id="dsb-logout"><span class="dsb-ic">🚪</span><span>Logout</span></button><div class="dsb-ver">ShopBill Pro v1.0</div></div>';
+  document.body.prepend(sb);
+  document.getElementById('dsb-logout').addEventListener('click',function(){_sb.auth.signOut().then(function(){window.location.href='index.html';});});
+})();
+
+async function refreshShopPlan() {
+  if (!navigator.onLine || !window._sb) return;
+  try {
+    const { data: { user } } = await _sb.auth.getUser();
+    if (!user) return;
+    const { data: shops } = await _sb.from('shops').select('*').eq('owner_id', user.id).limit(1);
+    if (shops?.length) {
+      localStorage.setItem('sbp_shop', JSON.stringify(shops[0]));
+      localStorage.setItem('sbp_shop_id', shops[0].id);
+      window._shop = shops[0];
+    }
+  } catch(e) {}
+}
+</script>
+<script src="lib/beta-banner.js"></script>
+</body>
+</html>

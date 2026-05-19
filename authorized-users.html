@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="en" translate="no" class="notranslate">
+<head>
+<script>
+// Pre-paint theme + lang (avoid flash)
+(function(){
+  try {
+    var t = localStorage.getItem('sbp_theme');
+    if (t === 'light') document.documentElement.setAttribute('data-theme','light');
+    var l = localStorage.getItem('sbp_lang');
+    if (l === 'hi') document.documentElement.setAttribute('lang','hi');
+  } catch(e) {}
+})();
+</script>
+
+<meta charset="UTF-8">
+<meta name="google" content="notranslate">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#F5A623">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>ShopBill Pro — Authorized Users</title>
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png?v=2">
+<link rel="apple-touch-icon" sizes="192x192" href="icons/icon-192x192.png">
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Noto+Sans:wght@300;400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+function _sbpPlanInfo(){
+  const s=JSON.parse(localStorage.getItem('sbp_shop')||'{}');
+  let plan=(s.plan||'free').toLowerCase();
+  if(plan==='enterprise') plan='business';
+  const exp=s.plan_expires_at;
+  if(exp && plan!=='free' && new Date(exp) < new Date()) plan='free';
+  return {plan, expired:!!(exp && new Date(exp) < new Date())};
+}
+function isPro(){const p=_sbpPlanInfo().plan;return p==='pro'||p==='business';}
+function isBiz(){return _sbpPlanInfo().plan==='business';}
+function isFree(){return _sbpPlanInfo().plan==='free';}
+</script>
+<script src="lang.js"></script>
+<script src="lib/sidebar-engine.js"></script>
+<script>
+const SB_URL='https://jfqeirfrkjdkqqixivru.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmcWVpcmZya2pka3FxaXhpdnJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzNzQ4MzgsImV4cCI6MjA4OTk1MDgzOH0.akd4E0nil8ypLR4WOykkeYIL8g4uuNU6XdSVh_Y1utk';
+const _sb=supabase.createClient(SB_URL,SB_KEY,{auth:{autoRefreshToken:true,persistSession:true,detectSessionInUrl:false}});
+window._sb=_sb;
+</script>
+
+<link rel="stylesheet" href="/styles.css"><!-- BATCH UI-1: canonical design system -->
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{font-family:'Noto Sans',-apple-system,sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}
+html[lang="hi"] body{font-family:'Noto Sans Devanagari','Noto Sans',sans-serif}
+
+/* Bilingual EN/HI — required 4-rule pattern */
+.lang-hi{display:none!important}
+.lang-en{display:inline!important}
+html[lang="hi"] .lang-hi{display:inline!important}
+html[lang="hi"] .lang-en{display:none!important}
+
+:root{
+  --bg:#0A0E1A;--surf:#13182A;--surf2:#1B2138;--surf3:#222942;--bord:#2A3045;
+  --acc:#F5A623;--acc2:#FF6B35;--acc3:#10B981;--acc4:#6366F1;
+  --text:#F0EFF8;--t2:#8A8AA8;--t3:#5E6280;--font-h:'Outfit',sans-serif;
+  --rs:14px;--tr:.2s ease;--amber:#F59E0B;--rose:#F43F5E;
+}
+[data-theme="light"]{
+  --bg:#FAFAFC;--surf:#FFFFFF;--surf2:#F2F2F8;--surf3:#EAEAF2;--bord:#E5E5EE;
+  --text:#0F0E18;--t2:#5E5A7A;--t3:#8A87A8;
+}
+body{background:var(--bg);color:var(--text);min-height:100dvh;overflow-x:hidden}
+
+#app{max-width:680px;margin:0 auto;padding-bottom:80px;min-height:100dvh}
+
+/* ── App shell: sidebar + bnav + drawer (copied from compliance.html pattern) ─── */
+.bnav{display:flex;align-items:stretch;background:var(--surf);border-top:1px solid var(--bord);flex-shrink:0;padding-bottom:var(--safe-bottom);z-index:100}
+.ni{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 4px;gap:3px;cursor:pointer;position:relative;min-height:56px;user-select:none}
+.ni-ic{font-size:20px;line-height:1}
+.ni-lb{font-size:10px;color:var(--t2);font-weight:600;white-space:nowrap}
+.ni.on .ni-lb{color:var(--acc)}
+.ni.on::after{content:'';position:absolute;top:0;left:20%;right:20%;height:2.5px;border-radius:0 0 4px 4px;background:var(--acc)}
+.nav-fab{width:48px;height:48px;border-radius:16px;background:linear-gradient(135deg,var(--acc),#FF8A00);color:#fff;font-size:22px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(245,166,35,.5);margin-bottom:4px}
+.bnav-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:opacity .25s ease;z-index:90;backdrop-filter:blur(2px)}
+.bnav-overlay.open{opacity:1;pointer-events:auto}
+.bnav-drawer{position:fixed;top:0;right:0;bottom:0;width:min(85vw,360px);background:var(--surf);color:var(--text);transform:translateX(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);z-index:95;display:flex;flex-direction:column;box-shadow:-4px 0 24px rgba(0,0,0,.4);overflow:hidden}
+.bnav-drawer.open{transform:translateX(0)}
+@media(min-width:1024px){.bnav-drawer,.bnav-overlay{display:none!important}}
+.drawer-header{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid var(--bord);flex-shrink:0}
+.drawer-brand{font-size:17px;font-weight:800;color:var(--acc)}
+.drawer-close{width:36px;height:36px;border-radius:10px;border:none;background:var(--surf2);color:var(--text);font-size:16px;cursor:pointer}
+.drawer-nav{flex:1;overflow-y:auto;padding:8px 0}
+.drawer-item{display:flex;align-items:center;gap:14px;padding:13px 18px;color:var(--text);text-decoration:none;font-size:14px;font-weight:600;cursor:pointer;border:none;background:transparent;width:100%;text-align:left}
+.drawer-item.active{background:rgba(245,166,35,.12);color:var(--acc);position:relative}
+.drawer-item.active::before{content:'';position:absolute;left:0;width:3px;height:60%;background:var(--acc);border-radius:0 3px 3px 0}
+.drawer-item.coming-soon{opacity:.55}
+.drawer-ic{font-size:20px;width:24px;text-align:center}
+.drawer-lb{flex:1}
+.drawer-footer{border-top:1px solid var(--bord);padding:8px 0 12px}
+.drawer-footer .drawer-item{color:#EF4444}
+.drawer-ver{text-align:center;font-size:11px;color:var(--t2);margin-top:4px}
+#dsb{position:fixed;left:0;top:0;bottom:0;width:220px;background:var(--surf);border-right:1px solid var(--bord);display:flex;flex-direction:column;z-index:200;overflow-y:auto}
+.dsb-logo{display:flex;align-items:center;gap:10px;padding:20px 16px 14px;border-bottom:1px solid var(--bord)}
+.dsb-brand{font-family:var(--font-h);font-size:15px;font-weight:800;color:var(--acc)}
+.dsb-nav{flex:1;padding:10px 8px;display:flex;flex-direction:column;gap:2px;overflow-y:auto}
+.dsb-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;cursor:pointer;text-decoration:none;color:var(--t2);font-size:13px;font-weight:600;border:none;background:none;width:100%;white-space:nowrap}
+.dsb-item:hover{background:var(--surf2);color:var(--text)}
+.dsb-item.active{background:rgba(245,166,35,.12);color:var(--acc)}
+.dsb-item.fab-sb{background:linear-gradient(135deg,#F5A623,#FF8A00);color:#fff;margin:4px 0 8px;font-weight:700}
+.dsb-ic{font-size:17px;width:22px;text-align:center}
+.dsb-sep{height:1px;background:var(--bord);margin:6px 12px}
+.dsb-footer{padding:8px;border-top:1px solid var(--bord)}
+.dsb-ver{font-size:10px;color:var(--t3);text-align:center;padding:8px 0 4px}
+@media(max-width:1023px){#dsb{display:none!important}}
+@media(min-width:640px) and (max-width:1023px){#app{max-width:600px!important;margin:0 auto;box-shadow:0 0 80px rgba(0,0,0,.5)}}
+@media(min-width:1024px){#app{margin-left:220px!important;max-width:calc(100vw - 220px)!important;width:calc(100vw - 220px)!important;box-shadow:none!important}.bnav{display:none!important}}
+@media(max-width:1023px){.bnav{position:fixed;bottom:0;left:0;right:0;height:60px;z-index:55}}
+
+/* Topbar */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 14px 10px;background:var(--bg);position:sticky;top:0;z-index:50;border-bottom:1px solid var(--bord)}
+.tb-l{display:flex;align-items:center;gap:10px}
+.tb-r{display:flex;gap:8px}
+.back-btn,.ic-btn{width:36px;height:36px;border-radius:10px;background:var(--surf);border:1px solid var(--bord);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;color:var(--text);transition:var(--tr)}
+.back-btn:hover,.ic-btn:hover{background:var(--surf2)}
+.tb-title{font-family:var(--font-h);font-size:17px;font-weight:800;letter-spacing:.2px}
+
+/* Global auth toggle card */
+.auth-card{margin:14px;padding:16px;background:var(--surf);border:1px solid var(--bord);border-radius:var(--rs);display:flex;align-items:center;gap:14px}
+.auth-card.on{border-color:rgba(245,166,35,.45);background:linear-gradient(135deg,rgba(245,166,35,.06),rgba(255,107,53,.03))}
+.auth-card .ic{font-size:24px;flex-shrink:0;width:44px;height:44px;border-radius:12px;background:var(--surf2);display:flex;align-items:center;justify-content:center}
+.auth-card.on .ic{background:rgba(245,166,35,.18)}
+.auth-card .body{flex:1;min-width:0}
+.auth-card .title{font-family:var(--font-h);font-size:14px;font-weight:800;margin-bottom:2px}
+.auth-card .sub{font-size:12px;color:var(--t2);line-height:1.45}
+
+/* Toggle switch */
+.tgl{position:relative;display:inline-block;width:46px;height:26px;flex-shrink:0;cursor:pointer}
+.tgl input{display:none}
+.tgl-track{position:absolute;inset:0;background:var(--surf2);border:1px solid var(--bord);border-radius:13px;transition:var(--tr)}
+.tgl-track::after{content:'';position:absolute;left:2px;top:1px;width:20px;height:20px;background:var(--t2);border-radius:50%;transition:var(--tr)}
+.tgl input:checked + .tgl-track{background:rgba(245,166,35,.28);border-color:var(--acc)}
+.tgl input:checked + .tgl-track::after{left:22px;background:var(--acc)}
+
+/* Section header + Add button */
+.sec-hd{display:flex;align-items:center;justify-content:space-between;padding:6px 14px 10px}
+.sec-title{font-family:var(--font-h);font-size:14px;font-weight:800;color:var(--text)}
+.sec-count{font-size:11px;color:var(--t2);font-weight:600;margin-left:6px}
+.add-btn{padding:8px 14px;background:linear-gradient(135deg,var(--acc),var(--acc2));color:#0A0E1A;border:none;border-radius:10px;font-family:var(--font-h);font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:5px}
+.add-btn:hover{transform:translateY(-1px)}
+
+/* User list */
+.u-list{padding:0 14px}
+.u-card{background:var(--surf);border:1px solid var(--bord);border-radius:var(--rs);padding:12px;margin-bottom:8px;display:flex;gap:12px;align-items:center;transition:var(--tr)}
+.u-card:hover{border-color:rgba(245,166,35,.35)}
+.u-card.inactive{opacity:.55}
+.u-avt{width:40px;height:40px;border-radius:11px;background:linear-gradient(135deg,var(--surf2),var(--surf3));display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:var(--font-h);font-weight:800;font-size:14px;color:var(--text)}
+.u-body{flex:1;min-width:0}
+.u-name{font-family:var(--font-h);font-size:14px;font-weight:700;margin-bottom:3px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.u-meta{display:flex;gap:6px;flex-wrap:wrap;font-size:11px;color:var(--t2);align-items:center}
+.u-tag{padding:2px 7px;background:var(--surf2);border-radius:8px;border:1px solid var(--bord);font-weight:600}
+.u-tag.role-owner{background:rgba(99,102,241,.15);color:var(--acc4);border-color:rgba(99,102,241,.35)}
+.u-tag.role-manager{background:rgba(245,166,35,.15);color:var(--acc);border-color:rgba(245,166,35,.35)}
+.u-tag.role-supervisor{background:rgba(16,185,129,.15);color:var(--acc3);border-color:rgba(16,185,129,.35)}
+.u-tag.role-cashier{background:var(--surf2);color:var(--t2);border-color:var(--bord)}
+.u-tag.can-auth{background:rgba(16,185,129,.1);color:var(--acc3);border-color:rgba(16,185,129,.25)}
+.u-tag.inactive-tag{background:rgba(244,63,94,.12);color:var(--rose);border-color:rgba(244,63,94,.3)}
+.u-actions{display:flex;flex-direction:row;gap:5px;flex-shrink:0;align-self:center}
+.u-btn{width:30px;height:30px;border-radius:8px;background:var(--surf2);border:1px solid var(--bord);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;transition:var(--tr);color:var(--text)}
+.u-btn:hover{background:var(--surf3)}
+.u-btn.danger:hover{background:rgba(244,63,94,.15);border-color:var(--rose);color:var(--rose)}
+@media(max-width:480px){
+  .u-actions{flex-wrap:wrap;justify-content:flex-end;max-width:74px}
+  .u-btn{width:32px;height:32px}
+}
+
+/* Empty state */
+.empty{text-align:center;padding:50px 24px;color:var(--t2)}
+.empty-emoji{font-size:48px;margin-bottom:12px}
+.empty-title{font-family:var(--font-h);font-size:17px;font-weight:700;color:var(--text);margin-bottom:8px}
+.empty-msg{font-size:13px;line-height:1.5;margin-bottom:18px}
+
+/* Modal */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:200;display:none;align-items:flex-end;justify-content:center;padding:0}
+.overlay.open{display:flex}
+.sheet{background:var(--bg);border-radius:20px 20px 0 0;width:100%;max-width:560px;max-height:92dvh;overflow-y:auto;padding:8px 16px 20px;border-top:1px solid var(--bord)}
+@media(min-width:600px){
+  .overlay{align-items:center;padding:16px}
+  .sheet{border-radius:20px;border:1px solid var(--bord);max-height:88dvh}
+}
+.handle{width:44px;height:4px;background:var(--bord);border-radius:2px;margin:8px auto 14px}
+.sheet-title{font-family:var(--font-h);font-size:18px;font-weight:800;margin-bottom:6px}
+.sheet-sub{font-size:12px;color:var(--t2);margin-bottom:16px}
+
+/* Form fields */
+.ff{margin-bottom:12px}
+.ff label{display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:5px}
+.ff input,.ff textarea,.ff select{width:100%;padding:11px 12px;background:var(--surf);border:1px solid var(--bord);border-radius:10px;color:var(--text);font-size:14px;font-family:inherit;outline:none;transition:var(--tr)}
+.ff input:focus,.ff textarea:focus,.ff select:focus{border-color:var(--acc)}
+.ff textarea{resize:vertical;min-height:60px}
+.ff-hint{display:block;font-size:11px;color:var(--t3);margin-top:4px;line-height:1.4}
+.ff-row{display:flex;gap:10px;align-items:center;padding:10px 12px;background:var(--surf);border:1px solid var(--bord);border-radius:10px;margin-bottom:10px;cursor:pointer}
+.ff-row input[type=checkbox]{width:18px;height:18px;cursor:pointer;accent-color:var(--acc)}
+.ff-row .ff-row-body{flex:1;min-width:0}
+.ff-row .ff-row-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px}
+.ff-row .ff-row-sub{font-size:11px;color:var(--t2);line-height:1.35}
+
+/* PIN input with type=text + text-security */
+.pin-inp{font-family:ui-monospace,monospace !important;letter-spacing:6px;text-align:center;font-size:18px !important;font-weight:800;-webkit-text-security:disc;text-security:disc}
+
+/* Buttons */
+.btn-pri{width:100%;padding:13px;background:linear-gradient(135deg,var(--acc),var(--acc2));color:#0A0E1A;border:none;border-radius:12px;font-family:var(--font-h);font-size:14px;font-weight:800;cursor:pointer;transition:var(--tr)}
+.btn-pri:hover{transform:translateY(-1px)}
+.btn-pri:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.btn-sec{width:100%;padding:13px;background:var(--surf2);color:var(--text);border:1px solid var(--bord);border-radius:12px;font-family:var(--font-h);font-size:14px;font-weight:700;cursor:pointer;transition:var(--tr)}
+.btn-sec:hover{background:var(--surf3)}
+.btn-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+
+/* Toast */
+#toast-container{position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{padding:11px 18px;background:var(--surf);border:1px solid var(--bord);border-radius:10px;color:var(--text);font-size:13px;font-weight:600;box-shadow:0 6px 24px rgba(0,0,0,.3);pointer-events:auto;animation:toast-in .2s ease-out;max-width:90vw}
+.toast.s{border-color:rgba(16,185,129,.45);background:linear-gradient(135deg,rgba(16,185,129,.12),var(--surf))}
+.toast.e{border-color:rgba(244,63,94,.45);background:linear-gradient(135deg,rgba(244,63,94,.12),var(--surf))}
+@keyframes toast-in{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+
+/* Loading skeleton */
+.loading{text-align:center;padding:40px 20px;color:var(--t2);font-size:13px}
+.spinner{display:inline-block;width:18px;height:18px;border:2px solid var(--surf3);border-top-color:var(--acc);border-radius:50%;animation:spin .8s linear infinite;vertical-align:middle;margin-right:8px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Plan-locked banner */
+.locked-banner{margin:14px;background:linear-gradient(135deg,rgba(245,166,35,.12),rgba(255,107,53,.06));border:1.5px solid rgba(245,166,35,.35);border-radius:var(--rs);padding:16px;text-align:center}
+.locked-banner-title{font-family:var(--font-h);font-size:15px;font-weight:800;color:var(--acc);margin-bottom:6px}
+.locked-banner-msg{font-size:12px;color:var(--t2);line-height:1.5;margin-bottom:12px}
+</style>
+
+</head>
+<body>
+
+<div id="app">
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="tb-l">
+      <button class="back-btn" onclick="goBack()" aria-label="Back">←</button>
+      <div class="tb-title">
+        <span class="lang-en">Authorized Users</span>
+        <span class="lang-hi">अधिकृत उपयोगकर्ता</span>
+      </div>
+    </div>
+    <div class="tb-r">
+      <button class="ic-btn" onclick="toggleLang()" title="Language">अ</button>
+      <button class="ic-btn" id="theme-btn" onclick="toggleTheme()" title="Theme">☀️</button>
+    </div>
+  </div>
+
+  <!-- Global require-auth toggle -->
+  <div id="auth-card" class="auth-card" style="display:none">
+    <div class="ic">🔒</div>
+    <div class="body">
+      <div class="title">
+        <span class="lang-en">Require PIN for high-risk actions</span>
+        <span class="lang-hi">उच्च-जोखिम कार्यों के लिए PIN आवश्यक</span>
+      </div>
+      <div class="sub" id="auth-card-sub"></div>
+    </div>
+    <label class="tgl">
+      <input type="checkbox" id="auth-toggle" onchange="toggleRequireAuth()">
+      <span class="tgl-track"></span>
+    </label>
+  </div>
+
+  <!-- Section header -->
+  <div class="sec-hd">
+    <div>
+      <span class="sec-title">
+        <span class="lang-en">Users</span>
+        <span class="lang-hi">उपयोगकर्ता</span>
+      </span>
+      <span class="sec-count" id="user-count"></span>
+    </div>
+    <button class="add-btn" onclick="openAddModal()" id="add-btn" style="display:none">
+      + <span class="lang-en">Add User</span><span class="lang-hi">जोड़ें</span>
+    </button>
+  </div>
+
+  <!-- User list / empty state / loading -->
+  <div id="content">
+    <div class="loading"><span class="spinner"></span><span class="lang-en">Loading…</span><span class="lang-hi">लोड हो रहा है…</span></div>
+  </div>
+
+</div>
+
+<!-- Add/Edit user modal -->
+<div class="overlay" id="user-modal">
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="sheet-title" id="modal-title">
+      <span class="lang-en">Add User</span>
+      <span class="lang-hi">उपयोगकर्ता जोड़ें</span>
+    </div>
+    <div class="sheet-sub">
+      <span class="lang-en">Configure name, role, and PIN. Users with "Can authorize" can approve high-risk actions like voiding bills.</span>
+      <span class="lang-hi">नाम, भूमिका और PIN कॉन्फ़िगर करें।</span>
+    </div>
+
+    <div class="ff">
+      <label><span class="lang-en">Full Name</span><span class="lang-hi">पूरा नाम</span> *</label>
+      <input type="text" id="f-name" maxlength="80" autocomplete="off" placeholder="e.g. Suresh Kumar">
+    </div>
+
+    <div class="ff">
+      <label><span class="lang-en">Role</span><span class="lang-hi">भूमिका</span> *</label>
+      <select id="f-role" onchange="onRoleChange()">
+        <option value="manager">Manager</option>
+        <option value="supervisor">Supervisor</option>
+        <option value="cashier">Cashier</option>
+        <option value="owner">Co-Owner</option>
+      </select>
+      <span class="ff-hint" id="f-role-hint"></span>
+    </div>
+
+    <div class="ff" id="f-pin-wrap">
+      <label>
+        <span class="lang-en">PIN</span><span class="lang-hi">पिन</span> *
+        <span class="ff-hint" style="display:inline;margin-left:6px;color:var(--t3)">(4–12 digits)</span>
+      </label>
+      <input type="text" id="f-pin" class="pin-inp" inputmode="numeric" pattern="[0-9]*" maxlength="12" autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="••••">
+    </div>
+
+    <label class="ff-row">
+      <input type="checkbox" id="f-can-authorize">
+      <div class="ff-row-body">
+        <div class="ff-row-title">
+          <span class="lang-en">Can authorize high-risk actions</span>
+          <span class="lang-hi">उच्च-जोखिम कार्यों को अधिकृत कर सकते हैं</span>
+        </div>
+        <div class="ff-row-sub">
+          <span class="lang-en">Their PIN can approve voids, cancellations, and other restricted operations.</span>
+          <span class="lang-hi">इनका PIN वॉइड, रद्द आदि के लिए मान्य होगा।</span>
+        </div>
+      </div>
+    </label>
+
+    <label class="ff-row">
+      <input type="checkbox" id="f-active" checked>
+      <div class="ff-row-body">
+        <div class="ff-row-title">
+          <span class="lang-en">Active</span>
+          <span class="lang-hi">सक्रिय</span>
+        </div>
+        <div class="ff-row-sub">
+          <span class="lang-en">Inactive users can't authorize until re-enabled.</span>
+          <span class="lang-hi">निष्क्रिय उपयोगकर्ता पुनः सक्रिय होने तक अधिकृत नहीं कर सकते।</span>
+        </div>
+      </div>
+    </label>
+
+    <div class="ff">
+      <label><span class="lang-en">Notes (optional)</span><span class="lang-hi">टिप्पणी (वैकल्पिक)</span></label>
+      <textarea id="f-notes" maxlength="500" placeholder="e.g. Day shift only, +91 9876543210"></textarea>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn-sec" onclick="closeModal('user-modal')">
+        <span class="lang-en">Cancel</span><span class="lang-hi">रद्द करें</span>
+      </button>
+      <button class="btn-pri" id="save-btn" onclick="saveUser()">
+        <span class="lang-en">Save</span><span class="lang-hi">सहेजें</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Reset PIN modal -->
+<div class="overlay" id="pin-modal">
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="sheet-title">
+      <span class="lang-en">Reset PIN</span>
+      <span class="lang-hi">PIN रीसेट करें</span>
+    </div>
+    <div class="sheet-sub" id="pin-modal-sub"></div>
+
+    <div class="ff">
+      <label><span class="lang-en">New PIN</span><span class="lang-hi">नया पिन</span> *</label>
+      <input type="text" id="pin-new" class="pin-inp" inputmode="numeric" pattern="[0-9]*" maxlength="12" autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="••••">
+      <span class="ff-hint">4 to 12 digits. Share securely with the user via in-person or a separate channel.</span>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn-sec" onclick="closeModal('pin-modal')">
+        <span class="lang-en">Cancel</span><span class="lang-hi">रद्द करें</span>
+      </button>
+      <button class="btn-pri" id="pin-save-btn" onclick="savePIN()">
+        <span class="lang-en">Set PIN</span><span class="lang-hi">PIN सेट करें</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Bottom nav + drawer (rendered by lib/sidebar-engine.js) -->
+<div class="bnav"></div>
+<div class="bnav-overlay" onclick="if(window.SBPSidebar)SBPSidebar._closeDrawer()"></div>
+<div class="bnav-drawer"></div>
+
+<!-- Toast host -->
+<div id="toast-container"></div>
+
+<script>
+// ── State ───────────────────────────────────────────────────────────
+let _shop=null, _shopId=null, _user=null;
+let _theme = localStorage.getItem('sbp_theme') || 'dark';
+if(_theme==='light') document.documentElement.setAttribute('data-theme','light');
+
+let _users = [];
+let _requireAuth = false;
+let _editingUserId = null;     // for edit mode
+let _resetingUserId = null;    // for PIN reset
+
+// ── Utilities ───────────────────────────────────────────────────────
+const $ = (s) => document.querySelector(s);
+
+function toast(msg, kind='', dur=3000){
+  const c = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className = 'toast ' + (kind||'');
+  t.textContent = msg;
+  c.appendChild(t);
+  setTimeout(()=>{ t.style.opacity='0'; t.style.transition='.2s'; setTimeout(()=>t.remove(),220); }, dur);
+}
+
+function openModal(id){ document.getElementById(id).classList.add('open'); }
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+
+function goBack(){
+  // Prefer history if user came from settings; else send to settings.
+  if(document.referrer && document.referrer.indexOf(location.host) !== -1) history.back();
+  else window.location.href = 'settings.html';
+}
+
+function toggleTheme(){
+  _theme = (_theme==='light') ? 'dark' : 'light';
+  localStorage.setItem('sbp_theme', _theme);
+  if(_theme==='light') document.documentElement.setAttribute('data-theme','light');
+  else document.documentElement.removeAttribute('data-theme');
+  $('#theme-btn').textContent = _theme==='light' ? '🌙' : '☀️';
+}
+
+function toggleLang(){
+  const cur = document.documentElement.getAttribute('lang') || 'en';
+  const next = cur === 'hi' ? 'en' : 'hi';
+  document.documentElement.setAttribute('lang', next);
+  localStorage.setItem('sbp_lang', next);
+}
+
+function initials(name){
+  const n = String(name||'').trim();
+  if(!n) return '?';
+  const parts = n.split(/\s+/);
+  if(parts.length === 1) return parts[0].slice(0,2).toUpperCase();
+  return (parts[0][0] + parts[parts.length-1][0]).toUpperCase();
+}
+
+function fmtRelativeTime(iso){
+  if(!iso) return '—';
+  const t = new Date(iso).getTime();
+  const now = Date.now();
+  const diff = Math.max(0, now - t);
+  const m = Math.floor(diff/60000);
+  if(m < 1) return 'just now';
+  if(m < 60) return m + 'm ago';
+  const h = Math.floor(m/60);
+  if(h < 24) return h + 'h ago';
+  const d = Math.floor(h/24);
+  if(d < 30) return d + 'd ago';
+  try {
+    return new Date(iso).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+  } catch(e){ return '—'; }
+}
+
+// ── Initial load ────────────────────────────────────────────────────
+async function init(){
+  // Render sidebar (desktop fixed + mobile bottom nav + mobile drawer).
+  // Pass currentPage matching MODULE_CATALOG code so the .active class fires.
+  if(window.SBPSidebar){
+    try {
+      SBPSidebar.render({currentPage:'authorized_users', layout:'desktop'});
+      SBPSidebar.render({currentPage:'authorized_users', layout:'mobile-bottom',  container:'.bnav'});
+      SBPSidebar.render({currentPage:'authorized_users', layout:'mobile-drawer', container:'.bnav-drawer'});
+    } catch(e){ console.warn('[authorized-users] sidebar render failed:', e); }
+  }
+
+  // Set theme button label
+  $('#theme-btn').textContent = _theme==='light' ? '🌙' : '☀️';
+
+  // Restore shop from localStorage (set by login flow)
+  try {
+    _shop = JSON.parse(localStorage.getItem('sbp_shop')||'null');
+  } catch(e){ _shop = null; }
+  _shopId = localStorage.getItem('sbp_shop_id') || (_shop && _shop.id);
+
+  if(!_shopId){
+    $('#content').innerHTML = '<div class="empty"><div class="empty-emoji">🔒</div><div class="empty-title">Not signed in</div><div class="empty-msg">Please sign in to manage authorized users.</div><button class="btn-pri" onclick="window.location.href=\'index.html\'" style="width:auto;padding:11px 24px;display:inline-block;margin-top:6px">Go to login</button></div>';
+    return;
+  }
+
+  // Verify auth session exists; if not, RPCs would fail with 'not_owner'
+  try {
+    const { data: { user } } = await _sb.auth.getUser();
+    if(!user){
+      $('#content').innerHTML = '<div class="empty"><div class="empty-emoji">🔒</div><div class="empty-title">Session expired</div><div class="empty-msg">Please sign in again.</div><button class="btn-pri" onclick="window.location.href=\'index.html\'" style="width:auto;padding:11px 24px;display:inline-block;margin-top:6px">Sign in</button></div>';
+      return;
+    }
+    _user = user;
+  } catch(e){ console.warn(e); }
+
+  await loadAll();
+}
+
+async function loadAll(){
+  // Fetch shop config (require_auth flag) + users in parallel
+  try {
+    const [shopRes, usersRes] = await Promise.all([
+      _sb.from('shops').select('id, name, require_auth_for_high_risk').eq('id', _shopId).single(),
+      _sb.rpc('sbp_authorized_users_list', { p_shop_id: _shopId })
+    ]);
+
+    if(shopRes.error){
+      console.error('Shop fetch failed:', shopRes.error);
+      $('#content').innerHTML = '<div class="empty"><div class="empty-emoji">⚠️</div><div class="empty-title">Could not load shop</div><div class="empty-msg">'+ (shopRes.error.message || 'Unknown error') +'</div></div>';
+      return;
+    }
+    _requireAuth = !!shopRes.data.require_auth_for_high_risk;
+
+    if(usersRes.error){
+      console.error('Users fetch failed:', usersRes.error);
+      $('#content').innerHTML = '<div class="empty"><div class="empty-emoji">⚠️</div><div class="empty-title">Could not load users</div><div class="empty-msg">'+ (usersRes.error.message || 'Unknown error') +'</div></div>';
+      return;
+    }
+    if(!usersRes.data || usersRes.data.ok !== true){
+      const err = usersRes.data?.error || 'unknown';
+      $('#content').innerHTML = '<div class="empty"><div class="empty-emoji">🔒</div><div class="empty-title">Access denied</div><div class="empty-msg">Only the shop owner can manage authorized users.<br><span style="color:var(--t3);font-size:11px">Error: '+ escHtml(err) +'</span></div></div>';
+      return;
+    }
+    _users = usersRes.data.users || [];
+  } catch(e){
+    console.error('loadAll error:', e);
+    $('#content').innerHTML = '<div class="empty"><div class="empty-emoji">⚠️</div><div class="empty-title">Network error</div><div class="empty-msg">'+ escHtml(e.message || 'Unknown') +'</div></div>';
+    return;
+  }
+
+  renderAll();
+}
+
+function escHtml(s){return String(s==null?'':s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+
+// ── Render ──────────────────────────────────────────────────────────
+function renderAll(){
+  renderAuthToggle();
+  renderUsers();
+  $('#add-btn').style.display = '';
+}
+
+function renderAuthToggle(){
+  const card = $('#auth-card');
+  card.style.display = '';
+  card.classList.toggle('on', _requireAuth);
+  $('#auth-toggle').checked = _requireAuth;
+  const sub = $('#auth-card-sub');
+  const activeCanAuth = _users.filter(u => u.active && u.can_authorize).length;
+  if(_requireAuth){
+    sub.innerHTML = '<span class="lang-en">ON — voids, cancellations, refunds require a manager PIN. '+ activeCanAuth +' user(s) can authorize.</span>' +
+                    '<span class="lang-hi">चालू — '+ activeCanAuth +' उपयोगकर्ता अधिकृत कर सकते हैं।</span>';
+  } else {
+    sub.innerHTML = '<span class="lang-en">OFF — anyone signed in can perform high-risk actions. Turn on to require PIN.</span>' +
+                    '<span class="lang-hi">बंद — कोई भी हस्ताक्षरित उपयोगकर्ता उच्च-जोखिम कार्य कर सकता है।</span>';
+  }
+}
+
+function renderUsers(){
+  const c = $('#content');
+  $('#user-count').textContent = _users.length ? '(' + _users.length + ')' : '';
+
+  if(!_users.length){
+    c.innerHTML = '<div class="empty"><div class="empty-emoji">👤</div><div class="empty-title">' +
+      '<span class="lang-en">No authorized users yet</span><span class="lang-hi">अभी तक कोई अधिकृत उपयोगकर्ता नहीं</span>' +
+      '</div><div class="empty-msg">' +
+      '<span class="lang-en">Add managers, supervisors, or cashiers who can authorize high-risk operations with their PIN.</span>' +
+      '<span class="lang-hi">PIN के साथ उच्च-जोखिम कार्यों को अधिकृत करने वाले उपयोगकर्ता जोड़ें।</span>' +
+      '</div><button class="btn-pri" onclick="openAddModal()" style="width:auto;padding:11px 24px;display:inline-block">+ Add first user</button></div>';
+    return;
+  }
+
+  // Sort: active first, then by name
+  const sorted = [..._users].sort((a,b) => {
+    if(a.active !== b.active) return a.active ? -1 : 1;
+    return String(a.user_name||'').localeCompare(String(b.user_name||''));
+  });
+
+  c.innerHTML = '<div class="u-list">' + sorted.map(u => `
+    <div class="u-card${u.active?'':' inactive'}">
+      <div class="u-avt">${escHtml(initials(u.user_name))}</div>
+      <div class="u-body">
+        <div class="u-name">${escHtml(u.user_name||'(unnamed)')}</div>
+        <div class="u-meta">
+          <span class="u-tag role-${escHtml(u.auth_role)}">${escHtml((u.auth_role||'').toUpperCase())}</span>
+          ${u.can_authorize ? '<span class="u-tag can-auth">✓ Can authorize</span>' : ''}
+          ${!u.active ? '<span class="u-tag inactive-tag">Inactive</span>' : ''}
+          ${u.last_used_at ? '<span style="color:var(--t3)">Last: '+ escHtml(fmtRelativeTime(u.last_used_at)) +'</span>' : ''}
+        </div>
+      </div>
+      <div class="u-actions">
+        <button class="u-btn" onclick="openEditModal('${escHtml(u.id)}')" title="Edit">✏️</button>
+        <button class="u-btn" onclick="openResetPinModal('${escHtml(u.id)}','${escHtml(u.user_name||'')}')" title="Reset PIN">🔑</button>
+        <button class="u-btn" onclick="toggleActive('${escHtml(u.id)}', ${!u.active})" title="${u.active?'Deactivate':'Activate'}">${u.active?'🚫':'✅'}</button>
+        <button class="u-btn danger" onclick="confirmDelete('${escHtml(u.id)}','${escHtml(u.user_name||'')}')" title="Delete">🗑️</button>
+      </div>
+    </div>
+  `).join('') + '</div>';
+}
+
+// ── Toggle global require_auth_for_high_risk ────────────────────────
+async function toggleRequireAuth(){
+  const newVal = $('#auth-toggle').checked;
+
+  // Guard: turning ON without any active+can_authorize user = footgun
+  const usable = _users.filter(u => u.active && u.can_authorize).length;
+  if(newVal && usable === 0){
+    $('#auth-toggle').checked = false;
+    toast('Add at least one user who can authorize before enabling.', 'e', 4500);
+    return;
+  }
+
+  try {
+    const r = await _sb.from('shops').update({require_auth_for_high_risk: newVal}).eq('id', _shopId);
+    if(r.error) throw new Error(r.error.message || 'rpc_error');
+    _requireAuth = newVal;
+    renderAuthToggle();
+    toast(newVal ? '🔒 PIN authorization enabled' : '🔓 PIN authorization disabled', 's');
+  } catch(e){
+    console.error(e);
+    $('#auth-toggle').checked = _requireAuth;   // revert visual
+    toast('Update failed: ' + (e.message||'unknown'), 'e');
+  }
+}
+
+// ── Add/Edit user modal ─────────────────────────────────────────────
+const ROLE_DESCRIPTIONS = {
+  owner:      { defaultCanAuth: true,  hint: 'Co-owner with full authorization rights.' },
+  manager:    { defaultCanAuth: true,  hint: 'Can authorize voids, cancellations, refunds.' },
+  supervisor: { defaultCanAuth: true,  hint: 'Can authorize day-to-day operations.' },
+  cashier:    { defaultCanAuth: false, hint: 'Operates the till; cannot approve high-risk actions by default.' }
+};
+
+function onRoleChange(){
+  const role = $('#f-role').value;
+  $('#f-role-hint').textContent = (ROLE_DESCRIPTIONS[role] || {}).hint || '';
+  // Only auto-set can_authorize when creating, not when editing (don't surprise the owner)
+  if(_editingUserId === null){
+    $('#f-can-authorize').checked = !!(ROLE_DESCRIPTIONS[role] || {}).defaultCanAuth;
+  }
+}
+
+function openAddModal(){
+  _editingUserId = null;
+  document.querySelectorAll('#modal-title .lang-en')[0].textContent = 'Add User';
+  document.querySelectorAll('#modal-title .lang-hi')[0].textContent = 'उपयोगकर्ता जोड़ें';
+  $('#f-name').value = '';
+  $('#f-role').value = 'manager';
+  $('#f-pin').value = '';
+  $('#f-pin-wrap').style.display = '';
+  $('#f-active').checked = true;
+  $('#f-notes').value = '';
+  onRoleChange();
+  openModal('user-modal');
+  setTimeout(()=> $('#f-name').focus(), 100);
+}
+
+function openEditModal(userId){
+  const u = _users.find(x => x.id === userId);
+  if(!u){ toast('User not found','e'); return; }
+  _editingUserId = userId;
+  document.querySelectorAll('#modal-title .lang-en')[0].textContent = 'Edit User';
+  document.querySelectorAll('#modal-title .lang-hi')[0].textContent = 'उपयोगकर्ता संपादित करें';
+  $('#f-name').value = u.user_name || '';
+  $('#f-role').value = u.auth_role || 'manager';
+  $('#f-pin').value = '';                  // PIN not editable here — use Reset PIN
+  $('#f-pin-wrap').style.display = 'none'; // hide PIN field in edit mode
+  $('#f-can-authorize').checked = !!u.can_authorize;
+  $('#f-active').checked = !!u.active;
+  $('#f-notes').value = u.notes || '';
+  $('#f-role-hint').textContent = (ROLE_DESCRIPTIONS[u.auth_role] || {}).hint || '';
+  openModal('user-modal');
+}
+
+async function saveUser(){
+  const name = $('#f-name').value.trim();
+  const role = $('#f-role').value;
+  const pin  = $('#f-pin').value.trim();
+  const canAuth = $('#f-can-authorize').checked;
+  const active  = $('#f-active').checked;
+  const notes   = $('#f-notes').value.trim();
+
+  if(!name){ toast('Name is required','e'); $('#f-name').focus(); return; }
+  if(!_editingUserId){
+    if(!/^\d{4,12}$/.test(pin)){ toast('PIN must be 4–12 digits','e'); $('#f-pin').focus(); return; }
+  }
+
+  const btn = $('#save-btn');
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+
+  try {
+    const payload = {
+      p_shop_id: _shopId,
+      p_user_name: name,
+      p_auth_role: role,
+      p_pin: _editingUserId ? null : pin,    // null on edit; upsert keeps existing PIN
+      p_can_authorize: canAuth,
+      p_active: active,
+      p_notes: notes || null
+    };
+    const { data, error } = await _sb.rpc('sbp_authorized_users_upsert', payload);
+    if(error) throw new Error(error.message || 'rpc_error');
+    if(!data || !data.ok){
+      throw new Error(data?.error || 'save_failed');
+    }
+    toast(_editingUserId ? '✓ User updated' : '✓ User added', 's');
+    closeModal('user-modal');
+    await loadAll();
+  } catch(e){
+    console.error(e);
+    toast('Save failed: ' + (e.message||'unknown'), 'e');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<span class="lang-en">Save</span><span class="lang-hi">सहेजें</span>';
+  }
+}
+
+// ── Reset PIN ───────────────────────────────────────────────────────
+function openResetPinModal(userId, userName){
+  _resetingUserId = userId;
+  $('#pin-new').value = '';
+  $('#pin-modal-sub').innerHTML = '<span class="lang-en">Setting a new PIN for </span><span class="lang-hi">के लिए नया PIN सेट करें: </span><strong>' + escHtml(userName) + '</strong>';
+  openModal('pin-modal');
+  setTimeout(()=> $('#pin-new').focus(), 100);
+}
+
+async function savePIN(){
+  const newPin = $('#pin-new').value.trim();
+  if(!/^\d{4,12}$/.test(newPin)){ toast('PIN must be 4–12 digits','e'); $('#pin-new').focus(); return; }
+  const btn = $('#pin-save-btn');
+  btn.disabled = true;
+  btn.textContent = 'Setting…';
+  try {
+    const { data, error } = await _sb.rpc('sbp_authorized_users_set_pin', {
+      p_shop_id: _shopId,
+      p_user_id: _resetingUserId,
+      p_new_pin: newPin
+    });
+    if(error) throw new Error(error.message || 'rpc_error');
+    if(!data || !data.ok) throw new Error(data?.error || 'set_failed');
+    toast('🔑 PIN updated', 's');
+    closeModal('pin-modal');
+    await loadAll();
+  } catch(e){
+    console.error(e);
+    toast('PIN update failed: ' + (e.message||'unknown'), 'e');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<span class="lang-en">Set PIN</span><span class="lang-hi">PIN सेट करें</span>';
+  }
+}
+
+// ── Toggle active/inactive ──────────────────────────────────────────
+async function toggleActive(userId, newActive){
+  try {
+    const { data, error } = await _sb.rpc('sbp_authorized_users_set_active', {
+      p_shop_id: _shopId,
+      p_user_id: userId,
+      p_active: newActive
+    });
+    if(error) throw new Error(error.message || 'rpc_error');
+    if(!data || !data.ok) throw new Error(data?.error || 'update_failed');
+    toast(newActive ? '✅ Activated' : '🚫 Deactivated', 's');
+    await loadAll();
+  } catch(e){
+    console.error(e);
+    toast('Update failed: ' + (e.message||'unknown'), 'e');
+  }
+}
+
+// ── Delete ──────────────────────────────────────────────────────────
+async function confirmDelete(userId, userName){
+  if(!confirm('Delete "' + userName + '"?\n\nTheir PIN will stop working immediately. Audit log entries they authorized are preserved.')) return;
+  try {
+    const { data, error } = await _sb.rpc('sbp_authorized_users_delete', {
+      p_shop_id: _shopId,
+      p_user_id: userId
+    });
+    if(error) throw new Error(error.message || 'rpc_error');
+    if(!data || !data.ok) throw new Error(data?.error || 'delete_failed');
+    toast('🗑️ User deleted', 's');
+    await loadAll();
+  } catch(e){
+    console.error(e);
+    toast('Delete failed: ' + (e.message||'unknown'), 'e');
+  }
+}
+
+// ── Boot ────────────────────────────────────────────────────────────
+init();
+</script>
+
+</body>
+</html>

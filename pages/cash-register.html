@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en" translate="no" class="notranslate">
+<head>
+<script>
+// FIX — Pre-paint theme application (eliminates dark→light flash)
+(function(){
+  try {
+    var t = localStorage.getItem('sbp_theme');
+    if (t === 'light') document.documentElement.setAttribute('data-theme','light');
+  } catch(e) {}
+})();
+</script>
+
+<meta charset="UTF-8">
+<meta name="google" content="notranslate">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#F5A623">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png?v=2">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180x180.png?v=2">
+<title>ShopBill Pro — Cash Register</title>
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Noto+Sans:wght@300;400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+// FIX #3 — IST-aware date (UTC toISOString shifts -5:30 in India)
+function sbpToday(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function sbpYM(){return sbpToday().slice(0,7);}
+function sbpY(){return sbpToday().slice(0,4);}
+</script>
+
+
+
+<script src="lang.js"></script>
+
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:'Noto Sans','Noto Sans Devanagari',sans-serif;-webkit-font-smoothing:antialiased;}
+:root{--acc:#F5A623;--acc2:#EF4444;--acc3:#10B981;--cyan:#06B6D4;--amber:#F59E0B;--bg:#0A0A12;--surf:#13131C;--surf2:#1C1C28;--surf3:#252534;--bord:#2A2A3A;--text:#F0EFF8;--t2:#8A8AA8;--t3:#4A4A60;--font-h:'Outfit',sans-serif;--rs:12px;--rs2:18px;--tr:.18s ease;--safe-top:env(safe-area-inset-top,0px);--safe-bottom:env(safe-area-inset-bottom,0px)}
+[data-theme="light"]{--bg:#F0EEFF;--surf:#FFF;--surf2:#F5F2FF;--surf3:#EDE9FF;--bord:#DDD8F5;--text:#0F0E18;--t2:#5E5A7A;--t3:#A09CC0}
+body{background:var(--bg);color:var(--text)}
+#app{display:flex;flex-direction:column;height:100dvh;overflow:hidden}
+.sb{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;padding-top:calc(10px + var(--safe-top));background:var(--surf);border-bottom:1px solid var(--bord);flex-shrink:0;min-height:54px}
+.tb-l{display:flex;align-items:center;gap:10px;flex:1}
+.tb-r{display:flex;align-items:center;gap:7px;flex-shrink:0}
+.tb-title{font-family:var(--font-h);font-size:17px;font-weight:800}
+.back-btn{width:34px;height:34px;border-radius:10px;background:var(--surf2);border:1px solid var(--bord);display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer;transition:var(--tr)}
+.back-btn:active{transform:scale(.93)}
+.ic-btn{width:34px;height:34px;border-radius:10px;background:var(--surf2);border:1px solid var(--bord);display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;transition:var(--tr)}
+.ic-btn:active{transform:scale(.93)}
+
+/* Register Status Banner */
+.reg-banner{padding:14px;text-align:center;flex-shrink:0}
+.reg-banner.closed{background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.15);border-radius:var(--rs2)}
+.reg-banner.open{background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.15);border-radius:var(--rs2)}
+.rb-status{font-family:var(--font-h);font-size:14px;font-weight:800;margin-bottom:4px}
+.rb-date{font-size:11px;color:var(--t2);margin-bottom:3px}
+.rb-bal{font-family:var(--font-h);font-size:28px;font-weight:900;margin-top:4px}
+
+/* Summary cards */
+.reg-summary{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 14px;margin-bottom:14px}
+.rs-card{background:var(--surf);border:1px solid var(--bord);border-radius:var(--rs2);padding:13px;position:relative;overflow:hidden}
+.rs-card::before{content:'';position:absolute;inset:0;opacity:.07;border-radius:inherit}
+.rs-card.g::before{background:var(--acc3)}.rs-card.r::before{background:var(--acc2)}.rs-card.p::before{background:var(--acc)}.rs-card.a::before{background:var(--amber)}
+.rs-lbl{font-size:10px;color:var(--t2);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+.rs-val{font-family:var(--font-h);font-size:22px;font-weight:900}
+.rs-val.g{color:var(--acc3)}.rs-val.r{color:var(--acc2)}.rs-val.p{color:var(--acc)}.rs-val.a{color:var(--amber)}
+.rs-sub{font-size:10px;color:var(--t2);margin-top:4px}
+
+/* Entry List */
+.sec-hd{display:flex;align-items:center;justify-content:space-between;padding:0 14px;margin-bottom:10px}
+.sec-t{font-family:var(--font-h);font-size:14px;font-weight:800}
+.add-entry-btn{font-size:11px;padding:5px 12px;border-radius:20px;background:rgba(245,166,35,.1);border:1px solid rgba(245,166,35,.25);color:var(--acc);cursor:pointer;font-weight:700}
+
+.entry-item{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--bord);transition:var(--tr)}
+.entry-item:active{background:var(--surf2)}
+.ei-ic{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.ei-ic.in{background:rgba(16,185,129,.12)}.ei-ic.out{background:rgba(239,68,68,.12)}.ei-ic.neutral{background:rgba(245,166,35,.12)}
+.ei-info{flex:1;min-width:0}
+.ei-desc{font-size:13px;font-weight:700}
+.ei-meta{font-size:11px;color:var(--t2);margin-top:2px}
+.ei-amt{font-family:var(--font-h);font-size:15px;font-weight:900;flex-shrink:0}
+.ei-amt.in{color:var(--acc3)}.ei-amt.out{color:var(--acc2)}.ei-amt.neutral{color:var(--t2)}
+
+/* Forms */
+.ff{margin-bottom:12px}
+.ff label{display:block;font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.ff input,.ff select{width:100%;background:var(--surf2);border:1.5px solid var(--bord);border-radius:var(--rs);padding:11px 13px;color:var(--text);font-size:14px;outline:none;transition:var(--tr);appearance:none;font-family:'Noto Sans',sans-serif}
+.ff input:focus,.ff select:focus{border-color:var(--acc);background:var(--surf);box-shadow:0 0 0 3px rgba(245,166,35,.12)}
+.ff input::placeholder{color:var(--t3)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+/* Big Amount Input */
+.big-inp{font-family:var(--font-h);font-size:32px;font-weight:900;background:var(--surf2);border:2px solid var(--bord);border-radius:var(--rs2);padding:16px;color:var(--text);outline:none;text-align:center;width:100%;transition:var(--tr)}
+.big-inp:focus{border-color:var(--acc);background:var(--surf);box-shadow:0 0 0 4px rgba(245,166,35,.15)}
+
+/* Buttons */
+.btn-pri{width:100%;padding:14px;border-radius:var(--rs);background:linear-gradient(135deg,var(--acc),#FF8A00);border:none;color:#0A0E1A;font-family:var(--font-h);font-size:15px;font-weight:700;cursor:pointer;transition:.2s;box-shadow:0 4px 16px rgba(245,166,35,.4);display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-pri:active{transform:scale(.97)}
+.btn-pri:disabled{opacity:.65;cursor:not-allowed}
+.btn-sec{width:100%;padding:12px;border-radius:var(--rs);background:var(--surf2);border:1.5px solid var(--bord);color:var(--text);font-family:var(--font-h);font-size:14px;font-weight:700;cursor:pointer}
+.btn-danger{width:100%;padding:12px;border-radius:var(--rs);background:rgba(239,68,68,.08);border:1.5px solid rgba(239,68,68,.2);color:var(--acc2);font-family:var(--font-h);font-size:14px;font-weight:700;cursor:pointer}
+
+/* Type selector */
+.type-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.type-card{padding:12px;border-radius:var(--rs);border:1.5px solid var(--bord);background:var(--surf2);text-align:center;cursor:pointer;transition:var(--tr);font-family:var(--font-h);font-size:14px;font-weight:700}
+.type-card:active{transform:scale(.95)}
+.type-card.in.on{border-color:rgba(16,185,129,.5);background:rgba(16,185,129,.1);color:var(--acc3)}
+.type-card.out.on{border-color:rgba(239,68,68,.5);background:rgba(239,68,68,.1);color:var(--acc2)}
+
+/* Overlays */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:500;display:none;align-items:flex-end;backdrop-filter:blur(4px)}
+.overlay.open{display:flex;animation:fadeIn .18s ease}
+.sheet{width:100%;max-height:92dvh;background:var(--surf);border-radius:var(--rs2) var(--rs2) 0 0;padding:16px 16px calc(16px + var(--safe-bottom));overflow-y:auto;animation:slideUp .28s cubic-bezier(.4,0,.2,1)}
+.handle{width:36px;height:4px;border-radius:2px;background:var(--surf3);margin:0 auto 16px}
+.sheet-title{font-family:var(--font-h);font-size:18px;font-weight:800;margin-bottom:14px}
+
+/* Bottom Nav */
+.bnav{display:flex;align-items:stretch;background:var(--surf);border-top:1px solid var(--bord);flex-shrink:0;padding-bottom:var(--safe-bottom);z-index:100}
+.ni{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 4px;gap:3px;cursor:pointer;transition:var(--tr);position:relative;min-height:56px;user-select:none}
+.ni-ic{font-size:20px;line-height:1}.ni-lb{font-size:10px;color:var(--t2);font-weight:600;white-space:nowrap}
+.ni.on .ni-lb{color:var(--acc)}
+.ni.on::after{content:'';position:absolute;top:0;left:20%;right:20%;height:2.5px;border-radius:0 0 4px 4px;background:var(--acc)}
+.ni:active{background:var(--surf2)}
+.nav-fab{width:48px;height:48px;border-radius:16px;background:linear-gradient(135deg,var(--acc),#FF8A00);color:#0A0E1A;font-size:22px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(245,166,35,.5);margin-bottom:4px}
+
+#toast-container{position:fixed;bottom:calc(72px + var(--safe-bottom));left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none}
+.toast{background:var(--surf3);color:var(--text);padding:10px 18px;border-radius:20px;font-size:13px;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.45);border:1px solid var(--bord);white-space:nowrap;max-width:calc(100vw - 40px);animation:toastIn .22s ease}
+.toast.s{background:rgba(16,185,129,.15);border-color:rgba(16,185,129,.3);color:var(--acc3)}
+.toast.e{background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.3);color:var(--acc2)}
+
+.spacer{height:80px}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+@keyframes toastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@media(min-width:640px){#app{max-width:480px;margin:0 auto;box-shadow:0 0 80px rgba(0,0,0,.6)}}
+
+/* ══ Desktop Sidebar ══ */
+#dsb{position:fixed;left:0;top:0;bottom:0;width:220px;background:var(--surf);border-right:1px solid var(--bord);display:flex;flex-direction:column;z-index:200;overflow-y:auto}
+.dsb-logo{display:flex;align-items:center;gap:10px;padding:18px 16px 12px;border-bottom:1px solid var(--bord)}
+.dsb-brand{font-family:var(--font-h);font-size:15px;font-weight:800;color:var(--acc)}
+.dsb-nav{flex:1;padding:8px;display:flex;flex-direction:column;gap:2px;overflow-y:auto}
+.dsb-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;cursor:pointer;text-decoration:none;color:var(--t2);font-size:13px;font-weight:600;transition:.15s ease;white-space:nowrap;border:none;background:none;width:100%}
+.dsb-item:hover{background:var(--surf2);color:var(--text)}
+.dsb-item.active{background:rgba(245,166,35,.12);color:var(--acc)}
+.dsb-item.fab-sb{background:linear-gradient(135deg,#F5A623,#FF8A00);color:#fff;margin:4px 0 8px;font-weight:700}
+.dsb-ic{font-size:17px;width:22px;text-align:center;flex-shrink:0}
+.dsb-footer{padding:8px;border-top:1px solid var(--bord)}
+.dsb-ver{font-size:10px;color:var(--t3);text-align:center;padding:6px 0 2px}
+@media(max-width:1023px){#dsb{display:none!important}}
+@media(min-width:640px) and (max-width:1023px){#app{max-width:600px;margin:0 auto}}
+@media(min-width:1024px){body{overflow:hidden}}}
+
+/* ══ Language ══ */
+.lang-hi{display:none!important}
+.lang-en{display:inline!important}
+html[lang="hi"] .lang-hi{display:inline!important}
+html[lang="hi"] .lang-en{display:none!important}
+
+
+
+@media(max-width:1023px){
+    #app{height:100dvh!important;display:flex!important;flex-direction:column!important;overflow:hidden!important}
+  .bnav{position:fixed!important;bottom:0!important;left:0!important;right:0!important;z-index:100!important}
+  .sb{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+}
+
+
+
+
+
+
+/* ══ PWA SCROLL SYSTEM ══ */
+html,body{height:100%;overflow:hidden}
+#app{height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+.sb{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:0;overscroll-behavior:contain}
+.bnav{flex-shrink:0}
+@media(min-width:1024px){
+  #app{margin-left:220px!important;max-width:calc(100vw - 220px)!important;width:calc(100vw - 220px)!important}
+  .bnav{display:none!important}
+}
+</style>
+<link rel="stylesheet" href="fix.css">
+</head>
+<body>
+<script>(function(){var ds=localStorage.getItem("sbp_digit_style")||"default";var fs=parseInt(localStorage.getItem("sbp_font_size")||"15");var fm={default:"inherit",mono:"Courier New,monospace",rounded:"DM Sans,sans-serif",sharp:"Outfit,sans-serif"};var st=document.getElementById("sbp-font-override");if(!st){st=document.createElement("style");st.id="sbp-font-override";document.head.appendChild(st);}st.textContent="body{font-size:"+fs+"px}.sc-val,.cm-val,.bc-amt,.cust-bal-val,.cms-val,.cart-total-val,.pos-item-price,.tot-row span:last-child,.gst-row span,.stat-val,.stat-num,.report-val,.bill-total,.bdoc-inv-no,.bc-inv,.lv{font-family:"+fm[ds]+"!important}";})();</script>
+<div id="app">
+  <div id="sbpBetaBanner"></div>
+
+  <div class="topbar">
+    <div class="tb-l">
+      <div class="back-btn" onclick="goTo('settings.html')">←</div>
+      <div class="tb-title">🏦 Cash Register</div>
+    </div>
+    <div class="tb-r">
+      <div class="ic-btn" onclick="toggleTheme()" id="theme-btn">☀️</div>
+      <div class="ic-btn" onclick="exportRegister()" title="Export">📤</div>
+    </div>
+  </div>
+
+  <div class="sb">
+    <!-- Register Status -->
+    <div style="padding:14px">
+      <div id="reg-banner-closed" class="reg-banner closed">
+        <div class="rb-status" style="color:var(--acc2)">🔒 Register Closed</div>
+        <div class="rb-date" id="closed-date">Today</div>
+        <div style="font-size:12px;color:var(--t2);margin:6px 0 12px">Open the register to start tracking today's cash</div>
+        <button class="btn-pri" onclick="openModal('open-register-modal')">🟢 Open Register</button>
+      </div>
+      <div id="reg-banner-open" class="reg-banner open" style="display:none">
+        <div class="rb-status" style="color:var(--acc3)">🟢 Register Open</div>
+        <div class="rb-date" id="open-date-lbl">Today</div>
+        <div class="rb-bal" id="current-balance" style="color:var(--acc3)">₹0</div>
+        <div style="font-size:11px;color:var(--t2);margin-top:4px">Closing Balance (estimated)</div>
+        <button class="btn-danger" style="margin-top:14px" onclick="openModal('close-register-modal')">🔒 Close Register</button>
+      </div>
+    </div>
+
+    <!-- Summary (visible when open) -->
+    <div id="reg-summary-section" style="display:none">
+      <div class="reg-summary">
+        <div class="rs-card g"><div class="rs-lbl">Opening Cash</div><div class="rs-val g" id="rs-opening">₹0</div><div class="rs-sub">Starting balance</div></div>
+        <div class="rs-card g"><div class="rs-lbl">Cash IN</div><div class="rs-val g" id="rs-in">₹0</div><div class="rs-sub">Sales + receipts</div></div>
+        <div class="rs-card r"><div class="rs-lbl">Cash OUT</div><div class="rs-val r" id="rs-out">₹0</div><div class="rs-sub">Expenses + payments</div></div>
+        <div class="rs-card p"><div class="rs-lbl">Closing Balance</div><div class="rs-val p" id="rs-closing">₹0</div><div class="rs-sub">Expected in hand</div></div>
+      </div>
+
+      <!-- Entries -->
+      <div class="sec-hd">
+        <div class="sec-t">Today's Entries</div>
+        <div class="add-entry-btn" onclick="openModal('add-entry-modal')">＋ Add Entry</div>
+      </div>
+      <div id="entries-list"></div>
+    </div>
+
+    <!-- History -->
+    <div id="reg-history-section" style="padding:0 14px 14px">
+      <div style="font-family:var(--font-h);font-size:14px;font-weight:800;margin-bottom:10px">Past Registers</div>
+      <div id="history-list"></div>
+    </div>
+
+    <div class="spacer"></div>
+  </div>
+
+  <div class="bnav">
+    <div class="ni" onclick="goTo('dashboard.html')"><span class="ni-ic">🏠</span><span class="ni-lb"><span class="lang-en">Home</span><span class="lang-hi">होम</span></span></div>
+    <div class="ni" onclick="goTo('bills.html')"><span class="ni-ic">🧾</span><span class="ni-lb"><span class="lang-en">Bills</span><span class="lang-hi">बिल</span></span></div>
+    <div class="ni" onclick="goTo('billing.html')" style="align-items:center;justify-content:center"><div class="nav-fab">＋</div></div>
+    <div class="ni" onclick="goTo('marketing.html')"><span class="ni-ic">📢</span><span class="ni-lb"><span class="lang-en">Marketing</span><span class="lang-hi">मार्केटिंग</span></span></div>
+    <div class="ni on" onclick="goTo('settings.html')"><span class="ni-ic">☰</span><span class="ni-lb"><span class="lang-en">More</span><span class="lang-hi">अधिक</span></span></div>
+  </div>
+</div>
+
+<!-- OPEN REGISTER MODAL -->
+<div class="overlay" id="open-register-modal">
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="sheet-title">🟢 Open Cash Register</div>
+    <div style="font-size:12px;color:var(--t2);margin-bottom:16px">Enter the cash you have in hand at start of day</div>
+    <div class="ff">
+      <label>Opening Cash Balance ₹</label>
+      <input class="big-inp" type="number" id="open-balance-inp" placeholder="0" min="0">
+    </div>
+    <div class="ff"><label>Date</label><input type="date" id="open-date-inp"></div>
+    <div class="ff"><label>Note (optional)</label><input type="text" id="open-note-inp" placeholder="Any notes for today..."></div>
+    <button class="btn-pri" onclick="openRegister()">🟢 Open Register</button>
+    <button class="btn-sec" onclick="closeModal('open-register-modal')" style="margin-top:8px">Cancel</button>
+    <div style="height:8px"></div>
+  </div>
+</div>
+
+<!-- ADD ENTRY MODAL -->
+<div class="overlay" id="add-entry-modal">
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="sheet-title">＋ Add Cash Entry</div>
+    <div class="type-row">
+      <div class="type-card in on" id="entry-in-btn" onclick="setEntryType('in',this)">💚 Cash IN</div>
+      <div class="type-card out"   id="entry-out-btn" onclick="setEntryType('out',this)">❤️ Cash OUT</div>
+    </div>
+    <div class="ff">
+      <label id="entry-amt-lbl">Amount Received ₹</label>
+      <input class="big-inp" type="number" id="add-entry-amt" placeholder="0">
+    </div>
+    <div class="ff"><label>Description *</label><input type="text" id="add-entry-desc" placeholder="e.g. Cash Sale, Stock Purchase..."></div>
+    <div class="row2">
+      <div class="ff"><label>Category</label>
+        <select id="add-entry-cat">
+          <option>Cash Sale</option><option>UPI Received</option><option>Advance Received</option>
+          <option>Stock Purchase</option><option>Shop Rent</option><option>Salary</option>
+          <option>Electricity</option><option>Expense</option><option>Other</option>
+        </select>
+      </div>
+      <div class="ff"><label>Time</label><input type="time" id="add-entry-time"></div>
+    </div>
+    <button class="btn-pri" id="add-entry-btn" onclick="addEntry()">💚 Add Cash IN Entry</button>
+    <button class="btn-sec" onclick="closeModal('add-entry-modal')" style="margin-top:8px">Cancel</button>
+    <div style="height:8px"></div>
+  </div>
+</div>
+
+<!-- CLOSE REGISTER MODAL -->
+<div class="overlay" id="close-register-modal">
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="sheet-title">🔒 Close Register</div>
+    <div id="close-summary" style="background:var(--surf2);border-radius:var(--rs);padding:14px;margin-bottom:14px;border:1px solid var(--bord)"></div>
+    <div class="ff"><label>Actual Cash in Hand ₹</label><input class="big-inp" type="number" id="actual-cash-inp" placeholder="Count and enter"></div>
+    <div id="cash-diff-note" style="font-size:12px;color:var(--t2);margin-bottom:12px;padding:9px;background:var(--surf2);border-radius:var(--rs)"></div>
+    <div class="ff"><label>Closing Note</label><input type="text" id="close-note-inp" placeholder="End of day notes..."></div>
+    <button class="btn-pri" onclick="closeRegister()">🔒 Close & Save</button>
+    <button class="btn-sec" onclick="closeModal('close-register-modal')" style="margin-top:8px">Cancel</button>
+    <div style="height:8px"></div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script>
+const SB_URL='https://jfqeirfrkjdkqqixivru.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmcWVpcmZya2pka3FxaXhpdnJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzNzQ4MzgsImV4cCI6MjA4OTk1MDgzOH0.akd4E0nil8ypLR4WOykkeYIL8g4uuNU6XdSVh_Y1utk';
+const _sb=supabase.createClient(SB_URL,SB_KEY);
+
+let _theme=localStorage.getItem('sbp_theme')||'dark';
+let _reg=JSON.parse(localStorage.getItem('sbp_cash_register')||'{"isOpen":false,"entries":[],"history":[]}');
+let _entryType='in';
+const TODAY=sbpToday();
+
+const SESSION_TIMEOUT=parseInt(localStorage.getItem('sbp_session_timeout')||'30');
+let _actTimer;
+function _resetTimer(){clearTimeout(_actTimer);localStorage.setItem('sbp_last_activity',Date.now().toString());_actTimer=setTimeout(async()=>{await _sb.auth.signOut();window.location.href='index.html';},SESSION_TIMEOUT*60*1000)}
+['click','touchstart','keypress','scroll'].forEach(e=>document.addEventListener(e,_resetTimer,{passive:true}));
+
+function goTo(p){window.location.href=p}
+function toast(msg,type='',dur=3000){const c=document.getElementById('toast-container');const t=document.createElement('div');t.className='toast'+(type?' '+type:'');t.textContent=msg;c.appendChild(t);setTimeout(()=>{t.style.opacity='0';t.style.transition='.2s';setTimeout(()=>t.remove(),220);},dur)}
+function toggleTheme(){_theme=_theme==='dark'?'light':'dark';localStorage.setItem('sbp_theme',_theme);document.documentElement.setAttribute('data-theme',_theme==='light'?'light':'');document.getElementById('theme-btn').textContent=_theme==='light'?'🌙':'☀️'}
+function openModal(id){const el=document.getElementById(id);el.classList.add('open');el.style.display='flex';if(id==='close-register-modal')updateCloseSummary();el.addEventListener('click',e=>{if(e.target===el)closeModal(id);},{once:true})}
+function closeModal(id){const el=document.getElementById(id);el.classList.remove('open');el.style.display='none'}
+function fINR(n){return '₹'+(parseFloat(n)||0).toLocaleString('en-IN',{maximumFractionDigits:0})}
+function save(){localStorage.setItem('sbp_cash_register',JSON.stringify(_reg))}
+function todayISO(){return TODAY}
+function nowTime(){return new Date().toTimeString().substring(0,5)}
+function fDate(d){try{return new Date(d).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});}catch{return d}}
+
+// ── Compute totals ──
+function computeTotals(entries){
+  const cashIN =entries.filter(e=>e.type==='in').reduce((s,e)=>s+parseFloat(e.amt||0),0);
+  const cashOUT=entries.filter(e=>e.type==='out').reduce((s,e)=>s+parseFloat(e.amt||0),0);
+  const opening=parseFloat(_reg.openingBalance||0);
+  const closing=opening+cashIN-cashOUT;
+  return{cashIN,cashOUT,opening,closing};
+}
+
+// ── Render Page ──
+function renderPage(){
+  const isOpen=_reg.isOpen&&_reg.openDate===TODAY;
+  document.getElementById('reg-banner-closed').style.display=isOpen?'none':'block';
+  document.getElementById('reg-banner-open').style.display=isOpen?'block':'none';
+  document.getElementById('reg-summary-section').style.display=isOpen?'block':'none';
+
+  const todayStr=new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long'});
+  document.getElementById('closed-date').textContent=todayStr;
+  document.getElementById('open-date-lbl').textContent=todayStr;
+
+  if(isOpen){
+    const{cashIN,cashOUT,opening,closing}=computeTotals(_reg.entries||[]);
+    document.getElementById('rs-opening').textContent=fINR(opening);
+    document.getElementById('rs-in').textContent=fINR(cashIN);
+    document.getElementById('rs-out').textContent=fINR(cashOUT);
+    document.getElementById('rs-closing').textContent=fINR(closing);
+    document.getElementById('current-balance').textContent=fINR(closing);
+    document.getElementById('current-balance').style.color=closing>=0?'var(--acc3)':'var(--acc2)';
+    renderEntries(_reg.entries||[]);
+  }
+
+  renderHistory();
+}
+
+function renderEntries(entries){
+  const el=document.getElementById('entries-list');
+  if(!entries.length){el.innerHTML='<div style="text-align:center;padding:24px;color:var(--t2);font-size:12px">No entries yet today.<br>Tap <strong>+ Add Entry</strong> to record cash in/out.</div>';return}
+  el.innerHTML=entries.map((e,i)=>`
+    <div class="entry-item">
+      <div class="ei-ic ${e.type}">${e.type==='in'?'💚':'❤️'}</div>
+      <div class="ei-info">
+        <div class="ei-desc">${e.desc||'Cash '+e.type.toUpperCase()}</div>
+        <div class="ei-meta">${e.cat||''}${e.time?' · '+e.time:''}</div>
+      </div>
+      <div>
+        <div class="ei-amt ${e.type}">${e.type==='in'?'+':'-'}${fINR(e.amt)}</div>
+        <div onclick="deleteEntry(${i})" style="font-size:10px;color:var(--acc2);text-align:right;margin-top:3px;cursor:pointer">Delete</div>
+      </div>
+    </div>`).join('');
+}
+
+function renderHistory(){
+  const el=document.getElementById('history-list');
+  const hist=(_reg.history||[]).slice(0,10);
+  if(!hist.length){el.innerHTML='<div style="text-align:center;padding:16px;color:var(--t2);font-size:12px">No past registers. Open your first register today!</div>';return}
+  el.innerHTML=hist.map(h=>`
+    <div style="background:var(--surf);border:1px solid var(--bord);border-radius:var(--rs);padding:12px;margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+        <div><div style="font-family:var(--font-h);font-size:13px;font-weight:700">${fDate(h.date)}</div>
+          <div style="font-size:10px;color:var(--t2);margin-top:1px">${h.entries?.length||0} entries</div>
+        </div>
+        <div style="text-align:right"><div style="font-family:var(--font-h);font-size:16px;font-weight:900;color:${h.diff>=0?'var(--acc3)':'var(--acc2)'}">${fINR(h.actualCash||h.closing)}</div>
+          ${h.diff!=null?`<div style="font-size:10px;margin-top:2px;color:${h.diff>=0?'var(--acc3)':'var(--acc2)'}">${h.diff>=0?'Surplus +':'Short '}${fINR(Math.abs(h.diff))}</div>`:''}
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;font-size:11px;color:var(--t2)">
+        <div>Opening: <strong style="color:var(--text)">${fINR(h.opening)}</strong></div>
+        <div>IN: <strong style="color:var(--acc3)">${fINR(h.cashIN)}</strong></div>
+        <div>OUT: <strong style="color:var(--acc2)">${fINR(h.cashOUT)}</strong></div>
+      </div>
+    </div>`).join('');
+}
+
+// ── Register Actions ──
+function openRegister(){
+  const bal=parseFloat(document.getElementById('open-balance-inp').value)||0;
+  const date=document.getElementById('open-date-inp').value||TODAY;
+  const note=document.getElementById('open-note-inp').value;
+  _reg.isOpen=true;_reg.openDate=date;_reg.openingBalance=bal;_reg.openNote=note;_reg.entries=[];
+  // Auto-import today's bills as cash IN
+  const bills=JSON.parse(localStorage.getItem('sbp_bills')||'[]').filter(b=>(b.invoice_date||b.created_at||'').startsWith(date)&&b.payment_mode!=='Credit'&&parseFloat(b.paid_amount||0)>0);
+  bills.forEach(b=>{_reg.entries.push({type:'in',amt:parseFloat(b.paid_amount||0),desc:'Bill: '+b.customer_name,cat:'Cash Sale',time:'—',auto:true})});
+  save();closeModal('open-register-modal');renderPage();
+  toast('🟢 Register opened! Opening: '+fINR(bal)+(bills.length?' · '+bills.length+' bills auto-imported':'')+' ','s',4000);
+}
+
+function setEntryType(type,el){
+  _entryType=type;
+  document.getElementById('entry-in-btn').classList.toggle('on',type==='in');
+  document.getElementById('entry-out-btn').classList.toggle('on',type==='out');
+  document.getElementById('entry-amt-lbl').textContent=type==='in'?'Amount Received ₹':'Amount Paid Out ₹';
+  document.getElementById('add-entry-btn').textContent=type==='in'?'💚 Add Cash IN Entry':'❤️ Add Cash OUT Entry';
+  document.getElementById('add-entry-btn').style.background=type==='in'?'linear-gradient(135deg,var(--acc3),#0891B2)':'linear-gradient(135deg,var(--acc2),#DC2626)';
+}
+
+function addEntry(){
+  const amt=parseFloat(document.getElementById('add-entry-amt').value)||0;
+  const desc=document.getElementById('add-entry-desc').value.trim();
+  if(!amt){toast('Enter amount','e');return}
+  if(!desc){toast('Enter description','e');return}
+  const entry={type:_entryType,amt,desc,cat:document.getElementById('add-entry-cat').value,time:document.getElementById('add-entry-time').value||nowTime(),ts:Date.now()};
+  if(!_reg.entries)_reg.entries=[];
+  _reg.entries.unshift(entry);
+  save();closeModal('add-entry-modal');renderPage();
+  toast((entry.type==='in'?'💚 Cash IN: ':'❤️ Cash OUT: ')+fINR(amt)+' — '+desc,'s');
+}
+
+function deleteEntry(idx){
+  if(!confirm('Delete this entry?'))return;
+  _reg.entries.splice(idx,1);save();renderPage();toast('Entry deleted','i');
+}
+
+function updateCloseSummary(){
+  const{cashIN,cashOUT,opening,closing}=computeTotals(_reg.entries||[]);
+  document.getElementById('close-summary').innerHTML=`
+    <div style="font-family:var(--font-h);font-size:13px;font-weight:700;margin-bottom:10px">Today's Summary</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px">
+      <div>Opening: <strong>${fINR(opening)}</strong></div>
+      <div>Cash IN: <strong style="color:var(--acc3)">${fINR(cashIN)}</strong></div>
+      <div>Cash OUT: <strong style="color:var(--acc2)">${fINR(cashOUT)}</strong></div>
+      <div>Expected: <strong style="color:var(--acc)">${fINR(closing)}</strong></div>
+    </div>`;
+  document.getElementById('actual-cash-inp').value=closing.toFixed(0);
+  document.getElementById('actual-cash-inp').oninput=function(){
+    const actual=parseFloat(this.value)||0;const diff=actual-closing;
+    const el=document.getElementById('cash-diff-note');
+    el.textContent=diff===0?'✅ Exact match!':diff>0?`Surplus of ${fINR(diff)} over expected`:`Short by ${fINR(Math.abs(diff))} from expected`;
+    el.style.color=diff===0?'var(--acc3)':diff>0?'var(--acc3)':'var(--acc2)';
+  };
+  document.getElementById('actual-cash-inp').dispatchEvent(new Event('input'));
+}
+
+function closeRegister(){
+  const{cashIN,cashOUT,opening,closing}=computeTotals(_reg.entries||[]);
+  const actual=parseFloat(document.getElementById('actual-cash-inp').value)||closing;
+  const diff=actual-closing;
+  const histEntry={date:_reg.openDate||TODAY,opening,cashIN,cashOUT,closing,actualCash:actual,diff,note:document.getElementById('close-note-inp').value,entries:[..._reg.entries||[]]};
+  if(!_reg.history)_reg.history=[];
+  _reg.history.unshift(histEntry);
+  if(_reg.history.length>30)_reg.history.splice(30);
+  _reg.isOpen=false;_reg.entries=[];_reg.openDate=null;
+  save();closeModal('close-register-modal');renderPage();
+  toast(`🔒 Register closed! Cash: ${fINR(actual)}${diff!==0?' (Diff: '+(diff>0?'+':'')+fINR(diff)+')':''}}`,'s',5000);
+}
+
+function exportRegister(){
+  const rows=['Date,Type,Description,Category,Amount,Time'];
+  const allEntries=(_reg.isOpen?[{entries:_reg.entries,date:TODAY}]:[]).concat(_reg.history||[]);
+  allEntries.forEach(day=>{(day.entries||[]).forEach(e=>rows.push([day.date,e.type,e.desc||'',e.cat||'',e.amt||0,e.time||''].join(',')))});
+  if(rows.length<2){toast('No data to export','i');return}
+  const blob=new Blob([rows.join('\n')],{type:'text/csv'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='cash_register.csv';a.click();
+  toast('📤 Exported!','s');
+}
+
+async function init(){
+  if(_theme==='light'){document.documentElement.setAttribute('data-theme','light');document.getElementById('theme-btn').textContent='🌙'}
+  const{data:{session}}=await _sb.auth.getSession();
+  if(!session){window.location.href='index.html';return}
+  _resetTimer();
+  document.getElementById('open-date-inp').value=TODAY;
+  document.getElementById('add-entry-time').value=nowTime();
+  // Auto-close yesterday's register if still open
+  if(_reg.isOpen&&_reg.openDate&&_reg.openDate!==TODAY){
+    const{cashIN,cashOUT,opening,closing}=computeTotals(_reg.entries||[]);
+    if(!_reg.history)_reg.history=[];
+    _reg.history.unshift({date:_reg.openDate,opening,cashIN,cashOUT,closing,actualCash:closing,diff:0,note:'Auto-closed at midnight',entries:[..._reg.entries||[]]});
+    _reg.isOpen=false;_reg.entries=[];_reg.openDate=null;save();
+    toast('ℹ️ Yesterday\'s register auto-closed','i');
+  }
+  renderPage();
+}
+init();
+
+(function(){
+  if(window.innerWidth<1024)return;
+  var page=window.location.pathname.split('/').pop()||'dashboard.html';
+  var nav=[
+    {ic:'🏠',lb:'Dashboard',url:'dashboard.html'},
+    {ic:'🧾',lb:'New Bill',url:'billing.html',fab:true},
+    {ic:'📋',lb:'Bills',url:'bills.html'},
+    {ic:'👥',lb:'Customers',url:'customers.html'},
+    {ic:'📦',lb:'Inventory',url:'stock.html'},
+    {ic:'📊',lb:'Reports',url:'reports.html'},
+    {ic:'🛒',lb:'POS Admin',url:'pos-admin.html'},
+    {ic:'💬',lb:'WhatsApp',url:'wa-center.html'},
+    {ic:'📢',lb:'Marketing',url:'marketing.html'},
+    {ic:'💰',lb:'Cash Register',url:'cash-register.html'},
+    {ic:'🚚',lb:'Suppliers',url:'supplier.html'},
+    {ic:'🔄',lb:'Recurring',url:'recurring.html'},
+    {ic:'🗂️',lb:'Templates',url:'bill-templates.html'},
+    {ic:'👥',lb:'Team & Users',url:'team.html'},
+    {ic:'🚀',lb:'Plans & Pricing',url:'subscription.html'},
+    {ic:'⚙️',lb:'Settings',url:'settings.html'},
+  ];
+  var sb=document.createElement('div');sb.id='dsb';
+  sb.innerHTML='<div class="dsb-logo"><svg width="22" height="24" viewBox="0 0 56 62" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M28 2L4 14V32C4 46 28 60 28 60C28 60 52 46 52 32V14L28 2Z" fill="url(#sg1)"/><rect x="18" y="18" width="20" height="26" rx="2" fill="#0A0E1A" fill-opacity=".6"/><rect x="18" y="18" width="20" height="26" rx="2" stroke="#fff" stroke-width="1.5" fill="none"/><line x1="22" y1="24" x2="34" y2="24" stroke="#F5A623" stroke-width="1.5" stroke-linecap="round"/><line x1="22" y1="28" x2="30" y2="28" stroke="rgba(255,255,255,.4)" stroke-width="1" stroke-linecap="round"/><line x1="22" y1="31" x2="32" y2="31" stroke="rgba(255,255,255,.4)" stroke-width="1" stroke-linecap="round"/><line x1="22" y1="34" x2="28" y2="34" stroke="rgba(255,255,255,.4)" stroke-width="1" stroke-linecap="round"/><circle cx="32" cy="37" r="5" fill="#F5A623"/><polyline points="30,37 31.5,38.5 34.5,35.5" fill="none" stroke="#0A0E1A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><defs><linearGradient id="sg1" x1="4" y1="2" x2="52" y2="60" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#F5A623"/><stop offset="100%" stop-color="#FF6B35"/></linearGradient></defs></svg><span class="dsb-brand">ShopBill Pro</span></div><div class="dsb-nav">'+nav.map(function(n){var c='dsb-item'+(page===n.url?' active':'')+(n.fab?' fab-sb':'');return '<a class="'+c+'" href="'+n.url+'"><span class="dsb-ic">'+n.ic+'</span><span>'+n.lb+'</span></a>';}).join('')+'</div><div class="dsb-footer"><button class="dsb-item" id="dsb-logout"><span class="dsb-ic">🚪</span><span>Logout</span></button><div class="dsb-ver">ShopBill Pro v1.0</div></div>';
+  document.body.prepend(sb);
+  document.getElementById('dsb-logout').addEventListener('click',function(){
+    if(window._sb)window._sb.auth.signOut().then(function(){window.location.href='index.html';});
+    else window.location.href='index.html';
+  });
+})();
+(function(){document.documentElement.lang=localStorage.getItem('sbp_lang')||'en';})();
+</script>
+<script src="lib/beta-banner.js"></script>
+</body>
+</html>

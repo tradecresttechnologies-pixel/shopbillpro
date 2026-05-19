@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="en" translate="no" class="notranslate">
+<head>
+<script>
+(function(){try{var t=localStorage.getItem('sbp_theme');if(t==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}})();
+</script>
+<script>(function(){try{document.documentElement.lang=localStorage.getItem('sbp_lang')||'en';}catch(e){}})();</script>
+<meta charset="UTF-8">
+<meta name="google" content="notranslate">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#F5A623">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>ShopBill Pro — Rooms</title>
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png?v=2">
+<link rel="apple-touch-icon" sizes="192x192" href="icons/icon-192x192.png">
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Noto+Sans:wght@300;400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+function _sbpPlanInfo(){const s=JSON.parse(localStorage.getItem('sbp_shop')||'{}');let plan=(s.plan||'free').toLowerCase();if(plan==='enterprise')plan='business';const exp=s.plan_expires_at;if(exp&&plan!=='free'&&new Date(exp)<new Date())plan='free';return{plan,expired:!!(exp&&new Date(exp)<new Date())}}
+function isPro(){const p=_sbpPlanInfo().plan;return p==='pro'||p==='business'}
+function isBiz(){return _sbpPlanInfo().plan==='business'}
+function isFree(){return _sbpPlanInfo().plan==='free'}
+</script>
+<script src="lang.js"></script>
+<script src="lib/sidebar-engine.js"></script>
+<script src="lib/hospitality.js"></script>
+<script src="conversion.js"></script>
+<script>
+const SB_URL='https://jfqeirfrkjdkqqixivru.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmcWVpcmZya2pka3FxaXhpdnJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzNzQ4MzgsImV4cCI6MjA4OTk1MDgzOH0.akd4E0nil8ypLR4WOykkeYIL8g4uuNU6XdSVh_Y1utk';
+const _sb=supabase.createClient(SB_URL,SB_KEY,{auth:{autoRefreshToken:true,persistSession:true,detectSessionInUrl:false}});
+window._sb=_sb;
+</script>
+<link rel="stylesheet" href="/styles.css"><!-- BATCH UI-1: canonical design system -->
+<style>
+.lang-hi{display:none!important}
+.lang-en{display:inline!important}
+html[lang="hi"] .lang-hi{display:inline!important}
+html[lang="hi"] .lang-en{display:none!important}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{font-family:'Noto Sans','Noto Sans Devanagari',sans-serif;-webkit-font-smoothing:antialiased}
+:root{--acc:#F5A623;--acc2:#FF6B35;--acc3:#10B981;--acc4:#3B82F6;--bg:#0A0A12;--surf:#13131C;--surf2:#1C1C28;--surf3:#252535;--bord:#2A2A3A;--text:#F0EFF8;--t2:#8A8AA8;--t3:#5A5A75;--font-h:'Outfit',sans-serif;--rs:14px;--tr:.2s ease;--rose:#F43F5E;--safe-bottom:env(safe-area-inset-bottom,0px)}
+[data-theme="light"]{--bg:#FAFAFC;--surf:#FFFFFF;--surf2:#F2F2F8;--surf3:#E8E8F0;--bord:#E5E5EE;--text:#0F0E18;--t2:#5E5A7A;--t3:#9090AA}
+body{background:var(--bg);color:var(--text);min-height:100dvh;overflow-x:hidden}
+#app{max-width:560px;margin:0 auto;padding-bottom:80px;min-height:100dvh}
+
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 14px 10px;background:var(--bg);position:sticky;top:0;z-index:50;border-bottom:1px solid var(--bord)}
+.tb-l{display:flex;align-items:center;gap:10px}
+.tb-r{display:flex;gap:8px}
+.back-btn{width:36px;height:36px;border-radius:10px;background:var(--surf);border:1px solid var(--bord);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:var(--text)}
+.tb-title{font-family:var(--font-h);font-size:17px;font-weight:800}
+.ic-btn{width:36px;height:36px;border-radius:10px;background:var(--surf);border:1px solid var(--bord);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px}
+
+.locked-banner{margin:14px;background:linear-gradient(135deg,rgba(245,166,35,.12),rgba(255,107,53,.06));border:1.5px solid rgba(245,166,35,.35);border-radius:var(--rs);padding:18px;text-align:center}
+.lb-t{font-family:var(--font-h);font-size:15px;font-weight:800;color:var(--acc);margin-bottom:6px}
+.lb-m{font-size:12px;color:var(--t2);line-height:1.5;margin-bottom:12px}
+.btn-upgrade{background:linear-gradient(135deg,#F5A623,#FF8A00);color:#0A0E1A;font-weight:800;font-size:13px;padding:10px 18px;border-radius:10px;border:none;cursor:pointer;font-family:var(--font-h)}
+
+.sum-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:10px 14px}
+.sum-card{background:var(--surf);border:1px solid var(--bord);border-radius:var(--rs);padding:11px 8px;text-align:center}
+.sv{font-family:var(--font-h);font-size:19px;font-weight:800}
+.sl{font-size:10px;color:var(--t2);margin-top:3px;font-weight:600}
+
+.tabs{display:flex;gap:6px;padding:8px 14px 0;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex-shrink:0;padding:8px 16px;background:var(--surf);border:1px solid var(--bord);border-radius:18px;font-size:12px;font-weight:600;color:var(--t2);cursor:pointer;white-space:nowrap;transition:var(--tr);font-family:inherit}
+.tab.on{background:var(--acc);color:#0A0E1A;border-color:var(--acc)}
+
+.lst{padding:8px 14px}
+.card{background:var(--surf);border:1px solid var(--bord);border-radius:var(--rs);padding:12px;margin-bottom:8px}
+.card-row{display:flex;align-items:center;gap:10px}
+.card-l{flex:1;min-width:0}
+.card-name{font-family:var(--font-h);font-size:14px;font-weight:700;color:var(--text);margin-bottom:2px}
+.card-meta{font-size:11px;color:var(--t2);display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.tag{padding:2px 8px;background:var(--surf2);border-radius:8px;font-size:10px;border:1px solid var(--bord)}
+.tag.s{background:rgba(16,185,129,.15);color:var(--acc3);border-color:var(--acc3)}
+.tag.e{background:rgba(244,63,94,.15);color:var(--rose);border-color:var(--rose)}
+.tag.w{background:rgba(245,166,35,.15);color:var(--acc);border-color:var(--acc)}
+.tag.b{background:rgba(59,130,246,.15);color:var(--acc4);border-color:var(--acc4)}
+.tag.gray{background:var(--surf2);color:var(--t2);border-color:var(--bord)}
+.card-r{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0}
+.card-price{font-family:var(--font-h);font-size:14px;font-weight:800;color:var(--acc3)}
+
+/* ── Housekeeping board ── */
+.hk-board{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;padding:14px}
+.hk-card{border-radius:14px;border:1.5px solid var(--bord);background:var(--surf2);padding:14px 12px;display:flex;flex-direction:column;gap:8px;transition:all .15s ease;position:relative}
+.hk-room-num{font-size:20px;font-weight:900;color:var(--text);line-height:1}
+.hk-room-type{font-size:11px;color:var(--t2);margin-top:1px}
+.hk-status-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:20px;font-size:11px;font-weight:700;width:fit-content}
+.hk-status-badge.available{background:rgba(16,185,129,.12);color:#10B981}
+.hk-status-badge.occupied{background:rgba(239,68,68,.12);color:#EF4444}
+.hk-status-badge.cleaning{background:rgba(245,166,35,.12);color:#F5A623}
+.hk-status-badge.maintenance{background:rgba(99,102,241,.12);color:#6366F1}
+.hk-status-badge.blocked{background:rgba(144,144,168,.12);color:#9090A8}
+.hk-guest{font-size:11px;color:var(--t2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hk-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:2px}
+.hk-btn{flex:1;min-width:0;padding:7px 4px;border:1.5px solid var(--bord);border-radius:8px;font-size:11px;font-weight:700;background:var(--surf);color:var(--text);cursor:pointer;transition:all .15s;font-family:inherit;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hk-btn:hover{border-color:var(--acc);color:var(--acc)}
+.hk-btn.done{background:rgba(16,185,129,.12);border-color:#10B981;color:#10B981}
+.hk-btn.done:hover{background:rgba(16,185,129,.25)}
+.hk-floor-hd{grid-column:1/-1;font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.6px;padding:6px 0 2px;border-bottom:1px solid var(--bord)}
+.hk-summary{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px;padding:12px 14px 4px}
+.hk-sum-box{background:var(--surf2);border:1px solid var(--bord);border-radius:10px;padding:10px;text-align:center}
+.hk-sum-v{font-size:22px;font-weight:800;color:var(--acc)}
+.hk-sum-l{font-size:10px;color:var(--t2);margin-top:2px;text-transform:uppercase;letter-spacing:.4px}
+.btn-row{display:flex;gap:6px}
+.act-btn{width:30px;height:30px;border-radius:8px;background:var(--surf2);border:1px solid var(--bord);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px}
+.act-btn.danger:hover{background:rgba(244,63,94,.12);border-color:var(--rose)}
+
+.fab{position:fixed;bottom:78px;right:16px;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff;border:none;font-size:32px;line-height:1;cursor:pointer;box-shadow:0 6px 20px rgba(245,166,35,.45);z-index:60;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-weight:300;display:flex;align-items:center;justify-content:center;padding:0;padding-bottom:4px}
+@media(min-width:1024px){.fab{bottom:24px}}
+
+.empty{text-align:center;padding:50px 24px;color:var(--t2)}
+.empty-emoji{font-size:48px;margin-bottom:12px}
+.empty-title{font-family:var(--font-h);font-size:17px;font-weight:700;color:var(--text);margin-bottom:8px}
+.empty-msg{font-size:13px;line-height:1.5;margin-bottom:16px}
+
+.loader{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px;gap:12px}
+.spinner{width:28px;height:28px;border:3px solid var(--bord);border-top-color:var(--acc);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:200;display:none;align-items:flex-end;justify-content:center}
+.overlay.open{display:flex}
+.sheet{background:var(--bg);border-radius:20px 20px 0 0;width:100%;max-width:560px;max-height:92dvh;overflow-y:auto;padding:8px 16px 20px;border-top:1px solid var(--bord)}
+@media(min-width:1024px){
+  .overlay{align-items:center}
+  .sheet{max-width:680px;border-radius:18px;border:1px solid var(--bord);max-height:90dvh;padding:14px 24px 24px}
+}
+.handle{width:44px;height:4px;background:var(--bord);border-radius:2px;margin:8px auto 14px}
+.sheet-title{font-family:var(--font-h);font-size:18px;font-weight:800;margin-bottom:14px}
+.ff{margin-bottom:12px}
+.ff label{display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:5px}
+.ff input,.ff textarea,.ff select{width:100%;padding:10px 12px;background:var(--surf);border:1px solid var(--bord);border-radius:10px;color:var(--text);font-size:14px;font-family:inherit;outline:none}
+.ff input:focus,.ff textarea:focus,.ff select:focus{border-color:var(--acc)}
+.ff textarea{resize:vertical;min-height:60px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btn-pri{width:100%;padding:13px;background:linear-gradient(135deg,var(--acc),var(--acc2));color:#0A0E1A;border:none;border-radius:12px;font-family:var(--font-h);font-size:14px;font-weight:800;cursor:pointer}
+.btn-sec{width:100%;padding:13px;background:var(--surf2);color:var(--text);border:1px solid var(--bord);border-radius:12px;font-family:var(--font-h);font-size:14px;font-weight:700;cursor:pointer}
+.btn-danger{width:100%;padding:13px;background:rgba(244,63,94,.12);color:var(--rose);border:1px solid var(--rose);border-radius:12px;font-family:var(--font-h);font-size:14px;font-weight:700;cursor:pointer}
+
+.bnav{}
+</style>
+<style>
+.bnav{display:flex;align-items:stretch;background:var(--surf);border-top:1px solid var(--bord);flex-shrink:0;padding-bottom:var(--safe-bottom);z-index:100}
+.ni{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 4px;gap:3px;cursor:pointer;position:relative;min-height:56px;user-select:none}
+.ni-ic{font-size:20px;line-height:1}
+.ni-lb{font-size:10px;color:var(--t2);font-weight:600;white-space:nowrap}
+.ni.on .ni-lb{color:var(--acc)}
+.ni.on::after{content:'';position:absolute;top:0;left:20%;right:20%;height:2.5px;border-radius:0 0 4px 4px;background:var(--acc)}
+.nav-fab{width:48px;height:48px;border-radius:16px;background:linear-gradient(135deg,var(--acc),#FF8A00);color:#fff;font-size:22px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(245,166,35,.5);margin-bottom:4px}
+.bnav-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:opacity .25s ease;z-index:90;backdrop-filter:blur(2px)}
+.bnav-overlay.open{opacity:1;pointer-events:auto}
+.bnav-drawer{position:fixed;top:0;right:0;bottom:0;width:min(85vw,360px);background:var(--surf);color:var(--text);transform:translateX(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);z-index:95;display:flex;flex-direction:column;box-shadow:-4px 0 24px rgba(0,0,0,.4);overflow:hidden}
+.bnav-drawer.open{transform:translateX(0)}
+@media(min-width:1024px){.bnav-drawer,.bnav-overlay{display:none!important}}
+.drawer-header{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid var(--surf2);flex-shrink:0}
+.drawer-brand{font-size:17px;font-weight:800;color:var(--acc)}
+.drawer-close{width:36px;height:36px;border-radius:10px;border:none;background:var(--surf2);color:var(--text);font-size:16px;cursor:pointer}
+.drawer-nav{flex:1;overflow-y:auto;padding:8px 0}
+.drawer-item{display:flex;align-items:center;gap:14px;padding:13px 18px;color:var(--text);text-decoration:none;font-size:14px;font-weight:600;cursor:pointer;border:none;background:transparent;width:100%;text-align:left}
+.drawer-item.active{background:rgba(245,166,35,.12);color:var(--acc);position:relative}
+.drawer-item.active::before{content:'';position:absolute;left:0;width:3px;height:60%;background:var(--acc);border-radius:0 3px 3px 0}
+.drawer-item.coming-soon{opacity:.55}
+.drawer-ic{font-size:20px;width:24px;text-align:center}
+.drawer-lb{flex:1}
+.drawer-footer{border-top:1px solid var(--surf2);padding:8px 0 12px}
+.drawer-footer .drawer-item{color:#EF4444}
+.drawer-ver{text-align:center;font-size:11px;color:var(--t2);margin-top:4px}
+#toast-container{position:fixed;bottom:calc(72px + var(--safe-bottom));left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none}
+.toast{background:var(--surf3);color:var(--text);padding:10px 18px;border-radius:20px;font-size:13px;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.45);border:1px solid var(--bord);max-width:calc(100vw - 40px);overflow:hidden;text-overflow:ellipsis;animation:tin .22s;pointer-events:all}
+.toast.s{background:rgba(16,185,129,.15);color:var(--acc3);border-color:rgba(16,185,129,.3)}
+.toast.e{background:rgba(239,68,68,.15);color:var(--acc2);border-color:rgba(239,68,68,.3)}
+.toast.i{background:rgba(245,166,35,.15);color:#FF8A00;border-color:rgba(245,166,35,.3)}
+@keyframes tin{from{opacity:0;transform:translateY(8px) scale(.95)}to{opacity:1;transform:translateY(0) scale(1)}}
+#dsb{position:fixed;left:0;top:0;bottom:0;width:220px;background:var(--surf);border-right:1px solid var(--bord);display:flex;flex-direction:column;z-index:200;overflow-y:auto}
+.dsb-logo{display:flex;align-items:center;gap:10px;padding:20px 16px 14px;border-bottom:1px solid var(--bord)}
+.dsb-brand{font-family:var(--font-h);font-size:15px;font-weight:800;color:var(--acc)}
+.dsb-nav{flex:1;padding:10px 8px;display:flex;flex-direction:column;gap:2px;overflow-y:auto}
+.dsb-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;cursor:pointer;text-decoration:none;color:var(--t2);font-size:13px;font-weight:600;border:none;background:none;width:100%;white-space:nowrap}
+.dsb-item:hover{background:var(--surf2);color:var(--text)}
+.dsb-item.active{background:rgba(245,166,35,.12);color:var(--acc)}
+.dsb-item.fab-sb{background:linear-gradient(135deg,#F5A623,#FF8A00);color:#fff;margin:4px 0 8px;font-weight:700}
+.dsb-ic{font-size:17px;width:22px;text-align:center}
+.dsb-sep{height:1px;background:var(--bord);margin:6px 12px}
+.dsb-footer{padding:8px;border-top:1px solid var(--bord)}
+.dsb-ver{font-size:10px;color:var(--t3);text-align:center;padding:8px 0 4px}
+@media(max-width:1023px){#dsb{display:none!important}}
+@media(min-width:640px) and (max-width:1023px){#app{max-width:600px!important;margin:0 auto;box-shadow:0 0 80px rgba(0,0,0,.5)}}
+@media(min-width:1024px){#app{margin-left:220px!important;max-width:calc(100vw - 220px)!important;width:calc(100vw - 220px)!important;box-shadow:none!important}.bnav{display:none!important}#toast-container{left:calc(220px + 50%)!important;transform:translateX(-50%)}}
+@media (max-width:1023px){.bnav{position:fixed;bottom:0;left:0;right:0;height:60px;z-index:55}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="topbar">
+    <div class="tb-l">
+      <div class="back-btn" onclick="window.location.href='dashboard.html'">←</div>
+      <div class="tb-title">🛏️ <span class="lang-en">Rooms</span><span class="lang-hi">कमरे</span></div>
+    </div>
+    <div class="tb-r">
+      <div class="ic-btn" onclick="toggleTheme()" id="theme-btn">☀️</div>
+      <div class="ic-btn" onclick="window.location.reload()" title="Refresh">🔄</div>
+    </div>
+  </div>
+
+  <div id="loader" class="loader"><div class="spinner"></div><div style="font-size:11px;color:var(--t2)">Loading…</div></div>
+
+  <div id="locked-banner" class="locked-banner" style="display:none">
+    <div class="lb-t">🔒 <span class="lang-en">Hospitality — Business plan</span><span class="lang-hi">हॉस्पिटैलिटी — बिज़नेस प्लान</span></div>
+    <div class="lb-m"><span class="lang-en">Room inventory, bookings, and checkout billing are part of the Business plan (₹499/mo). Hotels get a 60-day free trial.</span></div>
+    <button class="btn-upgrade" onclick="window.location.href='subscription.html'">🚀 Upgrade to Business — ₹499/mo</button>
+  </div>
+
+  <div id="main" style="display:none">
+    <!-- Summary -->
+    <div class="sum-grid" id="summary-row"></div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab on" data-tab="rooms"        onclick="switchTab('rooms')">🛏️ <span class="lang-en">Rooms</span><span class="lang-hi">कमरे</span></button>
+      <button class="tab"    data-tab="housekeeping"  onclick="switchTab('housekeeping')">🧹 <span class="lang-en">Housekeeping</span><span class="lang-hi">हाउसकीपिंग</span></button>
+      <button class="tab"    data-tab="room_types"    onclick="switchTab('room_types')">🏷️ <span class="lang-en">Room Types</span><span class="lang-hi">कमरा प्रकार</span></button>
+    </div>
+
+    <!-- Pane: Rooms -->
+    <div id="pane-rooms"        class="lst"></div>
+    <!-- Pane: Housekeeping -->
+    <div id="pane-housekeeping" class="lst" style="display:none"></div>
+    <!-- Pane: Room Types -->
+    <div id="pane-room_types"   class="lst" style="display:none"></div>
+  </div>
+
+  <button class="fab" id="fab" onclick="openAddModal()" style="display:none">+</button>
+
+  <div class="bnav"></div>
+  <div class="bnav-overlay" onclick="if(window.SBPSidebar)SBPSidebar._closeDrawer()"></div>
+  <div class="bnav-drawer"></div>
+</div>
+
+<!-- Room modal -->
+<div class="overlay" id="room-modal">
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="sheet-title" id="rm-title">🛏️ Add Room</div>
+    <input type="hidden" id="rm-id">
+    <div class="row2">
+      <div class="ff"><label>Room Number *</label><input type="text" id="rm-number" placeholder="e.g. 101"></div>
+      <div class="ff"><label>Floor</label><input type="text" id="rm-floor" placeholder="e.g. Ground"></div>
+    </div>
+    <div class="ff"><label>Room Type</label><select id="rm-type"></select></div>
+    <div class="ff"><label>Status</label>
+      <select id="rm-status">
+        <option value="available">✅ Available</option>
+        <option value="occupied">🔴 Occupied</option>
+        <option value="cleaning">🧹 Cleaning</option>
+        <option value="maintenance">🔧 Maintenance</option>
+        <option value="blocked">⛔ Blocked</option>
+      </select>
+    </div>
+    <div class="ff"><label>Notes (optional)</label><textarea id="rm-notes"></textarea></div>
+    <button class="btn-pri" onclick="saveRoom()" id="rm-save">💾 Save Room</button>
+    <button class="btn-sec" onclick="closeModal('room-modal')" style="margin-top:8px">Cancel</button>
+    <button class="btn-danger" id="rm-del" onclick="deleteRoom()" style="margin-top:8px;display:none">🗑️ Delete Room</button>
+    <div style="height:8px"></div>
+  </div>
+</div>
+
+<!-- Room Type modal -->
+<div class="overlay" id="rtype-modal">
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="sheet-title" id="rt-title">🏷️ Add Room Type</div>
+    <input type="hidden" id="rt-id">
+    <div class="ff"><label>Name *</label><input type="text" id="rt-name" placeholder="e.g. Deluxe AC, Suite, Standard Non-AC"></div>
+    <div class="ff"><label>Description</label><textarea id="rt-desc" placeholder="What's included, view, size, etc."></textarea></div>
+    <div class="row2">
+      <div class="ff"><label>Adults</label><input type="number" id="rt-adults" min="1" value="2"></div>
+      <div class="ff"><label>Children</label><input type="number" id="rt-children" min="0" value="0"></div>
+    </div>
+    <div class="row2">
+      <div class="ff"><label>Base Price ₹/night</label><input type="number" id="rt-price" min="0" step="50"></div>
+      <div class="ff"><label>Weekend Price (optional)</label><input type="number" id="rt-weekend" min="0" step="50"></div>
+    </div>
+    <div class="ff"><label>Amenities (comma-separated)</label><input type="text" id="rt-amenities" placeholder="AC, TV, Wi-Fi, Geyser, Balcony"></div>
+    <button class="btn-pri" onclick="saveRoomType()" id="rt-save">💾 Save Room Type</button>
+    <button class="btn-sec" onclick="closeModal('rtype-modal')" style="margin-top:8px">Cancel</button>
+    <button class="btn-danger" id="rt-del" onclick="deleteRoomType()" style="margin-top:8px;display:none">🗑️ Delete Room Type</button>
+    <div style="height:8px"></div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script>
+let _user=null,_shop=null,_shopId=null;
+let _activeTab='rooms';
+let _rooms=[],_roomTypes=[],_summary=null;
+
+const $=s=>document.querySelector(s);
+const $$=s=>document.querySelectorAll(s);
+const fINR=n=>'₹'+Math.round(Number(n)||0).toLocaleString('en-IN');
+const escHtml=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function toast(msg,type='i'){const c=$('#toast-container');const el=document.createElement('div');el.className='toast '+type;el.textContent=msg;c.appendChild(el);setTimeout(()=>{el.style.opacity='0';setTimeout(()=>el.remove(),250)},2400)}
+function toggleTheme(){const cur=document.documentElement.getAttribute('data-theme')||'dark';const next=cur==='light'?'dark':'light';if(next==='light')document.documentElement.setAttribute('data-theme','light');else document.documentElement.removeAttribute('data-theme');localStorage.setItem('sbp_theme',next);$('#theme-btn').textContent=next==='light'?'🌙':'☀️'}
+function openModal(id){document.getElementById(id).classList.add('open')}
+function closeModal(id){document.getElementById(id).classList.remove('open')}
+
+async function init(){
+  if(window.SBPSidebar){
+    SBPSidebar.render({currentPage:'rooms',layout:'desktop'});
+    SBPSidebar.render({currentPage:'rooms',layout:'mobile-bottom',container:'.bnav'});
+    SBPSidebar.render({currentPage:'rooms',layout:'mobile-drawer',container:'.bnav-drawer'});
+  }
+  if(localStorage.getItem('sbp_theme')==='light')$('#theme-btn').textContent='🌙';
+
+  const{data:{session}}=await _sb.auth.getSession();
+  if(!session){window.location.href='index.html';return}
+  _user=session.user;
+  _shop=JSON.parse(localStorage.getItem('sbp_shop')||'{}');
+  _shopId=localStorage.getItem('sbp_shop_id')||_shop.id;
+
+  if(!isBiz()){
+    $('#loader').style.display='none';
+    $('#locked-banner').style.display='block';
+    return;
+  }
+
+  await reloadAll();
+}
+
+async function reloadAll(){
+  $('#loader').style.display='flex';
+  $('#main').style.display='none';
+  $('#fab').style.display='none';
+
+  const[s,rt,rl]=await Promise.all([
+    SBPHotel.summary(_shopId),
+    SBPHotel.roomTypes.list(_shopId),
+    SBPHotel.rooms.list(_shopId)
+  ]);
+  _summary   = s.ok    ? s          : null;
+  _roomTypes = rt.ok   ? rt.room_types || [] : [];
+  _rooms     = rl.ok   ? rl.rooms       || [] : [];
+
+  if(!s.ok && (s.error||'').includes('free_plan')){
+    $('#loader').style.display='none';
+    $('#locked-banner').style.display='block';
+    return;
+  }
+
+  renderSummary();
+  renderRooms();
+  renderRoomTypes();
+
+  $('#loader').style.display='none';
+  $('#main').style.display='block';
+  $('#fab').style.display='flex';
+}
+
+function renderSummary(){
+  const s = _summary || {};
+  $('#summary-row').innerHTML = `
+    <div class="sum-card"><div class="sv" style="color:var(--acc)">${s.total_rooms||0}</div><div class="sl"><span class="lang-en">Total Rooms</span><span class="lang-hi">कुल कमरे</span></div></div>
+    <div class="sum-card"><div class="sv" style="color:var(--acc3)">${s.available_rooms||0}</div><div class="sl"><span class="lang-en">Available</span><span class="lang-hi">उपलब्ध</span></div></div>
+    <div class="sum-card"><div class="sv" style="color:var(--rose)">${s.occupied_rooms||0}</div><div class="sl"><span class="lang-en">Occupied</span><span class="lang-hi">भरे</span></div></div>
+  `;
+}
+
+function statusTag(st){
+  const m={available:{cls:'s',label:'✅ Available'},occupied:{cls:'e',label:'🔴 Occupied'},cleaning:{cls:'b',label:'🧹 Cleaning'},maintenance:{cls:'w',label:'🔧 Maintenance'},blocked:{cls:'gray',label:'⛔ Blocked'}};
+  const x=m[st]||{cls:'gray',label:st};
+  return `<span class="tag ${x.cls}">${x.label}</span>`;
+}
+
+function renderRooms(){
+  const pane=$('#pane-rooms');
+  if(!_rooms.length){
+    pane.innerHTML=`<div class="empty"><div class="empty-emoji">🛏️</div><div class="empty-title"><span class="lang-en">No rooms yet</span><span class="lang-hi">अभी तक कमरे नहीं</span></div><div class="empty-msg"><span class="lang-en">Add your first room — pick a room type if you've defined any, or just give it a number to start.</span></div><button class="btn-upgrade" onclick="openAddModal()">+ Add First Room</button></div>`;
+    return;
+  }
+  pane.innerHTML=_rooms.map(r=>{
+    const typeLine = r.room_type_name ? `<span class="tag">${escHtml(r.room_type_name)}</span>` : `<span class="tag gray">No type</span>`;
+    const priceLine = r.base_price>0 ? `<div class="card-price">${fINR(r.base_price)}/night</div>` : '';
+    return `
+    <div class="card" onclick="openEditRoom('${r.id}')" style="cursor:pointer">
+      <div class="card-row">
+        <div class="card-l">
+          <div class="card-name">Room ${escHtml(r.room_number)}${r.floor?` <span style="font-weight:500;color:var(--t2);font-size:12px">· ${escHtml(r.floor)}</span>`:''}</div>
+          <div class="card-meta">${typeLine} ${statusTag(r.status)}</div>
+        </div>
+        <div class="card-r">${priceLine}<div style="font-size:18px;color:var(--t3)">›</div></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderRoomTypes(){
+  const pane=$('#pane-room_types');
+  if(!_roomTypes.length){
+    pane.innerHTML=`<div class="empty"><div class="empty-emoji">🏷️</div><div class="empty-title"><span class="lang-en">No room types yet</span></div><div class="empty-msg"><span class="lang-en">Define room types (Deluxe AC, Standard, Suite, etc.) so you can group rooms by category and price.</span></div><button class="btn-upgrade" onclick="openAddModal()">+ Add First Room Type</button></div>`;
+    return;
+  }
+  pane.innerHTML=_roomTypes.map(rt=>{
+    const amen = (rt.amenities||[]).slice(0,3).map(a=>`<span class="tag">${escHtml(a)}</span>`).join(' ');
+    const more = (rt.amenities||[]).length>3 ? `<span class="tag gray">+${rt.amenities.length-3}</span>` : '';
+    return `
+    <div class="card" onclick="openEditRoomType('${rt.id}')" style="cursor:pointer">
+      <div class="card-row">
+        <div class="card-l">
+          <div class="card-name">${escHtml(rt.name)}</div>
+          <div class="card-meta" style="margin-bottom:4px">${amen}${more}</div>
+          <div style="font-size:11px;color:var(--t2)">👥 ${rt.capacity_adults} adults${rt.capacity_children>0?', '+rt.capacity_children+' children':''}</div>
+        </div>
+        <div class="card-r"><div class="card-price">${fINR(rt.base_price)}/night</div>${rt.weekend_price?`<div style="font-size:10px;color:var(--t2)">Wknd ${fINR(rt.weekend_price)}</div>`:''}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function switchTab(tab){
+  _activeTab=tab;
+  $$('.tab').forEach(t=>t.classList.toggle('on',t.dataset.tab===tab));
+  $('#pane-rooms').style.display        = tab==='rooms'        ? 'block':'none';
+  $('#pane-housekeeping').style.display = tab==='housekeeping' ? 'block':'none';
+  $('#pane-room_types').style.display   = tab==='room_types'   ? 'block':'none';
+  // FAB only on rooms + room_types tabs
+  const fab = $('#fab');
+  if(fab) fab.style.display = tab==='housekeeping' ? 'none' : '';
+  if(tab==='housekeeping') renderHousekeeping();
+}
+
+// ── Housekeeping Board ───────────────────────────────────────────────
+// Shows all rooms grouped by floor with 1-tap status buttons.
+// Staff can mark rooms as Cleaned (available), Cleaning, or Maintenance
+// without navigating to the full room edit screen.
+
+const HK_STATUS = {
+  available:   { label: '✅ Available',   cls: 'available',   emoji: '✅' },
+  occupied:    { label: '🔴 Occupied',    cls: 'occupied',    emoji: '🔴' },
+  cleaning:    { label: '🧹 Cleaning',    cls: 'cleaning',    emoji: '🧹' },
+  maintenance: { label: '🔧 Maintenance', cls: 'maintenance', emoji: '🔧' },
+  blocked:     { label: '⛔ Blocked',     cls: 'blocked',     emoji: '⛔' },
+};
+
+// Current guest name per room (populated from active bookings)
+let _hkGuestMap = {};   // room_id → guest_name
+
+async function renderHousekeeping() {
+  const pane = $('#pane-housekeeping');
+  if (!pane) return;
+
+  if (!_rooms.length) {
+    pane.innerHTML = '<div class="empty"><div class="empty-emoji">🧹</div><div class="empty-title">No rooms yet</div><div class="empty-msg">Add rooms first, then manage housekeeping here.</div></div>';
+    return;
+  }
+
+  // Build guest map from active bookings (checked_in rooms)
+  try {
+    const { data: bkData } = await _sb.rpc('sbp_bookings_list', {
+      p_shop_id: _shopId, p_filter: 'all', p_status_filter: 'checked_in'
+    });
+    _hkGuestMap = {};
+    if (bkData?.ok && bkData.bookings) {
+      bkData.bookings.forEach(b => {
+        if (b.room_id) _hkGuestMap[b.room_id] = b.customer_name || '';
+      });
+    }
+  } catch(e) { _hkGuestMap = {}; }
+
+  // Summary counts
+  const counts = { available: 0, occupied: 0, cleaning: 0, maintenance: 0, blocked: 0 };
+  _rooms.forEach(r => { if (counts[r.status] !== undefined) counts[r.status]++; });
+
+  // Group rooms by floor
+  const floorMap = {};
+  _rooms.forEach(r => {
+    const fl = r.floor || 'Ground Floor';
+    if (!floorMap[fl]) floorMap[fl] = [];
+    floorMap[fl].push(r);
+  });
+
+  let html = '';
+
+  // Summary row
+  html += '<div class="hk-summary">';
+  html += `<div class="hk-sum-box"><div class="hk-sum-v" style="color:#10B981">${counts.available}</div><div class="hk-sum-l">Available</div></div>`;
+  html += `<div class="hk-sum-box"><div class="hk-sum-v" style="color:#EF4444">${counts.occupied}</div><div class="hk-sum-l">Occupied</div></div>`;
+  html += `<div class="hk-sum-box"><div class="hk-sum-v" style="color:#F5A623">${counts.cleaning}</div><div class="hk-sum-l">Cleaning</div></div>`;
+  html += `<div class="hk-sum-box"><div class="hk-sum-v" style="color:#6366F1">${counts.maintenance}</div><div class="hk-sum-l">Maint.</div></div>`;
+  html += '</div>';
+
+  // Board grid
+  html += '<div class="hk-board">';
+  Object.entries(floorMap).forEach(([floor, rooms]) => {
+    html += `<div class="hk-floor-hd">📍 ${escHtml(floor)} (${rooms.length} rooms)</div>`;
+    rooms.forEach(r => {
+      const st    = r.status || 'available';
+      const badge = HK_STATUS[st] || HK_STATUS.available;
+      const guest = _hkGuestMap[r.id] ? `👤 ${escHtml(_hkGuestMap[r.id])}` : '';
+
+      // Build action buttons based on current status
+      let btns = '';
+      if (st === 'cleaning') {
+        btns += `<button class="hk-btn done" onclick="hkSetStatus('${r.id}','available',this)">✅ Mark Clean</button>`;
+        btns += `<button class="hk-btn" onclick="hkSetStatus('${r.id}','maintenance',this)">🔧 Maintenance</button>`;
+      } else if (st === 'available') {
+        btns += `<button class="hk-btn" onclick="hkSetStatus('${r.id}','cleaning',this)">🧹 Start Clean</button>`;
+        btns += `<button class="hk-btn" onclick="hkSetStatus('${r.id}','maintenance',this)">🔧 Maintenance</button>`;
+      } else if (st === 'maintenance') {
+        btns += `<button class="hk-btn done" onclick="hkSetStatus('${r.id}','available',this)">✅ Mark Ready</button>`;
+      } else if (st === 'occupied') {
+        btns += `<button class="hk-btn" onclick="hkSetStatus('${r.id}','maintenance',this)">🔧 Maintenance</button>`;
+      } else if (st === 'blocked') {
+        btns += `<button class="hk-btn done" onclick="hkSetStatus('${r.id}','available',this)">✅ Unblock</button>`;
+      }
+
+      html += `
+      <div class="hk-card" id="hk-card-${r.id}">
+        <div>
+          <div class="hk-room-num">Room ${escHtml(r.room_number)}</div>
+          ${r.room_type_name ? `<div class="hk-room-type">${escHtml(r.room_type_name)}</div>` : ''}
+        </div>
+        <div class="hk-status-badge ${badge.cls}">${badge.label}</div>
+        ${guest ? `<div class="hk-guest">${guest}</div>` : ''}
+        <div class="hk-actions">${btns}</div>
+      </div>`;
+    });
+  });
+  html += '</div>';
+
+  pane.innerHTML = html;
+}
+
+async function hkSetStatus(roomId, newStatus, btnEl) {
+  // Find room in memory
+  const room = _rooms.find(r => r.id === roomId);
+  if (!room) return;
+
+  // Prevent double-tap
+  if (btnEl) { btnEl.disabled = true; btnEl.textContent = '...'; }
+
+  const payload = {
+    id:           roomId,
+    room_number:  room.room_number,
+    room_type_id: room.room_type_id || null,
+    floor:        room.floor || null,
+    status:       newStatus,
+    notes:        room.notes || null,
+    active:       room.active !== false,
+    display_order: room.display_order || 0,
+  };
+
+  const { data, error } = await _sb.rpc('sbp_rooms_upsert', {
+    p_shop_id: _shopId,
+    p_data: payload
+  });
+
+  if (error || !data?.ok) {
+    toast('Failed to update: ' + (data?.error || error?.message || 'unknown'), 'e');
+    if (btnEl) { btnEl.disabled = false; }
+    return;
+  }
+
+  // Update local state
+  const idx = _rooms.findIndex(r => r.id === roomId);
+  if (idx >= 0) _rooms[idx].status = newStatus;
+
+  // Refresh only the card (no full re-render)
+  toast(
+    newStatus === 'available'    ? '✅ Room marked clean & available' :
+    newStatus === 'cleaning'     ? '🧹 Cleaning started' :
+    newStatus === 'maintenance'  ? '🔧 Marked for maintenance' :
+    newStatus === 'blocked'      ? '⛔ Room blocked' : 'Updated',
+    's'
+  );
+  renderHousekeeping();
+}
+
+function openAddModal(){
+  if(_activeTab==='rooms'){
+    if(!_roomTypes.length){
+      toast('💡 Tip: Add a room type first', 'i');
+      switchTab('room_types');
+      setTimeout(openAddRoomType, 400);
+      return;
+    }
+    openAddRoom();
+  }else{
+    openAddRoomType();
+  }
+}
+
+function openAddRoom(){
+  $('#rm-title').textContent='🛏️ Add Room';
+  $('#rm-id').value='';
+  $('#rm-number').value='';
+  $('#rm-floor').value='';
+  $('#rm-status').value='available';
+  $('#rm-notes').value='';
+  $('#rm-type').innerHTML='<option value="">— No type —</option>'+_roomTypes.map(rt=>`<option value="${rt.id}">${escHtml(rt.name)} (${fINR(rt.base_price)})</option>`).join('');
+  $('#rm-del').style.display='none';
+  openModal('room-modal');
+}
+
+function openEditRoom(id){
+  const r=_rooms.find(x=>x.id===id);
+  if(!r)return;
+  $('#rm-title').textContent='✏️ Edit Room';
+  $('#rm-id').value=r.id;
+  $('#rm-number').value=r.room_number;
+  $('#rm-floor').value=r.floor||'';
+  $('#rm-status').value=r.status||'available';
+  $('#rm-notes').value=r.notes||'';
+  $('#rm-type').innerHTML='<option value="">— No type —</option>'+_roomTypes.map(rt=>`<option value="${rt.id}" ${rt.id===r.room_type_id?'selected':''}>${escHtml(rt.name)} (${fINR(rt.base_price)})</option>`).join('');
+  $('#rm-del').style.display='block';
+  openModal('room-modal');
+}
+
+async function saveRoom(){
+  const data={
+    id: $('#rm-id').value || null,
+    room_number: $('#rm-number').value.trim(),
+    floor: $('#rm-floor').value.trim(),
+    room_type_id: $('#rm-type').value || null,
+    status: $('#rm-status').value,
+    notes: $('#rm-notes').value.trim(),
+    active: true
+  };
+  if(!data.room_number){toast('Room number required','e');return}
+  $('#rm-save').disabled=true; $('#rm-save').textContent='⏳ Saving…';
+  try{
+    const res=await SBPHotel.rooms.upsert(_shopId,data);
+    if(!res.ok){
+      const errMsg = res.error==='duplicate_room_number' ? 'Room number already exists' : (res.error||'Save failed');
+      throw new Error(errMsg);
+    }
+    toast('✅ Saved','s');
+    closeModal('room-modal');
+    await reloadAll();
+  }catch(e){toast(e.message||'Save failed','e')}finally{
+    $('#rm-save').disabled=false; $('#rm-save').textContent='💾 Save Room';
+  }
+}
+
+async function deleteRoom(){
+  if(!confirm('Delete this room? This cannot be undone.'))return;
+  const id=$('#rm-id').value;
+  try{
+    const res=await SBPHotel.rooms.delete(_shopId,id);
+    if(!res.ok){
+      const errMsg = res.error==='has_active_bookings' ? `Cannot delete — has ${res.count} active booking(s)` : (res.error||'Delete failed');
+      throw new Error(errMsg);
+    }
+    toast('🗑️ Deleted','s');
+    closeModal('room-modal');
+    await reloadAll();
+  }catch(e){toast(e.message||'Delete failed','e')}
+}
+
+function openAddRoomType(){
+  $('#rt-title').textContent='🏷️ Add Room Type';
+  $('#rt-id').value='';
+  $('#rt-name').value='';
+  $('#rt-desc').value='';
+  $('#rt-adults').value=2;
+  $('#rt-children').value=0;
+  $('#rt-price').value='';
+  $('#rt-weekend').value='';
+  $('#rt-amenities').value='';
+  $('#rt-del').style.display='none';
+  openModal('rtype-modal');
+}
+
+function openEditRoomType(id){
+  const rt=_roomTypes.find(x=>x.id===id);
+  if(!rt)return;
+  $('#rt-title').textContent='✏️ Edit Room Type';
+  $('#rt-id').value=rt.id;
+  $('#rt-name').value=rt.name;
+  $('#rt-desc').value=rt.description||'';
+  $('#rt-adults').value=rt.capacity_adults;
+  $('#rt-children').value=rt.capacity_children;
+  $('#rt-price').value=rt.base_price;
+  $('#rt-weekend').value=rt.weekend_price||'';
+  $('#rt-amenities').value=(rt.amenities||[]).join(', ');
+  $('#rt-del').style.display='block';
+  openModal('rtype-modal');
+}
+
+async function saveRoomType(){
+  const data={
+    id: $('#rt-id').value || null,
+    name: $('#rt-name').value.trim(),
+    description: $('#rt-desc').value.trim(),
+    capacity_adults: parseInt($('#rt-adults').value,10)||2,
+    capacity_children: parseInt($('#rt-children').value,10)||0,
+    base_price: parseFloat($('#rt-price').value)||0,
+    weekend_price: $('#rt-weekend').value?parseFloat($('#rt-weekend').value):null,
+    amenities: $('#rt-amenities').value.split(',').map(s=>s.trim()).filter(s=>s.length>0),
+    active: true
+  };
+  if(!data.name){toast('Name required','e');return}
+  $('#rt-save').disabled=true; $('#rt-save').textContent='⏳ Saving…';
+  try{
+    const res=await SBPHotel.roomTypes.upsert(_shopId,data);
+    if(!res.ok)throw new Error(res.error||'Save failed');
+    toast('✅ Saved','s');
+    closeModal('rtype-modal');
+    await reloadAll();
+  }catch(e){toast(e.message||'Save failed','e')}finally{
+    $('#rt-save').disabled=false; $('#rt-save').textContent='💾 Save Room Type';
+  }
+}
+
+async function deleteRoomType(){
+  if(!confirm('Delete this room type? Rooms using this type will be unlinked.'))return;
+  const id=$('#rt-id').value;
+  try{
+    const res=await SBPHotel.roomTypes.delete(_shopId,id);
+    if(!res.ok){
+      const errMsg = res.error==='rooms_using_type' ? `Cannot delete — ${res.count} room(s) still using this type` : (res.error||'Delete failed');
+      throw new Error(errMsg);
+    }
+    toast('🗑️ Deleted','s');
+    closeModal('rtype-modal');
+    await reloadAll();
+  }catch(e){toast(e.message||'Delete failed','e')}
+}
+
+init();
+</script>
+</body>
+</html>

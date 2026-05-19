@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en" translate="no" class="notranslate">
+<head>
+<script>
+// FIX — Pre-paint theme application (eliminates dark→light flash)
+(function(){
+  try {
+    var t = localStorage.getItem('sbp_theme');
+    if (t === 'light') document.documentElement.setAttribute('data-theme','light');
+  } catch(e) {}
+})();
+</script>
+
+<meta charset="UTF-8">
+<meta name="google" content="notranslate">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#F5A623">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png?v=2">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180x180.png?v=2">
+<title>ShopBill Pro — Supplier Book</title>
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Noto+Sans:wght@300;400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+// FIX #3 — IST-aware date (UTC toISOString shifts -5:30 in India)
+function sbpToday(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function sbpYM(){return sbpToday().slice(0,7);}
+function sbpY(){return sbpToday().slice(0,4);}
+</script>
+
+
+
+<script src="lang.js"></script>
+<script src="conversion.js"></script>
+
+
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:'Noto Sans','Noto Sans Devanagari',sans-serif;-webkit-font-smoothing:antialiased;}
+:root{--acc:#F5A623;--acc2:#EF4444;--acc3:#10B981;--cyan:#06B6D4;--amber:#F59E0B;--bg:#0A0A12;--surf:#13131C;--surf2:#1C1C28;--surf3:#252534;--bord:#2A2A3A;--text:#F0EFF8;--t2:#8A8AA8;--t3:#4A4A60;--font-h:'Outfit',sans-serif;--rs:12px;--rs2:18px;--tr:.18s ease;--safe-top:env(safe-area-inset-top,0px);--safe-bottom:env(safe-area-inset-bottom,0px)}
+[data-theme="light"]{--bg:#F0EEFF;--surf:#FFF;--surf2:#F5F2FF;--surf3:#EDE9FF;--bord:#DDD8F5;--text:#0F0E18;--t2:#5E5A7A;--t3:#A09CC0}
+body{background:var(--bg);color:var(--text)}
+#app{display:flex;flex-direction:column;height:100dvh;overflow:hidden}
+.sb{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;padding-top:calc(10px + var(--safe-top));background:var(--surf);border-bottom:1px solid var(--bord);flex-shrink:0;min-height:54px}
+.tb-l{display:flex;align-items:center;gap:10px;flex:1}
+.tb-r{display:flex;align-items:center;gap:7px;flex-shrink:0}
+.tb-title{font-family:var(--font-h);font-size:17px;font-weight:800}
+.back-btn{width:34px;height:34px;border-radius:10px;background:var(--surf2);border:1px solid var(--bord);display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer;transition:var(--tr)}
+.back-btn:active{transform:scale(.93)}
+.ic-btn{width:34px;height:34px;border-radius:10px;background:var(--surf2);border:1px solid var(--bord);display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;transition:var(--tr)}
+.ic-btn:active{transform:scale(.93)}
+
+.search-wrap{padding:10px 14px;flex-shrink:0;display:flex;gap:8px}
+.search-inp{flex:1;background:var(--surf);border:1.5px solid var(--bord);border-radius:var(--rs);padding:11px 14px 11px 40px;color:var(--text);font-size:14px;outline:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%238A8AA8' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85zm-5.242 1.656a5.5 5.5 0 1 1 0-11 5.5 5.5 0 0 1 0 11z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:13px center;transition:var(--tr)}
+.search-inp:focus{border-color:var(--acc)}
+.add-btn{width:40px;height:40px;border-radius:var(--rs);background:linear-gradient(135deg,var(--acc),#FF8A00);border:none;color:#0A0E1A;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 3px 12px rgba(245,166,35,.4)}
+.add-btn:active{transform:scale(.92)}
+
+.sum-bar{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:0 14px 10px;flex-shrink:0}
+.sum-card{background:var(--surf);border:1px solid var(--bord);border-radius:var(--rs);padding:10px;text-align:center}
+.sv{font-family:var(--font-h);font-size:17px;font-weight:900}
+.sl{font-size:10px;color:var(--t2);font-weight:600;margin-top:3px;text-transform:uppercase;letter-spacing:.3px}
+
+.sup-card{background:var(--surf);border:1px solid var(--bord);border-radius:var(--rs2);padding:13px;margin:0 14px 9px;cursor:pointer;transition:var(--tr)}
+.sup-card:active{transform:scale(.99);background:var(--surf2)}
+.sc-top{display:flex;align-items:center;gap:11px;margin-bottom:10px}
+.sc-av{width:44px;height:44px;border-radius:13px;color:#fff;font-family:var(--font-h);font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.sc-nm{font-family:var(--font-h);font-size:14px;font-weight:800}
+.sc-info{font-size:11px;color:var(--t2);margin-top:2px}
+.sc-bal{margin-left:auto;text-align:right;flex-shrink:0}
+.sc-val{font-family:var(--font-h);font-size:16px;font-weight:900}
+.sc-val.due{color:var(--acc2)}.sc-val.clr{color:var(--acc3)}
+.sc-lbl{font-size:9px;color:var(--t3);font-weight:600;text-transform:uppercase;margin-top:2px}
+.sc-tags{display:flex;gap:6px;flex-wrap:wrap}
+.stag{display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700;background:rgba(245,166,35,.1);color:var(--acc);border:1px solid rgba(245,166,35,.2)}
+.sc-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid var(--bord)}
+.ss-item{text-align:center}
+.ss-val{font-family:var(--font-h);font-size:13px;font-weight:800}
+.ss-lbl{font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.3px;margin-top:2px}
+
+.ff{margin-bottom:12px}
+.ff label{display:block;font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.ff input,.ff select,.ff textarea{width:100%;background:var(--surf2);border:1.5px solid var(--bord);border-radius:var(--rs);padding:11px 13px;color:var(--text);font-size:14px;outline:none;transition:var(--tr);appearance:none;font-family:'Noto Sans',sans-serif}
+.ff input:focus,.ff select:focus{border-color:var(--acc);background:var(--surf);box-shadow:0 0 0 3px rgba(245,166,35,.12)}
+.ff input::placeholder{color:var(--t3)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ff textarea{resize:none;line-height:1.5}
+
+.btn-pri{width:100%;padding:14px;border-radius:var(--rs);background:linear-gradient(135deg,var(--acc),#FF8A00);border:none;color:#0A0E1A;font-family:var(--font-h);font-size:15px;font-weight:700;cursor:pointer;transition:.2s;box-shadow:0 4px 16px rgba(245,166,35,.4);display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-pri:active{transform:scale(.97)}
+.btn-pri:disabled{opacity:.65;cursor:not-allowed;transform:none}
+.btn-sec{width:100%;padding:12px;border-radius:var(--rs);background:var(--surf2);border:1.5px solid var(--bord);color:var(--text);font-family:var(--font-h);font-size:14px;font-weight:700;cursor:pointer;transition:var(--tr)}
+.btn-danger{width:100%;padding:11px;border-radius:var(--rs);background:rgba(239,68,68,.08);border:1.5px solid rgba(239,68,68,.2);color:var(--acc2);font-family:var(--font-h);font-size:13px;font-weight:700;cursor:pointer}
+.btn-wa{background:rgba(37,211,102,.08);border:1.5px solid rgba(37,211,102,.25);color:#25D366;font-family:var(--font-h);font-size:13px;font-weight:700;border-radius:var(--rs);padding:11px;cursor:pointer;width:100%}
+.btn-row{display:grid;gap:8px}.btn-row.col2{grid-template-columns:1fr 1fr}
+
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:500;display:none;align-items:flex-end;backdrop-filter:blur(4px)}
+.overlay.open{display:flex;animation:fadeIn .18s ease}
+.sheet{width:100%;max-height:92dvh;background:var(--surf);border-radius:var(--rs2) var(--rs2) 0 0;padding:16px 16px calc(16px + var(--safe-bottom));overflow-y:auto;animation:slideUp .28s cubic-bezier(.4,0,.2,1)}
+.handle{width:36px;height:4px;border-radius:2px;background:var(--surf3);margin:0 auto 16px}
+.sheet-title{font-family:var(--font-h);font-size:18px;font-weight:800;margin-bottom:14px}
+
+.pay-log-item{padding:9px 0;border-bottom:1px solid var(--bord);display:flex;align-items:center;gap:9px}
+.pli-ic{width:30px;height:30px;border-radius:9px;background:rgba(16,185,129,.12);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.pli-info{flex:1}.pli-desc{font-size:12px;font-weight:700}.pli-meta{font-size:10px;color:var(--t2);margin-top:1px}
+.pli-amt{font-family:var(--font-h);font-size:14px;font-weight:800;color:var(--acc3);flex-shrink:0}
+
+.bnav{display:flex;align-items:stretch;background:var(--surf);border-top:1px solid var(--bord);flex-shrink:0;padding-bottom:var(--safe-bottom);z-index:100}
+.ni{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 4px;gap:3px;cursor:pointer;transition:var(--tr);position:relative;min-height:56px;user-select:none}
+.ni-ic{font-size:20px;line-height:1}.ni-lb{font-size:10px;color:var(--t2);font-weight:600;white-space:nowrap}
+.ni.on .ni-lb{color:var(--acc)}
+.ni.on::after{content:'';position:absolute;top:0;left:20%;right:20%;height:2.5px;border-radius:0 0 4px 4px;background:var(--acc)}
+.ni:active{background:var(--surf2)}
+.nav-fab{width:48px;height:48px;border-radius:16px;background:linear-gradient(135deg,var(--acc),#FF8A00);color:#0A0E1A;font-size:22px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(245,166,35,.5);margin-bottom:4px}
+
+#toast-container{position:fixed;bottom:calc(72px + var(--safe-bottom));left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none}
+.toast{background:var(--surf3);color:var(--text);padding:10px 18px;border-radius:20px;font-size:13px;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.45);border:1px solid var(--bord);white-space:nowrap;max-width:calc(100vw - 40px);animation:toastIn .22s ease}
+.toast.s{background:rgba(16,185,129,.15);border-color:rgba(16,185,129,.3);color:var(--acc3)}
+.toast.e{background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.3);color:var(--acc2)}
+.toast.i{background:rgba(245,166,35,.15);border-color:rgba(245,166,35,.3);color:#FF8A00}
+
+.empty-state{text-align:center;padding:48px 20px}
+.spacer{height:80px}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+@keyframes toastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@media(min-width:640px){#app{max-width:480px;margin:0 auto;box-shadow:0 0 80px rgba(0,0,0,.6)}}
+
+/* ══ Desktop Sidebar ══ */
+#dsb{position:fixed;left:0;top:0;bottom:0;width:220px;background:var(--surf);border-right:1px solid var(--bord);display:flex;flex-direction:column;z-index:200;overflow-y:auto}
+.dsb-logo{display:flex;align-items:center;gap:10px;padding:18px 16px 12px;border-bottom:1px solid var(--bord)}
+.dsb-brand{font-family:var(--font-h);font-size:15px;font-weight:800;color:var(--acc)}
+.dsb-nav{flex:1;padding:8px;display:flex;flex-direction:column;gap:2px;overflow-y:auto}
+.dsb-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;cursor:pointer;text-decoration:none;color:var(--t2);font-size:13px;font-weight:600;transition:.15s ease;white-space:nowrap;border:none;background:none;width:100%}
+.dsb-item:hover{background:var(--surf2);color:var(--text)}
+.dsb-item.active{background:rgba(245,166,35,.12);color:var(--acc)}
+.dsb-item.fab-sb{background:linear-gradient(135deg,#F5A623,#FF8A00);color:#fff;margin:4px 0 8px;font-weight:700}
+.dsb-ic{font-size:17px;width:22px;text-align:center;flex-shrink:0}
+.dsb-footer{padding:8px;border-top:1px solid var(--bord)}
+.dsb-ver{font-size:10px;color:var(--t3);text-align:center;padding:6px 0 2px}
+@media(max-width:1023px){#dsb{display:none!important}}
+@media(min-width:640px) and (max-width:1023px){#app{max-width:600px;margin:0 auto}}
+@media(min-width:1024px){
+  
+  #app{margin-left:220px!important;max-width:calc(100vw - 220px)!important;width:calc(100vw - 220px)!important;box-shadow:none!important}
+  .bnav{display:none!important}
+}
+
+/* ══ Language ══ */
+.lang-hi{display:none!important}
+.lang-en{display:inline!important}
+html[lang="hi"] .lang-hi{display:inline!important}
+html[lang="hi"] .lang-en{display:none!important}
+
+
+
+@media(max-width:1023px){
+    #app{height:100dvh!important;display:flex!important;flex-direction:column!important;overflow:hidden!important}
+  .bnav{position:fixed!important;bottom:0!important;left:0!important;right:0!important;z-index:100!important}
+  .sb{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+}
+
+
+
+
+
+
+/* ══ PWA SCROLL SYSTEM ══ */
+html,body{height:100%;overflow:hidden}
+#app{height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+.sb{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:0;overscroll-behavior:contain}
+.bnav{flex-shrink:0}
+@media(min-width:1024px){
+  #app{margin-left:220px!important;max-width:calc(100vw - 220px)!important;width:calc(100vw - 220px)!important}
+  .bnav{display:none!important}
+}
+</style>
+<link rel="stylesheet" href="fix.css">
+</head>
+<body>
+<script>(function(){var ds=localStorage.getItem("sbp_digit_style")||"default";var fs=parseInt(localStorage.getItem("sbp_font_size")||"15");var fm={default:"inherit",mono:"Courier New,monospace",rounded:"DM Sans,sans-serif",sharp:"Outfit,sans-serif"};var st=document.getElementById("sbp-font-override");if(!st){st=document.createElement("style");st.id="sbp-font-override";document.head.appendChild(st);}st.textContent="body{font-size:"+fs+"px}.sc-val,.cm-val,.bc-amt,.cust-bal-val,.cms-val,.cart-total-val,.pos-item-price,.tot-row span:last-child,.gst-row span,.stat-val,.stat-num,.report-val,.bill-total,.bdoc-inv-no,.bc-inv,.lv{font-family:"+fm[ds]+"!important}";})();</script>
+<div id="app">
+  <div id="sbpBetaBanner"></div>
+
+  <div class="topbar">
+    <div class="tb-l">
+      <div class="back-btn" onclick="goTo('settings.html')">←</div>
+      <div class="tb-title">🏭 Supplier Book</div>
+    </div>
+    <div class="tb-r">
+      <div class="ic-btn" onclick="toggleTheme()" id="theme-btn">☀️</div>
+      <div class="ic-btn" onclick="exportSuppliers()">📤</div>
+    </div>
+  </div>
+
+  <div class="search-wrap">
+    <input class="search-inp" id="sup-search" placeholder="Search supplier name, phone, city..." oninput="searchSuppliers(this.value)">
+    <button class="add-btn" onclick="openAddSupplier()">＋</button>
+  </div>
+
+  <div class="sum-bar">
+    <div class="sum-card"><div class="sv" style="color:var(--acc)" id="s-count">0</div><div class="sl">Suppliers</div></div>
+    <div class="sum-card"><div class="sv" style="color:var(--acc2)" id="s-payable">₹0</div><div class="sl">Payable</div></div>
+    <div class="sum-card"><div class="sv" style="color:var(--acc3)" id="s-paid-month">₹0</div><div class="sl">Paid</div></div>
+  </div>
+
+  <div class="sb" id="sup-list" style="padding:0 0 12px"></div>
+
+  <div class="bnav">
+    <div class="ni" onclick="goTo('dashboard.html')"><span class="ni-ic">🏠</span><span class="ni-lb"><span class="lang-en">Home</span><span class="lang-hi">होम</span></span></div>
+    <div class="ni" onclick="goTo('bills.html')"><span class="ni-ic">🧾</span><span class="ni-lb"><span class="lang-en">Bills</span><span class="lang-hi">बिल</span></span></div>
+    <div class="ni" onclick="goTo('billing.html')" style="align-items:center;justify-content:center"><div class="nav-fab">＋</div></div>
+    <div class="ni" onclick="goTo('marketing.html')"><span class="ni-ic">📢</span><span class="ni-lb"><span class="lang-en">Marketing</span><span class="lang-hi">मार्केटिंग</span></span></div>
+    <div class="ni on" onclick="goTo('settings.html')"><span class="ni-ic">☰</span><span class="ni-lb"><span class="lang-en">More</span><span class="lang-hi">अधिक</span></span></div>
+  </div>
+</div>
+
+<!-- ADD/EDIT SUPPLIER MODAL -->
+<div class="overlay" id="add-sup-modal">
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="sheet-title" id="add-sup-title">🏭 Add Supplier</div>
+    <div class="ff"><label>Supplier / Business Name *</label><input type="text" id="ns-name" placeholder="e.g. Rajesh Wholesale Traders"></div>
+    <div class="row2">
+      <div class="ff"><label>WhatsApp No.</label><input type="tel" id="ns-wa" placeholder="10-digit" maxlength="10" inputmode="tel"></div>
+      <div class="ff"><label>Phone</label><input type="tel" id="ns-ph" placeholder="Alternate" maxlength="10"></div>
+    </div>
+    <div class="ff"><label>Category / Products Supplied</label><input type="text" id="ns-products" placeholder="e.g. Rice, Dal, Pulses"></div>
+    <div class="row2">
+      <div class="ff"><label>City</label><input type="text" id="ns-city" placeholder="City"></div>
+      <div class="ff"><label>GST Number</label><input type="text" id="ns-gst" placeholder="Optional" style="text-transform:uppercase"></div>
+    </div>
+    <div class="ff"><label>Type</label>
+      <select id="ns-type">
+        <option>Wholesaler</option><option>Distributor</option><option>Manufacturer</option>
+        <option>Retailer</option><option>Importer</option><option>Farmer / Producer</option>
+      </select>
+    </div>
+    <div class="ff"><label>Credit Limit ₹ (amount we can owe)</label><input type="number" id="ns-credit" placeholder="0 = unlimited"></div>
+    <div class="ff"><label>Opening Balance ₹ (amount we owe now)</label><input type="number" id="ns-balance" placeholder="0"></div>
+    <input type="hidden" id="ns-edit-id">
+    <button class="btn-pri" id="save-sup-btn" onclick="saveSupplier()">✅ Save Supplier</button>
+    <button class="btn-sec" onclick="closeModal('add-sup-modal')" style="margin-top:8px">Cancel</button>
+    <div style="height:8px"></div>
+  </div>
+</div>
+
+<!-- SUPPLIER DETAIL MODAL -->
+<div class="overlay" id="sup-detail-modal">
+  <div class="sheet" id="sup-detail-content"></div>
+</div>
+
+<!-- RECORD PAYMENT MODAL -->
+<div class="overlay" id="pay-sup-modal">
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="sheet-title">💳 Record Payment to Supplier</div>
+    <div id="pay-sup-info" style="background:var(--surf2);border-radius:var(--rs);padding:12px;margin-bottom:14px;border:1px solid var(--bord)"></div>
+    <div class="ff"><label>Amount Paid ₹ *</label><input type="number" id="pay-sup-amt" placeholder="Enter amount"></div>
+    <div class="row2">
+      <div class="ff"><label>Payment Mode</label>
+        <select id="pay-sup-mode">
+          <option>Cash</option><option>UPI / QR</option><option>Bank Transfer</option><option>Cheque</option>
+        </select>
+      </div>
+      <div class="ff"><label>Date</label><input type="date" id="pay-sup-date"></div>
+    </div>
+    <div class="ff"><label>Reference / Note</label><input type="text" id="pay-sup-note" placeholder="Bill no, UTR, etc."></div>
+    <button class="btn-pri" onclick="confirmPaySupplier()">✅ Record Payment</button>
+    <button class="btn-sec" onclick="closeModal('pay-sup-modal')" style="margin-top:8px">Cancel</button>
+    <div style="height:8px"></div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script>
+const SB_URL='https://jfqeirfrkjdkqqixivru.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmcWVpcmZya2pka3FxaXhpdnJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzNzQ4MzgsImV4cCI6MjA4OTk1MDgzOH0.akd4E0nil8ypLR4WOykkeYIL8g4uuNU6XdSVh_Y1utk';
+const _sb=supabase.createClient(SB_URL,SB_KEY);
+
+let _theme=localStorage.getItem('sbp_theme')||'dark';
+let _suppliers=JSON.parse(localStorage.getItem('sbp_suppliers')||'[]');
+let _filteredSups=[..._suppliers];
+let _editSupId=null,_paySupId=null;
+let _searchVal='';
+
+const SESSION_TIMEOUT=parseInt(localStorage.getItem('sbp_session_timeout')||'30');
+let _actTimer;
+function _resetTimer(){clearTimeout(_actTimer);localStorage.setItem('sbp_last_activity',Date.now().toString());_actTimer=setTimeout(async()=>{await _sb.auth.signOut();window.location.href='index.html';},SESSION_TIMEOUT*60*1000)}
+['click','touchstart','keypress','scroll'].forEach(e=>document.addEventListener(e,_resetTimer,{passive:true}));
+
+function goTo(p){window.location.href=p}
+function toast(msg,type='',dur=3000){const c=document.getElementById('toast-container');const t=document.createElement('div');t.className='toast'+(type?' '+type:'');t.textContent=msg;c.appendChild(t);setTimeout(()=>{t.style.opacity='0';t.style.transition='.2s';setTimeout(()=>t.remove(),220);},dur)}
+function toggleTheme(){_theme=_theme==='dark'?'light':'dark';localStorage.setItem('sbp_theme',_theme);document.documentElement.setAttribute('data-theme',_theme==='light'?'light':'');document.getElementById('theme-btn').textContent=_theme==='light'?'🌙':'☀️'}
+function openModal(id){const el=document.getElementById(id);el.classList.add('open');el.style.display='flex';el.addEventListener('click',e=>{if(e.target===el)closeModal(id);},{once:true})}
+function closeModal(id){const el=document.getElementById(id);el.classList.remove('open');el.style.display='none'}
+function fINR(n){return '₹'+(parseFloat(n)||0).toLocaleString('en-IN',{maximumFractionDigits:0})}
+function todayISO(){return sbpToday()}
+function initials(name=''){return name.split(' ').map(w=>w[0]||'').join('').substring(0,2).toUpperCase()||'??'}
+function avatarColor(s=''){const c=['#F5A623','#2563EB','#059669','#D97706','#DC2626','#0891B2','#E8940D','#65A30D'];let h=0;for(let i=0;i<s.length;i++)h=s.charCodeAt(i)+((h<<5)-h);return c[Math.abs(h)%c.length]}
+function fDate(d){if(!d)return '—';try{return new Date(d).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});}catch{return d}}
+function save(){localStorage.setItem('sbp_suppliers',JSON.stringify(_suppliers))}
+
+function renderSuppliers(list){
+  const el=document.getElementById('sup-list');
+  const totalPayable=list.reduce((s,x)=>s+parseFloat(x.balance||0),0);
+  document.getElementById('s-count').textContent=_suppliers.length;
+  document.getElementById('s-payable').textContent=fINR(totalPayable);
+  const thisMonth=sbpYM();
+  const paid=_suppliers.reduce((s,x)=>{const p=(x.payments||[]).filter(p=>p.date?.startsWith(thisMonth));return s+p.reduce((a,b)=>a+parseFloat(b.amt||0),0)},0);
+  document.getElementById('s-paid-month').textContent=fINR(paid);
+
+  if(!list.length){
+    el.innerHTML=`<div class="empty-state"><div style="font-size:44px;margin-bottom:12px">🏭</div><div style="font-family:var(--font-h);font-size:15px;font-weight:700;margin-bottom:6px">No suppliers yet</div><div style="font-size:12px;color:var(--t2)">Add your vendors and wholesalers<br>to track what you owe them</div></div>`;
+    return;
+  }
+  el.innerHTML='<div style="padding-top:6px">'+list.map(s=>{
+    const bal=parseFloat(s.balance||0);
+    const totalPaid=(s.payments||[]).reduce((a,p)=>a+parseFloat(p.amt||0),0);
+    return `<div class="sup-card" onclick="openDetail('${s.id}')">
+      <div class="sc-top">
+        <div class="sc-av" style="background:${avatarColor(s.name)}">${initials(s.name)}</div>
+        <div style="flex:1;min-width:0">
+          <div class="sc-nm">${s.name}</div>
+          <div class="sc-info">📱 ${s.wa||s.ph||'—'}</div>
+          ${s.city?`<div class="sc-info">📍 ${s.city}</div>`:''}
+          ${s.products?`<div class="sc-info">📦 ${s.products}</div>`:''}
+        </div>
+        <div class="sc-bal">
+          <div class="sc-val ${bal>0?'due':'clr'}">${fINR(bal)}</div>
+          <div class="sc-lbl">${bal>0?'Payable':'Clear'}</div>
+        </div>
+      </div>
+      <div class="sc-tags">
+        <span class="stag">${s.type||'Wholesaler'}</span>
+        ${s.gst?'<span class="stag">🏛️ GST Reg</span>':''}
+      </div>
+      <div class="sc-stats">
+        <div class="ss-item"><div class="ss-val">${(s.payments||[]).length}</div><div class="ss-lbl">Payments</div></div>
+        <div class="ss-item"><div class="ss-val">${fINR(totalPaid)}</div><div class="ss-lbl">Paid Total</div></div>
+        <div class="ss-item"><div class="ss-val">${s.joined||'—'}</div><div class="ss-lbl">Since</div></div>
+      </div>
+    </div>`;
+  }).join('')+'<div class="spacer"></div></div>';
+}
+
+function searchSuppliers(val){_searchVal=val;applySearch()}
+function applySearch(){
+  const list=_searchVal?_suppliers.filter(s=>s.name?.toLowerCase().includes(_searchVal.toLowerCase())||(s.wa||'').includes(_searchVal)||(s.city||'').toLowerCase().includes(_searchVal.toLowerCase())||(s.products||'').toLowerCase().includes(_searchVal.toLowerCase())):_suppliers;
+  _filteredSups=list;renderSuppliers(list);
+}
+
+// ── Supplier Detail ──
+function openDetail(id){
+  const s=_suppliers.find(x=>x.id===id||String(x.id)===String(id));if(!s)return;
+  const bal=parseFloat(s.balance||0);
+  const payments=(s.payments||[]).slice(0,10);
+  document.getElementById('sup-detail-content').innerHTML=`
+    <div class="handle"></div>
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
+      <div style="width:54px;height:54px;border-radius:15px;background:${avatarColor(s.name)};color:#fff;font-family:var(--font-h);font-size:20px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">${initials(s.name)}</div>
+      <div><div style="font-family:var(--font-h);font-size:18px;font-weight:900">${s.name}</div>
+        <div style="font-size:12px;color:var(--t2);margin-top:3px">${s.type||'Wholesaler'}${s.city?' · '+s.city:''}</div>
+        <div style="font-size:12px;color:${bal>0?'var(--acc2)':'var(--acc3)'};font-weight:700;margin-top:4px">${bal>0?'⚠️ Payable: '+fINR(bal):'✅ Clear'}</div>
+      </div>
+    </div>
+
+    <div style="background:var(--surf2);border-radius:var(--rs);padding:12px;margin-bottom:12px;border:1px solid var(--bord)">
+      <div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:9px">Contact Details</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px">
+        <div><span style="color:var(--t2)">WhatsApp</span><div style="font-weight:700;margin-top:2px">${s.wa||'—'}</div></div>
+        <div><span style="color:var(--t2)">Phone</span><div style="font-weight:700;margin-top:2px">${s.ph||'—'}</div></div>
+        <div><span style="color:var(--t2)">GST No.</span><div style="font-weight:700;margin-top:2px">${s.gst||'—'}</div></div>
+        <div><span style="color:var(--t2)">Credit Limit</span><div style="font-weight:700;margin-top:2px">${s.creditLimit>0?fINR(s.creditLimit):'No limit'}</div></div>
+        <div style="grid-column:1/-1"><span style="color:var(--t2)">Products Supplied</span><div style="font-weight:700;margin-top:2px">${s.products||'—'}</div></div>
+      </div>
+    </div>
+
+    <div style="font-family:var(--font-h);font-size:13px;font-weight:800;margin-bottom:10px">Payment History</div>
+    ${payments.length
+      ?payments.map(p=>`<div class="pay-log-item"><div class="pli-ic">💳</div><div class="pli-info"><div class="pli-desc">${p.mode||'Payment'} — ${p.note||''}</div><div class="pli-meta">📅 ${fDate(p.date)}</div></div><div class="pli-amt">${fINR(p.amt)}</div></div>`).join('')
+      :'<div style="text-align:center;padding:16px;color:var(--t2);font-size:12px">No payments recorded yet</div>'}
+
+    <div class="btn-row col2" style="margin-top:14px">
+      <button class="btn-wa" onclick="openWA('${s.wa||s.ph||''}','${s.name}')">📲 WhatsApp</button>
+      <button class="btn-pri" onclick="closeModal('sup-detail-modal');openPaySupplier('${s.id}')">💳 Record Payment</button>
+    </div>
+    <div class="btn-row col2" style="margin-top:8px">
+      <button class="btn-sec" onclick="closeModal('sup-detail-modal');openEditSupplier('${s.id}')">✏️ Edit</button>
+      <button class="btn-danger" onclick="closeModal('sup-detail-modal');deleteSupplier('${s.id}','${s.name}')">🗑️ Delete</button>
+    </div>
+    <div style="height:10px"></div>
+  `;
+  openModal('sup-detail-modal');
+}
+
+function openWA(ph,name){const num=(ph||'').replace(/\D/g,'');if(!num||num.length<10){toast('No WhatsApp number saved','e');return}const msg=`Hello *${name}*,\n\n_From ${JSON.parse(localStorage.getItem('sbp_shop')||'{}').name||'ShopBill Pro'}_`;window.open('https://wa.me/91'+String(num).replace(/\D/g,'').slice(-10)+'?text='+encodeURIComponent(msg),'_blank')}
+
+// ── Add/Edit ──
+function openAddSupplier(){
+  _editSupId=null;
+  document.getElementById('add-sup-title').textContent='🏭 Add Supplier';
+  ['ns-name','ns-wa','ns-ph','ns-products','ns-city','ns-gst','ns-credit','ns-balance'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
+  document.getElementById('ns-type').value='Wholesaler';
+  document.getElementById('ns-edit-id').value='';
+  openModal('add-sup-modal');
+}
+
+function openEditSupplier(id){
+  const s=_suppliers.find(x=>String(x.id)===String(id));if(!s)return;
+  _editSupId=id;
+  document.getElementById('add-sup-title').textContent='✏️ Edit Supplier';
+  document.getElementById('ns-name').value=s.name||'';
+  document.getElementById('ns-wa').value=s.wa||'';
+  document.getElementById('ns-ph').value=s.ph||'';
+  document.getElementById('ns-products').value=s.products||'';
+  document.getElementById('ns-city').value=s.city||'';
+  document.getElementById('ns-gst').value=s.gst||'';
+  document.getElementById('ns-type').value=s.type||'Wholesaler';
+  document.getElementById('ns-credit').value=s.creditLimit||'';
+  document.getElementById('ns-balance').value=s.balance||'';
+  document.getElementById('ns-edit-id').value=id;
+  openModal('add-sup-modal');
+}
+
+function saveSupplier(){
+  const name=document.getElementById('ns-name').value.trim();
+  if(!name){toast('Supplier name is required','e');return}
+  const btn=document.getElementById('save-sup-btn');btn.disabled=true;btn.textContent='⏳ Saving...';
+  try{
+    if(_editSupId){
+      const idx=_suppliers.findIndex(s=>String(s.id)===String(_editSupId));
+      if(idx>=0){_suppliers[idx]={..._suppliers[idx],name,wa:document.getElementById('ns-wa').value,ph:document.getElementById('ns-ph').value,products:document.getElementById('ns-products').value,city:document.getElementById('ns-city').value,gst:document.getElementById('ns-gst').value.toUpperCase(),type:document.getElementById('ns-type').value,creditLimit:parseFloat(document.getElementById('ns-credit').value)||0}}
+      toast('✅ '+name+' updated','s');
+    }else{
+      const s={id:'sup_'+Date.now(),name,wa:document.getElementById('ns-wa').value,ph:document.getElementById('ns-ph').value,products:document.getElementById('ns-products').value,city:document.getElementById('ns-city').value,gst:document.getElementById('ns-gst').value.toUpperCase(),type:document.getElementById('ns-type').value,creditLimit:parseFloat(document.getElementById('ns-credit').value)||0,balance:parseFloat(document.getElementById('ns-balance').value)||0,payments:[],joined:new Date().toLocaleDateString('en-IN',{month:'short',year:'numeric'})};
+      _suppliers.unshift(s);toast('✅ '+name+' added','s');
+    }
+    save();closeModal('add-sup-modal');applySearch();
+  }finally{btn.disabled=false;btn.textContent='✅ Save Supplier'}
+}
+
+function deleteSupplier(id,name){
+  if(!confirm('Delete "'+name+'"?'))return;
+  _suppliers=_suppliers.filter(s=>String(s.id)!==String(id));save();applySearch();toast('🗑️ '+name+' deleted','i');
+}
+
+// ── Payment ──
+function openPaySupplier(id){
+  _paySupId=id;
+  const s=_suppliers.find(x=>String(x.id)===String(id));if(!s)return;
+  document.getElementById('pay-sup-info').innerHTML=`<div style="font-family:var(--font-h);font-size:14px;font-weight:800">${s.name}</div><div style="font-size:11px;color:var(--t2);margin-top:3px">Current Balance Payable: <strong style="color:var(--acc2)">${fINR(s.balance)}</strong></div>`;
+  document.getElementById('pay-sup-amt').value='';document.getElementById('pay-sup-note').value='';document.getElementById('pay-sup-date').value=todayISO();
+  openModal('pay-sup-modal');
+}
+
+async function confirmPaySupplier(){
+  const amt=parseFloat(document.getElementById('pay-sup-amt').value)||0;
+  if(!amt){toast('Enter payment amount','e');return}
+  const s=_suppliers.find(x=>String(x.id)===String(_paySupId));if(!s)return;
+  const curBal = parseFloat(s.balance||0);
+  // FIX #37 — warn on overpayment, allow advance
+  if(amt > curBal){
+    if(!confirm('⚠️ Amount ₹'+amt+' is more than the outstanding ₹'+curBal+'.\n\nThis will leave you in advance/credit with this supplier. Continue?')) return;
+  }
+  const payment={id:'py_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),amt,mode:document.getElementById('pay-sup-mode').value,date:document.getElementById('pay-sup-date').value||todayISO(),note:document.getElementById('pay-sup-note').value};
+  if(!s.payments)s.payments=[];
+  s.payments.unshift(payment);
+  // FIX #37 — allow negative balance (advance) instead of clamping
+  s.balance = curBal - amt;
+  save();
+
+  // FIX #36 — Sync to Supabase
+  if(navigator.onLine && window._sb && s.id && !String(s.id).startsWith('local_')){
+    try { await window._sb.from('suppliers').update({balance: s.balance, payments: s.payments}).eq('id', s.id); }
+    catch(e){ console.warn('Supplier sync failed:', e.message); }
+  }
+
+  closeModal('pay-sup-modal');applySearch();
+  toast('✅ Payment of '+fINR(amt)+' recorded for '+s.name,'s');
+}
+
+function exportSuppliers(){
+  if(!_suppliers.length){toast('No suppliers to export','i');return}
+  const rows=['Name,WhatsApp,City,Products,Type,Balance Payable'];
+  _suppliers.forEach(s=>rows.push([s.name,s.wa||'',s.city||'',s.products||'',s.type||'',s.balance||0].join(',')));
+  const blob=new Blob([rows.join('\n')],{type:'text/csv'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='suppliers.csv';a.click();
+  toast('📤 Exported!','s');
+}
+
+function init(){
+  if(_theme==='light'){document.documentElement.setAttribute('data-theme','light');document.getElementById('theme-btn').textContent='🌙'}
+  renderSuppliers(_suppliers);
+  _resetTimer();
+  // Auth check in background
+  setTimeout(function(){
+    _sb.auth.getSession().then(function(res){
+      if(!res.data.session){
+        var l=parseInt(localStorage.getItem('sbp_last_activity')||'0');
+        if(!l||Date.now()-l>3600000){window.location.href='index.html';}
+      }
+    }).catch(function(){});
+  }, 100);
+}
+init();
+
+(function(){
+  if(window.innerWidth<1024)return;
+  var page=window.location.pathname.split('/').pop()||'dashboard.html';
+  var nav=[
+    {ic:'🏠',lb:'Dashboard',url:'dashboard.html'},
+    {ic:'🧾',lb:'New Bill',url:'billing.html',fab:true},
+    {ic:'📋',lb:'Bills',url:'bills.html'},
+    {ic:'👥',lb:'Customers',url:'customers.html'},
+    {ic:'📦',lb:'Inventory',url:'stock.html'},
+    {ic:'📊',lb:'Reports',url:'reports.html'},
+    {ic:'🛒',lb:'POS Admin',url:'pos-admin.html'},
+    {ic:'💬',lb:'WhatsApp',url:'wa-center.html'},
+    {ic:'📢',lb:'Marketing',url:'marketing.html'},
+    {ic:'💰',lb:'Cash Register',url:'cash-register.html'},
+    {ic:'🚚',lb:'Suppliers',url:'supplier.html'},
+    {ic:'🔄',lb:'Recurring',url:'recurring.html'},
+    {ic:'🗂️',lb:'Templates',url:'bill-templates.html'},
+    {ic:'👥',lb:'Team & Users',url:'team.html'},
+    {ic:'🚀',lb:'Plans & Pricing',url:'subscription.html'},
+    {ic:'⚙️',lb:'Settings',url:'settings.html'},
+  ];
+  var sb=document.createElement('div');sb.id='dsb';
+  sb.innerHTML='<div class="dsb-logo"><svg width="22" height="24" viewBox="0 0 56 62" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M28 2L4 14V32C4 46 28 60 28 60C28 60 52 46 52 32V14L28 2Z" fill="url(#sg1)"/><rect x="18" y="18" width="20" height="26" rx="2" fill="#0A0E1A" fill-opacity=".6"/><rect x="18" y="18" width="20" height="26" rx="2" stroke="#fff" stroke-width="1.5" fill="none"/><line x1="22" y1="24" x2="34" y2="24" stroke="#F5A623" stroke-width="1.5" stroke-linecap="round"/><line x1="22" y1="28" x2="30" y2="28" stroke="rgba(255,255,255,.4)" stroke-width="1" stroke-linecap="round"/><line x1="22" y1="31" x2="32" y2="31" stroke="rgba(255,255,255,.4)" stroke-width="1" stroke-linecap="round"/><line x1="22" y1="34" x2="28" y2="34" stroke="rgba(255,255,255,.4)" stroke-width="1" stroke-linecap="round"/><circle cx="32" cy="37" r="5" fill="#F5A623"/><polyline points="30,37 31.5,38.5 34.5,35.5" fill="none" stroke="#0A0E1A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><defs><linearGradient id="sg1" x1="4" y1="2" x2="52" y2="60" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#F5A623"/><stop offset="100%" stop-color="#FF6B35"/></linearGradient></defs></svg><span class="dsb-brand">ShopBill Pro</span></div><div class="dsb-nav">'+nav.map(function(n){var c='dsb-item'+(page===n.url?' active':'')+(n.fab?' fab-sb':'');return '<a class="'+c+'" href="'+n.url+'"><span class="dsb-ic">'+n.ic+'</span><span>'+n.lb+'</span></a>';}).join('')+'</div><div class="dsb-footer"><button class="dsb-item" id="dsb-logout"><span class="dsb-ic">🚪</span><span>Logout</span></button><div class="dsb-ver">ShopBill Pro v1.0</div></div>';
+  document.body.prepend(sb);
+  document.getElementById('dsb-logout').addEventListener('click',function(){_sb.auth.signOut().then(function(){window.location.href='index.html';});});
+})();
+
+async function refreshShopPlan() {
+  if (!navigator.onLine || !window._sb) return;
+  try {
+    const { data: { user } } = await _sb.auth.getUser();
+    if (!user) return;
+    const { data: shops } = await _sb.from('shops').select('*').eq('owner_id', user.id).limit(1);
+    if (shops?.length) {
+      localStorage.setItem('sbp_shop', JSON.stringify(shops[0]));
+      localStorage.setItem('sbp_shop_id', shops[0].id);
+      window._shop = shops[0];
+    }
+  } catch(e) {}
+}
+</script>
+<script src="lib/beta-banner.js"></script>
+</body>
+</html>

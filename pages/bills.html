@@ -1,0 +1,1450 @@
+<!DOCTYPE html>
+<html lang="en" translate="no" class="notranslate">
+<head>
+<script>
+// FIX — Pre-paint theme application (eliminates dark→light flash)
+(function(){
+  try {
+    var t = localStorage.getItem('sbp_theme');
+    if (t === 'light') document.documentElement.setAttribute('data-theme','light');
+  } catch(e) {}
+})();
+</script>
+
+<meta charset="UTF-8">
+<meta name="google" content="notranslate">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#F5A623">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png?v=2">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180x180.png?v=2">
+<title>ShopBill Pro — Bills</title>
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Noto+Sans:wght@300;400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+// FIX #18, #48, #49 — Unified plan check with name normalization + expiry
+function _sbpPlanInfo(){
+  const s=JSON.parse(localStorage.getItem('sbp_shop')||'{}');
+  let plan=(s.plan||'free').toLowerCase();
+  if(plan==='enterprise') plan='business';
+  const exp=s.plan_expires_at;
+  if(exp && plan!=='free' && new Date(exp) < new Date()) plan='free';
+  return {plan, expired:!!(exp && new Date(exp) < new Date())};
+}
+function isPro(){const p=_sbpPlanInfo().plan;return p==='pro'||p==='business';}
+function isBiz(){return _sbpPlanInfo().plan==='business';}
+function isBusiness(){return _sbpPlanInfo().plan==='business';}
+function isFree(){return _sbpPlanInfo().plan==='free';}
+// FIX #3 — IST-aware date (UTC toISOString shifts -5:30 in India)
+function sbpToday(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+// FIX #10 — Auto cash-register entry
+function sbpRecordCashIn(amount, desc, who){
+  try {
+    const reg = JSON.parse(localStorage.getItem('sbp_register')||'{}');
+    const today = sbpToday();
+    if(!reg.isOpen || reg.openDate !== today) return;
+    if(!reg.entries) reg.entries = [];
+    const now = new Date();
+    const time = String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+    reg.entries.unshift({type:'in', amt:parseFloat(amount)||0, desc:desc||'Bill payment', cat:'Sales', time, ts:Date.now(), auto:true, ref:who||''});
+    localStorage.setItem('sbp_register', JSON.stringify(reg));
+  } catch(e){}
+}
+function sbpYM(){return sbpToday().slice(0,7);}
+function sbpY(){return sbpToday().slice(0,4);}
+</script>
+
+
+
+<script src="lang.js"></script>
+<script src="conversion.js"></script>
+
+
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:'Noto Sans','Noto Sans Devanagari',sans-serif;-webkit-font-smoothing:antialiased;}
+:root{--acc:#F5A623;--acc2:#EF4444;--acc3:#10B981;--cyan:#06B6D4;--amber:#F59E0B;--bg:#0A0A12;--surf:#13131C;--surf2:#1C1C28;--surf3:#252534;--bord:#2A2A3A;--text:#F0EFF8;--t2:#8A8AA8;--t3:#4A4A60;--font-h:'Outfit',sans-serif;--rs:12px;--rs2:18px;--tr:.18s ease;--safe-top:env(safe-area-inset-top,0px);--safe-bottom:env(safe-area-inset-bottom,0px)}
+[data-theme="light"]{--bg:#F0EEFF;--surf:#FFF;--surf2:#F5F2FF;--surf3:#EDE9FF;--bord:#DDD8F5;--text:#0F0E18;--t2:#5E5A7A;--t3:#A09CC0}
+body{background:var(--bg);color:var(--text)}
+
+/* Hide action buttons in print views */
+.bill-action-btn{transition:var(--tr)}
+@media print{.bill-action-btn,.no-print{display:none!important}}
+
+/* Manager PIN Modal */
+.pin-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9500;display:none;align-items:center;justify-content:center;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.pin-overlay.open{display:flex}
+.pin-box{background:var(--surf);border-radius:var(--rs2);padding:24px;width:min(340px,90vw);text-align:center;animation:slideUp .28s cubic-bezier(.4,0,.2,1)}
+.pin-title{font-family:var(--font-h);font-size:16px;font-weight:800;margin-bottom:6px;color:var(--acc2)}
+.pin-sub{font-size:12px;color:var(--t2);margin-bottom:16px}
+.pin-input{width:100%;padding:14px;border-radius:var(--rs);border:1.5px solid var(--bord);background:var(--surf2);color:var(--text);font-size:22px;text-align:center;letter-spacing:12px;outline:none;font-family:var(--font-h);font-weight:800;-webkit-text-security:disc;margin-bottom:12px}
+.pin-input:focus{border-color:var(--acc)}
+.pin-error{font-size:11px;color:var(--acc2);margin-bottom:10px;min-height:16px}
+.pin-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+#app{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+.sb{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+
+/* Topbar */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;padding-top:calc(10px + var(--safe-top));background:var(--surf);border-bottom:1px solid var(--bord);flex-shrink:0;z-index:10;min-height:54px}
+.tb-l{display:flex;align-items:center;gap:10px;flex:1;min-width:0}
+.tb-r{display:flex;align-items:center;gap:7px;flex-shrink:0}
+.tb-title{font-family:var(--font-h);font-size:17px;font-weight:800}
+.back-btn{width:34px;height:34px;border-radius:10px;background:var(--surf2);border:1px solid var(--bord);display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer;transition:var(--tr);flex-shrink:0}
+.back-btn:active{transform:scale(.93)}
+.ic-btn{width:34px;height:34px;border-radius:10px;background:var(--surf2);border:1px solid var(--bord);display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;transition:var(--tr)}
+.ic-btn:active{transform:scale(.93)}
+
+/* Search */
+.search-wrap{padding:10px 14px;background:var(--bg);flex-shrink:0}
+.search-inp{width:100%;background:var(--surf);border:1.5px solid var(--bord);border-radius:var(--rs);padding:11px 14px 11px 40px;color:var(--text);font-size:14px;outline:none;transition:var(--tr);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%238A8AA8' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85zm-5.242 1.656a5.5 5.5 0 1 1 0-11 5.5 5.5 0 0 1 0 11z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:13px center}
+.search-inp:focus{border-color:var(--acc)}
+
+/* Filter chips */
+.filter-row{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;padding:0 14px 8px;flex-shrink:0}
+.filter-row::-webkit-scrollbar{display:none}
+.chip{flex-shrink:0;padding:6px 13px;border-radius:20px;border:1.5px solid var(--bord);background:var(--surf);color:var(--t2);font-size:12px;font-weight:700;cursor:pointer;transition:var(--tr);white-space:nowrap;user-select:none}
+.chip.on{background:rgba(245,166,35,.12);border-color:var(--acc);color:var(--acc)}
+
+/* Summary bar */
+.sum-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:10px 14px;flex-shrink:0}
+.sum-card{background:var(--surf);border:1px solid var(--bord);border-radius:var(--rs);padding:9px 8px;text-align:center}
+.sv{font-family:var(--font-h);font-size:15px;font-weight:900}
+.sl{font-size:9px;color:var(--t2);font-weight:600;margin-top:2px;text-transform:uppercase}
+
+/* Bill cards */
+.bill-card{background:var(--surf);border:1px solid var(--bord);border-radius:var(--rs2);padding:13px;margin:0 14px 9px;cursor:pointer;transition:var(--tr);position:relative;overflow:hidden}
+.bill-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:3px 0 0 3px}
+.bill-card.paid::before{background:var(--acc3)}
+.bill-card.pending::before{background:var(--amber)}
+.bill-card.overdue::before{background:var(--acc2)}
+.bill-card.partial::before{background:var(--cyan)}
+.bill-card.credit::before{background:var(--acc)}
+.bill-card:active{transform:scale(.99);background:var(--surf2)}
+.bc-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px}
+.bc-inv{font-family:var(--font-h);font-size:11px;font-weight:700;color:var(--acc)}
+.bc-date{font-size:10px;color:var(--t3)}
+.bc-cust{font-family:var(--font-h);font-size:14px;font-weight:800;margin-bottom:3px}
+.bc-items{font-size:11px;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:8px}
+.bc-bot{display:flex;justify-content:space-between;align-items:center}
+.bc-amt{font-family:var(--font-h);font-size:18px;font-weight:900}
+.bc-actions{display:flex;align-items:center;gap:7px}
+.badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.3px}
+.badge.paid{background:rgba(16,185,129,.12);color:var(--acc3);border:1px solid rgba(16,185,129,.25)}
+.badge.pending{background:rgba(245,158,11,.12);color:var(--amber);border:1px solid rgba(245,158,11,.25)}
+.badge.overdue{background:rgba(239,68,68,.12);color:var(--acc2);border:1px solid rgba(239,68,68,.25)}
+.badge.partial{background:rgba(6,182,212,.12);color:var(--cyan);border:1px solid rgba(6,182,212,.25)}
+.badge.credit{background:rgba(245,166,35,.12);color:var(--acc);border:1px solid rgba(245,166,35,.25)}
+.badge.draft{background:var(--surf2);color:var(--t2);border:1px solid var(--bord)}
+.badge.voided{background:rgba(239,68,68,.08);color:#888;border:1px solid rgba(138,138,168,.2);text-decoration:line-through}
+.bill-card.voided{opacity:.55}
+
+/* Action buttons in card */
+.card-btn{padding:5px 10px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid;transition:var(--tr);background:transparent}
+.card-btn:active{transform:scale(.93)}
+.card-btn.settle{color:var(--acc);border-color:rgba(245,166,35,.3);background:rgba(245,166,35,.08)}
+.card-btn.send{color:var(--acc3);border-color:rgba(16,185,129,.3);background:rgba(16,185,129,.08)}
+
+/* Bill preview (invoice) */
+.bill-doc{font-family:'Noto Sans',sans-serif;background:#fff;color:#111;border-radius:var(--rs2);overflow:hidden}
+.bdoc-hd{background:linear-gradient(135deg,#0F1A14 0%,#1A2A1E 100%);color:#fff;padding:18px;position:relative;overflow:hidden}
+.bdoc-hd::after{content:'';position:absolute;right:-30px;top:-30px;width:130px;height:130px;border-radius:50%;background:rgba(245,166,35,.2)}
+.bdoc-shop-name{font-family:var(--font-h);font-size:20px;font-weight:900;margin-bottom:3px}
+.bdoc-shop-tag{font-size:11px;opacity:.7;margin-bottom:10px}
+.bdoc-shop-info{display:grid;grid-template-columns:1fr 1fr;gap:3px;font-size:11px;opacity:.85}
+.bdoc-stamp{position:absolute;top:14px;right:14px;padding:4px 12px;border-radius:20px;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.8px;border:1.5px solid}
+.bdoc-stamp.paid{color:#10B981;border-color:#10B981;background:rgba(16,185,129,.15)}
+.bdoc-stamp.pending{color:#F59E0B;border-color:#F59E0B;background:rgba(245,158,11,.15)}
+.bdoc-stamp.overdue{color:#EF4444;border-color:#EF4444;background:rgba(239,68,68,.15)}
+.bdoc-stamp.partial{color:#06B6D4;border-color:#06B6D4;background:rgba(6,182,212,.15)}
+.bdoc-stamp.draft{color:#9090A8;border-color:#9090A8;background:rgba(144,144,168,.15)}
+.bdoc-inv-badge{display:flex;justify-content:space-between;align-items:flex-end;margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.15)}
+.bdoc-inv-no{font-family:var(--font-h);font-size:22px;font-weight:900;letter-spacing:-1px}
+.bdoc-inv-dates{font-size:11px;opacity:.8;text-align:right}
+.bdoc-body{padding:16px}
+.bdoc-row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+.bdoc-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:#9090A8;font-weight:700;margin-bottom:3px}
+.bdoc-val{font-family:var(--font-h);font-size:15px;font-weight:800;color:#111}
+.bdoc-sub{font-size:11px;color:#6B6880;margin-top:3px;line-height:1.6}
+.bdoc-divider{border:none;border-top:1px solid #E5E7EB;margin:12px 0}
+.bdoc-table-hd{display:grid;grid-template-columns:2fr .5fr .7fr .7fr;gap:4px;padding:8px 0;border-bottom:2px solid #E5E7EB;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#9090A8}
+.bdoc-table-row{display:grid;grid-template-columns:2fr .5fr .7fr .7fr;gap:4px;padding:9px 0;border-bottom:1px solid #F3F4F6;font-size:12px;align-items:start}
+.bdoc-item-nm{font-weight:700;color:#111;font-size:13px}
+.bdoc-item-sub{font-size:10px;color:#9090A8;margin-top:2px}
+.bdoc-totals{margin-top:12px;border-top:1px solid #E5E7EB;padding-top:10px}
+.bdoc-tot-line{display:flex;justify-content:space-between;font-size:12px;color:#6B6880;padding:5px 0}
+.bdoc-tot-line.grand{font-family:var(--font-h);font-size:20px;font-weight:900;color:#111;border-top:2px solid #E5E7EB;padding-top:10px;margin-top:5px}
+.bdoc-tot-line.grand span:last-child{color:var(--acc)}
+.bdoc-upi{margin-top:14px;background:#F0FDF4;border:1px solid #D1FAE5;border-radius:10px;padding:12px;display:flex;align-items:center;gap:12px}
+.bdoc-upi-id{font-family:var(--font-h);font-size:14px;font-weight:800;color:#059669;margin-top:4px}
+.bdoc-footer{text-align:center;margin-top:16px;padding-top:12px;border-top:1px solid #F3F4F6}
+.bdoc-thanks{font-family:var(--font-h);font-size:14px;font-weight:700;color:#111;margin-bottom:3px}
+.bdoc-brand{font-size:10px;color:#9090A8}
+
+/* Forms */
+.ff{margin-bottom:12px}
+.ff label{display:block;font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.ff input,.ff select{width:100%;background:var(--surf2);border:1.5px solid var(--bord);border-radius:var(--rs);padding:11px 13px;color:var(--text);font-size:14px;outline:none;transition:var(--tr);appearance:none;font-family:'Noto Sans',sans-serif}
+.ff input:focus,.ff select:focus{border-color:var(--acc);background:var(--surf);box-shadow:0 0 0 3px rgba(245,166,35,.12)}
+
+/* Buttons */
+.btn-pri{width:100%;padding:14px;border-radius:var(--rs);background:linear-gradient(135deg,var(--acc),#FF8A00);border:none;color:#0A0E1A;font-family:var(--font-h);font-size:15px;font-weight:700;cursor:pointer;transition:.2s cubic-bezier(.4,0,.2,1);box-shadow:0 4px 16px rgba(245,166,35,.4);display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-pri:active{transform:scale(.97)}
+.btn-pri:disabled{opacity:.65;cursor:not-allowed;transform:none}
+.btn-sec{width:100%;padding:12px;border-radius:var(--rs);background:var(--surf2);border:1.5px solid var(--bord);color:var(--text);font-family:var(--font-h);font-size:14px;font-weight:700;cursor:pointer;transition:var(--tr)}
+.btn-wa{background:rgba(37,211,102,.08);border:1.5px solid rgba(37,211,102,.25);color:#25D366;font-family:var(--font-h);font-size:13px;font-weight:700;border-radius:var(--rs);padding:11px;cursor:pointer;width:100%;transition:var(--tr)}
+.btn-row{display:grid;gap:8px}
+.btn-row.col2{grid-template-columns:1fr 1fr}
+.btn-row.col3{grid-template-columns:1fr 1fr 1fr}
+
+/* Payment grid */
+.pay-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:12px}
+.pm-card{background:var(--surf2);border:1.5px solid var(--bord);border-radius:var(--rs);padding:10px 6px;text-align:center;cursor:pointer;transition:var(--tr);display:flex;flex-direction:column;align-items:center;gap:4px;user-select:none}
+.pm-card:active{transform:scale(.94)}
+.pm-card.on{background:rgba(245,166,35,.1);border-color:var(--acc)}
+.pm-ic{font-size:20px}.pm-nm{font-size:11px;font-weight:700;color:var(--t2)}
+.pm-card.on .pm-nm{color:var(--acc)}
+
+/* Overlays */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:500;display:none;align-items:flex-end;backdrop-filter:blur(4px)}
+.overlay.open{display:flex;animation:fadeIn .18s ease}
+.sheet{width:100%;max-height:92dvh;max-height:92vh;background:var(--surf);border-radius:var(--rs2) var(--rs2) 0 0;padding:16px 16px calc(16px + var(--safe-bottom));overflow-y:auto;-webkit-overflow-scrolling:touch;animation:slideUp .28s cubic-bezier(.4,0,.2,1)}
+.handle{width:36px;height:4px;border-radius:2px;background:var(--surf3);margin:0 auto 16px}
+.sheet-title{font-family:var(--font-h);font-size:18px;font-weight:800;margin-bottom:14px}
+
+/* Bottom Nav */
+.bnav{display:flex;align-items:stretch;background:var(--surf);border-top:1px solid var(--bord);flex-shrink:0;padding-bottom:var(--safe-bottom);z-index:100}
+.ni{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 4px;gap:3px;cursor:pointer;transition:var(--tr);position:relative;min-height:56px;user-select:none}
+.ni-ic{font-size:20px;line-height:1}.ni-lb{font-size:10px;color:var(--t2);font-weight:600;white-space:nowrap}
+.ni.on .ni-lb{color:var(--acc)}
+.ni.on::after{content:'';position:absolute;top:0;left:20%;right:20%;height:2.5px;border-radius:0 0 4px 4px;background:var(--acc)}
+.ni:active{background:var(--surf2)}
+.nav-fab{width:48px;height:48px;border-radius:16px;background:linear-gradient(135deg,var(--acc),#FF8A00);color:#0A0E1A;font-size:22px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(245,166,35,.5);margin-bottom:4px}
+
+/* Toast */
+#toast-container{position:fixed;bottom:calc(72px + var(--safe-bottom));left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none}
+.toast{background:var(--surf3);color:var(--text);padding:10px 18px;border-radius:20px;font-size:13px;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.45);border:1px solid var(--bord);white-space:nowrap;max-width:calc(100vw - 40px);overflow:hidden;text-overflow:ellipsis;animation:toastIn .22s ease}
+.toast.s{background:rgba(16,185,129,.15);border-color:rgba(16,185,129,.3);color:var(--acc3)}
+.toast.e{background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.3);color:var(--acc2)}
+.toast.i{background:rgba(245,166,35,.15);border-color:rgba(245,166,35,.3);color:#FF8A00}
+
+/* Loader / Empty */
+.loader{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px;gap:12px}
+.spinner{width:28px;height:28px;border:3px solid var(--bord);border-top-color:var(--acc);border-radius:50%;animation:spin .8s linear infinite}
+.empty-state{text-align:center;padding:48px 20px}
+.es-ic{font-size:48px;margin-bottom:12px}
+.es-t{font-family:var(--font-h);font-size:16px;font-weight:700;margin-bottom:6px}
+.es-s{font-size:13px;color:var(--t2);line-height:1.6}
+.spacer{height:80px}
+
+/* Settle status bar */
+.ssb{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px}
+.ssb-card{background:var(--surf2);border-radius:var(--rs);padding:11px;text-align:center;border:1px solid var(--bord)}
+.ssb-val{font-family:var(--font-h);font-size:16px;font-weight:900}
+.ssb-lbl{font-size:10px;color:var(--t2);margin-top:3px}
+
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+@keyframes toastIn{from{opacity:0;transform:translateY(8px) scale(.95)}to{opacity:1;transform:translateY(0) scale(1)}}
+@media(min-width:640px){#app{max-width:480px;margin:0 auto;box-shadow:0 0 80px rgba(0,0,0,.6)}}
+
+/* ══ Desktop Sidebar ══ */
+#dsb{position:fixed;left:0;top:0;bottom:0;width:220px;background:var(--surf);border-right:1px solid var(--bord);display:flex;flex-direction:column;z-index:200;overflow-y:auto}
+.dsb-logo{display:flex;align-items:center;gap:10px;padding:18px 16px 12px;border-bottom:1px solid var(--bord)}
+.dsb-brand{font-family:var(--font-h);font-size:15px;font-weight:800;color:var(--acc)}
+.dsb-nav{flex:1;padding:8px;display:flex;flex-direction:column;gap:2px;overflow-y:auto}
+.dsb-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;cursor:pointer;text-decoration:none;color:var(--t2);font-size:13px;font-weight:600;transition:.15s ease;white-space:nowrap;border:none;background:none;width:100%}
+.dsb-item:hover{background:var(--surf2);color:var(--text)}
+.dsb-item.active{background:rgba(245,166,35,.12);color:var(--acc)}
+.dsb-item.fab-sb{background:linear-gradient(135deg,#F5A623,#FF8A00);color:#fff;margin:4px 0 8px;font-weight:700}
+.dsb-ic{font-size:17px;width:22px;text-align:center;flex-shrink:0}
+.dsb-footer{padding:8px;border-top:1px solid var(--bord)}
+.dsb-ver{font-size:10px;color:var(--t3);text-align:center;padding:6px 0 2px}
+@media(max-width:1023px){#dsb{display:none!important}}
+@media(min-width:640px) and (max-width:1023px){#app{max-width:600px;margin:0 auto}}
+@media(min-width:1024px){body{overflow:hidden}}}
+
+/* ══ Language ══ */
+.lang-hi{display:none!important}
+.lang-en{display:inline!important}
+html[lang="hi"] .lang-hi{display:inline!important}
+html[lang="hi"] .lang-en{display:none!important}
+
+
+
+@media(max-width:1023px){
+    #app{height:100dvh!important;display:flex!important;flex-direction:column!important;overflow:hidden!important}
+  .bnav{position:fixed!important;bottom:0!important;left:0!important;right:0!important;z-index:100!important}
+  .sb{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+}
+
+
+
+
+
+
+/* ══ PWA SCROLL SYSTEM ══ */
+html,body{height:100%;overflow:hidden}
+#app{height:100vh;display:flex;flex-direction:column;overflow:hidden}
+.sb{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:0;overscroll-behavior:contain}
+.bnav{flex-shrink:0}
+@media(min-width:1024px){
+  #app{margin-left:220px!important;max-width:calc(100vw - 220px)!important;width:calc(100vw - 220px)!important}
+  .bnav{display:none!important}
+}
+</style>
+<link rel="stylesheet" href="fix.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- Topbar -->
+  <div id="sbpBetaBanner"></div>
+
+  <div class="topbar">
+    <div class="tb-l">
+      <div class="back-btn" onclick="goTo('dashboard.html')">←</div>
+      <div class="tb-title" id="page-title">Bills & Settlement</div>
+    </div>
+    <div class="tb-r">
+      <div class="ic-btn" onclick="toggleTheme()" id="theme-btn">☀️</div>
+      <div class="ic-btn" onclick="exportBills()" title="Export">📤</div>
+    </div>
+  </div>
+
+  <!-- Search -->
+  <div class="search-wrap">
+    <input class="search-inp" id="bill-search" name="bill-search-q" type="search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search by name, invoice no, date..." oninput="searchBills(this.value)">
+  </div>
+
+  <!-- Status Filter Chips -->
+  <div class="filter-row">
+    <div class="chip on" onclick="filterStatus('all',this)">All</div>
+    <div class="chip" onclick="filterStatus('Paid',this)">✅ Paid</div>
+    <div class="chip" onclick="filterStatus('Pending',this)">⏳ Pending</div>
+    <div class="chip" onclick="filterStatus('Overdue',this)">⚠️ Overdue</div>
+    <div class="chip" onclick="filterStatus('Partial',this)">🔀 Partial</div>
+    <div class="chip" onclick="filterStatus('Credit',this)">📒 Credit</div>
+  </div>
+
+  <!-- Summary Bar -->
+  <div class="sum-bar">
+    <div class="sum-card"><div class="sv" style="color:var(--acc)" id="s-bills">0</div><div class="sl" id="lbl-bills">Bills</div></div>
+    <div class="sum-card"><div class="sv" style="color:var(--acc3)" id="s-received">₹0</div><div class="sl" id="lbl-received">Received</div></div>
+    <div class="sum-card"><div class="sv" style="color:var(--acc2)" id="s-due">₹0</div><div class="sl" id="lbl-due">Due</div></div>
+    <div class="sum-card"><div class="sv" style="color:var(--cyan)" id="s-partial">0</div><div class="sl">Partial</div></div>
+  </div>
+
+  <!-- Bills List -->
+  <div class="sb" id="bills-list" style="padding-bottom:12px">
+    <div class="empty-state"><div class="es-ic">🧾</div><div class="es-t">No bills found</div><div class="es-s">Tap <strong>＋</strong> to create your first bill</div></div>
+  </div>
+
+  <!-- Bottom Nav -->
+  <div class="bnav">
+    <div class="ni" onclick="goTo('dashboard.html')"><span class="ni-ic">🏠</span><span class="ni-lb" data-en="Home" data-hi="होम">Home</span></div>
+    <div class="ni on" onclick="goTo('bills.html')"><span class="ni-ic">🧾</span><span class="ni-lb" data-en="Bills" data-hi="बिल">Bills</span></div>
+    <div class="ni" onclick="goTo('billing.html')" style="align-items:center;justify-content:center"><div class="nav-fab">＋</div></div>
+    <div class="ni" onclick="goTo('marketing.html')"><span class="ni-ic">📢</span><span class="ni-lb">Marketing</span></div>
+    <div class="ni" onclick="goTo('settings.html')"><span class="ni-ic">☰</span><span class="ni-lb" data-en="More" data-hi="अधिक">More</span></div>
+  </div>
+</div>
+
+<!-- Bill Preview Modal -->
+<div class="overlay" id="bill-preview-modal">
+  <div class="sheet">
+    <div class="handle"></div>
+    <div id="bill-preview-content" style="margin-bottom:14px"></div>
+    <div class="btn-row col3" style="margin-bottom:6px">
+      <button class="btn-wa" onclick="sendBillWA()">📲 WA</button>
+      <button class="btn-sec" onclick="printBillPreview()">📄 PDF</button>
+      <button class="btn-sec" onclick="printBillPreview()">🖨️ A4</button>
+    </div>
+    <div class="btn-row col3" style="margin-bottom:10px">
+      <button class="btn-sec" onclick="printBillPreview('58mm')">🧾 58mm</button>
+      <button class="btn-sec" onclick="printBillPreview('80mm')">🧾 80mm</button>
+      <button class="btn-sec" onclick="closeModal('bill-preview-modal')" style="color:var(--t2)">✕ Close</button>
+    </div>
+    <!-- Bill Management Actions -->
+    <div id="bill-actions" class="no-print bill-action-btn" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px"></div>
+    <div style="height:8px"></div>
+  </div>
+</div>
+
+<!-- Settle Modal -->
+<div class="overlay" id="settle-modal">
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="sheet-title">💳 Settle Payment</div>
+    <div id="settle-bill-info" style="background:var(--surf2);border-radius:var(--rs);padding:12px;margin-bottom:14px;border:1px solid var(--bord)"></div>
+    <div class="ssb" id="settle-stats"></div>
+
+    <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Payment Method</div>
+    <div class="pay-grid" id="settle-pay-grid">
+      <div class="pm-card on" onclick="selSettlePay('Cash',this)"><span class="pm-ic">💵</span><span class="pm-nm">Cash</span></div>
+      <div class="pm-card" onclick="selSettlePay('UPI',this)"><span class="pm-ic">📲</span><span class="pm-nm">UPI/QR</span></div>
+      <div class="pm-card" onclick="selSettlePay('Card',this)"><span class="pm-ic">💳</span><span class="pm-nm">Card</span></div>
+      <div class="pm-card" onclick="selSettlePay('Bank',this)"><span class="pm-ic">🏦</span><span class="pm-nm">Bank</span></div>
+      <div class="pm-card" onclick="selSettlePay('Cheque',this)"><span class="pm-ic">📑</span><span class="pm-nm">Cheque</span></div>
+      <div class="pm-card" onclick="selSettlePay('Credit',this)"><span class="pm-ic">📒</span><span class="pm-nm">Credit</span></div>
+    </div>
+
+    <div style="display:flex;gap:7px;margin-bottom:12px">
+      <div id="sf-full" onclick="setSettleType('full')" style="flex:1;padding:9px;border-radius:var(--rs);border:1.5px solid var(--acc);background:rgba(245,166,35,.1);text-align:center;font-size:12px;font-weight:700;color:var(--acc);cursor:pointer">✅ Full Amount</div>
+      <div id="sf-part" onclick="setSettleType('partial')" style="flex:1;padding:9px;border-radius:var(--rs);border:1.5px solid var(--bord);background:var(--surf2);text-align:center;font-size:12px;font-weight:700;color:var(--t2);cursor:pointer">🔀 Partial</div>
+    </div>
+    <div id="settle-partial-inp" style="display:none;margin-bottom:12px">
+      <div class="ff" style="margin:0"><label>Amount Being Paid Now ₹</label>
+        <input type="number" id="settle-amt-inp" placeholder="Enter amount" oninput="updateSettleNote()">
+      </div>
+    </div>
+    <div id="settle-note" style="font-size:12px;color:var(--t2);margin-bottom:12px;padding:9px;background:var(--surf2);border-radius:var(--rs)">Full amount will be marked as Paid.</div>
+    <button class="btn-pri" id="settle-confirm-btn" onclick="doSettle()">✅ Mark as Paid — Cash</button>
+    <div style="height:8px"></div>
+  </div>
+</div>
+
+<!-- Manager PIN Modal -->
+<div class="pin-overlay" id="pin-modal">
+  <div class="pin-box">
+    <div class="pin-title">🔒 Manager Access Required</div>
+    <div class="pin-sub">Enter Manager PIN to proceed with this action</div>
+    <input type="password" class="pin-input" id="pin-input" maxlength="6" placeholder="••••" inputmode="numeric" pattern="[0-9]*" autocomplete="off" onkeydown="if(event.key==='Enter')verifyPIN()">
+    <div class="pin-error" id="pin-error"></div>
+    <div class="pin-btns">
+      <button class="btn-sec" onclick="closePINModal()">Cancel</button>
+      <button class="btn-pri" style="padding:12px" onclick="verifyPIN()">🔓 Verify</button>
+    </div>
+    <div style="margin-top:12px;font-size:10px;color:var(--t3)">Default PIN: 1234 · Change in Settings</div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script>
+const SB_URL='https://jfqeirfrkjdkqqixivru.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmcWVpcmZya2pka3FxaXhpdnJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzNzQ4MzgsImV4cCI6MjA4OTk1MDgzOH0.akd4E0nil8ypLR4WOykkeYIL8g4uuNU6XdSVh_Y1utk';
+let _sb=null;
+try{_sb=supabase.createClient(SB_URL,SB_KEY);}catch(e){console.warn('Supabase unavailable:',e);}
+
+// ── Plan Helper ──
+
+
+let _shop=null,_shopId=null,_user=null;
+let _theme=localStorage.getItem('sbp_theme')||'dark';
+let _bills=[],_filteredBills=[];
+let _statusFilter='all',_searchVal='';
+let _curSettleBill=null,_settlePayMethod='Cash',_settleType='full';
+let _curPreviewBill=null;
+let _online=navigator.onLine;
+
+// ══ MANAGER PIN SYSTEM (Multi-Manager) ══
+let _pinCallback=null;
+let _pinAttempts=0;
+let _lastPinUser=null; // tracks which manager verified
+
+function getManagerPINs(){
+  // Returns array of {name, pin, role, id}
+  const shopUsers=JSON.parse(localStorage.getItem('sbp_shop_users')||'[]');
+  const pins=shopUsers.filter(s=>s.pin&&s.pin_active!==false&&String(s.role||'').toLowerCase()==='manager')
+    .map(s=>({name:s.name,pin:s.pin,role:s.role,id:s.id}));
+  // Always include owner PIN (primary manager)
+  const ownerPin=localStorage.getItem('sbp_manager_pin');
+  if(ownerPin){
+    const shop=JSON.parse(localStorage.getItem('sbp_shop')||'{}');
+    pins.unshift({name:shop.owner_name||'Owner',pin:ownerPin,role:'Owner',id:'owner'});
+  }
+  return pins;
+}
+
+function requirePIN(action,callback){
+  // Check if any PIN is configured
+  const pins=getManagerPINs();
+  if(!pins.length){
+    if(confirm('⚠️ No Manager PIN has been set yet.\n\nYou must set a Manager PIN to authorize sensitive actions like voiding bills or deleting items.\n\nSet one now in Team & Users?')){
+      window.location.href='team.html';
+    }
+    return;
+  }
+  _pinCallback=callback;
+  _pinAttempts=0;
+  _lastPinUser=null;
+  document.getElementById('pin-error').textContent='';
+  document.getElementById('pin-input').value='';
+  document.getElementById('pin-modal').classList.add('open');
+  setTimeout(()=>document.getElementById('pin-input').focus(),200);
+}
+
+function verifyPIN(){
+  const entered=document.getElementById('pin-input').value;
+  const pins=getManagerPINs();
+  const match=pins.find(p=>p.pin===entered);
+  if(match){
+    _lastPinUser=match;
+    const cb=_pinCallback;
+    closePINModal();
+    logAudit('pin_verified',{action:'manager_access',verified_by:match.name,role:match.role,staff_id:match.id});
+    if(cb)cb();
+  }else{
+    _pinAttempts++;
+    document.getElementById('pin-error').textContent='❌ Wrong PIN (Attempt '+_pinAttempts+'/5)';
+    document.getElementById('pin-input').value='';
+    document.getElementById('pin-input').focus();
+    if(_pinAttempts>=5){
+      closePINModal();
+      toast('🔒 Too many failed attempts. Try again later.','e');
+      logAudit('pin_failed',{attempts:_pinAttempts});
+      _pinCallback=null;
+    }
+  }
+}
+
+function closePINModal(){
+  document.getElementById('pin-modal').classList.remove('open');
+  _pinCallback=null;
+}
+
+// Helper: get name of last PIN-verified manager (for audit trail attribution)
+function getPinUser(){return _lastPinUser?_lastPinUser.name:(localStorage.getItem('sbp_role')||'Admin');}
+let _sessionTimeout=parseInt(localStorage.getItem('sbp_session_timeout')||'30');
+let _actTimer;
+
+function _resetTimer(){clearTimeout(_actTimer);localStorage.setItem('sbp_last_activity',Date.now().toString());_actTimer=setTimeout(async()=>{if(_sb)try{await _sb.auth.signOut();}catch(e){}window.location.href='index.html';},_sessionTimeout*60*1000)}
+['click','touchstart','keypress','scroll'].forEach(e=>document.addEventListener(e,_resetTimer,{passive:true}));
+
+function goTo(p){window.location.href=p}
+function toast(msg,type='',dur=3000){const c=document.getElementById('toast-container');const t=document.createElement('div');t.className='toast'+(type?' '+type:'');t.textContent=msg;c.appendChild(t);setTimeout(()=>{t.style.opacity='0';t.style.transition='.2s';setTimeout(()=>t.remove(),220);},dur)}
+function toggleTheme(){_theme=_theme==='dark'?'light':'dark';localStorage.setItem('sbp_theme',_theme);document.documentElement.setAttribute('data-theme',_theme==='light'?'light':'');document.getElementById('theme-btn').textContent=_theme==='light'?'🌙':'☀️'}
+function openModal(id){const el=document.getElementById(id);el.classList.add('open');el.style.display='flex';el.addEventListener('click',e=>{if(e.target===el)closeModal(id);},{once:true})}
+function closeModal(id){const el=document.getElementById(id);el.classList.remove('open');el.style.display='none'}
+function fINR(n){return '₹'+(parseFloat(n)||0).toLocaleString('en-IN',{maximumFractionDigits:0})}
+function fDate(d){if(!d)return '—';try{return new Date(d).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});}catch{return d}}
+
+// ── Render Bills ──
+function renderBills(list){
+  const el=document.getElementById('bills-list');
+  // Summary — exclude voided bills from financial totals (still counted in list view)
+  const activeList=list.filter(b=>(b.status||'').toLowerCase()!=='voided');
+  document.getElementById('s-bills').textContent=list.length;
+  document.getElementById('s-received').textContent=fINR(activeList.reduce((s,b)=>s+parseFloat(b.paid_amount||0),0));
+  document.getElementById('s-due').textContent=fINR(activeList.reduce((s,b)=>s+parseFloat(b.balance_due||0),0));
+  document.getElementById('s-partial').textContent=activeList.filter(b=>b.status==='Partial').length;
+
+  if(!list.length){
+    el.innerHTML=`<div class="empty-state"><div class="es-ic">🧾</div><div class="es-t">No bills found</div><div class="es-s">Tap <strong>＋</strong> to create your first bill</div></div>`;
+    return;
+  }
+
+  el.innerHTML='<div style="padding-top:6px">'+list.map(b=>{
+    const sc=(b.status||'pending').toLowerCase();
+    const voided=sc==='voided';
+    const items=b.bill_items?.map(i=>i.item_name).join(', ')||b.items_summary||'—';
+    const bal=parseFloat(b.balance_due||0);
+    return `<div class="bill-card ${sc}" onclick="openBillPreview('${b.id}')">
+      <div class="bc-top">
+        <span class="bc-inv">${b.invoice_no||'—'}</span>
+        <span class="bc-date">📅 ${fDate(b.invoice_date||b.created_at)}</span>
+      </div>
+      <div class="bc-cust">${b.customer_name||'Walk-in Customer'}</div>
+      <div class="bc-items">${items}</div>
+      <div class="bc-bot">
+        <div>
+          <div class="bc-amt" style="${voided?'text-decoration:line-through;color:var(--t2)':''}">${fINR(b.grand_total)}</div>
+          ${bal>0&&!voided?`<div style="font-size:10px;color:var(--acc2);margin-top:2px">Due: ${fINR(bal)}</div>`:''}
+        </div>
+        <div class="bc-actions" onclick="event.stopPropagation()">
+          <span class="badge ${sc}">${b.status||'Pending'}</span>
+          ${b.status!=='Paid'?`<button class="card-btn settle" onclick="event.stopPropagation();openSettleModal('${b.id}')">💳 Settle</button>`:''}
+          <button class="card-btn send" onclick="event.stopPropagation();quickSend('${b.id}')">📤</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('')+'<div class="spacer"></div></div>';
+}
+
+function filterStatus(status,el){
+  _statusFilter=status;
+  document.querySelectorAll('.filter-row .chip').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on');
+  applyFilters();
+}
+
+function searchBills(val){_searchVal=val;applyFilters()}
+
+function applyFilters(){
+  let list=[..._bills];
+  if(_statusFilter!=='all')list=list.filter(b=>b.status===_statusFilter);
+  if(_searchVal){
+    const s=_searchVal.toLowerCase();
+    list=list.filter(b=>(b.customer_name||'').toLowerCase().includes(s)||(b.invoice_no||'').toLowerCase().includes(s)||(b.invoice_date||'').includes(s)||(b.bill_items||[]).some(i=>i.item_name?.toLowerCase().includes(s)));
+  }
+  _filteredBills=list;
+  renderBills(list);
+}
+
+// ── Bill Preview ──
+function openBillPreview(billId){
+  const b=_bills.find(x=>x.id===billId||String(x.id)===String(billId));
+  if(!b)return;
+  _curPreviewBill=b;
+  const s=_shop||JSON.parse(localStorage.getItem('sbp_shop')||'{}');
+  const sc=(b.status||'draft').toLowerCase();
+  const items=b.bill_items||[];
+  const isVoided=b.status==='Voided';
+  const itemsHTML=items.length
+    ?items.map((it,idx)=>{
+      const voided=it.voided;
+      const gstRate=parseFloat(it.gst_rate||0);
+      const gstAmt=parseFloat(it.gst_amount||(parseFloat(it.line_total||0)*gstRate/(100+gstRate))||0);
+      return `<div class="bdoc-table-row" style="${voided?'opacity:.4;text-decoration:line-through':''}">
+        <div><div class="bdoc-item-nm">${it.item_name||'Item'}${voided?' <span style="color:var(--acc2);font-size:10px">[VOID]</span>':''}</div><div class="bdoc-item-sub">Qty: ${it.qty||1} × ₹${it.rate||0} | GST ${gstRate}%${gstRate>0?' (₹'+gstAmt.toFixed(2)+')':''}${it.hsn_code?' · HSN:'+it.hsn_code:''}</div></div>
+        <div style="text-align:center">${it.qty||1}</div>
+        <div style="text-align:right">₹${it.rate||0}</div>
+        <div style="text-align:right;font-weight:800;display:flex;flex-direction:column;align-items:flex-end;gap:3px">
+          <span>₹${it.line_total||((it.qty||1)*(it.rate||0)).toFixed(2)}</span>
+          ${!isVoided&&!voided?`<div class="bill-action-btn" style="display:flex;gap:4px">
+            <button onclick="event.stopPropagation();voidItem('${b.id}',${idx})" style="font-size:9px;padding:2px 6px;border-radius:6px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);color:var(--acc2);cursor:pointer;font-weight:700">Void</button>
+            <button onclick="event.stopPropagation();deleteItem('${b.id}',${idx})" style="font-size:9px;padding:2px 6px;border-radius:6px;background:rgba(138,138,168,.08);border:1px solid rgba(138,138,168,.2);color:var(--t2);cursor:pointer;font-weight:700">Del</button>
+          </div>`:''}
+        </div>
+      </div>`;
+    }).join('')
+    :`<div class="bdoc-table-row"><div style="grid-column:1/-1;color:#9090A8;font-size:12px">Items not available</div></div>`;
+
+  const html=`<div class="bill-doc">
+    <div class="bdoc-hd">
+      <div class="bdoc-stamp ${sc}">${b.status||'DRAFT'}</div>
+      <div class="bdoc-shop-name">🏪 ${s.name||'Your Shop'}</div>
+      <div class="bdoc-shop-tag">${s.tag||''}</div>
+      <div class="bdoc-shop-info">
+        <div>📞 ${s.phone||''}</div><div>📱 ${s.wa||''}</div>
+        <div style="grid-column:1/-1">📍 ${s.addr||''}${s.city?', '+s.city:''}${s.pin?' — '+s.pin:''}</div>
+        ${s.gstin?`<div>🏛️ GSTIN: ${s.gstin}</div>`:''}
+      </div>
+      <div class="bdoc-inv-badge">
+        <div><div style="font-size:9px;opacity:.6;font-weight:700;letter-spacing:.5px;text-transform:uppercase">${parseFloat(b.gst_amount||0)>0?'Tax Invoice':'Invoice No.'}</div>
+        <div class="bdoc-inv-no">${b.invoice_no||'—'}</div></div>
+        <div class="bdoc-inv-dates">
+          <div>📅 ${fDate(b.invoice_date)}</div>
+        </div>
+      </div>
+    </div>
+    <div class="bdoc-body">
+      <div class="bdoc-row2">
+        <div>
+          <div class="bdoc-lbl">Bill To</div>
+          <div class="bdoc-val">${b.customer_name||'Customer'}</div>
+          <div class="bdoc-sub">${b.customer_wa?'📱 '+b.customer_wa+'<br>':''}${b.customer_gstin?'🏛️ GSTIN: '+b.customer_gstin:''}</div>
+        </div>
+        <div style="text-align:right">
+          <div class="bdoc-lbl">Payment</div>
+          <div class="bdoc-val">💳 ${b.payment_mode||'Cash'}</div>
+          <div class="bdoc-sub" style="text-align:right;color:${b.status==='Paid'?'#10B981':'#EF4444'};font-weight:700">${b.status==='Paid'?'✅ PAID':b.balance_due>0?'Due: '+fINR(b.balance_due):''}</div>
+        </div>
+      </div>
+      <hr class="bdoc-divider">
+      <div class="bdoc-table-hd"><span>Description</span><span style="text-align:center">Qty</span><span style="text-align:right">Rate</span><span style="text-align:right">Amount</span></div>
+      ${itemsHTML}
+      <div class="bdoc-totals">
+        <div class="bdoc-tot-line"><span>Subtotal</span><span>${fINR(b.subtotal)}</span></div>
+        ${parseFloat(b.gst_amount||0)>0 && (b.supply_type||'intra')==='intra' ? `
+          <div class="bdoc-tot-line"><span>CGST</span><span style="color:#10B981">${fINR(parseFloat(b.gst_amount)/2)}</span></div>
+          <div class="bdoc-tot-line"><span>SGST</span><span style="color:#10B981">${fINR(parseFloat(b.gst_amount)/2)}</span></div>
+        ` : ''}
+        ${parseFloat(b.gst_amount||0)>0 && (b.supply_type||'intra')!=='intra' ? `
+          <div class="bdoc-tot-line"><span>IGST</span><span style="color:#10B981">${fINR(b.gst_amount)}</span></div>
+        ` : ''}
+        ${parseFloat(b.gst_amount||0)>0?`<div class="bdoc-tot-line" style="font-size:11px;color:var(--t2)"><span>Total Tax</span><span>${fINR(b.gst_amount)}</span></div>`:''}
+        ${parseFloat(b.discount||0)>0?`<div class="bdoc-tot-line"><span>Discount</span><span style="color:#EF4444">-${fINR(b.discount)}</span></div>`:''}
+        <div class="bdoc-tot-line grand"><span>Grand Total</span><span>${fINR(b.grand_total)}</span></div>
+        ${parseFloat(b.paid_amount||0)>0&&parseFloat(b.balance_due||0)>0?`<div class="bdoc-tot-line" style="color:var(--acc3)"><span>Paid</span><span>${fINR(b.paid_amount)}</span></div><div class="bdoc-tot-line" style="color:var(--acc2);font-weight:700"><span>Balance Due</span><span>${fINR(b.balance_due)}</span></div>`:''}
+      </div>
+      ${s.upi?`<div class="bdoc-upi"><div style="font-size:36px">📲</div><div><div style="font-size:12px;font-weight:700;color:#065F46">Pay via UPI — Zero Charges</div><div class="bdoc-upi-id">${s.upi}</div></div></div>`:''}
+      <div class="bdoc-footer"><div class="bdoc-thanks">Thank you for your business! 🙏</div><div class="bdoc-brand">Powered by ShopBill Pro · TradeCrest Technologies Pvt. Ltd.</div></div>
+    </div>
+  </div>`;
+
+  document.getElementById('bill-preview-content').innerHTML=html;
+  renderBillActions(b);
+  openModal('bill-preview-modal');
+}
+
+function sendBillWA(){
+  const b=_curPreviewBill;if(!b)return;
+  const wa=(b.customer_wa||'').replace(/\D/g,'');
+  if(!wa||wa.length<10){toast('No WhatsApp number for this customer','e');return}
+  const s=_shop||{};
+  const msg=`🧾 *INVOICE — ${s.name||'ShopBill Pro'}*\n━━━━━━━━━━━━━━━━━━\n📋 Invoice: *${b.invoice_no}*\n📅 Date: ${fDate(b.invoice_date)}\n━━━━━━━━━━━━━━━━━━\n👤 *${b.customer_name}*\n\n✅ *Grand Total: ${fINR(b.grand_total)}*\n💳 Payment: ${b.payment_mode}\n${s.upi?'📲 UPI: '+s.upi:''}\n\n🙏 Thank you!\n_ShopBill Pro by TradeCrest Technologies_`;
+  window.open('https://wa.me/91'+String(wa).replace(/\D/g,'').slice(-10)+'?text='+encodeURIComponent(msg),'_blank');
+}
+
+function printBillPreview(size){
+  const b=_curPreviewBill;if(!b)return;
+  let content=document.getElementById('bill-preview-content').innerHTML;
+  // Strip all action buttons (Void, Del, action buttons) from print output
+  content=content.replace(/<div class="bill-action-btn"[^>]*>[\s\S]*?<\/div>/gi,'');
+  content=content.replace(/<button[^>]*onclick[^>]*void[^>]*>[\s\S]*?<\/button>/gi,'');
+  content=content.replace(/<button[^>]*onclick[^>]*delete[^>]*>[\s\S]*?<\/button>/gi,'');
+  
+  const win=window.open('','_blank');
+  if(!win){toast('Allow popups for PDF','e');return}
+  
+  const pageSize=size==='58mm'?'58mm auto':size==='80mm'?'80mm auto':'A4';
+  
+  const bodyW=size==='58mm'?'58mm':size==='80mm'?'80mm':'auto';
+  
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${b.invoice_no}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Noto+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+      *{box-sizing:border-box;margin:0;padding:0}
+      body{margin:0 auto;padding:${size?'2mm':'20px'};background:#fff;font-family:'Noto Sans',sans-serif;width:${bodyW};max-width:${bodyW}}
+      .bill-action-btn{display:none!important}
+      @page{size:${pageSize};margin:${size?'0':'10mm'}}
+      @media print{body{padding:${size?'2mm':'0'};background:#fff;width:${bodyW};max-width:${bodyW}}.bill-action-btn{display:none!important}}
+      ${size?`img{max-width:100%!important} *{font-size:10px!important} .bill-header{padding:8px!important}`:''}
+    </style></head><body>
+    ${content}
+    <script>window.addEventListener('load',function(){setTimeout(function(){window.print();},500)});<\/script>
+  </body></html>`);
+  win.document.close();
+  toast('🖨️ Print dialog opening...','s');
+}
+
+function quickSend(billId){
+  const b=_bills.find(x=>x.id===billId||String(x.id)===String(billId));
+  if(!b)return;
+  _curPreviewBill=b;
+  sendBillWA();
+}
+
+// ── Settlement ──
+function openSettleModal(billId){
+  const b=_bills.find(x=>x.id===billId||String(x.id)===String(billId));
+  if(!b)return;
+  _curSettleBill=b;_settlePayMethod='Cash';_settleType='full';
+
+  document.getElementById('settle-bill-info').innerHTML=`
+    <div style="font-family:var(--font-h);font-size:14px;font-weight:800">${b.customer_name||'Customer'}</div>
+    <div style="font-size:11px;color:var(--t2);margin-top:2px">${b.invoice_no} · ${fDate(b.invoice_date)}</div>`;
+  document.getElementById('settle-stats').innerHTML=`
+    <div class="ssb-card"><div class="ssb-val">${fINR(b.grand_total)}</div><div class="ssb-lbl">Bill Total</div></div>
+    <div class="ssb-card"><div class="ssb-val" style="color:var(--acc3)">${fINR(b.paid_amount||0)}</div><div class="ssb-lbl">Paid</div></div>
+    <div class="ssb-card"><div class="ssb-val" style="color:var(--acc2)">${fINR(b.balance_due||0)}</div><div class="ssb-lbl">Balance</div></div>`;
+
+  document.querySelectorAll('#settle-pay-grid .pm-card').forEach((c,i)=>c.classList.toggle('on',i===0));
+  document.getElementById('sf-full').style.borderColor='var(--acc)';document.getElementById('sf-full').style.background='rgba(245,166,35,.1)';document.getElementById('sf-full').style.color='var(--acc)';
+  document.getElementById('sf-part').style.borderColor='var(--bord)';document.getElementById('sf-part').style.background='var(--surf2)';document.getElementById('sf-part').style.color='var(--t2)';
+  document.getElementById('settle-partial-inp').style.display='none';
+  document.getElementById('settle-note').textContent='Full balance will be marked as Paid.';
+  document.getElementById('settle-confirm-btn').textContent='✅ Mark as Paid — Cash';
+  openModal('settle-modal');
+}
+
+function selSettlePay(method,el){
+  _settlePayMethod=method;
+  document.querySelectorAll('#settle-pay-grid .pm-card').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on');
+  document.getElementById('settle-confirm-btn').textContent=(_settleType==='full'?'✅ Mark as Paid — ':'💰 Record Partial — ')+method;
+}
+
+function setSettleType(type){
+  _settleType=type;
+  const full=document.getElementById('sf-full');const part=document.getElementById('sf-part');
+  if(type==='full'){full.style.borderColor='var(--acc)';full.style.background='rgba(245,166,35,.1)';full.style.color='var(--acc)';part.style.borderColor='var(--bord)';part.style.background='var(--surf2)';part.style.color='var(--t2)';}
+  else{part.style.borderColor='var(--acc)';part.style.background='rgba(245,166,35,.1)';part.style.color='var(--acc)';full.style.borderColor='var(--bord)';full.style.background='var(--surf2)';full.style.color='var(--t2)';}
+  document.getElementById('settle-partial-inp').style.display=type==='partial'?'block':'none';
+  updateSettleNote();
+}
+
+function updateSettleNote(){
+  const b=_curSettleBill;if(!b)return;
+  if(_settleType==='full'){document.getElementById('settle-note').textContent='Full balance of '+fINR(b.balance_due||b.grand_total)+' will be marked as Paid.';}
+  else{const amt=parseFloat(document.getElementById('settle-amt-inp').value)||0;document.getElementById('settle-note').textContent=amt>0?fINR(amt)+' will be recorded. Remaining: '+fINR((b.balance_due||b.grand_total)-amt):'Enter the amount being paid.';}
+}
+
+async function doSettle(){
+  const b=_curSettleBill;if(!b)return;
+  let paidNow=parseFloat(b.balance_due||b.grand_total||0);
+  if(_settleType==='partial'){
+    paidNow=parseFloat(document.getElementById('settle-amt-inp').value)||0;
+    if(!paidNow){toast('Enter partial amount','e');return}
+    if(paidNow>(b.balance_due||b.grand_total)){toast('Amount exceeds balance due','e');return}
+  }
+
+  // FIX #8 — Settlement is for collecting payment. Cannot settle as Credit.
+  if(_settlePayMethod==='Credit'){
+    toast('❌ Cannot settle as Credit. Pick how customer paid (Cash/UPI/Card/Bank/Cheque).','e',5000);
+    return;
+  }
+
+  const btn=document.getElementById('settle-confirm-btn');
+  btn.disabled=true;btn.textContent='⏳ Saving...';
+
+  const newPaid=parseFloat(b.paid_amount||0)+paidNow;
+  const newBalance=Math.max(0,parseFloat(b.grand_total||0)-newPaid);
+  // FIX #8 — status derived from balance only, not from payment method label
+  const newStatus=newBalance<=0?'Paid':'Partial';
+
+  // Update local
+  const idx=_bills.findIndex(x=>x.id===b.id||String(x.id)===String(b.id));
+  if(idx>=0){_bills[idx]={..._bills[idx],paid_amount:newPaid,balance_due:newBalance,status:newStatus,payment_mode:_settlePayMethod}}
+  localStorage.setItem('sbp_bills',JSON.stringify(_bills));
+
+  // Update Supabase
+  if(_sb&&_online&&!String(b.id).startsWith('local_')){
+    await _sb.from('bills').update({paid_amount:newPaid,balance_due:newBalance,status:newStatus,payment_mode:_settlePayMethod}).eq('id',b.id);
+    await _sb.from('payments').insert({bill_id:b.id,shop_id:_shopId,amount:paidNow,payment_mode:_settlePayMethod,payment_date:sbpToday()});
+  }
+
+  closeModal('settle-modal');
+  applyFilters();
+
+  // FIX #10 — Auto-record cash settlement in Cash Register
+  try {
+    if(paidNow > 0 && _settlePayMethod === 'Cash'){
+      sbpRecordCashIn(paidNow, 'Settle '+(b.invoice_no||''), b.customer_name||'');
+    }
+  } catch(e){}
+
+  // FIX #9 — Match by ID first, phone, then name
+  if(b.customer_name && b.customer_name !== 'Walk-in Customer'){
+    const custs=JSON.parse(localStorage.getItem('sbp_customers')||'[]');
+    let ci=-1;
+    if(b.customer_id) ci = custs.findIndex(c => String(c.id)===String(b.customer_id));
+    if(ci<0 && b.customer_phone) {
+      const p = String(b.customer_phone).replace(/\D/g,'').slice(-10);
+      if(p) ci = custs.findIndex(c => String(c.whatsapp||c.phone||'').replace(/\D/g,'').slice(-10)===p);
+    }
+    if(ci<0) ci = custs.findIndex(c => c.name===b.customer_name);
+    if(ci>=0){
+      const newCustBal=Math.max(0,parseFloat(custs[ci].balance||0)-paidNow);
+      custs[ci].balance=newCustBal;
+      localStorage.setItem('sbp_customers',JSON.stringify(custs));
+      if(_online&&custs[ci].id&&!String(custs[ci].id).startsWith('local_')){
+        _sb.from('customers').update({balance:newCustBal}).eq('id',custs[ci].id).then(()=>{}).catch(()=>{});
+      }
+    }
+  }
+
+  toast(`${newStatus==='Paid'?'✅ PAID!':'💰 Payment recorded!'} — ${fINR(paidNow)} via ${_settlePayMethod}`,'s');
+  btn.disabled=false;
+}
+
+// ══════════════════════════════════════════
+// BILL MANAGEMENT ACTIONS
+// ══════════════════════════════════════════
+
+function renderBillActions(b){
+  const el=document.getElementById('bill-actions');
+  if(!el)return;
+  const st=(b.status||'').toLowerCase();
+  const isVoided=st==='voided';
+  const isPaid=st==='paid';
+  const isPending=st==='pending';
+  const isCredit=st==='credit';
+  const isPartial=st==='partial';
+  const btnStyle='font-size:11px;padding:7px 14px;border-radius:10px;cursor:pointer;font-weight:700;border:1px solid';
+  let html='';
+
+  // ── Edit Bill — only for Pending (reopened) bills ──
+  if(isPending){
+    html+=`<button onclick="editBill('${b.id}')" style="${btnStyle};background:rgba(6,182,212,.1);border-color:rgba(6,182,212,.3);color:#06B6D4">✏️ Edit Bill</button>`;
+    html+=`<button onclick="voidBill('${b.id}')" style="${btnStyle};background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.25);color:var(--acc2)">🚫 Void Bill</button>`;
+    html+=`<button onclick="deleteBill('${b.id}')" style="${btnStyle};background:rgba(239,68,68,.06);border-color:rgba(239,68,68,.2);color:#ff6b6b">🗑️ Delete</button>`;
+  } else if(isPaid){
+    html+=`<button onclick="reopenBill('${b.id}')" style="${btnStyle};background:rgba(245,166,35,.08);border-color:rgba(245,166,35,.25);color:var(--acc)">🔓 Reopen</button>`;
+    html+=`<button onclick="voidBill('${b.id}')" style="${btnStyle};background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.25);color:var(--acc2)">🚫 Void Bill</button>`;
+  } else if(isVoided){
+    html+=`<button onclick="reopenBill('${b.id}')" style="${btnStyle};background:rgba(245,166,35,.08);border-color:rgba(245,166,35,.25);color:var(--acc)">🔓 Reopen</button>`;
+    html+=`<button onclick="deleteBill('${b.id}')" style="${btnStyle};background:rgba(239,68,68,.06);border-color:rgba(239,68,68,.2);color:#ff6b6b">🗑️ Delete</button>`;
+  } else {
+    // Credit / Partial
+    if(isCredit){
+      html+=`<button onclick="reopenBill('${b.id}')" style="${btnStyle};background:rgba(245,166,35,.08);border-color:rgba(245,166,35,.25);color:var(--acc)">🔓 Reopen & Reverse</button>`;
+    } else {
+      html+=`<button onclick="reopenBill('${b.id}')" style="${btnStyle};background:rgba(245,166,35,.08);border-color:rgba(245,166,35,.25);color:var(--acc)">🔓 Reopen</button>`;
+    }
+    html+=`<button onclick="voidBill('${b.id}')" style="${btnStyle};background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.25);color:var(--acc2)">🚫 Void Bill</button>`;
+  }
+
+  const hasAudit = b.audit_log && Array.isArray(b.audit_log) && b.audit_log.length > 0;
+  html+=`<button onclick="showBillAuditTrail('${b.id}')" style="${btnStyle};background:${hasAudit?'rgba(139,92,246,.1)':'rgba(138,138,168,.06)'};border-color:${hasAudit?'rgba(139,92,246,.3)':'rgba(138,138,168,.2)'};color:${hasAudit?'#8B5CF6':'var(--t2)'}">📋 Audit${hasAudit?` (${b.audit_log.length})`:''}</button>`;
+  el.innerHTML=html;
+}
+
+// ── Edit Bill — load into billing.html ──
+function editBill(billId){
+  requirePIN('edit_bill',function(){_doEditBill(billId)});
+}
+function _doEditBill(billId){
+  const b=_bills.find(x=>x.id===billId||String(x.id)===String(billId));
+  if(!b){toast('Bill not found','e');return;}
+  // Store full edit payload in localStorage
+  const editPayload={
+    id:b.id,invoice_no:b.invoice_no||b.invno||'',
+    invoice_date:b.invoice_date||b.invdate||'',
+    customer_name:b.customer_name||b.nm||'',
+    customer_phone:b.customer_phone||b.customer_wa||b.wa||'',
+    customer_gstin:b.customer_gstin||b.custGSTIN||'',
+    note:b.note||b.notes||'',
+    payment_mode:b.payment_mode||b.paymode||'Cash',
+    is_gst_invoice:b.is_gst_invoice||b.isGSTInvoice||false,
+    supply_type:b.supply_type||b.supplyType||'intra',
+    place_of_supply:b.place_of_supply||b.placeOfSupply||'',
+    discount:b.discount||0,discount_type:b.discount_type||'flat',
+    source:b.source||'',created_via:b.created_via||'',pos_mode:b.pos_mode||false,
+    bill_items:b.bill_items||b.items||[],
+    _edit_mode:true,_old_status:b.status||'Pending'
+  };
+  localStorage.setItem('sbp_edit_bill',JSON.stringify(editPayload));
+  logAudit('edit_bill_start',{bill_id:billId,invoice_no:b.invoice_no,customer:b.customer_name});
+  const idx=_bills.findIndex(x=>x.id===billId||String(x.id)===String(billId));
+  if(idx>=0){
+    if(!_bills[idx].audit_log) _bills[idx].audit_log=[];
+    _bills[idx].audit_log.unshift({action:'edit_started',ts:new Date().toISOString(),user:getPinUser(),note:'Bill opened for editing'});
+    localStorage.setItem('sbp_bills',JSON.stringify(_bills));
+  }
+  const isPOSBill=b.source==='pos'||b.created_via==='pos'||b.pos_mode===true;
+  window.location.href=(isPOSBill?'billing.html?mode=pos&edit_bill=':'billing.html?edit_bill=')+encodeURIComponent(billId);
+}
+
+// ── Audit Trail Viewer ──
+function showBillAuditTrail(billId){
+  const b=_bills.find(x=>x.id===billId||String(x.id)===String(billId));
+  if(!b){toast('Bill not found','e');return;}
+  const log=b.audit_log||[];
+
+  // Also pull global audit entries for this bill
+  const globalLog=JSON.parse(localStorage.getItem('sbp_audit_log')||'[]')
+    .filter(e=>e.details&&(e.details.bill_id===billId||String(e.details.bill_id)===String(billId)));
+
+  // Merge and deduplicate by timestamp
+  const allEntries=[...log,...globalLog.map(g=>({
+    action:g.action, ts:g.timestamp, user:g.user,
+    note:typeof g.details==='object'?JSON.stringify(g.details).replace(/[{}'"]/g,' ').trim():g.details
+  }))].sort((a,b)=>new Date(b.ts)-new Date(a.ts));
+
+  let modal=document.getElementById('audit-trail-modal');
+  if(!modal){
+    modal=document.createElement('div');
+    modal.id='audit-trail-modal';
+    modal.style.cssText='position:fixed;inset:0;z-index:1200;background:rgba(0,0,0,.8);display:flex;align-items:flex-end;justify-content:center';
+    document.body.appendChild(modal);
+  }
+
+  const rows=allEntries.length?allEntries.map(e=>{
+    const dt=new Date(e.ts);
+    const dtStr=dt.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'2-digit'})+' '+dt.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+    const actionColors={
+      reopen_bill:'#F5A623',void_bill:'#EF4444',void_item:'#EF4444',
+      delete_item:'#EF4444',delete_bill:'#EF4444',edit_bill_start:'#06B6D4',
+      edit_started:'#06B6D4',credit_ledger_reversal:'#10B981',settle_bill:'#10B981'
+    };
+    const col=actionColors[e.action]||'#8A8AA8';
+    const actionLabel=e.action.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+    return `<div style="padding:10px 0;border-bottom:1px solid var(--bord,#2A2A3A);display:flex;gap:10px;align-items:flex-start">
+      <div style="width:8px;height:8px;border-radius:50%;background:${col};margin-top:5px;flex-shrink:0"></div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:700;color:${col}">${actionLabel}</div>
+        ${e.note?`<div style="font-size:11px;color:var(--t2,#8A8AA8);margin-top:2px">${e.note}</div>`:''}
+        ${e.before||e.after?`<div style="font-size:10px;color:var(--t3,#4A4A60);margin-top:2px">${e.before?'Before: '+JSON.stringify(e.before):''} ${e.after?'→ After: '+JSON.stringify(e.after):''}</div>`:''}
+      </div>
+      <div style="font-size:10px;color:var(--t3,#4A4A60);flex-shrink:0;text-align:right">${dtStr}<br><span style="font-size:9px">${e.user||'Admin'}</span></div>
+    </div>`;
+  }).join(''):`<div style="text-align:center;padding:30px 20px;color:var(--t2,#8A8AA8);font-size:13px">📋 No audit entries yet for this bill</div>`;
+
+  modal.innerHTML=`
+    <div style="background:var(--surf,#13131C);border-radius:20px 20px 0 0;padding:20px;width:100%;max-width:560px;max-height:80vh;display:flex;flex-direction:column">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;flex-shrink:0">
+        <div style="font-family:var(--font-h,'Outfit'),sans-serif;font-size:16px;font-weight:800;color:var(--text,#F0EFF8)">📋 Audit Trail</div>
+        <div onclick="document.getElementById('audit-trail-modal').style.display='none'" style="width:32px;height:32px;border-radius:10px;background:var(--surf2,#1C1C28);border:1px solid var(--bord,#2A2A3A);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;color:var(--text,#F0EFF8)">✕</div>
+      </div>
+      <div style="font-size:11px;color:var(--t2,#8A8AA8);margin-bottom:14px;flex-shrink:0">${b.invoice_no} · ${b.customer_name}</div>
+      <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch">${rows}</div>
+    </div>`;
+  modal.style.display='flex';
+  modal.onclick=function(e){if(e.target===modal)modal.style.display='none';};
+}
+
+// ── Reopen Bill (PIN Protected) ──
+function reopenBill(billId){
+  requirePIN('reopen_bill',function(){_doReopenBill(billId)});
+}
+async function _doReopenBill(billId){
+  const idx=_bills.findIndex(x=>x.id===billId||String(x.id)===String(billId));
+  if(idx<0){toast('❌ Bill not found','e');return;}
+  const b=_bills[idx];
+  const oldStatus=b.status;
+  const isCreditBill = oldStatus==='Credit';
+
+  // FIX #17 — Restore stock for items being reopened, so the editor's save
+  // can re-deduct cleanly without double counting.
+  try {
+    const products = JSON.parse(localStorage.getItem('sbp_products')||'[]');
+    let changed=false;
+    for(const it of (b.bill_items||b.items||[])){
+      let pIdx=-1;
+      if(it.product_id||it.productId) pIdx=products.findIndex(p=>String(p.id)===String(it.product_id||it.productId));
+      if(pIdx<0 && (it.item_name||it.nm)) pIdx=products.findIndex(p=>(p.name||'').toLowerCase().trim()===String(it.item_name||it.nm).toLowerCase().trim());
+      if(pIdx<0) continue;
+      const cur=parseFloat(products[pIdx].stock_qty||0);
+      const restored=cur+parseFloat(it.qty||it.q||0);
+      products[pIdx].stock_qty=restored;
+      changed=true;
+      if(_online&&_sb&&products[pIdx].id&&!String(products[pIdx].id).startsWith('local_')){
+        try{await _sb.from('products').update({stock_qty:restored}).eq('id',products[pIdx].id);}catch(e){}
+      }
+    }
+    if(changed) localStorage.setItem('sbp_products',JSON.stringify(products));
+  } catch(e){ console.warn('Reopen stock restore failed:', e.message); }
+
+  // ── Credit bill: reverse customer ledger ──
+  if(isCreditBill){
+    const billAmt=parseFloat(b.grand_total||0);
+    const custName=b.customer_name||'';
+    const custs=JSON.parse(localStorage.getItem('sbp_customers')||'[]');
+    const ci=custs.findIndex(c=>c.name===custName||(c.phone&&c.phone===(b.customer_phone||'')));
+    if(ci>=0){
+      const oldBal=parseFloat(custs[ci].balance||0);
+      const newBal=Math.max(0,oldBal-billAmt);
+      custs[ci].balance=newBal;
+      localStorage.setItem('sbp_customers',JSON.stringify(custs));
+      try{logAudit('credit_ledger_reversal',{bill_id:billId,invoice_no:b.invoice_no,customer:custName,reversal_amount:billAmt,old_balance:oldBal,new_balance:newBal});}catch(e){}
+      if(_online&&_sb&&custs[ci].id){
+        try{await _sb.from('customers').update({balance:newBal}).eq('id',custs[ci].id);}catch(e){console.warn(e);}
+      }
+      toast(`📒 Ledger reversed: -₹${billAmt.toLocaleString('en-IN')} from ${custName}`,'i',3500);
+    }
+  }
+
+  // ── Update bill status ──
+  _bills[idx].status='Pending';
+  _bills[idx].paid_amount=0;
+  _bills[idx].balance_due=parseFloat(b.grand_total||0);
+  _bills[idx].reopened_at=new Date().toISOString();
+  _bills[idx].reopened_by=getPinUser();
+  if(!_bills[idx].audit_log) _bills[idx].audit_log=[];
+  _bills[idx].audit_log.unshift({action:'reopen_bill',ts:new Date().toISOString(),user:getPinUser(),before:{status:oldStatus},after:{status:'Pending'},note:isCreditBill?'Credit bill reopened + ledger reversed':'Bill reopened for editing'});
+  localStorage.setItem('sbp_bills',JSON.stringify(_bills));
+
+  if(_online&&_sb&&!String(billId).startsWith('local_')){
+    try{await _sb.from('bills').update({status:'Pending',paid_amount:0,balance_due:_bills[idx].balance_due,reopened_at:_bills[idx].reopened_at}).eq('id',billId);}catch(e){console.warn(e);}
+  }
+
+  try{logAudit('reopen_bill',{bill_id:billId,invoice_no:b.invoice_no,old_status:oldStatus,customer:b.customer_name,credit_reversed:isCreditBill});}catch(e){}
+
+  // ── Save full bill data to localStorage so billing.html can load it ──
+  const editPayload = {
+    id: b.id,
+    invoice_no: b.invoice_no || b.invno || '',
+    invoice_date: b.invoice_date || b.invdate || '',
+    customer_name: b.customer_name || b.nm || '',
+    customer_phone: b.customer_phone || b.customer_wa || b.wa || '',
+    customer_gstin: b.customer_gstin || b.custGSTIN || '',
+    note: b.note || b.notes || '',
+    payment_mode: b.payment_mode || b.paymode || 'Cash',
+    is_gst_invoice: b.is_gst_invoice || b.isGSTInvoice || false,
+    supply_type: b.supply_type || b.supplyType || 'intra',
+    place_of_supply: b.place_of_supply || b.placeOfSupply || '',
+    gst_no: b.gst_no || '',
+    discount: b.discount || 0,
+    discount_type: b.discount_type || 'flat',
+    source: b.source || '',
+    created_via: b.created_via || '',
+    pos_mode: b.pos_mode || false,
+    bill_mode: b.bill_mode || (b.source==='pos'||b.created_via==='pos'||b.pos_mode===true ? 'pos' : 'manual'),
+    bill_items: b.bill_items || b.items || [],
+    _edit_mode: true,
+    _old_status: oldStatus
+  };
+  localStorage.setItem('sbp_edit_bill', JSON.stringify(editPayload));
+
+  closeModal('bill-preview-modal');
+  toast('🔓 Bill reopened — opening editor...','s',2000);
+
+  // Auto-redirect to billing.html in edit mode (POS or Manual based on bill source)
+  setTimeout(()=>{
+    const isPOSBill = b.bill_mode==='pos' || b.source==='pos' || b.created_via==='pos' || b.pos_mode===true;
+    // Use ?mode=pos (billing.html reads params.get('mode'))
+    const targetPage = isPOSBill ? 'billing.html?mode=pos&edit_bill=' : 'billing.html?edit_bill=';
+    window.location.href = targetPage + encodeURIComponent(billId);
+  },800);
+}
+
+// ── Void Bill (PIN Protected) ──
+function voidBill(billId){
+  requirePIN('void_bill',function(){_doVoidBill(billId)});
+}
+async function _doVoidBill(billId){
+  if(!confirm('⚠️ Void this entire bill?\n\nThis will mark it as CANCELLED.\nStock will be restored. Customer ledger (if credit) will be reversed.\nBill remains in records for audit.'))return;
+  const idx=_bills.findIndex(x=>x.id===billId||String(x.id)===String(billId));
+  if(idx<0)return;
+  const b=_bills[idx];
+  const oldStatus=b.status;
+  const oldGrand=parseFloat(b.grand_total||0);
+  const wasCreditOpen = (oldStatus==='Credit'||oldStatus==='Partial'||oldStatus==='Pending') && parseFloat(b.balance_due||0)>0;
+
+  // FIX #16 — Restore stock on void
+  try {
+    const products = JSON.parse(localStorage.getItem('sbp_products')||'[]');
+    let changed=false;
+    for(const it of (b.bill_items||b.items||[])){
+      let pIdx=-1;
+      if(it.product_id||it.productId) pIdx=products.findIndex(p=>String(p.id)===String(it.product_id||it.productId));
+      if(pIdx<0 && (it.item_name||it.nm)) pIdx=products.findIndex(p=>(p.name||'').toLowerCase().trim()===String(it.item_name||it.nm).toLowerCase().trim());
+      if(pIdx<0) continue;
+      const cur=parseFloat(products[pIdx].stock_qty||0);
+      const restored=cur+parseFloat(it.qty||it.q||0);
+      products[pIdx].stock_qty=restored;
+      changed=true;
+      if(_online&&_sb&&products[pIdx].id&&!String(products[pIdx].id).startsWith('local_')){
+        try{await _sb.from('products').update({stock_qty:restored}).eq('id',products[pIdx].id);}catch(e){}
+      }
+    }
+    if(changed) localStorage.setItem('sbp_products',JSON.stringify(products));
+  } catch(e){ console.warn('Void stock restore failed:', e.message); }
+
+  // FIX #11b — Reverse customer ledger if credit was open
+  if(wasCreditOpen && b.customer_name && b.customer_name!=='Walk-in Customer'){
+    const due = parseFloat(b.balance_due||0);
+    const custs=JSON.parse(localStorage.getItem('sbp_customers')||'[]');
+    let ci=-1;
+    if(b.customer_id) ci = custs.findIndex(c => String(c.id)===String(b.customer_id));
+    if(ci<0 && b.customer_phone) {
+      const p = String(b.customer_phone).replace(/\D/g,'').slice(-10);
+      if(p) ci = custs.findIndex(c => String(c.whatsapp||c.phone||'').replace(/\D/g,'').slice(-10)===p);
+    }
+    if(ci<0) ci = custs.findIndex(c => c.name===b.customer_name);
+    if(ci>=0){
+      const newBal=Math.max(0, parseFloat(custs[ci].balance||0) - due);
+      custs[ci].balance=newBal;
+      localStorage.setItem('sbp_customers',JSON.stringify(custs));
+      if(_online&&_sb&&custs[ci].id&&!String(custs[ci].id).startsWith('local_')){
+        try{await _sb.from('customers').update({balance:newBal}).eq('id',custs[ci].id);}catch(e){}
+      }
+    }
+  }
+
+  _bills[idx].status='Voided';
+  _bills[idx].voided_at=new Date().toISOString();
+  _bills[idx].voided_by=localStorage.getItem('sbp_role')||'Manager';
+
+  // Per-bill audit
+  if(!_bills[idx].audit_log) _bills[idx].audit_log=[];
+  _bills[idx].audit_log.unshift({
+    action:'void_bill',ts:new Date().toISOString(),
+    user:getPinUser(),
+    before:{status:oldStatus,grand_total:oldGrand},
+    after:{status:'Voided'},
+    note:'Bill voided + stock restored' + (wasCreditOpen?' + ledger reversed':'')
+  });
+
+  localStorage.setItem('sbp_bills',JSON.stringify(_bills));
+  if(_online&&!String(billId).startsWith('local_')){
+    try{await _sb.from('bills').update({status:'Voided'}).eq('id',billId);}catch(e){console.warn(e);}
+  }
+  logAudit('void_bill',{bill_id:billId,invoice_no:_bills[idx].invoice_no,old_status:oldStatus,customer:_bills[idx].customer_name,amount:oldGrand,credit_reversed:wasCreditOpen});
+  closeModal('bill-preview-modal');
+  applyFilters();
+  toast('🚫 Bill voided — stock restored','i');
+}
+
+// ── Delete Bill (PIN Protected) ──
+function deleteBill(billId){
+  requirePIN('delete_bill',function(){_doDeleteBill(billId)});
+}
+async function _doDeleteBill(billId){
+  if(!confirm('⚠️ PERMANENTLY DELETE this bill?\n\n⛔ This action CANNOT be undone.\nThe bill will be removed from all records.'))return;
+  const idx=_bills.findIndex(x=>x.id===billId||String(x.id)===String(billId));
+  if(idx<0)return;
+  const bill=_bills[idx];
+  
+  logAudit('delete_bill',{bill_id:billId,invoice_no:bill.invoice_no,customer:bill.customer_name,amount:bill.grand_total,status:bill.status,deleted_by:localStorage.getItem('sbp_role')||'Manager'});
+  
+  _bills.splice(idx,1);
+  localStorage.setItem('sbp_bills',JSON.stringify(_bills));
+  
+  if(_online&&!String(billId).startsWith('local_')){
+    try{await _sb.from('bills').delete().eq('id',billId);}catch(e){console.warn(e);}
+  }
+  
+  closeModal('bill-preview-modal');
+  applyFilters();
+  toast('🗑️ Bill deleted — recorded in audit log','i');
+}
+
+// ── Void Item (PIN Protected) ──
+function voidItem(billId,itemIdx){
+  requirePIN('void_item',function(){_doVoidItem(billId,itemIdx)});
+}
+async function _doVoidItem(billId,itemIdx){
+  if(!confirm('⚠️ Void this item?\n\nIt will remain on the bill but marked as voided.\nBill totals will be recalculated.'))return;
+  const bIdx=_bills.findIndex(x=>x.id===billId||String(x.id)===String(billId));
+  if(bIdx<0)return;
+  const b=_bills[bIdx];
+  const items=b.bill_items||[];
+  if(!items[itemIdx])return;
+  
+  const itemName=items[itemIdx].item_name;
+  const itemTotal=parseFloat(items[itemIdx].line_total||0);
+  const itemGST=parseFloat(items[itemIdx].gst_amount||0);
+  
+  items[itemIdx].voided=true;
+  items[itemIdx].voided_at=new Date().toISOString();
+  items[itemIdx].voided_by=getPinUser();
+
+  // Recalculate bill totals excluding voided items
+  recalcBillTotals(b);
+
+  // Per-bill audit
+  if(!b.audit_log) b.audit_log=[];
+  b.audit_log.unshift({
+    action:'void_item',ts:new Date().toISOString(),
+    user:getPinUser(),
+    before:{item_name:itemName,line_total:itemTotal,voided:false},
+    after:{voided:true},
+    note:`Item voided: ${itemName}`
+  });
+  localStorage.setItem('sbp_bills',JSON.stringify(_bills));
+  
+  if(_online&&!String(billId).startsWith('local_')){
+    try{
+      await _sb.from('bills').update({subtotal:b.subtotal,gst_amount:b.gst_amount,grand_total:b.grand_total,balance_due:b.balance_due}).eq('id',billId);
+    }catch(e){console.warn(e);}
+  }
+  
+  logAudit('void_item',{bill_id:billId,invoice_no:b.invoice_no,item_name:itemName,item_total:itemTotal,customer:b.customer_name});
+  openBillPreview(billId);
+  toast('🚫 '+itemName+' voided','i');
+}
+
+// ── Delete Item (PIN Protected) ──
+function deleteItem(billId,itemIdx){
+  requirePIN('delete_item',function(){_doDeleteItem(billId,itemIdx)});
+}
+async function _doDeleteItem(billId,itemIdx){
+  const bIdx=_bills.findIndex(x=>x.id===billId||String(x.id)===String(billId));
+  if(bIdx<0)return;
+  const b=_bills[bIdx];
+  const items=b.bill_items||[];
+  if(!items[itemIdx])return;
+  
+  if(items.filter(it=>!it.voided).length<=1&&!items[itemIdx].voided){
+    toast('Cannot delete the last active item — void the bill instead','e');return;
+  }
+  if(!confirm('⚠️ Delete this item from the bill?\n\n⛔ This action CANNOT be undone.\nBill totals will be recalculated.'))return;
+  
+  const itemName=items[itemIdx].item_name;
+  const itemTotal=parseFloat(items[itemIdx].line_total||0);
+  
+  logAudit('delete_item',{bill_id:billId,invoice_no:b.invoice_no,item_name:itemName,item_total:itemTotal,customer:b.customer_name});
+  
+  items.splice(itemIdx,1);
+  b.bill_items=items;
+  
+  // Recalculate bill totals
+  recalcBillTotals(b);
+  localStorage.setItem('sbp_bills',JSON.stringify(_bills));
+  
+  if(_online&&!String(billId).startsWith('local_')){
+    try{
+      await _sb.from('bills').update({subtotal:b.subtotal,gst_amount:b.gst_amount,grand_total:b.grand_total,balance_due:b.balance_due}).eq('id',billId);
+    }catch(e){console.warn(e);}
+  }
+  
+  openBillPreview(billId);
+  toast('🗑️ '+itemName+' removed','i');
+}
+
+// ── Recalculate Bill Totals ──
+function recalcBillTotals(b){
+  const items=(b.bill_items||[]).filter(it=>!it.voided);
+  const subtotal=items.reduce((s,it)=>s+(parseFloat(it.qty||1)*parseFloat(it.rate||0)),0);
+  const gstAmount=items.reduce((s,it)=>{
+    const lineAmt=parseFloat(it.qty||1)*parseFloat(it.rate||0);
+    return s+(lineAmt*parseFloat(it.gst_rate||0)/100);
+  },0);
+  const discount=parseFloat(b.discount||0);
+  const grandTotal=subtotal+gstAmount-discount;
+  const paid=parseFloat(b.paid_amount||0);
+  b.subtotal=subtotal;
+  b.gst_amount=gstAmount;
+  b.grand_total=Math.max(0,grandTotal);
+  b.balance_due=Math.max(0,grandTotal-paid);
+  if(b.balance_due<=0&&paid>0)b.status='Paid';
+  else if(paid>0)b.status='Partial';
+}
+
+// ══════════════════════════════════════════
+// AUDIT TRAIL
+// ══════════════════════════════════════════
+
+function logAudit(action,details){
+  const log=JSON.parse(localStorage.getItem('sbp_audit_log')||'[]');
+  const entry={
+    id:'aud_'+Date.now(),
+    action,
+    details,
+    user:getPinUser(),
+    timestamp:new Date().toISOString(),
+    shop_id:_shopId
+  };
+  log.unshift(entry);
+  // Keep last 500 entries
+  if(log.length>500)log.length=500;
+  localStorage.setItem('sbp_audit_log',JSON.stringify(log));
+  
+  // Also push to Supabase if online
+  if(_sb&&_online&&_shopId&&!String(entry.id).startsWith('local_')){
+    _sb.from('audit_log').insert({
+      shop_id:_shopId,
+      action,
+      details:JSON.stringify(details),
+      user_role:entry.user,
+      created_at:entry.timestamp
+    }).then(()=>{}).catch(()=>{});
+  }
+}
+
+function exportBills(){
+  if(!_bills.length){toast('No bills to export','i');return}
+  const rows=['Invoice No,Date,Customer,Amount,Paid,Balance,Status'];
+  _bills.forEach(b=>rows.push([b.invoice_no,fDate(b.invoice_date),b.customer_name,b.grand_total||0,b.paid_amount||0,b.balance_due||0,b.status||''].join(',')));
+  const blob=new Blob([rows.join('\n')],{type:'text/csv'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='bills.csv';a.click();
+  toast('📤 Bills exported!','s');
+}
+
+async function init(){
+  // ── Apply theme ──
+  if(_theme==='light'){document.documentElement.setAttribute('data-theme','light');document.getElementById('theme-btn').textContent='🌙'}
+
+  // ── Apply language labels (avoid CSS dual-span concat bug) ──
+  const _lang=localStorage.getItem('sbp_lang')||'en';
+  const _hi=_lang==='hi';
+  document.getElementById('page-title').textContent   = _hi?'बिल और निपटान':'Bills & Settlement';
+  document.getElementById('lbl-bills').textContent    = _hi?'बिल':'Bills';
+  document.getElementById('lbl-received').textContent = _hi?'प्राप्त':'Received';
+  document.getElementById('lbl-due').textContent      = _hi?'देय':'Due';
+  // Fix bottom nav labels
+  document.querySelectorAll('.ni-lb[data-en]').forEach(function(el){
+    el.textContent = _hi ? el.getAttribute('data-hi') : el.getAttribute('data-en');
+  });
+
+  // ── Load local data immediately — spinner clears before any async work ──
+  _shopId = localStorage.getItem('sbp_shop_id');
+  _shop   = JSON.parse(localStorage.getItem('sbp_shop')||'{}');
+  _bills  = JSON.parse(localStorage.getItem('sbp_bills')||'[]');
+  // Force clear any stale content before rendering
+  const _bl=document.getElementById('bills-list');
+  if(_bl&&_bl.querySelector('.spinner'))_bl.innerHTML='';
+  applyFilters();
+
+  // ── Handle URL params + sessionStorage backup ──
+  const params = new URLSearchParams(window.location.search);
+  const billId = params.get('id') || sessionStorage.getItem('sbp_open_bill');
+  sessionStorage.removeItem('sbp_open_bill');
+  const filter = params.get('filter');
+  if(filter) filterStatus(filter, document.querySelector(`.chip[onclick*="${filter}"]`)||document.querySelector('.chip'));
+
+  // ── Open bill detail with multiple retries ──
+  if(billId){
+    const tryOpen=()=>{
+      const b=_bills.find(x=>String(x.id)===String(billId));
+      if(b){openBillPreview(billId);return true;}
+      return false;
+    };
+    if(!tryOpen()){
+      setTimeout(tryOpen,150);
+      setTimeout(tryOpen,500);
+      setTimeout(tryOpen,1500);
+    }
+  }
+
+  // ── Auth + cloud sync (non-blocking — page already shows content above) ──
+  if(!_sb){
+    // Supabase CDN failed — local-only mode, no auth check needed
+    return;
+  }
+
+  try{
+    const{data:{session}} = await _sb.auth.getSession();
+    if(session){
+      // Real auth session exists — check timeout and sync cloud data
+      _resetTimer();
+      const last=parseInt(localStorage.getItem('sbp_last_activity')||'0');
+      if(last&&(Date.now()-last)/60000>_sessionTimeout){
+        try{await _sb.auth.signOut();}catch(e){}
+        window.location.href='index.html';return;
+      }
+      if(isPro()&&navigator.onLine&&_shopId){
+        try{
+          const{data}=await _sb.from('bills').select('*,bill_items(item_name,qty,rate,gst_rate,line_total,gst_amount)').eq('shop_id',_shopId).order('created_at',{ascending:false}).limit(300);
+          if(data){_bills=data;localStorage.setItem('sbp_bills',JSON.stringify(_bills));applyFilters();}
+        }catch(e){console.warn('Supabase fetch failed:',e)}
+      }
+    }
+    // No session = no redirect — page already showing local data above.
+    // Auth (WhatsApp OTP via MSG91) not yet live — users run in local/demo mode.
+    // Once auth is live, redirect logic goes here.
+  }catch(e){
+    console.warn('Auth check failed, local mode:',e);
+  }
+
+  if(billId && !document.getElementById('bill-preview-modal')?.classList.contains('open')){
+    const b=_bills.find(x=>String(x.id)===String(billId));if(b)openBillPreview(billId);
+  }
+}
+
+init();
+
+(function(){
+  if(window.innerWidth<1024)return;
+  var page=window.location.pathname.split('/').pop()||'dashboard.html';
+  var nav=[
+    {ic:'🏠',lb:'Dashboard',url:'dashboard.html'},
+    {ic:'🧾',lb:'New Bill',url:'billing.html',fab:true},
+    {ic:'📋',lb:'Bills',url:'bills.html'},
+    {ic:'👥',lb:'Customers',url:'customers.html'},
+    {ic:'📦',lb:'Inventory',url:'stock.html'},
+    {ic:'📊',lb:'Reports',url:'reports.html'},
+    {ic:'🛒',lb:'POS Admin',url:'pos-admin.html'},
+    {ic:'💬',lb:'WhatsApp',url:'wa-center.html'},
+    {ic:'📢',lb:'Marketing',url:'marketing.html'},
+    {ic:'💰',lb:'Cash Register',url:'cash-register.html'},
+    {ic:'🚚',lb:'Suppliers',url:'supplier.html'},
+    {ic:'🔄',lb:'Recurring',url:'recurring.html'},
+    {ic:'🗂️',lb:'Templates',url:'bill-templates.html'},
+    {ic:'👥',lb:'Team & Users',url:'team.html'},
+    {ic:'🚀',lb:'Plans & Pricing',url:'subscription.html'},
+    {ic:'⚙️',lb:'Settings',url:'settings.html'},
+  ];
+  var sb=document.createElement('div');sb.id='dsb';
+  sb.innerHTML='<div class="dsb-logo"><svg width="22" height="24" viewBox="0 0 56 62" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M28 2L4 14V32C4 46 28 60 28 60C28 60 52 46 52 32V14L28 2Z" fill="url(#sg1)"/><rect x="18" y="18" width="20" height="26" rx="2" fill="#0A0E1A" fill-opacity=".6"/><rect x="18" y="18" width="20" height="26" rx="2" stroke="#fff" stroke-width="1.5" fill="none"/><line x1="22" y1="24" x2="34" y2="24" stroke="#F5A623" stroke-width="1.5" stroke-linecap="round"/><line x1="22" y1="28" x2="30" y2="28" stroke="rgba(255,255,255,.4)" stroke-width="1" stroke-linecap="round"/><line x1="22" y1="31" x2="32" y2="31" stroke="rgba(255,255,255,.4)" stroke-width="1" stroke-linecap="round"/><line x1="22" y1="34" x2="28" y2="34" stroke="rgba(255,255,255,.4)" stroke-width="1" stroke-linecap="round"/><circle cx="32" cy="37" r="5" fill="#F5A623"/><polyline points="30,37 31.5,38.5 34.5,35.5" fill="none" stroke="#0A0E1A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><defs><linearGradient id="sg1" x1="4" y1="2" x2="52" y2="60" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#F5A623"/><stop offset="100%" stop-color="#FF6B35"/></linearGradient></defs></svg><span class="dsb-brand">ShopBill Pro</span></div><div class="dsb-nav">'+nav.map(function(n){var c='dsb-item'+(page===n.url?' active':'')+(n.fab?' fab-sb':'');return '<a class="'+c+'" href="'+n.url+'"><span class="dsb-ic">'+n.ic+'</span><span>'+n.lb+'</span></a>';}).join('')+'</div><div class="dsb-footer"><button class="dsb-item" id="dsb-logout"><span class="dsb-ic">🚪</span><span>Logout</span></button><div class="dsb-ver">ShopBill Pro v1.0</div></div>';
+  document.body.prepend(sb);
+  document.getElementById('dsb-logout').addEventListener('click',function(){
+    if(_sb)_sb.auth.signOut().then(function(){window.location.href='index.html';}).catch(function(){window.location.href='index.html';});
+    else window.location.href='index.html';
+  });
+})();
+(function(){document.documentElement.lang=localStorage.getItem('sbp_lang')||'en';})();
+
+async function refreshShopPlan() {
+  if (!navigator.onLine || !_sb) return;
+  try {
+    const { data: { user } } = await _sb.auth.getUser();
+    if (!user) return;
+    const { data: shops } = await _sb.from('shops').select('*').eq('owner_id', user.id).limit(1);
+    if (shops?.length) {
+      localStorage.setItem('sbp_shop', JSON.stringify(shops[0]));
+      localStorage.setItem('sbp_shop_id', shops[0].id);
+      window._shop = shops[0];
+    }
+  } catch(e) {}
+}
+</script>
+<script src="lib/beta-banner.js"></script>
+</body>
+</html>

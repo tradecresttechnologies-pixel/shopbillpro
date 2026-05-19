@@ -1,0 +1,1294 @@
+<!DOCTYPE html>
+<html lang="en" translate="no" class="notranslate">
+<head>
+<script>
+(function(){try{var t=localStorage.getItem('sbp_theme');if(t==='light')document.documentElement.setAttribute('data-theme','light');}catch(e){}})();
+</script>
+
+<script>(function(){try{document.documentElement.lang=localStorage.getItem('sbp_lang')||'en';}catch(e){}})();</script>
+<meta charset="UTF-8">
+<meta name="google" content="notranslate">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#F5A623">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>ShopBill Pro — Appointments</title>
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png?v=2">
+<link rel="apple-touch-icon" sizes="192x192" href="icons/icon-192x192.png">
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Noto+Sans:wght@300;400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+<script>
+function _sbpPlanInfo(){
+  const s=JSON.parse(localStorage.getItem('sbp_shop')||'{}');
+  let plan=(s.plan||'free').toLowerCase();
+  if(plan==='enterprise') plan='business';
+  const exp=s.plan_expires_at;
+  if(exp && plan!=='free' && new Date(exp) < new Date()) plan='free';
+  return {plan, expired:!!(exp && new Date(exp) < new Date())};
+}
+function isPro(){const p=_sbpPlanInfo().plan;return p==='pro'||p==='business';}
+function isBiz(){return _sbpPlanInfo().plan==='business';}
+function isFree(){return _sbpPlanInfo().plan==='free';}
+</script>
+
+<script src="lang.js"></script>
+<script src="lib/sidebar-engine.js"></script>
+<script src="conversion.js"></script>
+
+<script>
+const SB_URL='https://jfqeirfrkjdkqqixivru.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmcWVpcmZya2pka3FxaXhpdnJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzNzQ4MzgsImV4cCI6MjA4OTk1MDgzOH0.akd4E0nil8ypLR4WOykkeYIL8g4uuNU6XdSVh_Y1utk';
+const _sb=supabase.createClient(SB_URL,SB_KEY,{auth:{autoRefreshToken:true,persistSession:true,detectSessionInUrl:false}});
+window._sb=_sb;
+</script>
+
+<link rel="stylesheet" href="/styles.css"><!-- BATCH UI-1: canonical design system -->
+<style>
+.lang-hi{display:none!important}
+.lang-en{display:inline!important}
+html[lang="hi"] .lang-hi{display:inline!important}
+html[lang="hi"] .lang-en{display:none!important}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{font-family:'Noto Sans','Noto Sans Devanagari',sans-serif;-webkit-font-smoothing:antialiased}
+:root{
+  --acc:#F5A623;--acc2:#FF6B35;--acc3:#10B981;--acc4:#3B82F6;
+  --bg:#0A0A12;--surf:#13131C;--surf2:#1C1C28;--bord:#2A2A3A;
+  --text:#F0EFF8;--t2:#8A8AA8;--font-h:'Outfit',sans-serif;
+  --rs:14px;--tr:.2s ease;--amber:#F59E0B;--rose:#F43F5E;--violet:#8B5CF6;
+}
+[data-theme="light"]{--bg:#FAFAFC;--surf:#FFFFFF;--surf2:#F2F2F8;--bord:#E5E5EE;--text:#0F0E18;--t2:#5E5A7A}
+body{background:var(--bg);color:var(--text);min-height:100dvh;overflow-x:hidden}
+#app{max-width:560px;margin:0 auto;padding-bottom:90px;min-height:100dvh}
+
+/* Topbar */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 14px 10px;background:var(--bg);position:sticky;top:0;z-index:50;border-bottom:1px solid var(--bord)}
+.tb-l{display:flex;align-items:center;gap:10px}
+.tb-r{display:flex;gap:8px}
+.back-btn,.ic-btn{width:36px;height:36px;border-radius:10px;background:var(--surf);border:1px solid var(--bord);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;color:var(--text);transition:var(--tr)}
+.back-btn:hover,.ic-btn:hover{background:var(--surf2)}
+.tb-title{font-family:var(--font-h);font-size:17px;font-weight:800;letter-spacing:.2px}
+
+/* Tabs */
+.tab-row{display:flex;padding:8px 14px;gap:6px;border-bottom:1px solid var(--bord)}
+.tab-btn{flex:1;padding:10px 8px;background:var(--surf);border:1px solid var(--bord);border-radius:10px;font-size:12.5px;font-weight:700;color:var(--t2);cursor:pointer;text-align:center;transition:var(--tr);font-family:var(--font-h)}
+.tab-btn.on{background:var(--acc);color:#0A0E1A;border-color:var(--acc)}
+
+/* Locked banner */
+.locked-banner{margin:14px;background:linear-gradient(135deg,rgba(139,92,246,.15),rgba(245,166,35,.08));border:1.5px solid rgba(139,92,246,.4);border-radius:var(--rs);padding:18px 16px;text-align:center}
+.locked-banner-title{font-family:var(--font-h);font-size:17px;font-weight:800;color:var(--violet);margin-bottom:6px}
+.locked-banner-msg{font-size:12.5px;color:var(--t2);line-height:1.55;margin-bottom:12px}
+.btn-upgrade{display:inline-block;background:linear-gradient(135deg,#8B5CF6,#3B82F6);color:#fff;font-weight:800;font-size:13px;padding:11px 22px;border-radius:11px;border:none;cursor:pointer;font-family:var(--font-h)}
+
+/* Filter chips (date / provider) */
+.filter-row{display:flex;gap:6px;padding:8px 14px;overflow-x:auto;scrollbar-width:none}
+.filter-row::-webkit-scrollbar{display:none}
+.chip{flex-shrink:0;padding:7px 12px;background:var(--surf);border:1px solid var(--bord);border-radius:18px;font-size:11.5px;font-weight:600;color:var(--t2);cursor:pointer;white-space:nowrap;transition:var(--tr)}
+.chip.on{background:var(--acc);color:#0A0E1A;border-color:var(--acc)}
+
+/* Pane wrapper */
+.pane{padding:6px 14px}
+.pane.hidden{display:none}
+
+/* Appointment card */
+.appt-card{background:var(--surf);border:1px solid var(--bord);border-radius:var(--rs);padding:12px;margin-bottom:8px;cursor:pointer;transition:var(--tr)}
+.appt-card:hover{border-color:rgba(245,166,35,.4)}
+.appt-card.cancelled{opacity:.55}
+.appt-time-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.appt-time{font-family:var(--font-h);font-size:14px;font-weight:800;color:var(--acc)}
+.appt-status{font-size:10px;font-weight:700;padding:3px 9px;border-radius:8px;text-transform:uppercase;letter-spacing:.4px}
+.appt-status.pending{background:rgba(245,158,11,.18);color:var(--amber)}
+.appt-status.confirmed{background:rgba(16,185,129,.18);color:var(--acc3)}
+.appt-status.completed{background:rgba(59,130,246,.18);color:var(--acc4)}
+.appt-status.cancelled,.appt-status.no_show{background:rgba(244,63,94,.18);color:var(--rose)}
+.appt-customer{font-family:var(--font-h);font-size:14px;font-weight:700;margin-bottom:3px}
+.appt-meta{display:flex;gap:8px;font-size:11.5px;color:var(--t2);align-items:center;flex-wrap:wrap}
+.appt-meta-tag{padding:2px 8px;background:var(--surf2);border-radius:7px;border:1px solid var(--bord)}
+
+/* Day separator */
+.day-sep{font-family:var(--font-h);font-size:11px;font-weight:800;color:var(--t2);text-transform:uppercase;letter-spacing:.6px;padding:14px 0 6px;border-top:1px dashed var(--bord);margin-top:10px}
+.day-sep:first-child{border-top:none;padding-top:6px;margin-top:0}
+
+/* Provider card */
+.prv-card{background:var(--surf);border:1px solid var(--bord);border-radius:var(--rs);padding:12px;margin-bottom:8px;display:flex;gap:12px;align-items:center;cursor:pointer;transition:var(--tr)}
+.prv-card:hover{border-color:rgba(245,166,35,.4)}
+.prv-card.inactive{opacity:.55}
+.prv-avatar{width:50px;height:50px;border-radius:50%;background:linear-gradient(135deg,var(--surf2),var(--bord));display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;font-family:var(--font-h);font-size:18px;font-weight:800;color:var(--t2)}
+.prv-avatar img{width:100%;height:100%;object-fit:cover}
+.prv-body{flex:1;min-width:0}
+.prv-name{font-family:var(--font-h);font-size:14px;font-weight:700;color:var(--text);margin-bottom:3px}
+.prv-meta{font-size:11px;color:var(--t2);line-height:1.4}
+
+/* Block card */
+.block-card{background:var(--surf);border:1px solid var(--bord);border-radius:10px;padding:10px 12px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;font-size:12.5px}
+.block-date{font-family:var(--font-h);font-weight:700;color:var(--rose)}
+.block-reason{color:var(--t2);font-size:11px;margin-top:2px}
+
+/* Empty state */
+.empty{text-align:center;padding:50px 24px;color:var(--t2)}
+.empty-emoji{font-size:48px;margin-bottom:12px}
+.empty-title{font-family:var(--font-h);font-size:17px;font-weight:700;color:var(--text);margin-bottom:8px}
+.empty-msg{font-size:13px;line-height:1.5;margin-bottom:18px}
+
+/* FAB */
+.fab{position:fixed;bottom:78px;right:16px;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff;border:none;font-size:28px;font-weight:800;cursor:pointer;box-shadow:0 6px 20px rgba(245,166,35,.45);z-index:60;display:flex;align-items:center;justify-content:center;font-family:var(--font-h)}
+
+/* Modal */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:200;display:none;align-items:flex-end;justify-content:center;padding:0}
+.overlay.open{display:flex}
+.sheet{background:var(--bg);border-radius:20px 20px 0 0;width:100%;max-width:560px;max-height:92dvh;overflow-y:auto;padding:8px 16px 20px;border-top:1px solid var(--bord)}
+.handle{width:44px;height:4px;background:var(--bord);border-radius:2px;margin:8px auto 14px}
+.sheet-title{font-family:var(--font-h);font-size:18px;font-weight:800;margin-bottom:14px}
+
+.ff{margin-bottom:12px}
+.ff label{display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:5px}
+.ff input,.ff textarea,.ff select{width:100%;padding:10px 12px;background:var(--surf);border:1px solid var(--bord);border-radius:10px;color:var(--text);font-size:14px;font-family:inherit;outline:none;transition:var(--tr)}
+.ff input:focus,.ff textarea:focus,.ff select:focus{border-color:var(--acc)}
+.ff textarea{resize:vertical;min-height:60px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+/* Day-picker (working days) */
+.dow-row{display:flex;gap:4px;justify-content:space-between}
+.dow-btn{flex:1;padding:8px 0;background:var(--surf);border:1px solid var(--bord);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;text-align:center;color:var(--t2);transition:var(--tr);font-family:var(--font-h)}
+.dow-btn.on{background:var(--acc);color:#0A0E1A;border-color:var(--acc)}
+
+/* Status pill buttons */
+.status-row{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px}
+.status-btn{padding:9px 4px;background:var(--surf);border:1px solid var(--bord);border-radius:9px;font-size:11px;font-weight:700;color:var(--t2);cursor:pointer;text-align:center;font-family:var(--font-h);transition:var(--tr)}
+
+.btn-pri{width:100%;padding:13px;background:linear-gradient(135deg,var(--acc),var(--acc2));color:#0A0E1A;border:none;border-radius:12px;font-family:var(--font-h);font-size:14px;font-weight:800;cursor:pointer;transition:var(--tr)}
+.btn-pri:hover{transform:translateY(-1px)}
+.btn-pri:disabled{opacity:.5;cursor:not-allowed}
+.btn-sec{width:100%;padding:13px;background:var(--surf2);color:var(--text);border:1px solid var(--bord);border-radius:12px;font-family:var(--font-h);font-size:14px;font-weight:700;cursor:pointer}
+.btn-sec:hover{background:var(--bord)}
+.btn-danger{width:100%;padding:13px;background:rgba(244,63,94,.12);color:var(--rose);border:1px solid var(--rose);border-radius:12px;font-family:var(--font-h);font-size:14px;font-weight:700;cursor:pointer}
+
+/* Toast */
+#toast-container{position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:300;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{background:var(--surf);color:var(--text);padding:11px 18px;border-radius:10px;border:1px solid var(--bord);box-shadow:0 4px 16px rgba(0,0,0,.3);font-size:13px;font-weight:600;pointer-events:auto;animation:tin .2s ease}
+.toast.s{border-color:var(--acc3);background:rgba(16,185,129,.1)}
+.toast.e{border-color:var(--rose);background:rgba(244,63,94,.1)}
+.toast.i{border-color:var(--acc4);background:rgba(59,130,246,.1)}
+@keyframes tin{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
+
+.bnav{position:fixed;bottom:0;left:0;right:0;background:var(--surf);border-top:1px solid var(--bord);height:60px;z-index:55}
+</style>
+<!-- ══ BATCH 012 HOTFIX (6 May 2026): Sidebar/bnav CSS imported from dashboard.html ══
+     Required so SBPSidebar.render() output (with .dsb-* + .bnav-* classes) is
+     actually styled instead of falling back to default plain-text rendering.
+     ROOT CAUSE: services.html + appointments.html were built without the global
+     sidebar CSS that lives inline on every other user page (dashboard.html etc).
+═══════════════════════════════════════════════════════════════════════════════ -->
+<style>
+/* ── Bottom Nav ── */
+.bnav{
+  display:flex;align-items:stretch;background:var(--surf);
+  border-top:1px solid var(--bord);flex-shrink:0;
+  padding-bottom:var(--safe-bottom);z-index:100;
+}
+.ni{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:8px 4px;gap:3px;cursor:pointer;transition:var(--tr);
+  position:relative;min-height:56px;user-select:none;
+}
+.ni-ic{font-size:20px;line-height:1}
+.ni-lb{font-size:10px;color:var(--t2);font-weight:600;white-space:nowrap}
+.ni.on .ni-lb{color:var(--acc)}
+.ni.on::after{
+  content:'';position:absolute;top:0;left:20%;right:20%;
+  height:2.5px;border-radius:0 0 4px 4px;background:var(--acc);
+}
+.ni:active{background:var(--surf2)}
+.nav-fab{
+  width:48px;height:48px;border-radius:16px;
+  background:linear-gradient(135deg,var(--acc),#FF8A00);
+  color:#fff;font-size:22px;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 16px rgba(245,166,35,.5);transition:.2s cubic-bezier(.4,0,.2,1);
+  margin-bottom:4px;
+}
+.nav-fab:active{transform:scale(.9)}
+
+/* ── BATCH 1B-F-Pilot: Mobile Drawer (full menu, slides in from right) ── */
+.bnav-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.5);
+  opacity:0;pointer-events:none;transition:opacity .25s ease;
+  z-index:90;backdrop-filter:blur(2px);
+}
+.bnav-overlay.open{opacity:1;pointer-events:auto}
+.bnav-drawer{
+  position:fixed;top:0;right:0;bottom:0;width:min(85vw,360px);
+  background:var(--surf);color:var(--text);
+  transform:translateX(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);
+  z-index:95;display:flex;flex-direction:column;
+  box-shadow:-4px 0 24px rgba(0,0,0,.4);
+  overflow:hidden;
+}
+.bnav-drawer.open{transform:translateX(0)}
+@media(min-width:1024px){.bnav-drawer,.bnav-overlay{display:none!important}}
+
+.drawer-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:16px 18px;border-bottom:1px solid var(--surf2);
+  flex-shrink:0;
+}
+.drawer-title{display:flex;align-items:center;gap:10px}
+.drawer-brand{font-size:17px;font-weight:800;color:var(--acc);letter-spacing:.3px}
+.drawer-close{
+  width:36px;height:36px;border-radius:10px;border:none;
+  background:var(--surf2);color:var(--text);font-size:16px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+}
+.drawer-close:active{transform:scale(.92);background:var(--surf3,#2a2a3a)}
+
+.drawer-nav{
+  flex:1;overflow-y:auto;padding:8px 0;
+  -webkit-overflow-scrolling:touch;
+}
+.drawer-item{
+  display:flex;align-items:center;gap:14px;
+  padding:13px 18px;color:var(--text);text-decoration:none;
+  font-size:14px;font-weight:600;cursor:pointer;
+  border:none;background:transparent;width:100%;text-align:left;
+  transition:background .15s;
+}
+.drawer-item:active{background:var(--surf2)}
+.drawer-item.active{background:rgba(245,166,35,.12);color:var(--acc)}
+.drawer-item.active::before{
+  content:'';position:absolute;left:0;width:3px;height:60%;
+  background:var(--acc);border-radius:0 3px 3px 0;
+}
+.drawer-item.active{position:relative}
+.drawer-item.coming-soon{opacity:.55}
+.drawer-ic{font-size:20px;width:24px;text-align:center;flex-shrink:0}
+.drawer-lb{flex:1}
+
+.drawer-footer{
+  border-top:1px solid var(--surf2);padding:8px 0 12px;
+  flex-shrink:0;
+}
+.drawer-footer .drawer-item{color:#EF4444}
+.drawer-ver{
+  text-align:center;font-size:11px;color:var(--t2,#888);
+  margin-top:4px;letter-spacing:.4px;
+}
+/* End drawer CSS */
+
+/* ── Toast ── */
+#toast-container{
+  position:fixed;bottom:calc(72px + var(--safe-bottom));
+  left:50%;transform:translateX(-50%);
+  z-index:9999;display:flex;flex-direction:column;align-items:center;gap:6px;
+  pointer-events:none;
+}
+.toast{
+  background:var(--surf3);color:var(--text);padding:10px 18px;
+  border-radius:20px;font-size:13px;font-weight:600;
+  box-shadow:0 4px 20px rgba(0,0,0,.45);border:1px solid var(--bord);
+  white-space:nowrap;max-width:calc(100vw - 40px);overflow:hidden;text-overflow:ellipsis;
+  animation:toastIn .22s cubic-bezier(.4,0,.2,1);pointer-events:all;
+}
+.toast.s{background:rgba(16,185,129,.15);border-color:rgba(16,185,129,.3);color:var(--acc3)}
+.toast.e{background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.3);color:var(--acc2)}
+.toast.i{background:rgba(245,166,35,.15);border-color:rgba(245,166,35,.3);color:#FF8A00}
+
+/* ── Loader ── */
+.loader{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px;gap:12px}
+.spinner{width:28px;height:28px;border:3px solid var(--bord);border-top-color:var(--acc);border-radius:50%;animation:spin .8s linear infinite}
+.empty-state{text-align:center;padding:36px 20px}
+.es-ic{font-size:44px;margin-bottom:10px}
+.es-t{font-family:var(--font-h);font-size:15px;font-weight:700;margin-bottom:5px}
+.es-s{font-size:12px;color:var(--t2);line-height:1.6}
+
+/* ── Animations ── */
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes toastIn{from{opacity:0;transform:translateY(8px) scale(.95)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes fadeSlideIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+
+.fade-in{animation:fadeSlideIn .35s cubic-bezier(.4,0,.2,1) both}
+.fade-in:nth-child(1){animation-delay:.05s}
+.fade-in:nth-child(2){animation-delay:.1s}
+.fade-in:nth-child(3){animation-delay:.15s}
+.fade-in:nth-child(4){animation-delay:.2s}
+.fade-in:nth-child(5){animation-delay:.25s}
+
+/* ── Spacer ── */
+.spacer{height:80px}
+
+/* ── Responsive ── */
+
+
+/* ══ Desktop Sidebar Layout ══ */
+#dsb{
+  position:fixed;left:0;top:0;bottom:0;width:220px;
+  background:var(--surf);border-right:1px solid var(--bord);
+  display:flex;flex-direction:column;z-index:200;overflow-y:auto;
+}
+.dsb-logo{
+  display:flex;align-items:center;gap:10px;
+  padding:20px 16px 14px;border-bottom:1px solid var(--bord);
+}
+.dsb-brand{
+  font-family:var(--font-h);font-size:15px;font-weight:800;color:var(--acc);
+}
+.dsb-nav{flex:1;padding:10px 8px;display:flex;flex-direction:column;gap:2px;overflow-y:auto}
+.dsb-item{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 12px;border-radius:10px;cursor:pointer;
+  text-decoration:none;color:var(--t2);font-size:13px;font-weight:600;
+  transition:.15s ease;white-space:nowrap;border:none;background:none;width:100%;
+}
+.dsb-item:hover{background:var(--surf2);color:var(--text)}
+.dsb-item.active{background:rgba(245,166,35,.12);color:var(--acc)}
+.dsb-item.fab-sb{
+  background:linear-gradient(135deg,#F5A623,#FF8A00);color:#fff;
+  margin:4px 0 8px;font-weight:700;
+}
+.dsb-item.fab-sb:hover{opacity:.88}
+.dsb-ic{font-size:17px;width:22px;text-align:center;flex-shrink:0}
+.dsb-sep{height:1px;background:var(--bord);margin:6px 12px}
+.dsb-footer{padding:8px;border-top:1px solid var(--bord)}
+.dsb-ver{font-size:10px;color:var(--t3);text-align:center;padding:8px 0 4px}
+
+@media(max-width:1023px){#dsb{display:none!important}}
+@media(min-width:640px) and (max-width:1023px){
+  #app{max-width:600px!important;margin:0 auto;box-shadow:0 0 80px rgba(0,0,0,.5)}
+}
+@media(min-width:1024px){
+  
+  #app{
+    margin-left:220px!important;
+    max-width:calc(100vw - 220px)!important;
+    width:calc(100vw - 220px)!important;
+    box-shadow:none!important;
+  }
+  .bnav{display:none!important}
+  .spacer{height:20px}
+  #toast-container{left:calc(220px + 50%)!important;transform:translateX(-50%)}
+}
+</style>
+<!-- HOTFIX SHIM: services.html + appointments.html use block layout (not dashboard's
+     flex-column structure). The injected dashboard CSS gives .bnav flex-shrink:0
+     which assumes a flex parent. Without that, .bnav floats inline. Restore
+     position:fixed so the mobile bottom nav sticks correctly. -->
+<style>
+@media (max-width:1023px){
+  .bnav{position:fixed;bottom:0;left:0;right:0;height:60px;z-index:55}
+}
+</style>
+
+
+</head>
+<body>
+<div id="app">
+
+  <div class="topbar">
+    <div class="tb-l">
+      <div class="back-btn" onclick="window.location.href='settings.html'">←</div>
+      <div class="tb-title">📅 Appointments</div>
+    </div>
+    <div class="tb-r">
+      <div class="ic-btn" onclick="toggleTheme()" id="theme-btn">☀️</div>
+      <div class="ic-btn" onclick="loadCurrentTab()" title="Refresh">🔄</div>
+    </div>
+  </div>
+
+  <!-- Locked banner (Free / Pro shops) -->
+  <div class="locked-banner" id="locked-banner" style="display:none">
+    <div class="locked-banner-title">🎯 Appointments is a Business feature</div>
+    <div class="locked-banner-msg">
+      <span class="lang-en">Time-slot booking for salon, clinic, coaching, services and more. Customers book online via your shop website. Available on Business plan.</span>
+      <span class="lang-hi">सैलून, क्लिनिक, कोचिंग, सेवाओं के लिए समय-स्लॉट बुकिंग। ग्राहक आपकी वेबसाइट से ऑनलाइन बुक करें। Business प्लान पर उपलब्ध।</span>
+    </div>
+    <button class="btn-upgrade" onclick="window.location.href='subscription.html'">🚀 Upgrade to Business — ₹499/mo</button>
+  </div>
+
+  <!-- Tab switcher -->
+  <div class="tab-row" id="tab-row">
+    <button class="tab-btn on" data-tab="bookings" onclick="switchTab('bookings')">📅 Bookings</button>
+    <button class="tab-btn" data-tab="providers" onclick="switchTab('providers')">👥 Providers</button>
+    <button class="tab-btn" data-tab="blocks" onclick="switchTab('blocks')">🚫 Blocks</button>
+  </div>
+
+  <!-- ── Bookings pane ── -->
+  <div class="pane" id="pane-bookings">
+    <div class="filter-row" id="bookings-date-chips">
+      <div class="chip on" data-range="upcoming" onclick="setBookingRange('upcoming',this)">Upcoming</div>
+      <div class="chip" data-range="today" onclick="setBookingRange('today',this)">Today</div>
+      <div class="chip" data-range="tomorrow" onclick="setBookingRange('tomorrow',this)">Tomorrow</div>
+      <div class="chip" data-range="week" onclick="setBookingRange('week',this)">This Week</div>
+      <div class="chip" data-range="past" onclick="setBookingRange('past',this)">Past</div>
+      <div class="chip" data-range="all" onclick="setBookingRange('all',this)">All</div>
+    </div>
+    <div class="filter-row" id="bookings-status-chips">
+      <div class="chip on" data-status="" onclick="setBookingStatus('',this)">All</div>
+      <div class="chip" data-status="pending" onclick="setBookingStatus('pending',this)">Pending</div>
+      <div class="chip" data-status="confirmed" onclick="setBookingStatus('confirmed',this)">Confirmed</div>
+      <div class="chip" data-status="completed" onclick="setBookingStatus('completed',this)">Completed</div>
+      <div class="chip" data-status="cancelled" onclick="setBookingStatus('cancelled',this)">Cancelled</div>
+    </div>
+    <div id="bookings-list">
+      <div style="display:flex;justify-content:center;padding:40px"><div style="width:28px;height:28px;border:3px solid var(--bord);border-top-color:var(--acc);border-radius:50%;animation:spin .8s linear infinite"></div></div>
+    </div>
+  </div>
+
+  <!-- ── Providers pane ── -->
+  <div class="pane hidden" id="pane-providers">
+    <div id="providers-list">
+      <div style="display:flex;justify-content:center;padding:40px"><div style="width:28px;height:28px;border:3px solid var(--bord);border-top-color:var(--acc);border-radius:50%;animation:spin .8s linear infinite"></div></div>
+    </div>
+  </div>
+
+  <!-- ── Blocks pane ── -->
+  <div class="pane hidden" id="pane-blocks">
+    <div style="margin-bottom:10px">
+      <select id="block-provider-select" onchange="loadBlocks()" style="width:100%;padding:10px;background:var(--surf);border:1px solid var(--bord);border-radius:10px;color:var(--text);font-size:13px">
+        <option value="">Select provider…</option>
+      </select>
+    </div>
+    <div id="blocks-list">
+      <div style="text-align:center;padding:24px;color:var(--t2);font-size:13px">Pick a provider to see their blocks</div>
+    </div>
+  </div>
+
+  <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+
+  <div class="bnav"></div>
+  <div class="bnav-overlay" onclick="if(window.SBPSidebar)SBPSidebar._closeDrawer()"></div>
+  <div class="bnav-drawer"></div>
+</div>
+
+<button class="fab" id="fab-add" onclick="onFabClick()" title="Add">＋</button>
+
+<!-- ───────────────── Appointment Modal ───────────────── -->
+<div class="overlay" id="appt-modal">
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="sheet-title" id="appt-modal-title">📅 New Appointment</div>
+
+    <div class="ff">
+      <label>Provider *</label>
+      <select id="ap-provider"></select>
+    </div>
+
+    <div class="ff">
+      <label>Service (optional)</label>
+      <select id="ap-service"><option value="">— Generic appointment —</option></select>
+    </div>
+
+    <div class="row2">
+      <div class="ff">
+        <label>Date *</label>
+        <input type="date" id="ap-date">
+      </div>
+      <div class="ff">
+        <label>Time *</label>
+        <input type="time" id="ap-time">
+      </div>
+    </div>
+
+    <div class="ff">
+      <label>Duration (minutes) *</label>
+      <input type="number" id="ap-duration" min="5" step="5" value="30">
+    </div>
+
+    <div class="ff">
+      <label>Customer Name *</label>
+      <input type="text" id="ap-customer-name" maxlength="100">
+    </div>
+
+    <div class="row2">
+      <div class="ff">
+        <label>Phone *</label>
+        <input type="tel" id="ap-customer-phone" maxlength="15">
+      </div>
+      <div class="ff">
+        <label>WhatsApp</label>
+        <input type="tel" id="ap-customer-wa" maxlength="15">
+      </div>
+    </div>
+
+    <div class="ff">
+      <label>Customer notes</label>
+      <textarea id="ap-notes" rows="2" maxlength="300"></textarea>
+    </div>
+
+    <div class="ff">
+      <label>Internal notes (admin only)</label>
+      <textarea id="ap-internal" rows="2" maxlength="300"></textarea>
+    </div>
+
+    <div id="ap-status-section" style="display:none;margin-bottom:12px">
+      <label style="display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:5px">Status</label>
+      <div class="status-row">
+        <div class="status-btn" data-status="pending" onclick="setApptStatus('pending')">⏳ Pending</div>
+        <div class="status-btn" data-status="confirmed" onclick="setApptStatus('confirmed')">✓ Confirmed</div>
+        <div class="status-btn" data-status="completed" onclick="setApptStatus('completed')">✓✓ Done</div>
+        <div class="status-btn" data-status="cancelled" onclick="setApptStatus('cancelled')">✗ Cancelled</div>
+        <div class="status-btn" data-status="no_show" onclick="setApptStatus('no_show')">⚠ No-show</div>
+      </div>
+    </div>
+
+    <button class="btn-pri" onclick="saveAppt()" id="btn-save-appt">💾 Save</button>
+    <div style="height:8px"></div>
+    <button class="btn-sec" onclick="closeModal('appt-modal')">Cancel</button>
+    <div style="height:8px"></div>
+  </div>
+</div>
+
+<!-- ───────────────── Provider Modal ───────────────── -->
+<div class="overlay" id="provider-modal">
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="sheet-title" id="provider-modal-title">👤 Add Provider</div>
+
+    <div class="ff">
+      <label>Provider Name *</label>
+      <input type="text" id="pv-name" placeholder="e.g. Sneha, Dr. Rajesh" maxlength="80">
+    </div>
+
+    <div class="row2">
+      <div class="ff">
+        <label>Role / Title</label>
+        <input type="text" id="pv-role" placeholder="Stylist, Doctor, Trainer" maxlength="40">
+      </div>
+      <div class="ff">
+        <label>Photo URL</label>
+        <input type="url" id="pv-photo" placeholder="https://...">
+      </div>
+    </div>
+
+    <div class="row2">
+      <div class="ff">
+        <label>Phone</label>
+        <input type="tel" id="pv-phone" maxlength="15">
+      </div>
+      <div class="ff">
+        <label>Email</label>
+        <input type="email" id="pv-email">
+      </div>
+    </div>
+
+    <div class="ff">
+      <label>Bio (optional, shows on website)</label>
+      <textarea id="pv-bio" rows="2" maxlength="300"></textarea>
+    </div>
+
+    <div class="ff">
+      <label>Working Days</label>
+      <div class="dow-row" id="pv-dow">
+        <div class="dow-btn" data-day="0">Sun</div>
+        <div class="dow-btn on" data-day="1">Mon</div>
+        <div class="dow-btn on" data-day="2">Tue</div>
+        <div class="dow-btn on" data-day="3">Wed</div>
+        <div class="dow-btn on" data-day="4">Thu</div>
+        <div class="dow-btn on" data-day="5">Fri</div>
+        <div class="dow-btn on" data-day="6">Sat</div>
+      </div>
+    </div>
+
+    <div class="row2">
+      <div class="ff">
+        <label>Work Start *</label>
+        <input type="time" id="pv-start" value="09:00">
+      </div>
+      <div class="ff">
+        <label>Work End *</label>
+        <input type="time" id="pv-end" value="18:00">
+      </div>
+    </div>
+
+    <div class="row2">
+      <div class="ff">
+        <label>Slot length (mins)</label>
+        <input type="number" id="pv-slot" min="5" max="240" step="5" value="30">
+      </div>
+      <div class="ff">
+        <label>Buffer between (mins)</label>
+        <input type="number" id="pv-buffer" min="0" max="120" step="5" value="0">
+      </div>
+    </div>
+
+    <div class="ff">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+        <input type="checkbox" id="pv-active" checked style="width:16px;height:16px;accent-color:var(--acc3)">
+        <span>Active (accepting bookings)</span>
+      </label>
+    </div>
+
+    <button class="btn-pri" onclick="saveProvider()" id="btn-save-provider">💾 Save Provider</button>
+    <div style="height:8px"></div>
+    <button class="btn-sec" onclick="closeModal('provider-modal')">Cancel</button>
+    <button id="btn-delete-provider" class="btn-danger" style="margin-top:8px;display:none" onclick="deleteProvider()">🗑️ Delete Provider</button>
+    <div style="height:8px"></div>
+  </div>
+</div>
+
+<!-- ───────────────── Block Modal ───────────────── -->
+<div class="overlay" id="block-modal">
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="sheet-title">🚫 Block Time</div>
+    <div style="font-size:12px;color:var(--t2);margin-bottom:12px">Block a date or time-range when this provider is unavailable (vacation, holiday, lunch break override).</div>
+
+    <div class="ff">
+      <label>Date *</label>
+      <input type="date" id="bk-date">
+    </div>
+
+    <div class="ff">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+        <input type="checkbox" id="bk-fullday" checked onchange="toggleBlockFullday()" style="width:16px;height:16px;accent-color:var(--acc3)">
+        <span>Block full day</span>
+      </label>
+    </div>
+
+    <div class="row2" id="bk-times" style="display:none">
+      <div class="ff">
+        <label>From</label>
+        <input type="time" id="bk-start" value="13:00">
+      </div>
+      <div class="ff">
+        <label>To</label>
+        <input type="time" id="bk-end" value="14:00">
+      </div>
+    </div>
+
+    <div class="ff">
+      <label>Reason (optional)</label>
+      <input type="text" id="bk-reason" placeholder="Vacation, Holiday, Lunch…" maxlength="80">
+    </div>
+
+    <button class="btn-pri" onclick="saveBlock()" id="btn-save-block">💾 Save Block</button>
+    <div style="height:8px"></div>
+    <button class="btn-sec" onclick="closeModal('block-modal')">Cancel</button>
+    <div style="height:8px"></div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script src="lib/services.js"></script>
+<script src="lib/appointments.js"></script>
+<script>
+
+// ── State ──
+let _shop=null, _shopId=null, _user=null;
+let _providers=[];      // cached providers
+let _services=[];       // cached services
+let _appointments=[];   // current view's bookings
+let _curTab='bookings';
+let _curRange='upcoming';
+let _curStatus='';
+let _editingApptId=null;
+let _editingProviderId=null;
+let _curStatusChoice=null;
+
+// ── Helpers ──
+function escHtml(s){return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function fINR(n){return '₹'+(parseFloat(n)||0).toLocaleString('en-IN',{maximumFractionDigits:0})}
+function fmtDate(d){return new Date(d).toLocaleDateString('en-IN',{weekday:'short',day:'2-digit',month:'short'})}
+function fmtTime(d){return new Date(d).toLocaleTimeString('en-IN',{hour:'numeric',minute:'2-digit',hour12:true})}
+function fmtDateTime(d){return fmtDate(d)+' · '+fmtTime(d)}
+function dateISO(d){const x=new Date(d);return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0')}
+function todayISO(){return dateISO(new Date())}
+function toast(msg,type='',dur=3000){
+  const c=document.getElementById('toast-container');
+  const t=document.createElement('div');
+  t.className='toast'+(type?' '+type:'');
+  t.textContent=msg;
+  c.appendChild(t);
+  setTimeout(()=>{t.style.opacity='0';t.style.transition='.2s';setTimeout(()=>t.remove(),220);},dur);
+}
+function toggleTheme(){
+  const cur=document.documentElement.getAttribute('data-theme')||'';
+  const next=cur==='light'?'':'light';
+  document.documentElement.setAttribute('data-theme',next);
+  localStorage.setItem('sbp_theme',next==='light'?'light':'dark');
+  document.getElementById('theme-btn').textContent=next==='light'?'🌙':'☀️';
+}
+function openModal(id){const el=document.getElementById(id);el.classList.add('open');el.style.display='flex';el.addEventListener('click',e=>{if(e.target===el)closeModal(id)},{once:true})}
+function closeModal(id){const el=document.getElementById(id);el.classList.remove('open');el.style.display='none'}
+
+// ── Init ──
+async function init(){
+  // ── BATCH 012 FIX (6 May 2026): render sidebar + inject lang CSS
+  // Fixes: missing sidebar (BUG-004) + bilingual text concatenated (BUG-005).
+  if (window.SBPSidebar) {
+    SBPSidebar.render({ currentPage: 'appointments', layout: 'desktop' });
+    SBPSidebar.render({ currentPage: 'appointments', layout: 'mobile-bottom', container: '.bnav' });
+    SBPSidebar.render({ currentPage: 'appointments', layout: 'mobile-drawer', container: '.bnav-drawer' });
+  }
+
+  if(localStorage.getItem('sbp_theme')==='light'){document.getElementById('theme-btn').textContent='🌙'}
+
+  const {data:{session}} = await _sb.auth.getSession();
+  if(!session){window.location.href='index.html';return;}
+  _user=session.user;
+  _shop=JSON.parse(localStorage.getItem('sbp_shop')||'{}');
+  _shopId=localStorage.getItem('sbp_shop_id')||_shop.id;
+
+  if(!isBiz()){
+    document.getElementById('locked-banner').style.display='block';
+    document.getElementById('tab-row').style.display='none';
+    document.getElementById('pane-bookings').style.display='none';
+    document.getElementById('pane-providers').style.display='none';
+    document.getElementById('pane-blocks').style.display='none';
+    document.getElementById('fab-add').style.display='none';
+    return;
+  }
+
+  // Pre-load providers + services for dropdowns
+  await Promise.all([reloadProviders(), reloadServices()]);
+  await loadBookings();
+}
+
+async function reloadProviders(){
+  const r = await SBPAppt.providers.list(_shopId);
+  if(r.ok) _providers = r.providers || [];
+  return _providers;
+}
+
+async function reloadServices(){
+  if(!window.SBPServices) return [];
+  const r = await SBPServices.list(_shopId);
+  if(r.ok) _services = (r.services || []).filter(s=>s.active);
+  return _services;
+}
+
+// ── Tab switching ──
+function switchTab(tab){
+  _curTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('on', b.dataset.tab===tab));
+  document.querySelectorAll('.pane').forEach(p=>p.classList.add('hidden'));
+  document.getElementById('pane-'+tab).classList.remove('hidden');
+  document.getElementById('fab-add').style.display = (tab==='bookings'||tab==='providers'||(tab==='blocks'&&document.getElementById('block-provider-select').value)) ? 'flex' : 'none';
+  loadCurrentTab();
+}
+
+function loadCurrentTab(){
+  if(_curTab==='bookings') loadBookings();
+  else if(_curTab==='providers') loadProvidersTab();
+  else if(_curTab==='blocks'){ populateBlockProviderSelect(); loadBlocks(); }
+}
+
+function onFabClick(){
+  if(_curTab==='bookings') openAddAppt();
+  else if(_curTab==='providers') openAddProvider();
+  else if(_curTab==='blocks') openAddBlock();
+}
+
+// ════════════════════════════════════════════════════
+// BOOKINGS PANE
+// ════════════════════════════════════════════════════
+
+function setBookingRange(range, el){
+  _curRange = range;
+  document.querySelectorAll('#bookings-date-chips .chip').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on');
+  loadBookings();
+}
+function setBookingStatus(status, el){
+  _curStatus = status;
+  document.querySelectorAll('#bookings-status-chips .chip').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on');
+  loadBookings();
+}
+
+async function loadBookings(){
+  const list = document.getElementById('bookings-list');
+  list.innerHTML = `<div style="display:flex;justify-content:center;padding:40px"><div style="width:28px;height:28px;border:3px solid var(--bord);border-top-color:var(--acc);border-radius:50%;animation:spin .8s linear infinite"></div></div>`;
+
+  // Compute date range
+  const now = new Date();
+  let from = null, to = null;
+  switch(_curRange){
+    case 'upcoming': from = now; break;
+    case 'today': {
+      const s = new Date(now); s.setHours(0,0,0,0);
+      const e = new Date(now); e.setHours(23,59,59,999);
+      from = s; to = e; break;
+    }
+    case 'tomorrow': {
+      const s = new Date(now); s.setDate(s.getDate()+1); s.setHours(0,0,0,0);
+      const e = new Date(s); e.setHours(23,59,59,999);
+      from = s; to = e; break;
+    }
+    case 'week': {
+      const s = new Date(now); s.setHours(0,0,0,0);
+      const e = new Date(now); e.setDate(e.getDate()+7); e.setHours(23,59,59,999);
+      from = s; to = e; break;
+    }
+    case 'past': {
+      const e = new Date(now);
+      to = e; break;
+    }
+    case 'all': break;
+  }
+
+  const r = await SBPAppt.list(_shopId, from?from.toISOString():null, to?to.toISOString():null, null, _curStatus||null);
+  if(!r.ok){
+    list.innerHTML = `<div class="empty"><div class="empty-emoji">⚠️</div><div class="empty-title">Could not load</div><div class="empty-msg">${escHtml(r.error||'Unknown error')}</div></div>`;
+    return;
+  }
+
+  _appointments = r.appointments || [];
+  renderBookings();
+}
+
+function renderBookings(){
+  const list = document.getElementById('bookings-list');
+  if(_appointments.length===0){
+    list.innerHTML = `
+      <div class="empty">
+        <div class="empty-emoji">📅</div>
+        <div class="empty-title">No appointments</div>
+        <div class="empty-msg">Tap + below to add one, or share your shop link so customers can book online.</div>
+      </div>`;
+    return;
+  }
+
+  // Group by date
+  const groups = {};
+  _appointments.forEach(a=>{
+    const day = dateISO(a.starts_at);
+    if(!groups[day]) groups[day] = [];
+    groups[day].push(a);
+  });
+
+  let html = '';
+  Object.keys(groups).sort().forEach(day=>{
+    const dateLabel = fmtDate(day) + (day===todayISO() ? ' · TODAY' : '');
+    html += `<div class="day-sep">${escHtml(dateLabel)}</div>`;
+    groups[day].forEach(a=>{
+      const cls = (a.status==='cancelled'||a.status==='no_show')?'cancelled':'';
+      const svcLine = a.service_name_snapshot ? `${escHtml(a.service_name_snapshot)} · ` : '';
+      const price = a.service_price_snapshot>0 ? fINR(a.service_price_snapshot) : '';
+      html += `
+        <div class="appt-card ${cls}" onclick="openEditAppt('${a.id}')">
+          <div class="appt-time-row">
+            <div class="appt-time">${fmtTime(a.starts_at)} · ${a.duration_minutes}m</div>
+            <div class="appt-status ${a.status}">${a.status}</div>
+          </div>
+          <div class="appt-customer">${escHtml(a.customer_name)}</div>
+          <div class="appt-meta">
+            ${a.provider_name ? `<span class="appt-meta-tag">👤 ${escHtml(a.provider_name)}</span>` : ''}
+            ${svcLine ? `<span class="appt-meta-tag">${svcLine}${price}</span>` : ''}
+            ${a.customer_phone ? `<span class="appt-meta-tag">📞 ${escHtml(a.customer_phone)}</span>` : ''}
+            ${a.source==='public_form' ? `<span class="appt-meta-tag" style="background:rgba(139,92,246,.15);border-color:var(--violet);color:var(--violet)">🌐 Online</span>` : ''}
+          </div>
+        </div>`;
+    });
+  });
+
+  list.innerHTML = html;
+}
+
+// ── Appointment CRUD ──
+
+function openAddAppt(){
+  if(_providers.length===0){
+    toast('Add a provider first','i');
+    switchTab('providers');
+    return;
+  }
+  _editingApptId = null;
+  document.getElementById('appt-modal-title').textContent = '📅 New Appointment';
+  document.getElementById('ap-status-section').style.display = 'none';
+
+  // Populate provider dropdown
+  const psel = document.getElementById('ap-provider');
+  psel.innerHTML = _providers.filter(p=>p.active).map(p=>`<option value="${p.id}">${escHtml(p.name)}${p.role?' ('+escHtml(p.role)+')':''}</option>`).join('');
+
+  // Populate service dropdown
+  const ssel = document.getElementById('ap-service');
+  ssel.innerHTML = '<option value="">— Generic appointment —</option>' + _services.map(s=>`<option value="${s.id}" data-duration="${s.duration_minutes||30}">${escHtml(s.name)} (${fINR(s.price)}${s.duration_minutes?', '+s.duration_minutes+'m':''})</option>`).join('');
+  ssel.onchange = function(){
+    const opt = ssel.selectedOptions[0];
+    if(opt && opt.dataset.duration) document.getElementById('ap-duration').value = opt.dataset.duration;
+  };
+
+  // Defaults
+  document.getElementById('ap-date').value = todayISO();
+  const now = new Date();
+  const minutes = Math.ceil(now.getMinutes()/15)*15;
+  now.setMinutes(minutes, 0, 0);
+  document.getElementById('ap-time').value = String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+  document.getElementById('ap-duration').value = 30;
+  document.getElementById('ap-customer-name').value = '';
+  document.getElementById('ap-customer-phone').value = '';
+  document.getElementById('ap-customer-wa').value = '';
+  document.getElementById('ap-notes').value = '';
+  document.getElementById('ap-internal').value = '';
+
+  openModal('appt-modal');
+}
+
+function openEditAppt(id){
+  const a = _appointments.find(x=>x.id===id);
+  if(!a) return;
+  _editingApptId = id;
+  _curStatusChoice = a.status;
+  document.getElementById('appt-modal-title').textContent = '✏️ Edit Appointment';
+  document.getElementById('ap-status-section').style.display = 'block';
+  // Highlight current status pill
+  document.querySelectorAll('#ap-status-section .status-btn').forEach(b=>{
+    const isOn = b.dataset.status===a.status;
+    b.style.background = isOn?'var(--acc)':'';
+    b.style.color = isOn?'#0A0E1A':'';
+    b.style.borderColor = isOn?'var(--acc)':'';
+  });
+
+  const psel = document.getElementById('ap-provider');
+  psel.innerHTML = _providers.map(p=>`<option value="${p.id}" ${p.id===a.provider_id?'selected':''}>${escHtml(p.name)}${p.role?' ('+escHtml(p.role)+')':''}</option>`).join('');
+
+  const ssel = document.getElementById('ap-service');
+  ssel.innerHTML = '<option value="">— Generic appointment —</option>' + _services.map(s=>`<option value="${s.id}" ${s.id===a.service_id?'selected':''}>${escHtml(s.name)} (${fINR(s.price)})</option>`).join('');
+
+  const startDate = new Date(a.starts_at);
+  document.getElementById('ap-date').value = dateISO(startDate);
+  document.getElementById('ap-time').value = String(startDate.getHours()).padStart(2,'0')+':'+String(startDate.getMinutes()).padStart(2,'0');
+  document.getElementById('ap-duration').value = a.duration_minutes;
+  document.getElementById('ap-customer-name').value = a.customer_name||'';
+  document.getElementById('ap-customer-phone').value = a.customer_phone||'';
+  document.getElementById('ap-customer-wa').value = a.customer_wa||'';
+  document.getElementById('ap-notes').value = a.notes||'';
+  document.getElementById('ap-internal').value = a.internal_notes||'';
+
+  openModal('appt-modal');
+}
+
+function setApptStatus(s){
+  _curStatusChoice = s;
+  document.querySelectorAll('#ap-status-section .status-btn').forEach(b=>{
+    const isOn = b.dataset.status===s;
+    b.style.background = isOn?'var(--acc)':'';
+    b.style.color = isOn?'#0A0E1A':'';
+    b.style.borderColor = isOn?'var(--acc)':'';
+  });
+}
+
+async function saveAppt(){
+  const name = document.getElementById('ap-customer-name').value.trim();
+  if(!name){ toast('Customer name required','e'); return; }
+  const date = document.getElementById('ap-date').value;
+  const time = document.getElementById('ap-time').value;
+  if(!date||!time){ toast('Date & time required','e'); return; }
+  const startsLocal = new Date(date+'T'+time+':00');
+  if(isNaN(startsLocal.getTime())){ toast('Invalid date/time','e'); return; }
+  const duration = parseInt(document.getElementById('ap-duration').value, 10);
+  if(!duration || duration<=0){ toast('Duration required','e'); return; }
+
+  const data = {
+    provider_id: document.getElementById('ap-provider').value || null,
+    service_id: document.getElementById('ap-service').value || null,
+    customer_name: name,
+    customer_phone: document.getElementById('ap-customer-phone').value.trim() || null,
+    customer_wa: document.getElementById('ap-customer-wa').value.trim() || null,
+    starts_at: startsLocal.toISOString(),
+    duration_minutes: duration,
+    notes: document.getElementById('ap-notes').value.trim() || null,
+    internal_notes: document.getElementById('ap-internal').value.trim() || null
+  };
+
+  const btn = document.getElementById('btn-save-appt');
+  btn.disabled = true; btn.textContent = '⏳ Saving…';
+
+  let res;
+  if(_editingApptId){
+    res = await SBPAppt.update(_editingApptId, data);
+    // If status changed, also update it
+    if(res.ok && _curStatusChoice){
+      const cur = _appointments.find(x=>x.id===_editingApptId);
+      if(cur && cur.status !== _curStatusChoice){
+        await SBPAppt.setStatus(_editingApptId, _curStatusChoice);
+      }
+    }
+  } else {
+    res = await SBPAppt.create(_shopId, data);
+  }
+
+  btn.disabled = false; btn.textContent = '💾 Save';
+
+  if(res.ok){
+    toast(_editingApptId?'✅ Updated':'✅ Appointment created','s');
+    closeModal('appt-modal');
+    await loadBookings();
+  } else {
+    toast('❌ '+(res.error||'Save failed'),'e');
+  }
+}
+
+// ════════════════════════════════════════════════════
+// PROVIDERS PANE
+// ════════════════════════════════════════════════════
+
+async function loadProvidersTab(){
+  const list = document.getElementById('providers-list');
+  list.innerHTML = `<div style="display:flex;justify-content:center;padding:40px"><div style="width:28px;height:28px;border:3px solid var(--bord);border-top-color:var(--acc);border-radius:50%;animation:spin .8s linear infinite"></div></div>`;
+  await reloadProviders();
+  renderProviders();
+}
+
+function renderProviders(){
+  const list = document.getElementById('providers-list');
+  if(_providers.length===0){
+    list.innerHTML = `
+      <div class="empty">
+        <div class="empty-emoji">👥</div>
+        <div class="empty-title">No providers yet</div>
+        <div class="empty-msg">Add yourself or your staff so customers can book appointments. For solo shops, just add your name.</div>
+        <button class="btn-pri" style="max-width:220px;margin:0 auto" onclick="openAddProvider()">＋ Add Provider</button>
+      </div>`;
+    return;
+  }
+
+  const dowNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  list.innerHTML = _providers.map(p=>{
+    const days = (p.working_days||[]).map(d=>dowNames[d]).join(', ');
+    const initial = (p.name.match(/[A-Za-z\u0900-\u097F]/) || ['?'])[0].toUpperCase();
+    const ph = p.photo_url
+      ? `<img src="${escHtml(p.photo_url)}" alt="" onerror="this.style.display='none';this.parentElement.textContent='${escHtml(initial)}'">`
+      : escHtml(initial);
+    return `<div class="prv-card${p.active?'':' inactive'}" onclick="openEditProvider('${p.id}')">
+      <div class="prv-avatar">${ph}</div>
+      <div class="prv-body">
+        <div class="prv-name">${escHtml(p.name)}${p.role?` <span style="color:var(--t2);font-weight:500;font-size:11px">· ${escHtml(p.role)}</span>`:''}</div>
+        <div class="prv-meta">
+          🕒 ${escHtml(p.work_start_time||'09:00')} – ${escHtml(p.work_end_time||'18:00')}<br>
+          📅 ${escHtml(days||'No days set')}<br>
+          ⏱ ${p.slot_interval_minutes}m slots${p.buffer_minutes>0?', '+p.buffer_minutes+'m buffer':''}
+        </div>
+      </div>
+      <div style="font-size:18px;color:var(--t2)">›</div>
+    </div>`;
+  }).join('');
+}
+
+function _readWorkingDays(){
+  const days = [];
+  document.querySelectorAll('#pv-dow .dow-btn.on').forEach(b=>days.push(parseInt(b.dataset.day,10)));
+  return days;
+}
+
+function openAddProvider(){
+  _editingProviderId = null;
+  document.getElementById('provider-modal-title').textContent = '👤 Add Provider';
+  document.getElementById('btn-delete-provider').style.display = 'none';
+  document.getElementById('pv-name').value = _shop.owner_name || '';
+  document.getElementById('pv-role').value = '';
+  document.getElementById('pv-photo').value = '';
+  document.getElementById('pv-phone').value = _shop.phone || '';
+  document.getElementById('pv-email').value = _shop.email || '';
+  document.getElementById('pv-bio').value = '';
+  document.getElementById('pv-start').value = '09:00';
+  document.getElementById('pv-end').value = '18:00';
+  document.getElementById('pv-slot').value = 30;
+  document.getElementById('pv-buffer').value = 0;
+  document.getElementById('pv-active').checked = true;
+  // Default Mon-Sat
+  document.querySelectorAll('#pv-dow .dow-btn').forEach(b=>{
+    const d = parseInt(b.dataset.day,10);
+    b.classList.toggle('on', d>=1 && d<=6);
+  });
+  // Wire day toggles
+  document.querySelectorAll('#pv-dow .dow-btn').forEach(b=>{
+    b.onclick = ()=>b.classList.toggle('on');
+  });
+  openModal('provider-modal');
+}
+
+function openEditProvider(id){
+  const p = _providers.find(x=>x.id===id);
+  if(!p) return;
+  _editingProviderId = id;
+  document.getElementById('provider-modal-title').textContent = '✏️ Edit Provider';
+  document.getElementById('btn-delete-provider').style.display = 'block';
+  document.getElementById('pv-name').value = p.name||'';
+  document.getElementById('pv-role').value = p.role||'';
+  document.getElementById('pv-photo').value = p.photo_url||'';
+  document.getElementById('pv-phone').value = p.phone||'';
+  document.getElementById('pv-email').value = p.email||'';
+  document.getElementById('pv-bio').value = p.bio||'';
+  document.getElementById('pv-start').value = (p.work_start_time||'09:00').slice(0,5);
+  document.getElementById('pv-end').value = (p.work_end_time||'18:00').slice(0,5);
+  document.getElementById('pv-slot').value = p.slot_interval_minutes||30;
+  document.getElementById('pv-buffer').value = p.buffer_minutes||0;
+  document.getElementById('pv-active').checked = !!p.active;
+  const days = p.working_days || [];
+  document.querySelectorAll('#pv-dow .dow-btn').forEach(b=>{
+    const d = parseInt(b.dataset.day,10);
+    b.classList.toggle('on', days.indexOf(d)>=0);
+    b.onclick = ()=>b.classList.toggle('on');
+  });
+  openModal('provider-modal');
+}
+
+async function saveProvider(){
+  const name = document.getElementById('pv-name').value.trim();
+  if(!name){ toast('Name required','e'); return; }
+  const start = document.getElementById('pv-start').value;
+  const end = document.getElementById('pv-end').value;
+  if(start >= end){ toast('Work end must be after start','e'); return; }
+  const days = _readWorkingDays();
+  if(days.length===0){ toast('Select at least one working day','e'); return; }
+
+  const data = {
+    name: name,
+    role: document.getElementById('pv-role').value.trim() || null,
+    phone: document.getElementById('pv-phone').value.trim() || null,
+    email: document.getElementById('pv-email').value.trim() || null,
+    photo_url: document.getElementById('pv-photo').value.trim() || null,
+    bio: document.getElementById('pv-bio').value.trim() || null,
+    working_days: days,
+    work_start_time: start,
+    work_end_time: end,
+    slot_interval_minutes: parseInt(document.getElementById('pv-slot').value,10) || 30,
+    buffer_minutes: parseInt(document.getElementById('pv-buffer').value,10) || 0,
+    active: document.getElementById('pv-active').checked
+  };
+
+  const btn = document.getElementById('btn-save-provider');
+  btn.disabled = true; btn.textContent = '⏳ Saving…';
+  const res = await SBPAppt.providers.upsert(_shopId, _editingProviderId, data);
+  btn.disabled = false; btn.textContent = '💾 Save Provider';
+
+  if(res.ok){
+    toast('✅ Saved','s');
+    closeModal('provider-modal');
+    await loadProvidersTab();
+  } else {
+    toast('❌ '+(res.error||'Save failed'),'e');
+  }
+}
+
+async function deleteProvider(){
+  if(!_editingProviderId) return;
+  if(!confirm('Delete this provider? Past appointments are kept; future ones must be cancelled first.')) return;
+  const res = await SBPAppt.providers.delete(_editingProviderId);
+  if(res.ok){
+    toast('✅ Deleted','s');
+    closeModal('provider-modal');
+    await loadProvidersTab();
+  } else {
+    if(res.error==='has_active_appointments'){
+      toast('Cancel future appointments first ('+(res.count||'')+' active)','e');
+    } else {
+      toast('❌ '+(res.error||'Delete failed'),'e');
+    }
+  }
+}
+
+// ════════════════════════════════════════════════════
+// BLOCKS PANE
+// ════════════════════════════════════════════════════
+
+function populateBlockProviderSelect(){
+  const sel = document.getElementById('block-provider-select');
+  sel.innerHTML = '<option value="">Select provider…</option>' +
+    _providers.filter(p=>p.active).map(p=>`<option value="${p.id}">${escHtml(p.name)}</option>`).join('');
+}
+
+async function loadBlocks(){
+  const providerId = document.getElementById('block-provider-select').value;
+  document.getElementById('fab-add').style.display = providerId ? 'flex' : 'none';
+  const list = document.getElementById('blocks-list');
+  if(!providerId){
+    list.innerHTML = '<div style="text-align:center;padding:24px;color:var(--t2);font-size:13px">Pick a provider to see their blocks</div>';
+    return;
+  }
+
+  list.innerHTML = `<div style="display:flex;justify-content:center;padding:30px"><div style="width:24px;height:24px;border:3px solid var(--bord);border-top-color:var(--acc);border-radius:50%;animation:spin .8s linear infinite"></div></div>`;
+
+  const today = todayISO();
+  const future = new Date(); future.setMonth(future.getMonth()+12);
+  const r = await SBPAppt.blocks.list(providerId, today, dateISO(future));
+  if(!r.ok){
+    list.innerHTML = `<div class="empty"><div class="empty-emoji">⚠️</div><div class="empty-title">Could not load</div><div class="empty-msg">${escHtml(r.error||'Unknown')}</div></div>`;
+    return;
+  }
+
+  if(r.blocks.length===0){
+    list.innerHTML = `
+      <div class="empty">
+        <div class="empty-emoji">🚫</div>
+        <div class="empty-title">No blocks</div>
+        <div class="empty-msg">Tap + to block a date or time-range (vacation, holiday, lunch break override).</div>
+      </div>`;
+    return;
+  }
+
+  list.innerHTML = r.blocks.map(b=>{
+    const dateLabel = fmtDate(b.block_date);
+    const timeRange = (b.start_time && b.end_time)
+      ? `${(b.start_time||'').slice(0,5)} – ${(b.end_time||'').slice(0,5)}`
+      : 'Full day';
+    return `<div class="block-card">
+      <div>
+        <div class="block-date">${escHtml(dateLabel)} · ${escHtml(timeRange)}</div>
+        ${b.reason ? `<div class="block-reason">${escHtml(b.reason)}</div>` : ''}
+      </div>
+      <button onclick="confirmDeleteBlock('${b.id}')" style="background:transparent;border:1px solid var(--bord);color:var(--rose);padding:5px 10px;border-radius:8px;font-size:11px;cursor:pointer">Remove</button>
+    </div>`;
+  }).join('');
+}
+
+function toggleBlockFullday(){
+  const full = document.getElementById('bk-fullday').checked;
+  document.getElementById('bk-times').style.display = full ? 'none' : 'grid';
+}
+
+function openAddBlock(){
+  const providerId = document.getElementById('block-provider-select').value;
+  if(!providerId){ toast('Pick a provider first','i'); return; }
+  document.getElementById('bk-date').value = todayISO();
+  document.getElementById('bk-fullday').checked = true;
+  toggleBlockFullday();
+  document.getElementById('bk-start').value = '13:00';
+  document.getElementById('bk-end').value = '14:00';
+  document.getElementById('bk-reason').value = '';
+  openModal('block-modal');
+}
+
+async function saveBlock(){
+  const providerId = document.getElementById('block-provider-select').value;
+  if(!providerId){ toast('No provider','e'); return; }
+  const date = document.getElementById('bk-date').value;
+  if(!date){ toast('Date required','e'); return; }
+  const fullday = document.getElementById('bk-fullday').checked;
+  const start = fullday ? null : document.getElementById('bk-start').value;
+  const end = fullday ? null : document.getElementById('bk-end').value;
+  if(!fullday && start >= end){ toast('End time must be after start','e'); return; }
+  const reason = document.getElementById('bk-reason').value.trim() || null;
+
+  const btn = document.getElementById('btn-save-block');
+  btn.disabled = true; btn.textContent = '⏳ Saving…';
+  const res = await SBPAppt.blocks.create(providerId, date, start, end, reason);
+  btn.disabled = false; btn.textContent = '💾 Save Block';
+
+  if(res.ok){
+    toast('✅ Block saved','s');
+    closeModal('block-modal');
+    await loadBlocks();
+  } else {
+    toast('❌ '+(res.error||'Save failed'),'e');
+  }
+}
+
+async function confirmDeleteBlock(id){
+  if(!confirm('Remove this block?')) return;
+  const res = await SBPAppt.blocks.delete(id);
+  if(res.ok){
+    toast('✅ Removed','s');
+    await loadBlocks();
+  } else {
+    toast('❌ '+(res.error||'Failed'),'e');
+  }
+}
+
+init();
+</script>
+<script src="lib/beta-banner.js"></script>
+</body>
+</html>
