@@ -10,6 +10,21 @@
   } catch(e) {}
 })();
 </script>
+<script>
+// PLAN GATE — canonical helpers (verbatim pattern from services.html)
+function _sbpPlanInfo(){
+  const s=JSON.parse(localStorage.getItem('sbp_shop')||'{}');
+  let plan=(s.plan||'free').toLowerCase();
+  if(plan==='enterprise') plan='business';
+  const exp=s.plan_expires_at;
+  if(exp && plan!=='free' && new Date(exp) < new Date()) plan='free';
+  return {plan, expired:!!(exp && new Date(exp) < new Date())};
+}
+function isPro(){const p=_sbpPlanInfo().plan;return p==='pro'||p==='business';}
+function isBiz(){return _sbpPlanInfo().plan==='business';}
+function isFree(){return _sbpPlanInfo().plan==='free';}
+</script>
+
 
 <meta charset="UTF-8">
 <meta name="google" content="notranslate">
@@ -363,6 +378,12 @@ html,body{height:100%;overflow:hidden}
 <link rel="stylesheet" href="fix.css">
 </head>
 <body>
+<div id="sbp-locked-banner" style="display:none;margin:16px;padding:22px;border:1px solid var(--bord,#e5e7eb);border-radius:14px;background:var(--surf,#fff);text-align:center">
+  <div style="font-size:34px;margin-bottom:8px">&#128274;</div>
+  <div style="font-weight:800;font-size:17px;margin-bottom:6px">Recurring Bills is a Pro feature</div>
+  <div style="color:var(--t2,#6b7280);font-size:14px;margin-bottom:14px">Automate repeat invoices &mdash; available on Pro &amp; Business plans.</div>
+  <a href="subscription.html" style="display:inline-block;padding:11px 22px;border-radius:10px;background:linear-gradient(135deg,#F5A623,#FF8A00);color:#0A0E1A;font-weight:800;text-decoration:none">Upgrade to Pro</a>
+</div>
 <script>(function(){var ds=localStorage.getItem("sbp_digit_style")||"default";var fs=parseInt(localStorage.getItem("sbp_font_size")||"15");var fm={default:"inherit",mono:"Courier New,monospace",rounded:"DM Sans,sans-serif",sharp:"Outfit,sans-serif"};var st=document.getElementById("sbp-font-override");if(!st){st=document.createElement("style");st.id="sbp-font-override";document.head.appendChild(st);}st.textContent="body{font-size:"+fs+"px}.sc-val,.cm-val,.bc-amt,.cust-bal-val,.cms-val,.cart-total-val,.pos-item-price,.tot-row span:last-child,.gst-row span,.stat-val,.stat-num,.report-val,.bill-total,.bdoc-inv-no,.bc-inv,.lv{font-family:"+fm[ds]+"!important}";})();</script>
 <div id="app">
   <div id="sbpBetaBanner"></div>
@@ -705,6 +726,15 @@ function generateAllDue(){
 }
 
 function init(){
+  // PLAN GATE: Recurring Bills = Pro+ (per marketing page). Block Free only.
+  if(typeof isFree==='function' && isFree()){
+    var lb=document.getElementById('sbp-locked-banner');
+    if(lb) lb.style.display='block';
+    ['rec-list','fab-add','summary-row','rec-summary','content']
+      .forEach(function(id){var e=document.getElementById(id);if(e)e.style.display='none';});
+    return;
+  }
+
   if(_theme==='light'){document.documentElement.setAttribute('data-theme','light');document.getElementById('theme-btn').textContent='🌙'}
   renderRecurring();
   _resetTimer();

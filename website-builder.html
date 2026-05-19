@@ -1305,6 +1305,10 @@ function isPro(){
   const p = (_shop && _shop.plan) || 'free';
   return p === 'pro' || p === 'business' || p === 'enterprise';
 }
+function isBiz(){
+  const p = (_shop && _shop.plan) || 'free';
+  return p === 'business' || p === 'enterprise';
+}
 
 // ── Color picker ──────────────────────────────────────────────────
 function renderColors(){
@@ -2181,14 +2185,14 @@ async function init(){
   const planNorm = plan === 'enterprise' ? 'business' : plan;
   const pill = planNorm === 'business' ? 'pill-biz' : (planNorm === 'pro' ? 'pill-pro' : '');
   $('plan-banner').innerHTML =
-    '<div class="plan-banner-ic">' + (isPro() ? '✨' : '🔒') + '</div>' +
+    '<div class="plan-banner-ic">' + (isBiz() ? '✨' : '🔒') + '</div>' +
     '<div class="plan-banner-info">' +
-      '<div class="plan-banner-t">' + (isPro() ? 'You can build your AI website' : 'Free plan — AI Website locked') + '</div>' +
+      '<div class="plan-banner-t">' + (isBiz() ? 'You can build your AI website' : 'AI Website — Business plan feature') + '</div>' +
       '<div class="plan-banner-s">Current plan: <span class="pill ' + pill + '">' + planNorm.toUpperCase() + '</span></div>' +
     '</div>' +
-    (isPro() ? '' : '<a class="btn btn-pri btn-sm" href="subscription.html">Upgrade</a>');
+    (isBiz() ? '' : '<a class="btn btn-pri btn-sm" href="subscription.html">Upgrade</a>');
 
-  if (!isPro()){
+  if (!isBiz()){
     $('locked-screen').style.display = 'block';
     return;
   }

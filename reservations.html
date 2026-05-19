@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en" translate="no" class="notranslate">
+<head>
+<script>(function(){try{var t=localStorage.getItem('sbp_theme');if(t==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}})();</script>
+<script>(function(){try{document.documentElement.lang=localStorage.getItem('sbp_lang')||'en';}catch(e){}})();</script>
+<meta charset="UTF-8">
+<meta name="google" content="notranslate">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#F5A623">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>ShopBill Pro — Reservations</title>
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png?v=2">
+<link rel="apple-touch-icon" sizes="192x192" href="icons/icon-192x192.png">
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Noto+Sans:wght@300;400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+function _sbpPlanInfo(){const s=JSON.parse(localStorage.getItem('sbp_shop')||'{}');let plan=(s.plan||'free').toLowerCase();if(plan==='enterprise')plan='business';const exp=s.plan_expires_at;if(exp&&plan!=='free'&&new Date(exp)<new Date())plan='free';return{plan,expired:!!(exp&&new Date(exp)<new Date())};}
+function isPro(){const p=_sbpPlanInfo().plan;return p==='pro'||p==='business';}
+function isBiz(){return _sbpPlanInfo().plan==='business';}
+function isFree(){return _sbpPlanInfo().plan==='free';}
+</script>
+<script src="lang.js"></script>
+<script src="lib/sidebar-engine.js"></script>
+<script src="conversion.js"></script>
+<script>
+const SB_URL='https://jfqeirfrkjdkqqixivru.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmcWVpcmZya2pka3FxaXhpdnJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzNzQ4MzgsImV4cCI6MjA4OTk1MDgzOH0.akd4E0nil8ypLR4WOykkeYIL8g4uuNU6XdSVh_Y1utk';
+const _sb=supabase.createClient(SB_URL,SB_KEY,{auth:{autoRefreshToken:true,persistSession:true,detectSessionInUrl:false}});
+window._sb=_sb;
+</script>
+<link rel="stylesheet" href="/styles.css"><!-- BATCH UI-1: canonical design system -->
+<style>
+.lang-hi{display:none!important}
+.lang-en{display:inline!important}
+html[lang="hi"] .lang-hi{display:inline!important}
+html[lang="hi"] .lang-en{display:none!important}
+
+/* ── Design tokens ── */
+:root{--acc:#F5A623;--acc2:#EF4444;--acc3:#10B981;--acc4:#6366F1;--bg:#0A0E1A;--surf:#131826;--surf2:#1A2035;--bord:#252D3D;--text:#F0EFF8;--t2:#8A8AA8;--t3:#4A4A60;--font-h:'Outfit',system-ui,sans-serif;--r:12px;--tr:.15s ease;}
+html[data-theme='light']{--bg:#F4F5F7;--surf:#FFFFFF;--surf2:#F0F2F5;--bord:#E2E5EA;--text:#0A0E1A;--t2:#6B7280;--t3:#9CA3AF;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font-h),sans-serif;-webkit-font-smoothing:antialiased}
+/* Layout */
+#app-layout{display:flex;min-height:100vh}
+#main-col{margin-left:220px}
+/* ============================================================
+   SIDEBAR REDESIGN v2 — rolled out (approved on dashboard).
+   Modern app aesthetic: no native scrollbar, accent-bar active
+   state, smooth hover, polished header/footer. Pure CSS; engine,
+   DOM, mobile drawer, and any per-page #dsb position override are
+   intentionally preserved (see POSITION_KEEP note per page).
+   ============================================================ */
+#dsb{
+  position:fixed;left:0;top:0;bottom:0;width:236px;
+  background: var(--surf);
+  border-right:1px solid color-mix(in srgb, var(--bord) 60%, transparent);
+  display:flex;flex-direction:column;z-index:200;
+  overflow:hidden;
+  box-shadow:1px 0 0 color-mix(in srgb, var(--bord) 40%, transparent);
+}
+.dsb-logo{
+  display:flex;align-items:center;gap:11px;
+  padding:20px 18px 16px;
+  border-bottom:1px solid color-mix(in srgb, var(--bord) 55%, transparent);
+  flex-shrink:0;
+}
+.dsb-logo img,.dsb-logo svg{width:26px;height:26px;border-radius:7px;flex-shrink:0}
+.dsb-brand{
+  font-family:var(--font-h);font-size:15.5px;font-weight:800;
+  color:var(--text);letter-spacing:-.2px;line-height:1;
+}
+.dsb-brand .accent,.dsb-brand b{color:var(--acc)}
+.dsb-nav{
+  flex:1;min-height:0;padding:12px 10px;
+  display:flex;flex-direction:column;gap:3px;
+  overflow-y:auto;overflow-x:hidden;
+  scrollbar-width:thin;
+  scrollbar-color: color-mix(in srgb, var(--t3) 55%, transparent) transparent;
+  -webkit-overflow-scrolling:touch;scroll-behavior:smooth;
+}
+.dsb-nav::-webkit-scrollbar{width:6px}
+.dsb-nav::-webkit-scrollbar-track{background:transparent}
+.dsb-nav::-webkit-scrollbar-thumb{
+  background: color-mix(in srgb, var(--t3) 45%, transparent);border-radius:99px;
+}
+.dsb-nav:hover::-webkit-scrollbar-thumb{
+  background: color-mix(in srgb, var(--t3) 70%, transparent);
+}
+.dsb-item{
+  position:relative;display:flex;align-items:center;gap:12px;
+  padding:10px 13px;border-radius:11px;cursor:pointer;
+  text-decoration:none;color:var(--t2);
+  font-size:13.5px;font-weight:600;letter-spacing:-.1px;
+  transition:background .18s cubic-bezier(.4,0,.2,1),
+             color .18s cubic-bezier(.4,0,.2,1),
+             transform .15s cubic-bezier(.4,0,.2,1);
+  white-space:nowrap;border:none;background:none;width:100%;
+  will-change:transform;
+}
+.dsb-item:hover{background: color-mix(in srgb, var(--surf2) 85%, transparent);color:var(--text)}
+.dsb-item:active{transform:scale(.97)}
+.dsb-item:focus-visible{outline:2px solid color-mix(in srgb, var(--acc) 60%, transparent);outline-offset:-2px}
+.dsb-item.active{
+  background: color-mix(in srgb, var(--acc) 14%, transparent);
+  color:var(--acc);
+}
+.dsb-item::before{
+  content:"";position:absolute;left:-10px;top:50%;
+  width:3px;height:62%;
+  transform:translateY(-50%) scaleY(0);
+  transform-origin:center;
+  background:var(--acc);border-radius:0 3px 3px 0;
+  box-shadow:0 0 10px color-mix(in srgb, var(--acc) 60%, transparent);
+  opacity:0;
+  transition:transform .2s cubic-bezier(.4,0,.2,1),opacity .2s ease;
+}
+.dsb-item.active::before{
+  transform:translateY(-50%) scaleY(1);
+  opacity:1;
+}
+.dsb-item .lang-en,.dsb-item .lang-hi{display:inline}
+.dsb-item.fab-sb{
+  background:linear-gradient(135deg,var(--acc),#FF8A00);
+  color:#0A0E1A;margin:2px 0 10px;font-weight:800;
+  box-shadow:0 6px 16px color-mix(in srgb, var(--acc) 38%, transparent);
+}
+.dsb-item.fab-sb:hover{filter:brightness(1.05);color:#0A0E1A}
+.dsb-item.fab-sb::before{display:none}
+.dsb-item.coming-soon{opacity:.5;cursor:default}
+.dsb-item.coming-soon:hover{background:none;color:var(--t2)}
+.dsb-ic{
+  font-size:18px;width:24px;text-align:center;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+}
+.dsb-badge{
+  margin-left:auto;font-size:9px;font-weight:800;letter-spacing:.4px;
+  border-radius:5px;padding:2px 6px;line-height:1;
+}
+.dsb-sep{height:1px;background:color-mix(in srgb, var(--bord) 55%, transparent);margin:9px 14px}
+.dsb-more-label,.dsb-more-toggle{
+  font-size:10.5px;font-weight:700;letter-spacing:.6px;
+  text-transform:uppercase;color:var(--t3);
+}
+.dsb-more-toggle{
+  display:flex;align-items:center;gap:8px;padding:9px 13px;
+  cursor:pointer;border-radius:10px;transition:background .15s ease;
+}
+.dsb-more-toggle:hover{background:color-mix(in srgb, var(--surf2) 70%, transparent)}
+.dsb-more-arr{margin-left:auto;transition:transform .2s ease;font-size:11px}
+.dsb-more-group.open .dsb-more-arr{transform:rotate(180deg)}
+.dsb-footer{
+  padding:10px 10px 12px;flex-shrink:0;
+  border-top:1px solid color-mix(in srgb, var(--bord) 55%, transparent);
+}
+.dsb-logout{
+  display:flex;align-items:center;gap:12px;width:100%;
+  padding:10px 13px;border-radius:11px;cursor:pointer;
+  background:none;border:none;text-decoration:none;
+  color:var(--t2);font-size:13.5px;font-weight:600;
+  transition:background .15s ease,color .15s ease;
+}
+.dsb-logout:hover{background: color-mix(in srgb, #EF4444 14%, transparent);color:#EF4444}
+.dsb-ver{
+  font-size:10px;color:var(--t3);text-align:center;
+  padding:9px 0 2px;letter-spacing:.4px;opacity:.75;
+}
+@media(max-width:1023px){#dsb{display:none!important}#main-col{margin-left:0!important;width:100%!important}}
+#main-col{flex:1;min-width:0;display:flex;flex-direction:column}
+.topbar{display:flex;align-items:center;padding:0 16px;height:56px;background:var(--surf);border-bottom:1px solid var(--bord);gap:10px;position:sticky;top:0;z-index:30}
+.topbar-title{font-size:17px;font-weight:800;flex:1}
+.content{padding:14px;max-width:1000px;margin:0 auto;width:100%;padding-bottom:80px}
+/* Tabs */
+.tabs{display:flex;gap:6px;padding:12px 0 10px;border-bottom:1px solid var(--bord);margin-bottom:14px;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex-shrink:0;padding:9px 16px;border-radius:10px;border:1px solid transparent;background:transparent;font-size:13px;font-weight:700;color:var(--t2);cursor:pointer;font-family:var(--font-h);transition:var(--tr);display:flex;align-items:center;gap:6px}
+.tab.on{background:rgba(245,166,35,.12);color:var(--acc);border-color:rgba(245,166,35,.3)}
+/* Summary strip */
+.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px}
+.sum-box{background:var(--surf2);border:1px solid var(--bord);border-radius:12px;padding:12px;text-align:center}
+.sum-v{font-size:24px;font-weight:900;line-height:1}
+.sum-l{font-size:10px;color:var(--t2);margin-top:4px;text-transform:uppercase;letter-spacing:.5px;font-weight:600}
+/* Section header */
+.section-hd{font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.6px;padding:10px 0 6px;border-bottom:1px solid var(--bord);margin-bottom:10px}
+/* Table grid */
+.table-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-bottom:20px}
+.tcard{
+  border-radius:14px;border:2px solid var(--bord);
+  background:var(--surf2);padding:14px 12px;
+  display:flex;flex-direction:column;align-items:center;gap:8px;
+  cursor:pointer;transition:all .15s;position:relative;
+  min-height:120px;justify-content:center;
+}
+.tcard:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,.2)}
+.tcard.free{border-color:rgba(16,185,129,.4);background:rgba(16,185,129,.05)}
+.tcard.free:hover{border-color:#10B981}
+.tcard.occupied{border-color:rgba(239,68,68,.4);background:rgba(239,68,68,.06)}
+.tcard.reserved{border-color:rgba(245,166,35,.4);background:rgba(245,166,35,.05)}
+.tcard.cleaning{border-color:rgba(99,102,241,.3);background:rgba(99,102,241,.04)}
+.tcard-num{font-size:26px;font-weight:900;color:var(--text);line-height:1}
+.tcard-cap{font-size:11px;color:var(--t2);margin-top:1px}
+.tcard-badge{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;
+}
+.tcard-badge.free      {background:rgba(16,185,129,.15);color:#10B981}
+.tcard-badge.occupied  {background:rgba(239,68,68,.15);color:#EF4444}
+.tcard-badge.reserved  {background:rgba(245,166,35,.15);color:#F5A623}
+.tcard-badge.cleaning  {background:rgba(99,102,241,.15);color:#6366F1}
+.tcard-edit{
+  position:absolute;top:6px;right:6px;
+  width:22px;height:22px;border-radius:6px;
+  background:var(--surf);border:1px solid var(--bord);
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;cursor:pointer;opacity:.6;transition:var(--tr);
+}
+.tcard-edit:hover{opacity:1;border-color:var(--acc)}
+.tcard-time{font-size:10px;color:var(--t2);margin-top:2px}
+.tcard-hint{font-size:10px;color:var(--t2);margin-top:7px;font-weight:600;opacity:.75;display:flex;align-items:center;justify-content:center;gap:4px}
+.tcard-hint::before{content:'👆';font-size:10px}
+.tcard:hover .tcard-hint{opacity:1;color:var(--acc)}
+#guest-alert-bar{
+  display:flex;align-items:center;gap:11px;cursor:pointer;
+  background:linear-gradient(135deg,#F5A623,#EA580C);color:#fff;
+  font-weight:800;font-size:13.5px;padding:13px 18px;border-radius:12px;
+  margin:0 0 16px;box-shadow:0 8px 22px rgba(234,88,12,.32);
+  animation:gabIn .3s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes gabIn{from{transform:translateY(-10px);opacity:0}to{transform:translateY(0);opacity:1}}
+.gab-pulse{font-size:18px;animation:gabPulse 1.1s ease-in-out infinite}
+@keyframes gabPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.25)}}
+.tcard.guest-pending{
+  border-color:#EA580C !important;
+  box-shadow:0 0 0 3px rgba(234,88,12,.18), 0 6px 20px rgba(234,88,12,.2);
+  animation:cardPulse 1.6s ease-in-out infinite;
+}
+@keyframes cardPulse{0%,100%{box-shadow:0 0 0 3px rgba(234,88,12,.18),0 6px 20px rgba(234,88,12,.2)}50%{box-shadow:0 0 0 6px rgba(234,88,12,.28),0 6px 22px rgba(234,88,12,.3)}}
+.tcard-guest-alert{
+  margin-top:9px;background:linear-gradient(135deg,#F5A623,#EA580C);
+  color:#fff;font-size:10.5px;font-weight:800;line-height:1.35;
+  padding:7px 9px;border-radius:9px;text-align:center;
+}
+.tcard.has-order{border-color:rgba(239,68,68,.55)}
+.tcard-order{margin-top:9px;padding-top:9px;border-top:1px dashed rgba(239,68,68,.3)}
+.to-amt{font-size:19px;font-weight:900;color:#EF4444;line-height:1}
+.to-meta{font-size:9.5px;color:var(--t2);font-weight:600;margin-top:4px;display:flex;flex-wrap:wrap;justify-content:center;gap:4px}
+.to-guest{font-size:10px;color:var(--text);font-weight:700;margin-top:4px}
+/* Button */
+.btn-pri{padding:11px 20px;border-radius:10px;background:var(--acc);color:#0A0E1A;border:none;font-size:13px;font-weight:800;cursor:pointer;font-family:var(--font-h);transition:var(--tr);display:inline-flex;align-items:center;gap:6px}
+.btn-pri:hover{filter:brightness(1.08);transform:translateY(-1px)}
+.btn-sec{padding:9px 16px;border-radius:10px;background:var(--surf2);color:var(--text);border:1px solid var(--bord);font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font-h);transition:var(--tr)}
+.btn-sec:hover{border-color:var(--acc);color:var(--acc)}
+.btn-danger{padding:9px 16px;border-radius:10px;background:rgba(239,68,68,.1);color:#EF4444;border:1px solid rgba(239,68,68,.3);font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font-h);transition:var(--tr)}
+.btn-danger:hover{background:rgba(239,68,68,.2)}
+/* FAB */
+.fab{position:fixed;bottom:80px;right:16px;width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,var(--acc),#FF6B35);color:#0A0E1A;border:none;font-size:24px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 18px rgba(245,166,35,.5);transition:var(--tr);z-index:40}
+.fab:hover{transform:scale(1.08)}
+/* Modal */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);z-index:80;display:none;align-items:flex-end;justify-content:center}
+.overlay.open{display:flex}
+.sheet{background:var(--surf);border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:20px;max-height:85vh;overflow-y:auto;border-top:1px solid var(--bord)}
+.sheet-title{font-size:16px;font-weight:800;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between}
+.ff{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+.ff label{font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.3px}
+.inp{padding:11px 13px;border-radius:10px;border:1px solid var(--bord);background:var(--surf2);color:var(--text);font-size:14px;font-family:var(--font-h);width:100%;transition:var(--tr)}
+.inp:focus{outline:none;border-color:var(--acc)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.modal-actions{display:flex;gap:8px;margin-top:20px}
+.modal-actions button{flex:1}
+/* Status modal */
+.st-opts{display:flex;flex-direction:column;margin:14px 0}
+.cv-wrap{padding:6px 2px 2px}
+.cv-q{font-family:var(--font-h);font-size:18px;font-weight:800;color:var(--text);margin-bottom:4px}
+.cv-sub{font-size:12px;color:var(--t2);line-height:1.5;margin-bottom:16px}
+.cv-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}
+.cv-pick{padding:16px 0;border-radius:12px;border:1.5px solid var(--bord);background:var(--surf2);color:var(--text);font-family:var(--font-h);font-size:18px;font-weight:800;cursor:pointer;transition:var(--tr)}
+.cv-pick:hover{border-color:var(--acc);color:var(--acc);transform:translateY(-1px)}
+.cv-pick:active{transform:scale(.95)}
+.cv-pick.cv-more{font-size:14px;background:var(--surf);color:var(--t2)}
+.cv-input{width:100%;padding:13px 14px;border:1.5px solid var(--bord);border-radius:11px;background:var(--surf2);color:var(--text);font-family:var(--font-h);font-size:16px;font-weight:700}
+.cv-input:focus{outline:none;border-color:var(--acc)}
+.cv-skip{width:100%;margin-top:16px;padding:11px;background:none;border:none;color:var(--t2);font-size:12.5px;font-weight:700;cursor:pointer;font-family:var(--font-h);text-decoration:underline}
+.cv-skip:hover{color:var(--text)}
+.st-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:6px}
+@media(max-width:420px){.st-grid{grid-template-columns:1fr 1fr}}
+.st-opt{padding:14px;border-radius:12px;border:1.5px solid var(--bord);background:var(--surf2);cursor:pointer;transition:var(--tr);text-align:center;font-size:13px;font-weight:700}
+.st-opt:hover{border-color:var(--acc)}
+.st-opt.sel{border-color:var(--acc);background:rgba(245,166,35,.1)}
+.st-opt.sel-green{border-color:#10B981;background:rgba(16,185,129,.1);color:#10B981}
+.st-opt.sel-red{border-color:#EF4444;background:rgba(239,68,68,.1);color:#EF4444}
+.st-opt.sel-yellow{border-color:#F5A623;background:rgba(245,166,35,.1);color:#F5A623}
+.st-opt.sel-purple{border-color:#6366F1;background:rgba(99,102,241,.1);color:#6366F1}
+.st-head{display:flex;align-items:center;gap:11px;margin:6px 0 4px}
+.st-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+.st-head-txt{font-size:12px;color:var(--t2);font-weight:600}
+.st-head-txt b{color:var(--text);font-weight:800}
+.st-primary{
+  width:100%;display:flex;align-items:center;gap:14px;text-align:left;
+  padding:16px 18px;border-radius:14px;border:none;cursor:pointer;
+  color:#fff;font-family:inherit;margin:14px 0 6px;transition:var(--tr);
+}
+.st-primary:active{transform:scale(.985)}
+.st-primary .ic{font-size:26px;line-height:1;flex-shrink:0}
+.st-primary .tx{flex:1}
+.st-primary .t1{font-size:16px;font-weight:800;line-height:1.2}
+.st-primary .t2{font-size:12px;font-weight:600;opacity:.9;margin-top:2px}
+.st-primary .ar{font-size:20px;opacity:.7}
+.st-primary.seat {background:linear-gradient(135deg,#10B981,#059669);box-shadow:0 8px 22px rgba(16,185,129,.32)}
+.st-primary.order{background:linear-gradient(135deg,#F5A623,#EA580C);box-shadow:0 8px 22px rgba(234,88,12,.30)}
+.st-primary.freeb{background:linear-gradient(135deg,#10B981,#059669);box-shadow:0 8px 22px rgba(16,185,129,.32)}
+.st-sub-label{font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.06em;margin:14px 2px 2px}
+.st-opt .so-ic{font-size:20px;margin-bottom:5px}
+.st-opt .so-sub{font-size:11px;color:var(--t2);font-weight:600;margin-top:3px}
+.st-ordercard{background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.3);border-radius:12px;padding:13px 15px;margin:12px 0 2px}
+.soc-row{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.soc-amt{font-size:22px;font-weight:900;color:#EF4444;line-height:1}
+.soc-time{font-size:11px;color:var(--t2);font-weight:700}
+.soc-sub{font-size:11.5px;color:var(--text);font-weight:600;margin-top:6px}
+.st-locknote{display:flex;gap:12px;align-items:flex-start;background:rgba(99,102,241,.07);border:1px solid rgba(99,102,241,.28);border-radius:12px;padding:14px 16px;margin:14px 0 2px;font-size:12.5px;color:var(--t2);font-weight:600;line-height:1.55}
+.st-locknote .sl-ic{font-size:20px;line-height:1;flex-shrink:0;margin-top:1px}
+.st-locknote b{color:var(--text);font-weight:800}
+/* Empty state */
+.empty{text-align:center;padding:60px 20px}
+.empty-emoji{font-size:48px;margin-bottom:12px}
+.empty-title{font-size:18px;font-weight:800;margin-bottom:6px}
+.empty-msg{font-size:13px;color:var(--t2);margin-bottom:20px;line-height:1.6}
+/* Toast */
+.toast-host{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:999;display:flex;flex-direction:column;gap:6px;align-items:center;pointer-events:none}
+.toast{padding:10px 18px;border-radius:12px;background:var(--surf);color:var(--text);font-size:13px;font-weight:600;border:1px solid var(--bord);opacity:1;transition:opacity .2s;white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,.4)}
+.toast.s{border-color:#10B981;color:#10B981}
+.toast.e{border-color:#EF4444;color:#EF4444}
+.toast.i{border-color:var(--acc);color:var(--acc)}
+/* Bottom nav */
+.bnav{display:none;position:fixed;bottom:0;left:0;right:0;height:56px;background:var(--surf);border-top:1px solid var(--bord);z-index:50;align-items:stretch}
+.bnav-overlay{display:none}
+.bnav-drawer{display:none}
+@media(max-width:767px){
+  #dsb{display:none}
+  .bnav{display:flex}
+  .content{padding-bottom:80px}
+}
+/* Plan lock */
+.plan-lock{text-align:center;padding:48px 20px;background:var(--surf2);border-radius:16px;border:1px solid var(--bord)}
+.plan-lock-icon{font-size:40px;margin-bottom:12px}
+.plan-lock-title{font-size:17px;font-weight:800;margin-bottom:6px}
+.plan-lock-msg{font-size:13px;color:var(--t2);margin-bottom:20px}
+</style>
+</head>
+<body>
+<div id="app-layout">
+  <div id="dsb"></div>
+  <div id="main-col">
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="topbar-title">
+        📅 <span class="lang-en">Reservations</span><span class="lang-hi">आरक्षण</span>
+      </div>
+      <button class="btn-sec" onclick="reloadAll()" style="margin-left:auto">↻ <span class="lang-en">Refresh</span><span class="lang-hi">रीफ्रेश</span></button>
+      <button class="btn-pri" onclick="openNewRes()" style="margin-left:8px">+ <span class="lang-en">New</span><span class="lang-hi">नई</span></button>
+    </div>
+
+    <div id="locked-screen" style="display:none;text-align:center;padding:60px 20px">
+      <div style="font-size:40px">🔒</div>
+      <div style="font-weight:800;font-size:18px;margin:10px 0 6px">Reservations is a Business feature</div>
+      <div style="color:var(--t2,#6b7280);margin-bottom:16px">Table reservations are available on the Business plan.</div>
+      <a class="btn-pri" href="subscription.html" style="text-decoration:none;display:inline-block">Upgrade to Business</a>
+    </div>
+
+    <div id="res-content" style="display:none;padding:14px">
+      <!-- date range filter -->
+      <div class="card" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
+        <label style="font-weight:600">From <input type="date" id="f-from" onchange="reloadAll()"></label>
+        <label style="font-weight:600">To <input type="date" id="f-to" onchange="reloadAll()"></label>
+        <span id="res-count" style="margin-left:auto;color:var(--t2,#6b7280);font-size:13px"></span>
+      </div>
+
+      <div id="res-list"><div class="empty" style="padding:30px;text-align:center;color:var(--t2,#6b7280)">Loading…</div></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- New reservation modal -->
+<div id="new-res-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center">
+  <div class="card" style="max-width:420px;width:92%;padding:22px;background:var(--surf,#fff);border-radius:14px">
+    <div style="font-weight:800;font-size:17px;margin-bottom:14px">New Reservation</div>
+    <input id="nr-name"  placeholder="Customer name" style="width:100%;padding:10px;margin-bottom:8px;border:1px solid var(--bord,#e5e7eb);border-radius:8px">
+    <input id="nr-phone" placeholder="Phone" style="width:100%;padding:10px;margin-bottom:8px;border:1px solid var(--bord,#e5e7eb);border-radius:8px">
+    <div style="display:flex;gap:8px;margin-bottom:8px">
+      <input id="nr-date" type="date" style="flex:1;padding:10px;border:1px solid var(--bord,#e5e7eb);border-radius:8px">
+      <input id="nr-time" type="time" style="flex:1;padding:10px;border:1px solid var(--bord,#e5e7eb);border-radius:8px">
+    </div>
+    <input id="nr-party" type="number" min="1" value="2" placeholder="Party size" style="width:100%;padding:10px;margin-bottom:8px;border:1px solid var(--bord,#e5e7eb);border-radius:8px">
+    <textarea id="nr-notes" placeholder="Notes (optional)" style="width:100%;padding:10px;margin-bottom:14px;border:1px solid var(--bord,#e5e7eb);border-radius:8px"></textarea>
+    <div style="display:flex;gap:8px">
+      <button class="btn-sec" onclick="closeNewRes()" style="flex:1">Cancel</button>
+      <button class="btn-pri" onclick="saveNewRes()" style="flex:1">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Assign-table modal -->
+<div id="assign-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center">
+  <div class="card" style="max-width:380px;width:92%;padding:22px;background:var(--surf,#fff);border-radius:14px">
+    <div style="font-weight:800;font-size:17px;margin-bottom:6px">Confirm &amp; Assign Table</div>
+    <div id="assign-sub" style="color:var(--t2,#6b7280);font-size:13px;margin-bottom:12px"></div>
+    <select id="assign-table" style="width:100%;padding:10px;margin-bottom:14px;border:1px solid var(--bord,#e5e7eb);border-radius:8px">
+      <option value="">— No specific table —</option>
+    </select>
+    <div style="display:flex;gap:8px">
+      <button class="btn-sec" onclick="closeAssign()" style="flex:1">Cancel</button>
+      <button class="btn-pri" onclick="doConfirm()" style="flex:1">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<script src="lang.js"></script>
+<script src="lib/sidebar-engine.js"></script>
+<script>
+var _curResId=null, _tables=[];
+
+function _today(){ var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+
+async function boot(){
+  // Restaurant/reservations = Business (per marketing page)
+  if(typeof isBiz==='function' && !isBiz()){
+    document.getElementById('locked-screen').style.display='block';
+    return;
+  }
+  document.getElementById('res-content').style.display='block';
+  document.getElementById('f-from').value=_today();
+  var d=new Date(); d.setDate(d.getDate()+30);
+  document.getElementById('f-to').value=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  await loadTables();
+  await reloadAll();
+}
+
+async function loadTables(){
+  try{
+    const { data, error } = await window._sb.rpc('sbp_tables_list', {});
+    if(!error && data){
+      _tables = (data.tables||data||[]).filter(function(x){return x && (x.table_number!=null);});
+    }
+  }catch(e){ _tables=[]; }
+}
+
+async function reloadAll(){
+  const from=document.getElementById('f-from').value || _today();
+  const to=document.getElementById('f-to').value || _today();
+  const list=document.getElementById('res-list');
+  list.innerHTML='<div class="empty" style="padding:30px;text-align:center;color:var(--t2,#6b7280)">Loading…</div>';
+  try{
+    const { data, error } = await window._sb.rpc('sbp_reservations_list', { p_from: from, p_to: to });
+    if(error || !data || !data.ok){ list.innerHTML='<div class="empty" style="padding:30px;text-align:center;color:#ef4444">Could not load reservations.</div>'; return; }
+    render(data.reservations||[]);
+  }catch(e){
+    list.innerHTML='<div class="empty" style="padding:30px;text-align:center;color:#ef4444">Error loading.</div>';
+  }
+}
+
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+
+function statusChip(s){
+  var col={pending:'#f59e0b',confirmed:'#10b981',seated:'#3b82f6',no_show:'#ef4444',cancelled:'#9ca3af'}[s]||'#9ca3af';
+  return '<span style="background:'+col+'22;color:'+col+';padding:3px 9px;border-radius:99px;font-size:11px;font-weight:700">'+esc(s)+'</span>';
+}
+
+function render(rows){
+  const list=document.getElementById('res-list');
+  document.getElementById('res-count').textContent=rows.length+' reservation'+(rows.length===1?'':'s');
+  if(!rows.length){ list.innerHTML='<div class="empty" style="padding:40px;text-align:center;color:var(--t2,#6b7280)">No reservations in this range.</div>'; return; }
+  list.innerHTML=rows.map(function(r){
+    var actions='';
+    if(r.status==='pending'){
+      actions='<button class="btn-pri" style="padding:6px 12px;font-size:13px" onclick="openAssign(\''+r.id+'\','+r.party_size+',\''+esc(r.customer_name)+'\')">Confirm</button>';
+    } else if(r.status==='confirmed'){
+      actions='<button class="btn-sec" style="padding:6px 10px;font-size:12px" onclick="setStatus(\''+r.id+'\',\'seated\')">Seated</button> '+
+              '<button class="btn-sec" style="padding:6px 10px;font-size:12px" onclick="setStatus(\''+r.id+'\',\'no_show\')">No-show</button>';
+    }
+    if(r.status==='pending'||r.status==='confirmed'){
+      actions+=' <button class="btn-sec" style="padding:6px 10px;font-size:12px" onclick="setStatus(\''+r.id+'\',\'cancelled\')">Cancel</button>';
+    }
+    return '<div class="card" style="padding:14px;margin-bottom:10px">'+
+      '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+
+        '<div style="font-weight:700">'+esc(r.customer_name)+'</div>'+
+        statusChip(r.status)+
+        (r.table_number!=null?'<span style="font-size:12px;color:var(--t2,#6b7280)">Table '+esc(r.table_number)+'</span>':'')+
+        '<span style="margin-left:auto;font-size:13px;color:var(--t2,#6b7280)">'+esc(r.reservation_date)+' '+esc((r.time_slot||'').slice(0,5))+'</span>'+
+      '</div>'+
+      '<div style="font-size:13px;color:var(--t2,#6b7280);margin:6px 0">Party of '+esc(r.party_size)+' · '+esc(r.customer_phone||'')+(r.source==='online'?' · 🌐 online':'')+(r.notes?(' · '+esc(r.notes)):'')+'</div>'+
+      '<div style="display:flex;gap:6px;flex-wrap:wrap">'+actions+'</div>'+
+    '</div>';
+  }).join('');
+}
+
+function openAssign(id,party,name){
+  _curResId=id;
+  document.getElementById('assign-sub').textContent=name+' · party of '+party;
+  var sel=document.getElementById('assign-table');
+  sel.innerHTML='<option value="">— No specific table —</option>'+
+    _tables.map(function(t){return '<option value="'+t.id+'">Table '+esc(t.table_number)+(t.capacity?(' (seats '+t.capacity+')'):'')+'</option>';}).join('');
+  document.getElementById('assign-modal').style.display='flex';
+}
+function closeAssign(){ document.getElementById('assign-modal').style.display='none'; _curResId=null; }
+
+async function doConfirm(){
+  if(!_curResId) return;
+  var tid=document.getElementById('assign-table').value || null;
+  const { data, error } = await window._sb.rpc('sbp_reservation_confirm', { p_reservation_id:_curResId, p_table_id:tid });
+  if(error || !data || !data.ok){ alert('Could not confirm: '+((data&&data.error)||'error')); return; }
+  closeAssign(); reloadAll();
+}
+
+async function setStatus(id,st){
+  const { data, error } = await window._sb.rpc('sbp_reservation_set_status', { p_reservation_id:id, p_status:st });
+  if(error || !data || !data.ok){ alert('Could not update: '+((data&&data.error)||'error')); return; }
+  reloadAll();
+}
+
+function openNewRes(){
+  document.getElementById('nr-date').value=_today();
+  document.getElementById('new-res-modal').style.display='flex';
+}
+function closeNewRes(){ document.getElementById('new-res-modal').style.display='none'; }
+
+async function saveNewRes(){
+  var payload={
+    name:  document.getElementById('nr-name').value.trim(),
+    phone: document.getElementById('nr-phone').value.trim(),
+    date:  document.getElementById('nr-date').value,
+    time:  document.getElementById('nr-time').value,
+    party_size: parseInt(document.getElementById('nr-party').value,10)||2,
+    notes: document.getElementById('nr-notes').value.trim()
+  };
+  if(!payload.name){ alert('Name required'); return; }
+  if(!payload.date){ alert('Date required'); return; }
+  const { data, error } = await window._sb.rpc('sbp_reservation_create_staff', { p_payload: payload });
+  if(error || !data || !data.ok){ alert('Could not save: '+((data&&data.error)||'error')); return; }
+  closeNewRes(); reloadAll();
+}
+
+window.addEventListener('load', function(){
+  try{ if(window.SBPSidebar && SBPSidebar.render) SBPSidebar.render(); }catch(e){}
+  boot();
+});
+</script>
+</body></html>
