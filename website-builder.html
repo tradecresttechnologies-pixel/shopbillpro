@@ -2,7 +2,7 @@
 <html lang="en" data-theme="dark">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Website Builder — ShopBill Pro</title>
 
 <script>
@@ -31,11 +31,7 @@
 [data-lang="hi"] .lang-hi{display:inline}
 
 *{margin:0;padding:0;box-sizing:border-box}
-/* BATCH HOTFIX (scroll): html,body{height:100%} capped the document at
-   viewport height with no scroll container, so the builder sections
-   could not scroll. Let the document grow and scroll normally. #app
-   keeps min-height:100vh and grows naturally. */
-html,body{min-height:100%}
+html,body{height:100%}
 body{
   font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',sans-serif,'Noto Sans Devanagari';
   background:var(--bg); color:var(--text); line-height:1.5;
