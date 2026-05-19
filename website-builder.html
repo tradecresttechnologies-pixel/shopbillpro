@@ -437,6 +437,23 @@ body{
 
 /* Hide desktop sidebar on mobile, mobile drawer/bnav on desktop */
 @media(max-width:1023px){
+  /* WB MOBILE FIX (page-scoped, no global changes): website-builder
+     has a .wrap grid with a fixed 380px column + amenity rows that
+     did not wrap -> horizontal overflow / "not auto adjusting".
+     Force single-column, full width, and wrapping. Scoped to this
+     page only; the shared stylesheet is untouched. */
+  .wrap{
+    grid-template-columns:1fr !important;
+    max-width:100% !important;
+    padding:14px !important;
+    gap:14px !important;
+  }
+  .wrap > *{ min-width:0 !important; max-width:100% !important; }
+  .chip-row{ flex-wrap:wrap !important; }
+  .chip-row > *{ max-width:100% !important; }
+  img,video,canvas,iframe,table{ max-width:100% !important; height:auto; }
+  /* Clip any residual horizontal bleed on THIS page only. */
+  #app{ overflow-x:hidden; max-width:100vw; }
 }
 @media(min-width:1024px){
   .bnav, .bnav-drawer, .bnav-overlay{display:none !important}
