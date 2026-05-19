@@ -505,6 +505,17 @@ body{
   .sec-hd-grow{ flex:1 1 100%; }
   .sec-hd .btn{ margin-left:48px; }
   .wrap{ grid-template-columns:1fr; max-width:100%; padding:14px; }
+  /* WB WIDTH FIX (mobile, per console: div.sections / #plan-banner
+     overflowed 647px on a 600px screen). Constrain the content
+     column + its flex children so nothing exceeds the viewport.
+     min-width:0 lets flex items shrink instead of forcing width. */
+  .sections{ min-width:0; max-width:100%; }
+  .sections > *{ min-width:0; max-width:100%; }
+  .plan-banner{ min-width:0; max-width:100%; flex-wrap:wrap; }
+  .plan-banner-info{ min-width:0; }
+  .sec{ min-width:0; max-width:100%; }
+  .sec-bd{ min-width:0; }
+  input, textarea, select{ max-width:100%; }
 }
 @media(min-width:1024px){
   .bnav, .bnav-drawer, .bnav-overlay{display:none !important}
