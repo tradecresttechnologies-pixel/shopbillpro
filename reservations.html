@@ -352,12 +352,11 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
   <div id="dsb"></div>
   <div id="main-col">
 
-    <!-- Topbar -->
     <div class="topbar">
       <div class="topbar-title">
         📅 <span class="lang-en">Reservations</span><span class="lang-hi">आरक्षण</span>
       </div>
-      <button class="btn-sec" onclick="reloadAll()" style="margin-left:auto">↻ <span class="lang-en">Refresh</span><span class="lang-hi">रीफ्रेश</span></button>
+      <button class="btn-sec" onclick="reloadAll()" style="margin-left:auto">↻</button>
       <button class="btn-pri" onclick="openNewRes()" style="margin-left:8px">+ <span class="lang-en">New</span><span class="lang-hi">नई</span></button>
     </div>
 
@@ -368,32 +367,39 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
       <a class="btn-pri" href="subscription.html" style="text-decoration:none;display:inline-block">Upgrade to Business</a>
     </div>
 
-    <div id="res-content" style="display:none;padding:14px">
-      <!-- date range filter -->
-      <div class="card" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
-        <label style="font-weight:600">From <input type="date" id="f-from" onchange="reloadAll()"></label>
-        <label style="font-weight:600">To <input type="date" id="f-to" onchange="reloadAll()"></label>
-        <span id="res-count" style="margin-left:auto;color:var(--t2,#6b7280);font-size:13px"></span>
+    <div id="res-content" style="display:none;padding:12px">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;font-size:13px">
+        <label>From <input type="date" id="f-from" onchange="reloadAll()" style="padding:6px;border:1px solid var(--bord,#e5e7eb);border-radius:6px"></label>
+        <label>To <input type="date" id="f-to" onchange="reloadAll()" style="padding:6px;border:1px solid var(--bord,#e5e7eb);border-radius:6px"></label>
+        <input id="f-search" placeholder="Search name/phone" oninput="renderCached()" style="padding:6px 10px;border:1px solid var(--bord,#e5e7eb);border-radius:6px;flex:1;min-width:140px">
+        <span id="res-count" style="margin-left:auto;color:var(--t2,#6b7280)"></span>
       </div>
-
-      <div id="res-list"><div class="empty" style="padding:30px;text-align:center;color:var(--t2,#6b7280)">Loading…</div></div>
+      <div id="res-groups"><div style="padding:30px;text-align:center;color:var(--t2,#6b7280)">Loading…</div></div>
     </div>
-
   </div>
 </div>
 
 <!-- New reservation modal -->
-<div id="new-res-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center">
-  <div class="card" style="max-width:420px;width:92%;padding:22px;background:var(--surf,#fff);border-radius:14px">
+<div id="new-res-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;overflow:auto">
+  <div class="card" style="max-width:440px;width:92%;padding:22px;background:var(--surf,#fff);border-radius:14px;margin:20px">
     <div style="font-weight:800;font-size:17px;margin-bottom:14px">New Reservation</div>
-    <input id="nr-name"  placeholder="Customer name" style="width:100%;padding:10px;margin-bottom:8px;border:1px solid var(--bord,#e5e7eb);border-radius:8px">
-    <input id="nr-phone" placeholder="Phone" style="width:100%;padding:10px;margin-bottom:8px;border:1px solid var(--bord,#e5e7eb);border-radius:8px">
+    <input id="nr-name"  placeholder="Customer name *" style="width:100%;padding:10px;margin-bottom:8px;border:1px solid var(--bord,#e5e7eb);border-radius:8px;box-sizing:border-box">
+    <input id="nr-phone" placeholder="Phone" style="width:100%;padding:10px;margin-bottom:8px;border:1px solid var(--bord,#e5e7eb);border-radius:8px;box-sizing:border-box">
+    <input id="nr-email" placeholder="Email (optional)" style="width:100%;padding:10px;margin-bottom:8px;border:1px solid var(--bord,#e5e7eb);border-radius:8px;box-sizing:border-box">
     <div style="display:flex;gap:8px;margin-bottom:8px">
       <input id="nr-date" type="date" style="flex:1;padding:10px;border:1px solid var(--bord,#e5e7eb);border-radius:8px">
       <input id="nr-time" type="time" style="flex:1;padding:10px;border:1px solid var(--bord,#e5e7eb);border-radius:8px">
     </div>
-    <input id="nr-party" type="number" min="1" value="2" placeholder="Party size" style="width:100%;padding:10px;margin-bottom:8px;border:1px solid var(--bord,#e5e7eb);border-radius:8px">
-    <textarea id="nr-notes" placeholder="Notes (optional)" style="width:100%;padding:10px;margin-bottom:14px;border:1px solid var(--bord,#e5e7eb);border-radius:8px"></textarea>
+    <div style="display:flex;gap:8px;margin-bottom:8px">
+      <input id="nr-party" type="number" min="1" value="2" placeholder="Party size" style="flex:1;padding:10px;border:1px solid var(--bord,#e5e7eb);border-radius:8px">
+      <select id="nr-occasion" style="flex:1;padding:10px;border:1px solid var(--bord,#e5e7eb);border-radius:8px">
+        <option value="">Occasion…</option>
+        <option>Birthday</option><option>Anniversary</option><option>Business</option>
+        <option>Family</option><option>Date</option><option>Other</option>
+      </select>
+    </div>
+    <input id="nr-tablepref" placeholder="Table preference (e.g. window, AC, outdoor)" style="width:100%;padding:10px;margin-bottom:8px;border:1px solid var(--bord,#e5e7eb);border-radius:8px;box-sizing:border-box">
+    <textarea id="nr-notes" placeholder="Notes (optional)" style="width:100%;padding:10px;margin-bottom:14px;border:1px solid var(--bord,#e5e7eb);border-radius:8px;box-sizing:border-box"></textarea>
     <div style="display:flex;gap:8px">
       <button class="btn-sec" onclick="closeNewRes()" style="flex:1">Cancel</button>
       <button class="btn-pri" onclick="saveNewRes()" style="flex:1">Save</button>
@@ -419,20 +425,19 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 <script src="lang.js"></script>
 <script src="lib/sidebar-engine.js"></script>
 <script>
-var _curResId=null, _tables=[];
+var _curResId=null, _tables=[], _cache=[];
 
-function _today(){ var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function _ymd(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function _today(){ return _ymd(new Date()); }
 
 async function boot(){
-  // Restaurant/reservations = Business (per marketing page)
   if(typeof isBiz==='function' && !isBiz()){
-    document.getElementById('locked-screen').style.display='block';
-    return;
+    document.getElementById('locked-screen').style.display='block'; return;
   }
   document.getElementById('res-content').style.display='block';
   document.getElementById('f-from').value=_today();
   var d=new Date(); d.setDate(d.getDate()+30);
-  document.getElementById('f-to').value=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  document.getElementById('f-to').value=_ymd(d);
   await loadTables();
   await reloadAll();
 }
@@ -440,59 +445,92 @@ async function boot(){
 async function loadTables(){
   try{
     const { data, error } = await window._sb.rpc('sbp_tables_list', {});
-    if(!error && data){
-      _tables = (data.tables||data||[]).filter(function(x){return x && (x.table_number!=null);});
-    }
+    if(!error && data){ _tables=(data.tables||data||[]).filter(function(x){return x&&x.table_number!=null;}); }
   }catch(e){ _tables=[]; }
 }
 
 async function reloadAll(){
-  const from=document.getElementById('f-from').value || _today();
-  const to=document.getElementById('f-to').value || _today();
-  const list=document.getElementById('res-list');
-  list.innerHTML='<div class="empty" style="padding:30px;text-align:center;color:var(--t2,#6b7280)">Loading…</div>';
+  const from=document.getElementById('f-from').value||_today();
+  const to=document.getElementById('f-to').value||_today();
+  document.getElementById('res-groups').innerHTML='<div style="padding:30px;text-align:center;color:var(--t2,#6b7280)">Loading…</div>';
   try{
-    const { data, error } = await window._sb.rpc('sbp_reservations_list', { p_from: from, p_to: to });
-    if(error || !data || !data.ok){ list.innerHTML='<div class="empty" style="padding:30px;text-align:center;color:#ef4444">Could not load reservations.</div>'; return; }
-    render(data.reservations||[]);
-  }catch(e){
-    list.innerHTML='<div class="empty" style="padding:30px;text-align:center;color:#ef4444">Error loading.</div>';
-  }
+    const { data, error } = await window._sb.rpc('sbp_reservations_list', { p_from:from, p_to:to });
+    if(error||!data||!data.ok){ document.getElementById('res-groups').innerHTML='<div style="padding:30px;text-align:center;color:#ef4444">Could not load.</div>'; return; }
+    _cache=data.reservations||[];
+    renderCached();
+  }catch(e){ document.getElementById('res-groups').innerHTML='<div style="padding:30px;text-align:center;color:#ef4444">Error.</div>'; }
 }
 
 function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+function chip(s){ var c={pending:'#f59e0b',confirmed:'#10b981',seated:'#3b82f6',no_show:'#ef4444',cancelled:'#9ca3af'}[s]||'#9ca3af';
+  return '<span style="background:'+c+'22;color:'+c+';padding:2px 8px;border-radius:99px;font-size:10px;font-weight:700;text-transform:uppercase">'+esc(s)+'</span>'; }
 
-function statusChip(s){
-  var col={pending:'#f59e0b',confirmed:'#10b981',seated:'#3b82f6',no_show:'#ef4444',cancelled:'#9ca3af'}[s]||'#9ca3af';
-  return '<span style="background:'+col+'22;color:'+col+';padding:3px 9px;border-radius:99px;font-size:11px;font-weight:700">'+esc(s)+'</span>';
+function dayLabel(dateStr){
+  var t=_today(); var d=new Date(); d.setDate(d.getDate()+1); var tm=_ymd(d);
+  if(dateStr===t) return 'Today';
+  if(dateStr===tm) return 'Tomorrow';
+  return new Date(dateStr+'T00:00:00').toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short'});
 }
 
-function render(rows){
-  const list=document.getElementById('res-list');
-  document.getElementById('res-count').textContent=rows.length+' reservation'+(rows.length===1?'':'s');
-  if(!rows.length){ list.innerHTML='<div class="empty" style="padding:40px;text-align:center;color:var(--t2,#6b7280)">No reservations in this range.</div>'; return; }
-  list.innerHTML=rows.map(function(r){
-    var actions='';
-    if(r.status==='pending'){
-      actions='<button class="btn-pri" style="padding:6px 12px;font-size:13px" onclick="openAssign(\''+r.id+'\','+r.party_size+',\''+esc(r.customer_name)+'\')">Confirm</button>';
-    } else if(r.status==='confirmed'){
-      actions='<button class="btn-sec" style="padding:6px 10px;font-size:12px" onclick="setStatus(\''+r.id+'\',\'seated\')">Seated</button> '+
-              '<button class="btn-sec" style="padding:6px 10px;font-size:12px" onclick="setStatus(\''+r.id+'\',\'no_show\')">No-show</button>';
-    }
-    if(r.status==='pending'||r.status==='confirmed'){
-      actions+=' <button class="btn-sec" style="padding:6px 10px;font-size:12px" onclick="setStatus(\''+r.id+'\',\'cancelled\')">Cancel</button>';
-    }
-    return '<div class="card" style="padding:14px;margin-bottom:10px">'+
-      '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+
-        '<div style="font-weight:700">'+esc(r.customer_name)+'</div>'+
-        statusChip(r.status)+
-        (r.table_number!=null?'<span style="font-size:12px;color:var(--t2,#6b7280)">Table '+esc(r.table_number)+'</span>':'')+
-        '<span style="margin-left:auto;font-size:13px;color:var(--t2,#6b7280)">'+esc(r.reservation_date)+' '+esc((r.time_slot||'').slice(0,5))+'</span>'+
-      '</div>'+
-      '<div style="font-size:13px;color:var(--t2,#6b7280);margin:6px 0">Party of '+esc(r.party_size)+' · '+esc(r.customer_phone||'')+(r.source==='online'?' · 🌐 online':'')+(r.notes?(' · '+esc(r.notes)):'')+'</div>'+
-      '<div style="display:flex;gap:6px;flex-wrap:wrap">'+actions+'</div>'+
-    '</div>';
+function renderCached(){
+  var q=(document.getElementById('f-search').value||'').toLowerCase().trim();
+  var rows=_cache.filter(function(r){
+    if(!q) return true;
+    return (r.customer_name||'').toLowerCase().indexOf(q)>=0 || (r.customer_phone||'').indexOf(q)>=0;
+  });
+  document.getElementById('res-count').textContent=rows.length+' result'+(rows.length===1?'':'s');
+  var box=document.getElementById('res-groups');
+  if(!rows.length){ box.innerHTML='<div style="padding:40px;text-align:center;color:var(--t2,#6b7280)">No reservations.</div>'; return; }
+  // group by date
+  var groups={};
+  rows.forEach(function(r){ (groups[r.reservation_date]=groups[r.reservation_date]||[]).push(r); });
+  var dates=Object.keys(groups).sort();
+  box.innerHTML=dates.map(function(dt){
+    var items=groups[dt].sort(function(a,b){return (a.time_slot||'').localeCompare(b.time_slot||'');});
+    return '<div style="margin-bottom:8px"><div style="font-weight:800;font-size:13px;color:var(--t2,#6b7280);padding:8px 4px;position:sticky;top:0">'+esc(dayLabel(dt))+' · '+items.length+'</div>'+
+      items.map(rowHtml).join('')+'</div>';
   }).join('');
+}
+
+function rowHtml(r){
+  var time=(r.time_slot||'').slice(0,5);
+  var sub=[];
+  if(r.customer_phone) sub.push(esc(r.customer_phone));
+  if(r.table_number!=null) sub.push('T'+esc(r.table_number));
+  if(r.occasion) sub.push(esc(r.occasion));
+  if(r.source==='online') sub.push('🌐');
+  var det=[];
+  if(r.customer_email) det.push('✉ '+esc(r.customer_email));
+  if(r.table_preference) det.push('Pref: '+esc(r.table_preference));
+  if(r.made_by_name) det.push('By: '+esc(r.made_by_name));
+  if(r.notes) det.push('Note: '+esc(r.notes));
+  if(r.confirmation_code) det.push('#'+esc(r.confirmation_code));
+
+  var actions='';
+  if(r.status==='pending'){
+    actions='<button class="btn-pri" style="padding:6px 12px;font-size:12px" onclick="event.stopPropagation();openAssign(\''+r.id+'\','+r.party_size+',\''+esc(r.customer_name).replace(/\\/g,'')+'\')">Confirm + Table</button>';
+  } else if(r.status==='confirmed'){
+    actions='<button class="btn-sec" style="padding:6px 10px;font-size:12px" onclick="event.stopPropagation();setStatus(\''+r.id+'\',\'seated\')">Seated</button> '+
+            '<button class="btn-sec" style="padding:6px 10px;font-size:12px" onclick="event.stopPropagation();setStatus(\''+r.id+'\',\'no_show\')">No-show</button>';
+  }
+  if(r.status==='pending'||r.status==='confirmed'){
+    actions+=' <button class="btn-sec" style="padding:6px 10px;font-size:12px" onclick="event.stopPropagation();setStatus(\''+r.id+'\',\'cancelled\')">Cancel</button>';
+  }
+
+  return '<div class="card" style="padding:0;margin-bottom:6px;overflow:hidden">'+
+    '<div onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'block\'?\'none\':\'block\'" '+
+       'style="display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer">'+
+      '<span style="font-weight:800;font-size:13px;min-width:42px">'+esc(time)+'</span>'+
+      '<span style="font-weight:700;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(r.customer_name)+' <span style="color:var(--t2,#6b7280);font-weight:400;font-size:12px">· '+esc(r.party_size)+'p</span></span>'+
+      chip(r.status)+
+      '<span style="font-size:11px;color:var(--t2,#6b7280)">'+esc(sub.join(' · '))+'</span>'+
+      '<span style="color:var(--t2,#9ca3af);font-size:12px">▾</span>'+
+    '</div>'+
+    '<div style="display:none;padding:10px 14px;border-top:1px solid var(--bord,#e5e7eb);background:rgba(0,0,0,.02)">'+
+      (det.length?'<div style="font-size:12px;color:var(--t2,#6b7280);margin-bottom:10px;line-height:1.7">'+det.join(' &nbsp;·&nbsp; ')+'</div>':'')+
+      '<div style="display:flex;gap:6px;flex-wrap:wrap">'+(actions||'<span style="color:var(--t2,#9ca3af);font-size:12px">No actions</span>')+'</div>'+
+    '</div>'+
+  '</div>';
 }
 
 function openAssign(id,party,name){
@@ -507,38 +545,41 @@ function closeAssign(){ document.getElementById('assign-modal').style.display='n
 
 async function doConfirm(){
   if(!_curResId) return;
-  var tid=document.getElementById('assign-table').value || null;
+  var tid=document.getElementById('assign-table').value||null;
   const { data, error } = await window._sb.rpc('sbp_reservation_confirm', { p_reservation_id:_curResId, p_table_id:tid });
-  if(error || !data || !data.ok){ alert('Could not confirm: '+((data&&data.error)||'error')); return; }
+  if(error||!data||!data.ok){ alert('Could not confirm: '+((data&&data.error)||'error')); return; }
   closeAssign(); reloadAll();
 }
-
 async function setStatus(id,st){
   const { data, error } = await window._sb.rpc('sbp_reservation_set_status', { p_reservation_id:id, p_status:st });
-  if(error || !data || !data.ok){ alert('Could not update: '+((data&&data.error)||'error')); return; }
+  if(error||!data||!data.ok){ alert('Could not update: '+((data&&data.error)||'error')); return; }
   reloadAll();
 }
 
-function openNewRes(){
-  document.getElementById('nr-date').value=_today();
-  document.getElementById('new-res-modal').style.display='flex';
-}
+function openNewRes(){ document.getElementById('nr-date').value=_today(); document.getElementById('new-res-modal').style.display='flex'; }
 function closeNewRes(){ document.getElementById('new-res-modal').style.display='none'; }
 
 async function saveNewRes(){
-  var payload={
+  var p={
     name:  document.getElementById('nr-name').value.trim(),
     phone: document.getElementById('nr-phone').value.trim(),
+    email: document.getElementById('nr-email').value.trim(),
     date:  document.getElementById('nr-date').value,
     time:  document.getElementById('nr-time').value,
     party_size: parseInt(document.getElementById('nr-party').value,10)||2,
+    occasion: document.getElementById('nr-occasion').value,
+    table_preference: document.getElementById('nr-tablepref').value.trim(),
     notes: document.getElementById('nr-notes').value.trim()
   };
-  if(!payload.name){ alert('Name required'); return; }
-  if(!payload.date){ alert('Date required'); return; }
-  const { data, error } = await window._sb.rpc('sbp_reservation_create_staff', { p_payload: payload });
-  if(error || !data || !data.ok){ alert('Could not save: '+((data&&data.error)||'error')); return; }
-  closeNewRes(); reloadAll();
+  if(!p.name){ alert('Name required'); return; }
+  if(!p.date){ alert('Date required'); return; }
+  const { data, error } = await window._sb.rpc('sbp_reservation_create_staff', { p_payload:p });
+  if(error||!data||!data.ok){ alert('Could not save: '+((data&&data.error)||'error')); return; }
+  closeNewRes();
+  document.getElementById('nr-name').value='';document.getElementById('nr-phone').value='';
+  document.getElementById('nr-email').value='';document.getElementById('nr-tablepref').value='';
+  document.getElementById('nr-notes').value='';
+  reloadAll();
 }
 
 window.addEventListener('load', function(){
