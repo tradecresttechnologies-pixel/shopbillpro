@@ -1282,3 +1282,37 @@ img { max-width: 100%; display: block; }
 @media(max-width:360px){
   .sc-val,.sv{font-size:18px}
 }
+
+
+/* ============================================================
+   BATCH HOTFIX (universal scroll safety) - appended LAST so it
+   wins the cascade. Guarantees on EVERY page that loads this
+   stylesheet: the document can always grow and scroll, and the
+   touch/swipe gesture is never blocked. Does NOT force overflow
+   on #app, so the deliberate inner-scroller pages (dashboard/
+   bills/customers: #app{display:flex;height:100vh;overflow:hidden}
+   + .sb scroller) keep working unchanged. The body-level
+   guarantee alone makes trapped pages reachable.
+   ============================================================ */
+html {
+  min-height: 100% !important;
+  height: auto !important;
+}
+body {
+  min-height: 100% !important;
+  height: auto !important;
+  overflow-y: auto !important;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch !important;
+  overscroll-behavior: contain !important;
+  touch-action: pan-y !important;
+}
+/* Inner scrollers must keep scrolling smoothly on touch. */
+.sb, .sheet, .sheet-body, .sheet-center, [data-scroll] {
+  -webkit-overflow-scrolling: touch !important;
+  touch-action: pan-y !important;
+}
+/* Desktop with fixed sidebar: body still scrolls, sidebar gutter kept. */
+@media (min-width: 1024px) {
+  body { overflow-y: auto !important; }
+}
