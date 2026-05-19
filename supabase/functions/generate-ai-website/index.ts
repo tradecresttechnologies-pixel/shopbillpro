@@ -59,7 +59,11 @@ function fillTemplate(tpl: string, p: Record<string, string>): string {
     .replaceAll("{COLOR_PRIMARY}",     p.color_primary)
     .replaceAll("{COLOR_PRIMARY_HEX}", p.color_primary_hex)
     .replaceAll("{COLOR_ACCENT}",      p.color_accent)
-    .replaceAll("{COLOR_ACCENT_HEX}",  p.color_accent_hex);
+    .replaceAll("{COLOR_ACCENT_HEX}",  p.color_accent_hex)
+    // BATCH UI-6: per-vertical section spec. Optional — if the client didn't
+    // send it, or the prompt has no {VERTICAL_SPEC} token, this is a no-op,
+    // so old clients and the old prompt keep working unchanged.
+    .replaceAll("{VERTICAL_SPEC}",     p.vertical_spec ?? "");
 }
 
 async function callClaude(prompt: string, apiKey: string): Promise<{ html: string; in_tokens: number; out_tokens: number }> {

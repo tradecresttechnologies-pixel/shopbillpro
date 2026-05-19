@@ -394,37 +394,6 @@ body{
   min-height:100vh; display:flex; flex-direction:column; position:relative;
 }
 
-/* Desktop side rail (220px fixed) */
-#dsb{
-  position:fixed; left:0; top:0; bottom:0; width:220px;
-  background:var(--surf); border-right:1px solid var(--bord);
-  display:flex; flex-direction:column; z-index:200; overflow-y:auto;
-}
-.dsb-logo{
-  display:flex; align-items:center; gap:10px;
-  padding:20px 16px 14px; border-bottom:1px solid var(--bord);
-}
-.dsb-brand{
-  font-size:15px; font-weight:800; color:var(--acc);
-}
-.dsb-nav{flex:1; padding:10px 8px; display:flex; flex-direction:column; gap:2px; overflow-y:auto}
-.dsb-item{
-  display:flex; align-items:center; gap:10px;
-  padding:9px 12px; border-radius:10px; cursor:pointer;
-  text-decoration:none; color:var(--muted); font-size:13px; font-weight:600;
-  transition:.15s ease; white-space:nowrap; border:none; background:none; width:100%;
-}
-.dsb-item:hover{background:var(--surf2); color:var(--text)}
-.dsb-item.active{background:var(--acc-soft); color:var(--acc)}
-.dsb-item.fab-sb{
-  background:linear-gradient(135deg, var(--acc), #FF8A00); color:#fff;
-  margin:4px 0 8px; font-weight:700;
-}
-.dsb-item.fab-sb:hover{opacity:.88}
-.dsb-ic{font-size:17px; width:22px; text-align:center; flex-shrink:0}
-.dsb-sep{height:1px; background:var(--bord); margin:6px 12px}
-.dsb-footer{padding:8px; border-top:1px solid var(--bord)}
-.dsb-ver{font-size:10px; color:var(--muted); text-align:center; padding:8px 0 4px}
 
 /* Mobile drawer styling (bnav-drawer panel) */
 .bnav-overlay{
@@ -468,7 +437,6 @@ body{
 
 /* Hide desktop sidebar on mobile, mobile drawer/bnav on desktop */
 @media(max-width:1023px){
-  #dsb{display:none !important}
 }
 @media(min-width:1024px){
   .bnav, .bnav-drawer, .bnav-overlay{display:none !important}
@@ -1694,7 +1662,8 @@ async function handleGenerate(){
       color_primary:     _design.color_primary.toLowerCase(),
       color_primary_hex: _design.color_primary_hex,
       color_accent:      _design.color_accent.toLowerCase(),
-      color_accent_hex:  _design.color_accent_hex
+      color_accent_hex:  _design.color_accent_hex,
+      vertical_spec:     (window.SBPVerticalSpec ? window.SBPVerticalSpec($('business-type').value) : '')
     };
 
     const { data, error } = await _sb.functions.invoke('generate-ai-website', { body: payload });
