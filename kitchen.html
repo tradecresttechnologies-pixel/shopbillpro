@@ -44,6 +44,17 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 /* Layout */
 #app-layout{display:flex;min-height:100vh}
 #main-col{margin-left:220px;width:calc(100% - 220px)}
+/* BATCH HOTFIX (scroll): html,body{height:100%} + #app-layout flex with
+   no scroll container -> content taller than viewport could not scroll
+   (sidebar opened fine, page would not go up/down). Make #main-col the
+   scroller, like dashboard's #app. Additive only. */
+#app-layout{height:100vh;overflow:hidden}
+#main-col{flex:1;height:100vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+@media(max-width:1023px){
+  #app-layout{height:auto;overflow:visible}
+  #main-col{margin-left:0;height:auto;overflow-y:visible}
+  html,body{height:auto;min-height:100%;overflow-y:auto}
+}
 #dsb{position:fixed;left:0;top:0;bottom:0;width:220px;background:var(--surf);border-right:1px solid var(--bord);display:flex;flex-direction:column;z-index:200;overflow-y:auto}
 .dsb-nav{flex:1;padding:10px 8px;display:flex;flex-direction:column;gap:2px;overflow-y:auto}
 .dsb-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;cursor:pointer;text-decoration:none;color:var(--t2);font-size:13px;font-weight:600;border:none;background:none;width:100%;white-space:nowrap}
