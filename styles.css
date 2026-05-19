@@ -101,7 +101,12 @@ body {
   -webkit-overflow-scrolling: touch;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overscroll-behavior: none;
+  /* BATCH HOTFIX (touch-scroll): overscroll-behavior:none on the BODY
+     scroller blocked the touch/swipe scroll gesture on mobile (the
+     scrollbar still worked -> "moves with side scroller, not from
+     screen"). contain prevents scroll-chaining without killing the
+     gesture. .sb (inner scrollers) keep their own contain. */
+  overscroll-behavior: contain;
 }
 
 input, select, textarea, button {
