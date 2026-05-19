@@ -391,7 +391,15 @@ body{
 
 /* App wrapper */
 #app{
-  min-height:100vh; display:flex; flex-direction:column; position:relative;
+  /* BATCH HOTFIX (scroll): body was height:100% with #app flex column
+     and no scroll container -> page content could not scroll. Make #app
+     the scroller, same pattern as the working dashboard.html. */
+  min-height:100dvh; height:auto; display:flex; flex-direction:column;
+  position:relative; overflow-y:auto; -webkit-overflow-scrolling:touch;
+}
+@media(max-width:1023px){
+  html,body{height:auto; min-height:100%; overflow-y:auto}
+  #app{height:auto; min-height:100dvh; overflow-y:visible}
 }
 
 
@@ -1305,13 +1313,11 @@ async function svcAddTemplate(idx){
 }
 
 async function reloadServices(){
-  try {
-    const res = await SBPServices.list(_shopId);
-    _services = res && res.ok ? (res.services || []) : [];
-  } catch(e){ console.warn('services load error:', e); _services = _services || []; }
-  try { renderServices(); } catch(e){ console.warn('renderServices:', e); }
-  try { renderQuickAddTemplates(); } catch(e){ console.warn('renderQuickAddTemplates:', e); }
-  try { updateCompletion(); } catch(e){ console.warn('updateCompletion:', e); }
+  const res = await SBPServices.list(_shopId);
+  _services = res.ok ? (res.services || []) : [];
+  renderServices();
+  renderQuickAddTemplates();
+  updateCompletion();
 }
 
 // ── ROOMS (v4.8c) — local state only, saved to content_json ─────────
