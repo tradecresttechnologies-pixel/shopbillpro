@@ -87,6 +87,12 @@ body{
   padding:16px 20px; border-bottom:1px solid var(--bord);
   display:flex; align-items:center; gap:12px;
 }
+/* WB HEADER FIX (page-scoped): the +Add button is a flex sibling
+   in .sec-hd. Without shrink/nowrap protection it competed with
+   the title block, crushing the heading to one-word-per-line and
+   overlapping it. Lock the button so the title keeps its width. */
+.sec-hd .btn{ flex-shrink:0; white-space:nowrap; }
+.sec-hd-grow{ min-width:0; }
 .sec-hd-ic{
   width:36px; height:36px; border-radius:10px; background:var(--acc-soft); color:var(--acc);
   display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0;
@@ -437,23 +443,13 @@ body{
 
 /* Hide desktop sidebar on mobile, mobile drawer/bnav on desktop */
 @media(max-width:1023px){
-  /* WB MOBILE FIX (page-scoped, no global changes): website-builder
-     has a .wrap grid with a fixed 380px column + amenity rows that
-     did not wrap -> horizontal overflow / "not auto adjusting".
-     Force single-column, full width, and wrapping. Scoped to this
-     page only; the shared stylesheet is untouched. */
-  .wrap{
-    grid-template-columns:1fr !important;
-    max-width:100% !important;
-    padding:14px !important;
-    gap:14px !important;
-  }
-  .wrap > *{ min-width:0 !important; max-width:100% !important; }
-  .chip-row{ flex-wrap:wrap !important; }
-  .chip-row > *{ max-width:100% !important; }
-  img,video,canvas,iframe,table{ max-width:100% !important; height:auto; }
-  /* Clip any residual horizontal bleed on THIS page only. */
-  #app{ overflow-x:hidden; max-width:100vw; }
+  /* WB HEADER FIX (mobile): allow the header to wrap so the +Add
+     button moves to its own line under the title instead of
+     squeezing it. Page-scoped; shared stylesheet untouched. */
+  .sec-hd{ flex-wrap:wrap; }
+  .sec-hd-grow{ flex:1 1 100%; }
+  .sec-hd .btn{ margin-left:48px; }
+  .wrap{ grid-template-columns:1fr; max-width:100%; padding:14px; }
 }
 @media(min-width:1024px){
   .bnav, .bnav-drawer, .bnav-overlay{display:none !important}
