@@ -159,6 +159,13 @@ html,body{height:100%;width:100%;margin:0;padding:0;overflow:hidden;background:v
   font-size:10px;color:var(--t3);text-align:center;
   padding:9px 0 2px;letter-spacing:.4px;opacity:.75;
 }
+#main-col{
+  flex:1 1 auto;
+  min-width:0;            /* lets the flex child shrink below content width */
+  height:100vh;
+  display:flex;flex-direction:column;
+  overflow:hidden;
+}
 @media(max-width:1023px){
   #dsb{display:none !important}
   #main-col{width:100vw}
