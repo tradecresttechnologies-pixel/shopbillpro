@@ -502,7 +502,6 @@ function rowHtml(r){
   var det=[];
   if(r.customer_email) det.push('✉ '+esc(r.customer_email));
   if(r.table_preference) det.push('Pref: '+esc(r.table_preference));
-  if(r.made_by_name) det.push('By: '+esc(r.made_by_name));
   if(r.notes) det.push('Note: '+esc(r.notes));
   if(r.confirmation_code) det.push('#'+esc(r.confirmation_code));
 
