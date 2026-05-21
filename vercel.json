@@ -25,6 +25,10 @@
       "destination": "/domain-router"
     },
     {
+      "source": "/s/:slug/:page+",
+      "destination": "/s"
+    },
+    {
       "source": "/s/:slug",
       "destination": "/s"
     },

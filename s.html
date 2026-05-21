@@ -290,15 +290,38 @@ function escHtml(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
-function getSlugFromUrl() {
-  // Vercel rewrites /s/:slug → /s.html?slug=:slug, but the visible URL stays /s/foo
-  // Check both query string AND pathname.
+function getSlugAndPageFromUrl() {
+  // Vercel rewrites:
+  //   /s/:slug             → /s.html?slug=:slug             (page='home')
+  //   /s/:slug/:page       → /s.html?slug=:slug&page=:page  (multi-page M0+M1)
+  // Either way the visible URL stays /s/foo or /s/foo/menu.
+  // Check query string first, then pathname.
   const qs = new URLSearchParams(window.location.search);
-  if (qs.get('slug')) return qs.get('slug').toLowerCase().trim();
-  const path = window.location.pathname;
-  const match = path.match(/^\/s\/([a-z0-9-]+)\/?$/i);
-  if (match) return match[1].toLowerCase().trim();
-  return null;
+  let slug = (qs.get('slug') || '').toLowerCase().trim();
+  let page = (qs.get('page') || '').toLowerCase().trim();
+  if (!slug) {
+    const path = window.location.pathname;
+    // Match /s/{slug} or /s/{slug}/{page}
+    const m = path.match(/^\/s\/([a-z0-9-]+)(?:\/([a-z0-9-]+))?\/?$/i);
+    if (m) {
+      slug = m[1].toLowerCase().trim();
+      page = (m[2] || '').toLowerCase().trim();
+    }
+  }
+  if (!slug) return null;
+  // Whitelist known page slugs; anything else → 'home'.
+  // Per DESIGN_02 these are the candidate pages across all verticals.
+  const KNOWN_PAGES = ['home','menu','about','gallery','contact',
+                       'services','rooms','amenities','stylists','doctors',
+                       'products','catalogue','courses','faculty','shop','pricing'];
+  if (!page || page === '' || !KNOWN_PAGES.includes(page)) page = 'home';
+  return { slug: slug, page: page };
+}
+
+// Backward-compatible wrapper: existing call sites that just want the slug
+function getSlugFromUrl() {
+  const r = getSlugAndPageFromUrl();
+  return r ? r.slug : null;
 }
 
 function buildWhatsAppLink(phone, shopName) {
@@ -352,6 +375,45 @@ function renderEmpty(title, msg, ctaText) {
     </div>`;
 }
 
+function renderBusinessOnlyPage(data, slug, page) {
+  // Page exists in the multi-page architecture but hasn't been generated
+  // for this shop. Pro tier sees this for any non-home page; Business tier
+  // would only see this transiently while generation is in progress.
+  const PAGE_LABELS = {"menu": "Menu", "about": "About", "gallery": "Gallery", "contact": "Contact", "services": "Services", "rooms": "Rooms", "amenities": "Amenities", "stylists": "Stylists", "doctors": "Doctors", "products": "Products", "catalogue": "Catalogue", "courses": "Courses", "faculty": "Faculty", "shop": "Shop", "pricing": "Pricing"};
+  const label = PAGE_LABELS[page] || (page.charAt(0).toUpperCase() + page.slice(1));
+  const shopName = (data && data.shop_name) || 'Shop';
+  document.title = shopName + ' — ' + label;
+
+  const root = document.getElementById('psp-root') || document.body;
+  root.innerHTML = ''
+    + '<div class="psp-empty" style="text-align:center;padding:48px 20px;max-width:520px;margin:60px auto;">'
+    +   '<div style="font-size:48px;margin-bottom:16px;opacity:.55;">📄</div>'
+    +   '<h1 style="font-size:24px;margin:0 0 12px;font-weight:700;color:#1F2937;">'
+    +     escapeHtml(label) + ' page coming soon'
+    +   '</h1>'
+    +   '<p style="font-size:15px;color:#4B5563;line-height:1.55;margin:0 0 24px;">'
+    +     'This is a ShopBill Pro Business feature — full multi-page websites '
+    +     'with a dedicated ' + escapeHtml(label) + ' page. '
+    +     escapeHtml(shopName) + ' is using the free plan, which provides a '
+    +     'home page only.'
+    +   '</p>'
+    +   '<a href="/s/' + encodeURIComponent(slug) + '" '
+    +      'style="display:inline-block;padding:12px 24px;background:#F59E0B;'
+    +      'color:#fff;border-radius:10px;font-weight:600;text-decoration:none;'
+    +      'transition:opacity .15s;">'
+    +     '← Back to ' + escapeHtml(shopName)
+    +   '</a>'
+    + '</div>';
+}
+
+function escapeHtml(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+
 function renderShop(data) {
   // ─── AI Website fork (Phase 5a v4 — live components) ───────────────────
   // If the shopkeeper has published an AI-generated website, render it
@@ -363,6 +425,13 @@ function renderShop(data) {
   //   • Before insertion we splice in: window.__SBP_{SLUG,URL,KEY} globals,
   //     the Supabase UMD SDK, and lib/live-site.js — all loaded via absolute
   //     URLs because srcdoc iframes have no base URL.
+  // M1: handle pages that exist on /s/{slug}/{page} but haven't been generated
+  // for this shop yet (Business-tier feature). Show clear interstitial.
+  if (data.page_status === 'business_only' && page !== 'home') {
+    renderBusinessOnlyPage(data, slug, page);
+    return;
+  }
+
   if (data.ai_mode === true && data.ai_html && typeof data.ai_html === 'string' && data.ai_html.length > 50) {
     document.title = (data.shop_name || 'Shop') + ' — ShopBill Pro';
     const root = document.getElementById('app') || document.body;
@@ -621,9 +690,9 @@ async function loadServicesPublic(slug) {
 }
 
 async function init() {
-  const slug = getSlugFromUrl();
+  const params = getSlugAndPageFromUrl();
 
-  if (!slug) {
+  if (!params) {
     renderEmpty(
       'Page not found',
       'This shop link looks incomplete. Check the URL and try again.',
@@ -632,8 +701,18 @@ async function init() {
     return;
   }
 
+  const slug = params.slug;
+  const page = params.page;
+
   try {
-    const { data, error } = await sb.rpc('sbp_resolve_shop_slug', { p_slug: slug });
+    // Multi-page resolver (DESIGN_02 M1). Returns the requested page's HTML;
+    // falls back to legacy ai_generated_html when page=home and the shop
+    // was generated before M0. Returns page_status='business_only' for
+    // pages that haven't been generated yet — UI shows interstitial.
+    const { data, error } = await sb.rpc('sbp_resolve_shop_page', {
+      p_slug: slug,
+      p_page_slug: page
+    });
 
     if (error) throw error;
 
