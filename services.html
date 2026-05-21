@@ -112,6 +112,19 @@ body{background:var(--bg);color:var(--text);min-height:100dvh;overflow-x:hidden}
 
 /* Service list */
 .svc-list{padding:4px 14px}
+
+.svc-star{
+  background:transparent;border:1px solid var(--bord,#e5e7eb);
+  color:#9ca3af;width:32px;height:32px;border-radius:50%;
+  font-size:18px;cursor:pointer;padding:0;line-height:1;
+  display:inline-flex;align-items:center;justify-content:center;
+  transition:all .15s ease;flex-shrink:0;
+}
+.svc-star:hover{ border-color:#f59e0b;color:#f59e0b; }
+.svc-star.on{ background:#f59e0b;border-color:#f59e0b;color:#fff; }
+.svc-star.on:hover{ background:#d97706; }
+.svc-actions{ display:flex;align-items:center;gap:8px; }
+
 .svc-card{background:var(--surf);border:1px solid var(--bord);border-radius:var(--rs);padding:12px;margin-bottom:8px;display:flex;gap:12px;align-items:center;transition:var(--tr)}
 .svc-card:hover{border-color:rgba(245,166,35,.3)}
 .svc-card.inactive{opacity:.55}
@@ -601,6 +614,10 @@ body{background:var(--bg);color:var(--text);min-height:100dvh;overflow-x:hidden}
         <input type="checkbox" id="sv-active" checked style="width:16px;height:16px;accent-color:var(--acc3)">
         <span><span class="lang-en">Active (visible on website &amp; in billing)</span><span class="lang-hi">सक्रिय (वेबसाइट और बिलिंग पर दिखे)</span></span>
       </label>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+        <input type="checkbox" id="sv-featured" style="width:16px;height:16px;accent-color:var(--acc3)">
+        <span><span class="lang-en">Featured ⭐ (signature item — shown prominently on website home)</span><span class="lang-hi">विशेष ⭐ (वेबसाइट के मुख्य पेज पर दिखे)</span></span>
+      </label>
     </div>
 
     <button class="btn-pri" onclick="saveService()" id="btn-save-svc">💾 Save Service</button>
@@ -808,6 +825,12 @@ function renderList(){
         </div>
       </div>
       <div class="svc-actions">
+        <button class="svc-star ${s.is_featured?'on':''}"
+                onclick="event.stopPropagation();toggleFeatured('${s.id}')"
+                title="${s.is_featured?'Featured on website':'Mark as signature'}"
+                aria-label="${s.is_featured?'Remove from featured':'Add to featured'}">
+          ${s.is_featured?'★':'☆'}
+        </button>
         <label class="tgl" onclick="event.stopPropagation()">
           <input type="checkbox" ${s.active?'checked':''} onchange="toggleActive('${s.id}')">
           <span class="tgl-track"></span>
@@ -874,6 +897,7 @@ function openEditService(id){
   document.getElementById('sv-hsn').value = s.hsn_sac_code || '';
   document.getElementById('sv-image').value = s.image_url || '';
   document.getElementById('sv-active').checked = !!s.active;
+  document.getElementById('sv-featured').checked = !!s.is_featured;
   openModal('svc-modal');
 }
 
@@ -892,7 +916,8 @@ async function saveService(){
     gst_rate: parseFloat(document.getElementById('sv-gst').value) || 0,
     hsn_sac_code: document.getElementById('sv-hsn').value.trim() || null,
     image_url: document.getElementById('sv-image').value.trim() || null,
-    active: document.getElementById('sv-active').checked
+    active: document.getElementById('sv-active').checked,
+    is_featured: document.getElementById('sv-featured').checked
   };
 
   const btn = document.getElementById('btn-save-svc');
@@ -942,6 +967,24 @@ async function toggleActive(id){
     await loadServices();
   }
 }
+async function toggleFeatured(id){
+  const s = _services.find(x=>x.id===id);
+  if(!s) return;
+  const wasFeatured = !!s.is_featured;
+  // Optimistic UI update
+  s.is_featured = !wasFeatured;
+  applyFilters();
+  const res = await SBPServices.update(id, { is_featured: s.is_featured });
+  if(!res.ok){
+    // Revert on failure
+    s.is_featured = wasFeatured;
+    applyFilters();
+    toast('Could not update: ' + (res.error||'error'), 'e');
+  } else {
+    toast(s.is_featured ? '⭐ Marked as signature' : 'Removed from featured', 's');
+  }
+}
+
 
 // ── Export ───────────────────────────────────────────────
 function exportServices(){
