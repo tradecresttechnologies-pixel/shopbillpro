@@ -2093,6 +2093,66 @@ async function handleSaveAll(){
 }
 
 // ── Generate AI website ─────────────────────────────────────────
+// ── PAGES_BY_MACRO (M2 Path B — chained client-side) ────────────────
+// Map of which pages to generate for a given (macro × plan tier).
+// Free/Pro: home only. Business: full set per macro.
+const PAGES_BY_MACRO_TIER = {
+  food:        { pro: ['home'], business: ['home','menu','about','gallery','contact'] },
+  beauty:      { pro: ['home'], business: ['home','services','stylists','gallery','contact'] },
+  healthcare:  { pro: ['home'], business: ['home','services','doctors','about','contact'] },
+  services:    { pro: ['home'], business: ['home','services','gallery','contact'] },
+  retail:      { pro: ['home'], business: ['home','products','gallery','about','contact'] },
+  education:   { pro: ['home'], business: ['home','courses','about','contact'] },
+  wholesale:   { pro: ['home'], business: ['home','catalogue','about','contact'] },
+  online:      { pro: ['home'], business: ['home','shop','about','contact'] },
+  hospitality: { pro: ['home'], business: ['home','rooms','amenities','gallery','contact'] }
+};
+
+// Detect macro for the current shop. Uses SBPBuilderFields.macroFor if available.
+function _detectMacro(){
+  const shopType = $('business-type').value;
+  if (window.SBPBuilderFields && typeof window.SBPBuilderFields.macroFor === 'function'){
+    return window.SBPBuilderFields.macroFor(shopType);
+  }
+  return 'other';
+}
+
+// Normalize plan: enterprise→business, blanks→free.
+function _normalizePlan(plan){
+  if (!plan || typeof plan !== 'string') return 'free';
+  const p = plan.toLowerCase().trim();
+  if (p === 'enterprise') return 'business';
+  return p;
+}
+
+// Build the list of pages to generate for current shop.
+function _resolvePagesToGenerate(){
+  const macro = _detectMacro();
+  const plan  = _normalizePlan(_shop && _shop.plan);
+  const macroPages = PAGES_BY_MACRO_TIER[macro];
+  if (!macroPages){
+    // Unknown macro (property, subscription, etc.) → home only
+    return { pages: ['home'], macro: macro, plan: plan };
+  }
+  // Pro tier or anything below = home only
+  if (plan !== 'business') return { pages: macroPages.pro || ['home'], macro, plan };
+  return { pages: macroPages.business || ['home'], macro, plan };
+}
+
+// Render the per-page progress UI inside the loading overlay.
+function _renderGenProgress(pages, doneSet, currentPage, failedSet){
+  const lines = pages.map(function(p){
+    const label = p.charAt(0).toUpperCase() + p.slice(1);
+    if (failedSet && failedSet.has(p)) return '<div style="opacity:.8">✗ ' + label + ' <span style="color:#ef4444">failed</span></div>';
+    if (doneSet.has(p)) return '<div>✓ ' + label + '</div>';
+    if (p === currentPage) return '<div style="opacity:.9"><span style="display:inline-block;animation:none">⏳</span> Generating ' + label + '…</div>';
+    return '<div style="opacity:.5">○ ' + label + '</div>';
+  });
+  const html = '<div style="text-align:left;line-height:1.9;font-size:13.5px">' + lines.join('') + '</div>';
+  const el = $('loading-text');
+  if (el) el.innerHTML = html;
+}
+
 async function handleGenerate(){
   // Validate required fields
   const errs = [];
@@ -2105,53 +2165,103 @@ async function handleGenerate(){
   // Save everything first
   await handleSaveAll();
 
-  // Then trigger generation
-  loadingOn('ShopBill Pro AI is building your website…\nTakes 15–30 seconds');
+  // Decide pages to generate based on macro × plan tier
+  const { pages, macro, plan } = _resolvePagesToGenerate();
+  const isMultiPage = pages.length > 1;
+
+  console.log('[M2] handleGenerate macro=' + macro + ' plan=' + plan + ' pages=' + pages.join(','));
+
+  // Initial loading text
+  if (isMultiPage){
+    loadingOn('Generating ' + pages.length + ' pages — please wait, do not refresh');
+  } else {
+    loadingOn('ShopBill Pro AI is building your website…\nTakes 15–30 seconds');
+  }
+
+  // Common payload (shared across all page calls)
+  const basePayload = {
+    shop_name:         $('shop-name').value.trim(),
+    business_type:     $('business-type').value,
+    headline:          $('headline').value.trim(),
+    description:       $('description').value.trim(),
+    design_style:      _design.design_style,
+    color_primary:     _design.color_primary.toLowerCase(),
+    color_primary_hex: _design.color_primary_hex,
+    color_accent:      _design.color_accent.toLowerCase(),
+    color_accent_hex:  _design.color_accent_hex,
+    vertical_spec:     (window.SBPVerticalSpec ? window.SBPVerticalSpec($('business-type').value) : '')
+  };
+
+  const done   = new Set();
+  const failed = new Set();
+  let homeSucceeded = false;
+
   try {
-    const payload = {
-      shop_name:         $('shop-name').value.trim(),
-      business_type:     $('business-type').value,
-      headline:          $('headline').value.trim(),
-      description:       $('description').value.trim(),
-      design_style:      _design.design_style,
-      color_primary:     _design.color_primary.toLowerCase(),
-      color_primary_hex: _design.color_primary_hex,
-      color_accent:      _design.color_accent.toLowerCase(),
-      color_accent_hex:  _design.color_accent_hex,
-      vertical_spec:     (window.SBPVerticalSpec ? window.SBPVerticalSpec($('business-type').value) : '')
-    };
+    for (let i = 0; i < pages.length; i++){
+      const pageSlug = pages[i];
+      if (isMultiPage) _renderGenProgress(pages, done, pageSlug, failed);
 
-    const { data, error } = await _sb.functions.invoke('generate-ai-website', { body: payload });
+      const payload = Object.assign({}, basePayload, { page_slug: pageSlug });
 
-    if (error){ toast('Generation failed: ' + error.message, 'e'); return; }
-    if (!data || !data.ok){
-      const reason = (data && (data.error || data.reason)) || 'unknown';
-      toast('Generation failed: ' + reason, 'e');
-      return;
+      try {
+        const { data, error } = await _sb.functions.invoke('generate-ai-website', { body: payload });
+
+        if (error){
+          throw new Error(error.message || 'edge_function_error');
+        }
+        if (!data || !data.ok){
+          const reason = (data && (data.error || data.reason || data.message)) || 'unknown';
+          throw new Error(reason);
+        }
+
+        done.add(pageSlug);
+        if (pageSlug === 'home') homeSucceeded = true;
+        if (isMultiPage) _renderGenProgress(pages, done, null, failed);
+
+      } catch(pageErr){
+        failed.add(pageSlug);
+        if (isMultiPage) _renderGenProgress(pages, done, null, failed);
+
+        // Home failure = fatal. Abort the rest (no point if home didn't generate).
+        if (pageSlug === 'home'){
+          toast('Home page failed: ' + (pageErr.message || pageErr) + ' — aborting', 'e');
+          return;
+        }
+        // Non-home failure: log and continue
+        console.warn('[M2] page ' + pageSlug + ' failed: ' + (pageErr.message || pageErr));
+      }
     }
 
-    toast('Website generated! Click Push Live to publish it.');
+    // Summary
+    if (!homeSucceeded){
+      toast('Generation failed — home page did not generate', 'e');
+      return;
+    }
+    if (failed.size === 0){
+      toast(isMultiPage
+        ? ('All ' + pages.length + ' pages generated! Click Push Live to publish.')
+        : 'Website generated! Click Push Live to publish it.');
+    } else {
+      const failedList = Array.from(failed).join(', ');
+      toast('Generated ' + done.size + '/' + pages.length + ' pages. Failed: ' + failedList + ' — you can regenerate to retry.', 'w');
+    }
+
     await loadWebsiteState();
 
     // Force-show Push Live immediately after generation.
-    // loadWebsiteState may return stale state (has_ai_draft=false)
-    // due to DB replication lag. We know the generation just succeeded
-    // so we force the button visible rather than waiting for state sync.
-    if (_websiteState) {
+    if (_websiteState){
       _websiteState.has_ai_draft = true;
     } else {
-      // State didn't load — create minimal state so buttons work
       _websiteState = { has_ai_draft: true, ai_published: false, ok: true };
     }
     updatePublishButton();
     updatePreview();
 
-    // Also directly show push live button as belt-and-braces
     const _pb = $('push-live-btn');
     const _isAlreadyLive = _websiteState && _websiteState.ai_published;
-    if (_pb && !_isAlreadyLive) { _pb.style.display = 'flex'; }
+    if (_pb && !_isAlreadyLive){ _pb.style.display = 'flex'; }
 
-    const _eb=$('gen-btn-text-en'); if(_eb)_eb.textContent='Regenerate Website';
+    const _eb = $('gen-btn-text-en'); if (_eb) _eb.textContent = 'Regenerate Website';
   } catch(e){
     toast('Generation error: ' + (e.message || e), 'e');
   } finally {
