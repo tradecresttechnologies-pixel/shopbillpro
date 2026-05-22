@@ -270,12 +270,41 @@ select.filter,select.period{padding:11px 16px;background:rgba(20,18,32,.6);borde
 
       <div class="chart-card">
         <h3>🤖 Active AI Provider</h3>
-        <p style="font-size:12.5px;color:#8A8AA8;margin-bottom:12px">Switching only takes effect for new generations. Existing AI sites stay as they were generated.</p>
-        <select class="filter" id="active-provider" style="min-width:200px">
-          <option value="claude">Claude Sonnet 4 (recommended)</option>
-          <option value="groq">Groq (Llama 3.3 — cheaper, lower quality)</option>
-        </select>
-        <button class="btn btn-primary btn-lg" style="margin-left:10px" onclick="saveProvider()">Save</button>
+        <p style="font-size:12.5px;color:#8A8AA8;margin-bottom:6px">Provider routing per shop tier. Pro and Business can use different providers; leave blank to fall back to Global Default.</p>
+        <p style="font-size:11.5px;color:#5A5A78;margin-bottom:14px">Switching only takes effect for new generations. Existing AI sites stay as they were generated.</p>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px">
+          <div>
+            <label style="display:block;font-size:11.5px;color:#8A8AA8;margin-bottom:4px;font-weight:600">Global Default</label>
+            <select class="filter" id="active-provider" style="width:100%">
+              <option value="claude">Claude Sonnet 4</option>
+              <option value="groq">Groq (Llama 3.3)</option>
+            </select>
+            <p style="font-size:10.5px;color:#5A5A78;margin-top:4px">Catch-all fallback</p>
+          </div>
+          <div>
+            <label style="display:block;font-size:11.5px;color:#8A8AA8;margin-bottom:4px;font-weight:600">Pro Tier</label>
+            <select class="filter" id="provider-pro" style="width:100%">
+              <option value="">— Use Global Default —</option>
+              <option value="claude">Claude Sonnet 4</option>
+              <option value="groq">Groq (Llama 3.3)</option>
+            </select>
+            <p style="font-size:10.5px;color:#5A5A78;margin-top:4px">Pro plan shops</p>
+          </div>
+          <div>
+            <label style="display:block;font-size:11.5px;color:#8A8AA8;margin-bottom:4px;font-weight:600">Business Tier</label>
+            <select class="filter" id="provider-business" style="width:100%">
+              <option value="">— Use Global Default —</option>
+              <option value="claude">Claude Sonnet 4</option>
+              <option value="groq">Groq (Llama 3.3)</option>
+            </select>
+            <p style="font-size:10.5px;color:#5A5A78;margin-top:4px">Business plan shops</p>
+          </div>
+        </div>
+
+        <div id="provider-keys-status" style="font-size:11.5px;color:#8A8AA8;margin:8px 0 12px">Loading key status…</div>
+
+        <button class="btn btn-primary btn-lg" onclick="saveProviderTierConfig()">💾 Save provider routing</button>
         <p style="font-size:11.5px;color:#5A5A78;margin-top:10px">Anthropic and Groq API keys are managed in the section above ↑ (no more CLI needed).</p>
       </div>
 
@@ -578,15 +607,41 @@ async function loadAnalytics(){
 
 // ─────────── PROVIDER / PROMPT TAB ───────────
 async function loadProviderTab(){
-  const cfg = await sb.rpc('admin_get_ai_provider_config', { p_admin_token: token() });
-  if (cfg.error || !cfg.data?.ok){ toast('Failed to load provider', true); return; }
-  document.getElementById('active-provider').value = cfg.data.active_provider;
-  if (cfg.data.active_prompt){
-    document.getElementById('prompt-text').value = cfg.data.active_prompt.prompt_text;
-    document.getElementById('prompt-meta').textContent =
-      `Active: ${cfg.data.active_prompt.name} v${cfg.data.active_prompt.version} · ${fmtDate(cfg.data.active_prompt.created_at)}`;
+  // v3.7: load per-tier config (new admin_get_provider_tier_config from 095)
+  // Falls back to old admin_get_ai_provider_config if 095 isn't deployed.
+  let tierCfg = await sb.rpc('admin_get_provider_tier_config', { p_admin_token: token() });
+  if (tierCfg.error || !tierCfg.data?.ok){
+    // Fallback to legacy single-provider RPC
+    const cfg = await sb.rpc('admin_get_ai_provider_config', { p_admin_token: token() });
+    if (cfg.error || !cfg.data?.ok){ toast('Failed to load provider', true); return; }
+    document.getElementById('active-provider').value = cfg.data.active_provider;
+    document.getElementById('provider-pro').value = '';
+    document.getElementById('provider-business').value = '';
+    document.getElementById('provider-keys-status').textContent = '⚠️ Per-tier config not available (run migration 095)';
+    // Continue with legacy prompt-versions code below using cfg
+    if (cfg.data.active_prompt){
+      document.getElementById('prompt-text').value = cfg.data.active_prompt.prompt_text;
+      document.getElementById('prompt-meta').textContent =
+        `Active: ${cfg.data.active_prompt.name} v${cfg.data.active_prompt.version} · ${fmtDate(cfg.data.active_prompt.created_at)}`;
+    }
+  } else {
+    document.getElementById('active-provider').value    = tierCfg.data.global_default || 'claude';
+    document.getElementById('provider-pro').value       = tierCfg.data.pro_provider || '';
+    document.getElementById('provider-business').value  = tierCfg.data.business_provider || '';
+    const ks = tierCfg.data.keys_status || {};
+    document.getElementById('provider-keys-status').innerHTML =
+      'API keys: ' +
+      (ks.claude ? '<span style="color:#10B981">✓ Claude</span>' : '<span style="color:#F43F5E">✗ Claude (not set)</span>') +
+      ' · ' +
+      (ks.groq   ? '<span style="color:#10B981">✓ Groq</span>'   : '<span style="color:#F43F5E">✗ Groq (not set)</span>');
+    // Also fetch the active prompt via legacy RPC (per-tier RPC doesn't include it)
+    const cfg = await sb.rpc('admin_get_ai_provider_config', { p_admin_token: token() });
+    if (!cfg.error && cfg.data?.ok && cfg.data.active_prompt){
+      document.getElementById('prompt-text').value = cfg.data.active_prompt.prompt_text;
+      document.getElementById('prompt-meta').textContent =
+        `Active: ${cfg.data.active_prompt.name} v${cfg.data.active_prompt.version} · ${fmtDate(cfg.data.active_prompt.created_at)}`;
+    }
   }
-
   const vers = await sb.rpc('admin_list_prompt_templates', { p_admin_token: token(), p_name: 'website_v1' });
   const tbody = document.getElementById('prompt-versions-tbody');
   if (vers.error || !vers.data?.ok){
@@ -614,6 +669,32 @@ async function saveProvider(){
   const { data, error } = await sb.rpc('admin_set_ai_provider_config', { p_admin_token: token(), p_provider: p });
   if (error || !data?.ok){ toast('Failed: ' + (error?.message || data?.error), true); return; }
   toast('Provider set to ' + p + ' ✓');
+}
+
+// v3.7: per-tier provider routing (095). Saves all three settings in one call.
+async function saveProviderTierConfig(){
+  const global_default   = document.getElementById('active-provider').value;
+  const pro_provider     = document.getElementById('provider-pro').value;
+  const business_provider= document.getElementById('provider-business').value;
+  const { data, error } = await sb.rpc('admin_set_provider_tier_config', {
+    p_admin_token: token(),
+    p_global_default: global_default,
+    p_pro_provider: pro_provider,
+    p_business_provider: business_provider
+  });
+  if (error || !data?.ok){
+    toast('Failed: ' + (error?.message || data?.error || 'unknown'), true);
+    return;
+  }
+  // Build a friendly toast
+  const parts = [];
+  parts.push(`Default: ${global_default}`);
+  if (pro_provider) parts.push(`Pro: ${pro_provider}`);
+  else parts.push('Pro: (default)');
+  if (business_provider) parts.push(`Business: ${business_provider}`);
+  else parts.push('Business: (default)');
+  toast('Provider routing saved ✓  ·  ' + parts.join(' · '));
+  loadProviderTab();
 }
 
 async function savePromptVersion(){
