@@ -2215,7 +2215,12 @@ async function handleGenerate(){
       const pageSlug = pages[i];
       if (isMultiPage) _renderGenProgress(pages, done, pageSlug, failed);
 
-      const payload = Object.assign({}, basePayload, { page_slug: pageSlug });
+      // v3.9: tell Edge Function to use home_multipage prompt when home is
+      // generated as part of a multi-page sequence (anchor nav → path nav)
+      const payload = Object.assign({}, basePayload, {
+        page_slug:    pageSlug,
+        is_multipage: isMultiPage
+      });
 
       try {
         const { data, error } = await _sb.functions.invoke('generate-ai-website', { body: payload });
