@@ -840,6 +840,56 @@ body{
         </div>
       </div>
 
+      <!-- ── 4b. Stylists (DESIGN_04 F4) — beauty macro only, hidden by default ── -->
+      <div class="sec" id="sec-stylists" style="display:none">
+        <div class="sec-hd">
+          <div class="sec-hd-ic">💇</div>
+          <div class="sec-hd-grow">
+            <h2><span class="lang-en">4. Your Stylists</span><span class="lang-hi">4. आपके स्टाइलिस्ट</span></h2>
+            <div class="sub">
+              <span class="lang-en">Add named team members customers can book with — optional, leave empty if you prefer not to feature individuals</span>
+              <span class="lang-hi">अपनी टीम के सदस्य जोड़ें — वैकल्पिक</span>
+            </div>
+          </div>
+          <button type="button" class="btn btn-sm btn-pri" onclick="stylistShowForm()">
+            <span>+</span> <span class="lang-en">Add</span><span class="lang-hi">जोड़ें</span>
+          </button>
+        </div>
+        <div class="sec-bd">
+          <div id="stylist-list"></div>
+          <div id="stylist-form-wrap" style="display:none"></div>
+          <p id="stylist-empty-note" style="font-size:12px;color:var(--muted);margin:6px 0 0">
+            <span class="lang-en">No stylists added. Your website will simply describe your team.</span>
+            <span class="lang-hi">कोई स्टाइलिस्ट नहीं — वेबसाइट सिर्फ टीम का वर्णन करेगी।</span>
+          </p>
+        </div>
+      </div>
+
+      <!-- ── 4c. Doctors (DESIGN_04 F4) — healthcare macro only, hidden by default ── -->
+      <div class="sec" id="sec-doctors" style="display:none">
+        <div class="sec-hd">
+          <div class="sec-hd-ic">👨‍⚕️</div>
+          <div class="sec-hd-grow">
+            <h2><span class="lang-en">4. Doctors & Practitioners</span><span class="lang-hi">4. डॉक्टर</span></h2>
+            <div class="sub">
+              <span class="lang-en">Add doctors with their qualifications and specialties — optional but builds patient trust</span>
+              <span class="lang-hi">डॉक्टरों की योग्यता और विशेषज्ञता जोड़ें — वैकल्पिक</span>
+            </div>
+          </div>
+          <button type="button" class="btn btn-sm btn-pri" onclick="doctorShowForm()">
+            <span>+</span> <span class="lang-en">Add</span><span class="lang-hi">जोड़ें</span>
+          </button>
+        </div>
+        <div class="sec-bd">
+          <div id="doctor-list"></div>
+          <div id="doctor-form-wrap" style="display:none"></div>
+          <p id="doctor-empty-note" style="font-size:12px;color:var(--muted);margin:6px 0 0">
+            <span class="lang-en">No doctors added. Website will describe the clinic generally.</span>
+            <span class="lang-hi">डॉक्टर नहीं जोड़े। वेबसाइट सामान्य विवरण देगी।</span>
+          </p>
+        </div>
+      </div>
+
       <!-- ── 5. Amenities (NEW v4.8c) ── -->
       <div class="sec" id="sec-amenities">
         <div class="sec-hd">
@@ -1166,6 +1216,7 @@ body{
 <script src="lib/sidebar-engine.js"></script>
 <script src="lib/services.js"></script>
 <script src="lib/shop-images.js"></script>
+<script src="lib/website-builder-fields.js"></script>
 
 <script>
 const SB_URL = 'https://jfqeirfrkjdkqqixivru.supabase.co';
@@ -1188,6 +1239,8 @@ let _websiteState = null;       // sbp_get_website_builder_state response
 let _services = [];              // current services array
 let _gallery = [];               // current gallery URLs
 let _rooms = [];                 // v4.8c: room types added by shop owner
+let _stylists = [];              // F4: beauty macro repeating group
+let _doctors  = [];              // F4: healthcare macro repeating group
 let _amenities = [];             // v4.8c: selected amenity names
 let _editingSvcId = null;
 let _previewMode = 'desktop';
@@ -1304,10 +1357,6 @@ function closeConfirm(ok){
 function isPro(){
   const p = (_shop && _shop.plan) || 'free';
   return p === 'pro' || p === 'business' || p === 'enterprise';
-}
-function isBiz(){
-  const p = (_shop && _shop.plan) || 'free';
-  return p === 'business' || p === 'enterprise';
 }
 
 // ── Color picker ──────────────────────────────────────────────────
@@ -1611,6 +1660,205 @@ function roomDelete(idx){
   toast('Removed');
 }
 
+// ── STYLISTS (F4) — local state only, saved to content_json ─────────
+
+function renderStylists(){
+  const list = document.getElementById('stylist-list');
+  const note = document.getElementById('stylist-empty-note');
+  if (!list) return;
+  if (_stylists.length === 0){
+    list.innerHTML = '';
+    if (note) note.style.display = '';
+    return;
+  }
+  if (note) note.style.display = 'none';
+  list.innerHTML = _stylists.map((s, i) => `
+    <div class="room-item">
+      <div class="room-item-info">
+        <div class="room-item-name">${escHtml(s.name)}</div>
+        <div class="room-item-meta">${s.specialty ? escHtml(s.specialty) : ''}${s.experience ? ' · ' + escHtml(s.experience) : ''}</div>
+      </div>
+      <button class="icon-btn" onclick="stylistEdit(${i})" title="Edit">✏️</button>
+      <button class="icon-btn" onclick="stylistDelete(${i})" title="Remove">🗑️</button>
+    </div>`).join('');
+  if (typeof updateCompletion === 'function') updateCompletion();
+}
+
+function stylistShowForm(idx){
+  const wrap = document.getElementById('stylist-form-wrap');
+  const s = (idx !== undefined) ? _stylists[idx] : {};
+  wrap.style.display = '';
+  wrap.innerHTML = `
+    <div class="svc-form" style="margin-top:10px">
+      <div class="svc-form-row">
+        <div>
+          <label class="lbl">Stylist name <span class="req">*</span></label>
+          <input class="inp" id="sf-name" value="${escHtml(s.name||'')}" placeholder="e.g. Priya Sharma" maxlength="60">
+        </div>
+        <div>
+          <label class="lbl">Specialty</label>
+          <input class="inp" id="sf-specialty" value="${escHtml(s.specialty||'')}" placeholder="e.g. Bridal Makeup, Hair Color" maxlength="80">
+        </div>
+      </div>
+      <div class="svc-form-row">
+        <div>
+          <label class="lbl">Experience</label>
+          <input class="inp" id="sf-experience" value="${escHtml(s.experience||'')}" placeholder="e.g. 8 years" maxlength="40">
+        </div>
+        <div>
+          <label class="lbl">Photo URL (optional)</label>
+          <input class="inp" id="sf-photo" value="${escHtml(s.photo||'')}" placeholder="https://…" maxlength="500">
+        </div>
+      </div>
+      <div>
+        <label class="lbl">Brief intro</label>
+        <textarea class="inp" id="sf-desc" rows="2" maxlength="200" placeholder="A line or two about this stylist…">${escHtml(s.description||'')}</textarea>
+      </div>
+      <div class="svc-form-acts" style="margin-top:10px">
+        <button class="btn btn-sm" type="button" onclick="stylistCancelForm()">Cancel</button>
+        <button class="btn btn-sm btn-pri" type="button" onclick="stylistSaveForm(${idx !== undefined ? idx : -1})">
+          ${idx !== undefined ? 'Update' : 'Add Stylist'}
+        </button>
+      </div>
+    </div>`;
+}
+
+function stylistCancelForm(){
+  const wrap = document.getElementById('stylist-form-wrap');
+  if (wrap){ wrap.innerHTML=''; wrap.style.display='none'; }
+}
+
+function stylistSaveForm(idx){
+  const name = document.getElementById('sf-name').value.trim();
+  if (!name){ toast('Stylist name required', 'e'); return; }
+  const stylist = {
+    name,
+    specialty:   document.getElementById('sf-specialty').value.trim(),
+    experience:  document.getElementById('sf-experience').value.trim(),
+    photo:       document.getElementById('sf-photo').value.trim(),
+    description: document.getElementById('sf-desc').value.trim()
+  };
+  if (idx >= 0){ _stylists[idx] = stylist; }
+  else { _stylists.push(stylist); }
+  stylistCancelForm();
+  renderStylists();
+  toast(idx >= 0 ? 'Stylist updated' : 'Stylist added');
+}
+
+function stylistEdit(idx){ stylistShowForm(idx); }
+
+function stylistDelete(idx){
+  _stylists.splice(idx, 1);
+  renderStylists();
+  toast('Removed');
+}
+
+// ── DOCTORS (F4) — local state only, saved to content_json ──────────
+
+function renderDoctors(){
+  const list = document.getElementById('doctor-list');
+  const note = document.getElementById('doctor-empty-note');
+  if (!list) return;
+  if (_doctors.length === 0){
+    list.innerHTML = '';
+    if (note) note.style.display = '';
+    return;
+  }
+  if (note) note.style.display = 'none';
+  list.innerHTML = _doctors.map((d, i) => `
+    <div class="room-item">
+      <div class="room-item-info">
+        <div class="room-item-name">${escHtml(d.name)}${d.qualifications ? ', ' + escHtml(d.qualifications) : ''}</div>
+        <div class="room-item-meta">${d.specialty ? escHtml(d.specialty) : ''}${d.experience ? ' · ' + escHtml(d.experience) : ''}</div>
+      </div>
+      <button class="icon-btn" onclick="doctorEdit(${i})" title="Edit">✏️</button>
+      <button class="icon-btn" onclick="doctorDelete(${i})" title="Remove">🗑️</button>
+    </div>`).join('');
+  if (typeof updateCompletion === 'function') updateCompletion();
+}
+
+function doctorShowForm(idx){
+  const wrap = document.getElementById('doctor-form-wrap');
+  const d = (idx !== undefined) ? _doctors[idx] : {};
+  wrap.style.display = '';
+  wrap.innerHTML = `
+    <div class="svc-form" style="margin-top:10px">
+      <div class="svc-form-row">
+        <div>
+          <label class="lbl">Doctor name <span class="req">*</span></label>
+          <input class="inp" id="df-name" value="${escHtml(d.name||'')}" placeholder="e.g. Dr. Rajesh Kumar" maxlength="60">
+        </div>
+        <div>
+          <label class="lbl">Qualifications</label>
+          <input class="inp" id="df-quals" value="${escHtml(d.qualifications||'')}" placeholder="MBBS, MD" maxlength="60">
+        </div>
+      </div>
+      <div class="svc-form-row">
+        <div>
+          <label class="lbl">Specialty</label>
+          <input class="inp" id="df-specialty" value="${escHtml(d.specialty||'')}" placeholder="e.g. Pediatrics, Skin" maxlength="60">
+        </div>
+        <div>
+          <label class="lbl">Experience</label>
+          <input class="inp" id="df-experience" value="${escHtml(d.experience||'')}" placeholder="e.g. 15 years" maxlength="40">
+        </div>
+      </div>
+      <div class="svc-form-row">
+        <div>
+          <label class="lbl">Consultation hours</label>
+          <input class="inp" id="df-hours" value="${escHtml(d.hours||'')}" placeholder="e.g. Mon-Sat 10am-1pm, 5pm-8pm" maxlength="100">
+        </div>
+        <div>
+          <label class="lbl">Photo URL (optional)</label>
+          <input class="inp" id="df-photo" value="${escHtml(d.photo||'')}" placeholder="https://…" maxlength="500">
+        </div>
+      </div>
+      <div>
+        <label class="lbl">Brief bio</label>
+        <textarea class="inp" id="df-desc" rows="2" maxlength="200" placeholder="A line or two about this doctor…">${escHtml(d.description||'')}</textarea>
+      </div>
+      <div class="svc-form-acts" style="margin-top:10px">
+        <button class="btn btn-sm" type="button" onclick="doctorCancelForm()">Cancel</button>
+        <button class="btn btn-sm btn-pri" type="button" onclick="doctorSaveForm(${idx !== undefined ? idx : -1})">
+          ${idx !== undefined ? 'Update' : 'Add Doctor'}
+        </button>
+      </div>
+    </div>`;
+}
+
+function doctorCancelForm(){
+  const wrap = document.getElementById('doctor-form-wrap');
+  if (wrap){ wrap.innerHTML=''; wrap.style.display='none'; }
+}
+
+function doctorSaveForm(idx){
+  const name = document.getElementById('df-name').value.trim();
+  if (!name){ toast('Doctor name required', 'e'); return; }
+  const doctor = {
+    name,
+    qualifications: document.getElementById('df-quals').value.trim(),
+    specialty:      document.getElementById('df-specialty').value.trim(),
+    experience:     document.getElementById('df-experience').value.trim(),
+    hours:          document.getElementById('df-hours').value.trim(),
+    photo:          document.getElementById('df-photo').value.trim(),
+    description:    document.getElementById('df-desc').value.trim()
+  };
+  if (idx >= 0){ _doctors[idx] = doctor; }
+  else { _doctors.push(doctor); }
+  doctorCancelForm();
+  renderDoctors();
+  toast(idx >= 0 ? 'Doctor updated' : 'Doctor added');
+}
+
+function doctorEdit(idx){ doctorShowForm(idx); }
+
+function doctorDelete(idx){
+  _doctors.splice(idx, 1);
+  renderDoctors();
+  toast('Removed');
+}
+
+
 // ── AMENITIES (v4.8c) ──────────────────────────────────────────────
 
 function getSelectedAmenities(){
@@ -1808,6 +2056,8 @@ async function handleSaveAll(){
       upi:      $('c-upi').value.trim(),
       gallery:  _gallery,
       rooms:    _rooms,          // v4.8c
+      stylists: _stylists,       // F4: beauty macro
+      doctors:  _doctors,        // F4: healthcare macro
       amenities: getSelectedAmenities()  // v4.8c
     };
     const { data: cdata, error: cerr } = await _sb.rpc('sbp_update_website_content', {
@@ -2139,7 +2389,10 @@ async function loadContentJson(){
     if (!$('c-upi').value     && c.upi)     $('c-upi').value     = c.upi;
     // v4.8c: restore rooms + amenities
     _rooms = Array.isArray(c.rooms) ? c.rooms : [];
-    renderRooms();
+    // F4: restore stylists + doctors
+    _stylists = Array.isArray(c.stylists) ? c.stylists : [];
+    _doctors  = Array.isArray(c.doctors)  ? c.doctors  : [];
+    renderRooms(); renderStylists(); renderDoctors();
     if (Array.isArray(c.amenities) && c.amenities.length > 0){
       setSelectedAmenities(c.amenities);
     }
@@ -2185,14 +2438,14 @@ async function init(){
   const planNorm = plan === 'enterprise' ? 'business' : plan;
   const pill = planNorm === 'business' ? 'pill-biz' : (planNorm === 'pro' ? 'pill-pro' : '');
   $('plan-banner').innerHTML =
-    '<div class="plan-banner-ic">' + (isBiz() ? '✨' : '🔒') + '</div>' +
+    '<div class="plan-banner-ic">' + (isPro() ? '✨' : '🔒') + '</div>' +
     '<div class="plan-banner-info">' +
-      '<div class="plan-banner-t">' + (isBiz() ? 'You can build your AI website' : 'AI Website — Business plan feature') + '</div>' +
+      '<div class="plan-banner-t">' + (isPro() ? 'You can build your AI website' : 'Free plan — AI Website locked') + '</div>' +
       '<div class="plan-banner-s">Current plan: <span class="pill ' + pill + '">' + planNorm.toUpperCase() + '</span></div>' +
     '</div>' +
-    (isBiz() ? '' : '<a class="btn btn-pri btn-sm" href="subscription.html">Upgrade</a>');
+    (isPro() ? '' : '<a class="btn btn-pri btn-sm" href="subscription.html">Upgrade</a>');
 
-  if (!isBiz()){
+  if (!isPro()){
     $('locked-screen').style.display = 'block';
     return;
   }
@@ -2202,6 +2455,22 @@ async function init(){
   // Pre-fill shop info
   $('shop-name').value  = _shop.name    || '';
   $('business-type').value = _shop.shop_type || '';
+
+  // F1 (DESIGN_04): Hide/relabel sections per vertical.
+  // For food shops, this hides 'Rooms' and replaces hotel amenities
+  // with restaurant-relevant ones. For shops where no per-macro config
+  // exists yet (everything except food in F1), this is a no-op — the
+  // form renders as before.
+  try {
+    if (window.SBPBuilderFields) {
+      const macro = window.SBPBuilderFields.macroFor(_shop.shop_type);
+      window.SBPBuilderFields.applyConfigToForm(macro);
+    }
+  } catch (e) {
+    console.warn('[F1] vertical-aware form config failed:', e);
+    // Fall through — form renders default, no user-facing break.
+  }
+
   $('c-phone').value    = _shop.phone   || '';
   $('c-whatsapp').value = _shop.wa      || _shop.phone || '';
   $('c-email').value    = _shop.email   || '';
