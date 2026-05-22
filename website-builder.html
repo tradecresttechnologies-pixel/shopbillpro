@@ -2109,11 +2109,25 @@ const PAGES_BY_MACRO_TIER = {
 };
 
 // Detect macro for the current shop. Uses SBPBuilderFields.macroFor if available.
+// IMPORTANT: prefer _shop.shop_type (specific: 'restaurant', 'cafe', 'grocery')
+// over $('business-type').value (generic: 'food', 'retail'). The dropdown uses
+// macro-level values which means a shop saved as shop_type='restaurant' won't
+// match any dropdown <option> and the form may silently show empty or wrong.
+// Reading _shop.shop_type directly bypasses that round-trip-through-dropdown bug.
 function _detectMacro(){
-  const shopType = $('business-type').value;
+  let shopType = (_shop && _shop.shop_type) ? _shop.shop_type : '';
+  if (!shopType){
+    // Fallback to form dropdown if _shop unavailable
+    shopType = $('business-type').value;
+  }
+  console.log('[M2] _detectMacro: shopType=' + shopType + ' (from _shop.shop_type=' + (_shop && _shop.shop_type) + ' form-value=' + $('business-type').value + ')');
   if (window.SBPBuilderFields && typeof window.SBPBuilderFields.macroFor === 'function'){
     return window.SBPBuilderFields.macroFor(shopType);
   }
+  // Last-ditch fallback — if SBPBuilderFields not loaded, do food check
+  const FOOD_TYPES = ['restaurant','cafe','qsr','ice_cream','cloud_kitchen',
+                       'tiffin','catering','bar_lounge','food_other','food'];
+  if (FOOD_TYPES.indexOf(String(shopType).toLowerCase()) >= 0) return 'food';
   return 'other';
 }
 
