@@ -1,15 +1,26 @@
-// supabase/functions/generate-ai-website/index.ts  (v3 — DB-managed API keys)
-// Real Deno Edge Function — pairs with migrations 044 + 045 + 046.
+// supabase/functions/generate-ai-website/index.ts  (v3.5 — HIGHLIGHTS_DATA token for prompt v4 / migration 087.1+088)
 //
-// Key resolution order:
-//   1. DB: admin_settings.anthropic_api_key (set from admin UI, pgcrypto-encrypted)
-//   2. Env: Deno.env.get("ANTHROPIC_API_KEY")  (Supabase secrets fallback)
+// Passes {ROOMS_DATA} and {AMENITIES_DATA} to the prompt template.
+// The AI builds room cards and amenity lists from the shop owner's real
+// data instead of inventing them. Also removes all Claude/Anthropic
+// references from the user-facing flow — branding is "ShopBill Pro AI".
 //
-// Same for Groq. The service-role client calls _internal_get_ai_secret RPC
-// which is REVOKEd from anon/authenticated and only executable by service_role.
+// v3.11 (this file): single-page focused, multi-page routing removed
 //
-// Deploy:
-//   supabase functions deploy generate-ai-website --no-verify-jwt=false
+// CHANGES vs v3.10:
+//   • Removed page_slug routing (only 'home' generated now)
+//   • Kept {SHOP_SLUG} and {PHONE} substitution from v3.10
+//   • Added phone fallback: direct shops table fetch if state RPC empty
+//
+// ARCHITECTURE NOTE:
+// Single-page model. Multi-page experiment rolled back. sbp_website_pages
+// table stays as future infrastructure but isn't used by this version.
+//
+// CHANGES vs v3.7:
+//   • Accepts optional 'page_slug' in request body (defaults to 'home').
+//   • Passes page_slug to get_active_ai_prompt + sbp_record_ai_website_generation.
+//   • Client orchestrates multi-page generation via N calls — each call
+//     generates ONE page, fits inside Supabase Edge Function worker budget.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -17,7 +28,6 @@ const SUPABASE_URL         = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_ANON_KEY    = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
-// Env-var fallbacks (kept for bootstrap / if DB read fails)
 const ANTHROPIC_ENV_KEY = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
 const GROQ_ENV_KEY      = Deno.env.get("GROQ_API_KEY") ?? "";
 
@@ -28,23 +38,33 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-// Service-role client (bypasses RLS, can call _internal_* RPCs)
 const sbAdmin = SUPABASE_SERVICE_KEY
   ? createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
   : null;
 
-/** Fetch API key — DB first, env var fallback. */
-async function getApiKey(provider: "anthropic" | "groq"): Promise<string> {
-  const dbKey = provider === "anthropic" ? "anthropic_api_key" : "groq_api_key";
-  const envFallback = provider === "anthropic" ? ANTHROPIC_ENV_KEY : GROQ_ENV_KEY;
+/** Provider name → Vault secret name. Both 'claude' and 'anthropic' map to
+ *  anthropic_api_key (Anthropic the company makes Claude the model). */
+function vaultKeyFor(provider: string): { keyName: string; envFallback: string } {
+  const p = (provider || "").toLowerCase();
+  if (p === "groq") {
+    return { keyName: "groq_api_key", envFallback: GROQ_ENV_KEY };
+  }
+  // Default: claude/anthropic
+  return { keyName: "anthropic_api_key", envFallback: ANTHROPIC_ENV_KEY };
+}
 
+async function getApiKey(provider: string): Promise<string> {
+  const { keyName, envFallback } = vaultKeyFor(provider);
   if (sbAdmin) {
     try {
-      const { data, error } = await sbAdmin.rpc("_internal_get_ai_secret", { p_key: dbKey });
+      const { data, error } = await sbAdmin.rpc("_internal_get_ai_secret", { p_key: keyName });
       if (!error && data && typeof data === "string" && data.length > 10) {
         return data;
       }
-    } catch (_e) { /* fall through to env */ }
+      if (error) console.error("vault lookup error:", error);
+    } catch (e) {
+      console.error("vault lookup threw:", e);
+    }
   }
   return envFallback;
 }
@@ -52,6 +72,7 @@ async function getApiKey(provider: "anthropic" | "groq"): Promise<string> {
 function fillTemplate(tpl: string, p: Record<string, string>): string {
   return tpl
     .replaceAll("{SHOP_NAME}",         p.shop_name)
+    .replaceAll("{SHOP_SLUG}",         p.shop_slug || "shop")
     .replaceAll("{BUSINESS_TYPE}",     p.business_type)
     .replaceAll("{HEADLINE}",          p.headline)
     .replaceAll("{DESCRIPTION}",       p.description)
@@ -60,10 +81,11 @@ function fillTemplate(tpl: string, p: Record<string, string>): string {
     .replaceAll("{COLOR_PRIMARY_HEX}", p.color_primary_hex)
     .replaceAll("{COLOR_ACCENT}",      p.color_accent)
     .replaceAll("{COLOR_ACCENT_HEX}",  p.color_accent_hex)
-    // BATCH UI-6: per-vertical section spec. Optional — if the client didn't
-    // send it, or the prompt has no {VERTICAL_SPEC} token, this is a no-op,
-    // so old clients and the old prompt keep working unchanged.
-    .replaceAll("{VERTICAL_SPEC}",     p.vertical_spec ?? "");
+    .replaceAll("{HERO_IMAGE_URL}",    p.hero_image_url || "")
+    .replaceAll("{PHONE}",             p.phone || "")
+    .replaceAll("{ROOMS_DATA}",        p.rooms_data    || "(none provided — invent 3 plausible rooms)")
+    .replaceAll("{AMENITIES_DATA}",    p.amenities_data || "(none provided — invent 6 relevant amenities)")
+    .replaceAll("{HIGHLIGHTS_DATA}",   p.highlights_data || "(none provided — invent 3-4 plausible items based on business type)");
 }
 
 async function callClaude(prompt: string, apiKey: string): Promise<{ html: string; in_tokens: number; out_tokens: number }> {
@@ -78,7 +100,7 @@ async function callClaude(prompt: string, apiKey: string): Promise<{ html: strin
     },
     body: JSON.stringify({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 4096,
+      max_tokens: 8192,
       messages: [{ role: "user", content: prompt }],
     }),
   });
@@ -118,7 +140,7 @@ async function callGroq(prompt: string, apiKey: string): Promise<{ html: string;
     body: JSON.stringify({
       model: "llama-3.3-70b-versatile",
       messages: [{ role: "user", content: prompt }],
-      max_tokens: 4096,
+      max_tokens: 8192,
     }),
   });
 
@@ -186,7 +208,23 @@ Deno.serve(async (req) => {
     }
     shopName = body.shop_name;
 
-    // Per-user supabase client (carries user JWT — RPC sees auth.uid())
+    // v3.8: which page to generate. Default 'home' for backward compat.
+    const VALID_PAGES = new Set(["home","menu","about","gallery","contact",
+                                  "services","rooms","amenities","stylists","doctors",
+                                  "products","catalogue","courses","faculty","shop"]);
+    const pageSlug = (typeof body.page_slug === "string" && body.page_slug.trim())
+                       ? body.page_slug.trim().toLowerCase()
+                       : "home";
+    if (!VALID_PAGES.has(pageSlug)) {
+      return new Response(
+        JSON.stringify({ ok: false, error: "invalid_page_slug", value: pageSlug }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // v3.11: single-page architecture — always fetch the 'home' prompt.
+    const promptPageSlug = "home";
+
     const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       global: { headers: { Authorization: authHeader } },
     });
@@ -209,26 +247,134 @@ Deno.serve(async (req) => {
     }
     shopId = state.shop?.id ?? null;
 
-    // 2. Fetch active prompt template
-    const promptResp = await sb.rpc("get_active_ai_prompt", { p_name: "website_v1" });
+    // v3.10/3.11: extract slug + phone for fillTemplate substitution.
+    // v3.11 adds direct-fetch fallback for phone (state RPC doesn't return it).
+    const shopSlugVal = (state as any)?.website?.slug || "";
+    let shopPhoneRaw: string = (state as any)?.shop?.phone
+                            || (state as any)?.shop?.wa
+                            || "";
+    if (!shopPhoneRaw && shopId) {
+      try {
+        const phoneResp = await sb.from("shops")
+          .select("phone, wa")
+          .eq("id", shopId)
+          .maybeSingle();
+        if (phoneResp.data) {
+          shopPhoneRaw = phoneResp.data.phone || phoneResp.data.wa || "";
+        }
+      } catch (e) {
+        console.warn("phone fallback fetch failed:", e);
+      }
+    }
+    const phoneDigits = String(shopPhoneRaw).replace(/[^0-9]/g, "");
+    const shopPhoneNormalized = phoneDigits.length === 10 ? "91" + phoneDigits
+                              : phoneDigits.length >= 11 ? phoneDigits
+                              : "";
+
+    // 1b. NEW (v3.2+): Fetch shop generation context (hero photo + v3.3 rooms + amenities)
+    let heroImageUrl  = "";
+    let roomsData     = "";
+    let amenitiesData = "";
+    let highlightsData = "";
+    if (shopId) {
+      try {
+        const ctxResp = await sb.rpc("sbp_get_website_generation_context", { p_shop_id: shopId });
+        if (!ctxResp.error && ctxResp.data?.ok) {
+          heroImageUrl = (ctxResp.data.hero_image_url as string) || "";
+
+          // v3.3: format rooms for prompt
+          const rooms = ctxResp.data.rooms as Array<Record<string, string>> || [];
+          if (rooms.length > 0) {
+            roomsData = rooms.map((r, i) => {
+              const parts = [`Room ${i+1}: ${r.name || 'Room'}`];
+              if (r.price)       parts.push(`Price: ₹${r.price}/night`);
+              if (r.capacity)    parts.push(`Capacity: ${r.capacity} guests`);
+              if (r.bed)         parts.push(`Bed: ${r.bed}`);
+              if (r.description) parts.push(`Description: ${r.description}`);
+              return parts.join(" | ");
+            }).join("\n");
+          }
+
+          // v3.3: format amenities for prompt
+          const amenities = ctxResp.data.amenities as string[] || [];
+          if (amenities.length > 0) {
+            amenitiesData = amenities.join(", ");
+          }
+
+          // v3.5: format highlights for prompt (087.1+088 — universal real data)
+          const highlights = ctxResp.data.highlights_data as Array<Record<string, string>> || [];
+          if (highlights.length > 0) {
+            highlightsData = highlights.map((h, i) => {
+              const parts = [`Item ${i+1}: ${h.name || ''}`];
+              if (h.price)       parts.push(`Price: ₹${h.price}`);
+              if (h.category)    parts.push(`Category: ${h.category}`);
+              if (h.description) parts.push(`Description: ${h.description}`);
+              return parts.join(" | ");
+            }).join("\n");
+          }
+        } else if (ctxResp.error) {
+          console.warn("hero context fetch failed:", ctxResp.error.message);
+        }
+      } catch (e) {
+        console.warn("hero context fetch threw:", e);
+      }
+    }
+
+    // 2. Fetch active prompt template (page_slug='home', single-page only)
+    const promptResp = await sb.rpc("get_active_ai_prompt", {
+      p_name: "website_v1",
+      p_page_slug: promptPageSlug
+    });
     if (promptResp.error || !promptResp.data?.ok) {
       throw new Error("no_active_prompt_template");
     }
     const tplText = promptResp.data.prompt_text as string;
     promptTemplate = `${promptResp.data.name}:v${promptResp.data.version}`;
-    providerUsed = promptResp.data.provider ?? "claude";
 
-    const filledPrompt = fillTemplate(tplText, body);
+    // 2b. v3.7 — resolve provider from admin_settings per-tier config.
+    // Falls back to prompt template's `provider` column if the resolver
+    // is not yet deployed (i.e. 095 hasn't run yet) so existing systems
+    // don't break on partial deploy.
+    const planRaw = (state.shop?.plan || "free").toLowerCase();
+    const planNorm = (planRaw === "enterprise") ? "business" : planRaw;
+    let resolvedProvider: string | null = null;
+    if (sbAdmin) {
+      try {
+        const r = await sbAdmin.rpc("_internal_resolve_ai_provider", { p_plan: planNorm });
+        if (!r.error && typeof r.data === "string" && (r.data === "claude" || r.data === "groq")) {
+          resolvedProvider = r.data;
+        } else if (r.error) {
+          console.warn("provider resolver error:", r.error.message);
+        }
+      } catch (e) {
+        console.warn("provider resolver threw:", e);
+      }
+    }
+    providerUsed = resolvedProvider ?? (promptResp.data.provider ?? "claude");
+    console.log(`[v3.11] plan=${planNorm} slug=${shopSlugVal} phone_len=${shopPhoneNormalized.length} provider=${providerUsed}`);
 
-    // 3. Fetch the right API key (DB first, env fallback)
-    const apiKey = await getApiKey(providerUsed as "anthropic" | "groq");
+    const filledPrompt = fillTemplate(tplText, {
+      ...body,
+      hero_image_url:  heroImageUrl,
+      rooms_data:      roomsData,
+      amenities_data:  amenitiesData,
+      highlights_data: highlightsData,
+      // v3.10: real values resolved from state, not from form body
+      shop_slug:       shopSlugVal,
+      phone:           shopPhoneNormalized,
+    });
+
+    // 3. Fetch the right API key — handles 'claude' OR 'anthropic' OR 'groq'
+    const apiKey = await getApiKey(providerUsed);
     if (!apiKey) {
-      throw new Error(`${providerUsed}_api_key_not_configured`);
+      const { keyName } = vaultKeyFor(providerUsed);
+      throw new Error(`${keyName}_not_configured`);
     }
 
     // 4. Call provider
+    const p = providerUsed.toLowerCase();
     let result;
-    if (providerUsed === "groq") {
+    if (p === "groq") {
       result = await callGroq(filledPrompt, apiKey);
     } else {
       result = await callClaude(filledPrompt, apiKey);
@@ -237,6 +383,7 @@ Deno.serve(async (req) => {
     // 5. Record successful generation
     const recResp = await sb.rpc("sbp_record_ai_website_generation", {
       p_payload: {
+          page_slug:         pageSlug,
         generated_html:    result.html,
         design_style:      body.design_style,
         color_primary:     body.color_primary,
@@ -275,6 +422,7 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         ok: true,
+        page_slug: pageSlug,
         website_id: recResp.data.website_id,
         slug:       recResp.data.slug,
         html_length: result.html.length,

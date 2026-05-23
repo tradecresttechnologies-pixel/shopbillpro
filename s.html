@@ -427,10 +427,15 @@ function renderShop(data) {
   //     URLs because srcdoc iframes have no base URL.
   // M1: handle pages that exist on /s/{slug}/{page} but haven't been generated
   // for this shop yet (Business-tier feature). Show clear interstitial.
-  if (data.page_status === 'business_only' && page !== 'home') {
-    renderBusinessOnlyPage(data, slug, page);
-    return;
-  }
+  // SINGLE-PAGE ARCHITECTURE (v5 rollback) — no per-page branching here.
+  // Multi-page experiment had a scope bug where 'page' and 'slug' were
+  // referenced inside renderShop without being passed as parameters. With
+  // single-page architecture, this branch is no longer needed: every shop
+  // either has AI HTML (rendered below) or falls through to the legacy
+  // renderer (which doesn't need multi-page handling).
+  //
+  // Kept the renderBusinessOnlyPage function in the file for future use
+  // when multi-page is re-introduced as Business-tier premium feature.
 
   if (data.ai_mode === true && data.ai_html && typeof data.ai_html === 'string' && data.ai_html.length > 50) {
     document.title = (data.shop_name || 'Shop') + ' — ShopBill Pro';
