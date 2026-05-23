@@ -1017,6 +1017,22 @@ html,body{height:100%;width:100%;margin:0;padding:0;overflow:hidden;background:v
 .v7-warn.on{display:block}
 .v7-item-pick{display:flex;align-items:center;gap:8px;padding:6px 10px;margin-bottom:4px;background:var(--surf,#fff);border:1px solid var(--bord,#e5e7eb);border-radius:6px}
 .v7-item-pick input[type=checkbox]{width:18px;height:18px}
+/* v7.1 sequential-confirm modal */
+.v7-progress{display:flex;gap:6px;justify-content:center;margin-bottom:14px}
+.v7-progress .v7-dot{width:24px;height:6px;border-radius:3px;background:var(--bord,#e5e7eb)}
+.v7-progress .v7-dot.done{background:var(--acc,#F5A623)}
+.v7-progress .v7-dot.active{background:var(--acc,#F5A623);box-shadow:0 0 0 2px rgba(245,166,35,.3)}
+.v7-confirm-summary{background:rgba(245,166,35,.08);border-left:3px solid var(--acc,#F5A623);padding:12px;border-radius:8px;margin-bottom:14px;font-size:13px;color:var(--text)}
+.v7-confirm-summary .v7-amt{font-size:22px;font-weight:800;color:var(--acc,#F5A623);font-family:var(--font-h,inherit);display:block;margin-top:4px}
+.v7-confirm-items{max-height:120px;overflow:auto;background:var(--surf2,#f9fafb);border:1px solid var(--bord,#e5e7eb);border-radius:8px;padding:8px;margin-bottom:14px;font-size:12px}
+.v7-confirm-items .v7-ci-row{display:flex;justify-content:space-between;padding:3px 0;color:var(--text)}
+.v7-label{display:block;font-size:12.5px;font-weight:700;color:var(--text);margin:10px 0 4px}
+.v7-pay-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;margin-bottom:6px}
+.v7-pay-btn{padding:10px 4px;border:2px solid var(--bord,#e5e7eb);background:var(--surf,#fff);border-radius:10px;cursor:pointer;text-align:center;color:var(--text);font-size:11.5px;font-weight:700;line-height:1.3}
+.v7-pay-btn:hover{border-color:var(--acc,#F5A623);background:rgba(245,166,35,.05)}
+.v7-pay-btn.on{border-color:var(--acc,#F5A623);background:rgba(245,166,35,.12)}
+.v7-pay-btn .v7-pay-em{font-size:18px;display:block;margin-bottom:2px}
+.v7-credit-note{font-size:11.5px;color:#ef4444;margin-top:2px;font-weight:600}
 
 
 .bw-discount-block{display:flex;flex-direction:column;gap:8px}
@@ -4717,7 +4733,58 @@ init().catch(e => { console.error(e); toast('Error loading running order','e'); 
 
     <div class="v7-actions">
       <button class="v7-btn v7-btn-cancel" onclick="closeSplitModal()"><span class="lang-en">Cancel</span><span class="lang-hi">रद्द</span></button>
-      <button class="v7-btn v7-btn-go" id="split-confirm-btn" onclick="doSplit()" disabled><span class="lang-en">Split Bill</span><span class="lang-hi">बांटें</span></button>
+      <button class="v7-btn v7-btn-go" id="split-confirm-btn" onclick="goToConfirmStage()" disabled><span class="lang-en">Next →</span><span class="lang-hi">आगे →</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- v7.1: Sequential per-split confirm modal -->
+<div class="v7-modal" id="split-confirm-modal">
+  <div class="v7-modal-card">
+    <div class="v7-modal-h">
+      <div class="v7-modal-t" id="sc-title">✂️ <span class="lang-en">Split 1 of 2</span><span class="lang-hi">बांट 1 / 2</span></div>
+      <button class="v7-modal-x" onclick="closeConfirmStage()">✕</button>
+    </div>
+
+    <div class="v7-progress" id="sc-progress"></div>
+
+    <div class="v7-confirm-summary">
+      <span id="sc-mode-label"></span>
+      <span class="v7-amt" id="sc-amt">₹0.00</span>
+    </div>
+
+    <div class="v7-confirm-items" id="sc-items" style="display:none"></div>
+
+    <label class="v7-label"><span class="lang-en">Customer Name</span><span class="lang-hi">ग्राहक</span> <span style="font-weight:400;color:var(--t2,#6b7280)">(<span class="lang-en">optional</span><span class="lang-hi">वैकल्पिक</span>)</span></label>
+    <input id="sc-name" class="v7-input" type="text" placeholder="Walk-in" oninput="onConfirmInputChange()">
+
+    <label class="v7-label"><span class="lang-en">Phone / WhatsApp</span><span class="lang-hi">फोन / WhatsApp</span> <span style="font-weight:400;color:var(--t2,#6b7280)">(<span class="lang-en">optional</span><span class="lang-hi">वैकल्पिक</span>)</span></label>
+    <input id="sc-phone" class="v7-input" type="tel" placeholder="9876543210" oninput="onConfirmInputChange()">
+
+    <label class="v7-label"><span class="lang-en">Payment Method</span><span class="lang-hi">भुगतान</span></label>
+    <div class="v7-pay-grid">
+      <button type="button" class="v7-pay-btn on" data-pay="Cash" onclick="setConfirmPay('Cash')">
+        <span class="v7-pay-em">💵</span>
+        <span><span class="lang-en">Cash</span><span class="lang-hi">नकद</span></span>
+      </button>
+      <button type="button" class="v7-pay-btn" data-pay="UPI" onclick="setConfirmPay('UPI')">
+        <span class="v7-pay-em">📱</span>
+        <span>UPI</span>
+      </button>
+      <button type="button" class="v7-pay-btn" data-pay="Card" onclick="setConfirmPay('Card')">
+        <span class="v7-pay-em">💳</span>
+        <span><span class="lang-en">Card</span><span class="lang-hi">कार्ड</span></span>
+      </button>
+      <button type="button" class="v7-pay-btn" data-pay="Credit" onclick="setConfirmPay('Credit')">
+        <span class="v7-pay-em">📒</span>
+        <span><span class="lang-en">Credit</span><span class="lang-hi">उधार</span></span>
+      </button>
+    </div>
+    <div class="v7-credit-note" id="sc-credit-warn" style="display:none">⚠️ <span class="lang-en">Credit needs a customer name</span><span class="lang-hi">उधार के लिए नाम वाध्य है</span></div>
+
+    <div class="v7-actions">
+      <button class="v7-btn v7-btn-cancel" id="sc-back" onclick="navConfirm(-1)"><span class="lang-en">← Back</span><span class="lang-hi">← पीछे</span></button>
+      <button class="v7-btn v7-btn-go" id="sc-next" onclick="navConfirm(1)"><span class="lang-en">Next →</span><span class="lang-hi">आगे →</span></button>
     </div>
   </div>
 </div>
@@ -4965,73 +5032,315 @@ window.buildItemAssignInputs = function(){
   document.getElementById('split-confirm-btn').disabled = false;
 };
 
-window.doSplit = async function(){
+window.goToConfirmStage = function(){
+  // Stage 1 -> Stage 2: build _splitFlow.splits[] with computed amounts and prefilled customer.
   var ord = _ord();
   if(!ord || !ord.id){ alert('No order'); return; }
-  var btn = document.getElementById('split-confirm-btn');
+  if(!_splitMode){ alert('Pick a split mode first'); return; }
+
+  // Compute totals once for the running order
+  var totals = (typeof _orderTotals === 'function') ? _orderTotals() : null;
+  var grand = totals ? Number(totals.grand || 0) : 0;
+  if(!grand){
+    // Fall back: sum items locally if helper missing
+    var items = (ord.items || []).filter(function(it){ return !it.voided; });
+    items.forEach(function(it){
+      var q = Number(it.qty || it.q || 1);
+      var r = Number(it.price || it.rate || it.r || 0);
+      var gr = Number(it.gst_rate || 0);
+      var lt = Number(it.line_total != null ? it.line_total : q*r);
+      var g  = (it.gst_amount != null) ? Number(it.gst_amount)
+             : (it.lineGST   != null) ? Number(it.lineGST)
+             :                          (lt * gr / 100);
+      grand += lt + g;
+    });
+  }
+  grand = Math.round(grand * 100) / 100;
+
+  var splits = [];
+  if(_splitMode === 'equal'){
+    var n = parseInt(document.getElementById('split-equal-n').value, 10);
+    if(!(n >= 2) || n > 50){ alert('Enter 2 to 50 ways'); return; }
+    var per = Math.round((grand / n) * 100) / 100;
+    var last = Math.round((grand - per * (n - 1)) * 100) / 100;
+    for(var i = 0; i < n; i++){
+      splits.push({
+        kind: 'equal',
+        amount: (i === n - 1) ? last : per,
+        label: 'Equal share (' + (i+1) + ' of ' + n + ')',
+        customer_name: '',
+        customer_phone: '',
+        payment_mode: 'Cash'
+      });
+    }
+  } else if(_splitMode === 'custom'){
+    var amts = [];
+    document.querySelectorAll('#split-custom-list input').forEach(function(inp){
+      amts.push(Number(inp.value || 0));
+    });
+    if(amts.length < 2){ alert('Need at least 2 amounts'); return; }
+    var sum = amts.reduce(function(a,b){ return a+b; }, 0);
+    if(Math.abs(sum - grand) > 0.01){
+      alert('Amounts (₹' + sum.toFixed(2) + ') must equal total (₹' + grand.toFixed(2) + ')');
+      return;
+    }
+    for(var j = 0; j < amts.length; j++){
+      splits.push({
+        kind: 'custom',
+        amount: Math.round(amts[j] * 100) / 100,
+        label: 'Custom share (' + (j+1) + ' of ' + amts.length + ')',
+        customer_name: '',
+        customer_phone: '',
+        payment_mode: 'Cash'
+      });
+    }
+  } else if(_splitMode === 'item'){
+    var nPeople = parseInt(document.getElementById('split-item-n').value, 10);
+    var groups = [];
+    for(var p = 0; p < nPeople; p++){
+      groups.push({ label: 'Person ' + (p+1), item_ids: [], items_preview: [], subtotal: 0, gst: 0 });
+    }
+    var itemMap = {};
+    (ord.items || []).forEach(function(it){
+      var iid = it.item_id || it.id;
+      if(iid) itemMap[iid] = it;
+    });
+    document.querySelectorAll('#split-item-list select').forEach(function(s){
+      var iid = s.getAttribute('data-iid');
+      var idx = parseInt(s.value, 10);
+      if(iid && idx >= 1 && idx <= nPeople){
+        groups[idx-1].item_ids.push(iid);
+        var it = itemMap[iid];
+        if(it){
+          var q = Number(it.qty || it.q || 1);
+          var r = Number(it.price || it.rate || it.r || 0);
+          var gr = Number(it.gst_rate || 0);
+          var lt = Number(it.line_total != null ? it.line_total : q*r);
+          var g  = (it.gst_amount != null) ? Number(it.gst_amount)
+                 : (it.lineGST   != null) ? Number(it.lineGST)
+                 :                          (lt * gr / 100);
+          groups[idx-1].subtotal += lt;
+          groups[idx-1].gst      += g;
+          groups[idx-1].items_preview.push({
+            name: it.name || it.item_name || it.nm || 'Item',
+            qty: q, total: lt + g
+          });
+        }
+      }
+    });
+    var nonEmpty = groups.filter(function(g){ return g.item_ids.length > 0; });
+    if(nonEmpty.length < 2){
+      alert('Assign items to at least 2 people');
+      return;
+    }
+    for(var k = 0; k < nonEmpty.length; k++){
+      var gp = nonEmpty[k];
+      splits.push({
+        kind: 'item',
+        amount: Math.round((gp.subtotal + gp.gst) * 100) / 100,
+        label: gp.label + ' (' + (k+1) + ' of ' + nonEmpty.length + ')',
+        item_ids: gp.item_ids,
+        items_preview: gp.items_preview,
+        customer_name: '',
+        customer_phone: '',
+        payment_mode: 'Cash'
+      });
+    }
+  }
+
+  if(!splits.length){ alert('No splits built'); return; }
+
+  // Prefill split 1 with RO customer if attached
+  if(ord.cust_name)  splits[0].customer_name  = ord.cust_name;
+  if(ord.cust_phone) splits[0].customer_phone = ord.cust_phone;
+
+  _splitFlow = { mode: _splitMode, n: splits.length, splits: splits, idx: 0 };
+  closeSplitModal();
+  document.getElementById('split-confirm-modal').classList.add('on');
+  renderConfirmStage();
+};
+
+window.closeConfirmStage = function(){
+  document.getElementById('split-confirm-modal').classList.remove('on');
+  _splitFlow = null;
+};
+
+window.renderConfirmStage = function(){
+  if(!_splitFlow) return;
+  var sp = _splitFlow.splits[_splitFlow.idx];
+  var idx = _splitFlow.idx, n = _splitFlow.n;
+
+  var titleEn = 'Split ' + (idx+1) + ' of ' + n;
+  var titleHi = 'बांट ' + (idx+1) + ' / ' + n;
+  document.getElementById('sc-title').innerHTML =
+    '✂️ <span class="lang-en">' + titleEn + '</span><span class="lang-hi">' + titleHi + '</span>';
+
+  var prog = '';
+  for(var i = 0; i < n; i++){
+    var cls = (i < idx) ? 'v7-dot done' : (i === idx ? 'v7-dot active' : 'v7-dot');
+    prog += '<span class="' + cls + '"></span>';
+  }
+  document.getElementById('sc-progress').innerHTML = prog;
+
+  var modeLbl = sp.kind === 'equal'  ? 'Equal share'
+              : sp.kind === 'custom' ? 'Custom share'
+              :                        sp.label.replace(/ \(\d+ of \d+\)$/,'');
+  document.getElementById('sc-mode-label').textContent = modeLbl;
+  document.getElementById('sc-amt').textContent = '₹' + Number(sp.amount).toFixed(2);
+
+  var itemsEl = document.getElementById('sc-items');
+  if(sp.kind === 'item' && sp.items_preview && sp.items_preview.length){
+    var html = '';
+    sp.items_preview.forEach(function(it){
+      html += '<div class="v7-ci-row"><span>' + (it.name || '') + ' ×' + (it.qty || 1) + '</span><span>₹' + Number(it.total||0).toFixed(2) + '</span></div>';
+    });
+    itemsEl.innerHTML = html;
+    itemsEl.style.display = '';
+  } else {
+    itemsEl.style.display = 'none';
+  }
+
+  document.getElementById('sc-name').value  = sp.customer_name  || '';
+  document.getElementById('sc-phone').value = sp.customer_phone || '';
+
+  document.querySelectorAll('#split-confirm-modal .v7-pay-btn').forEach(function(b){
+    b.classList.toggle('on', b.getAttribute('data-pay') === sp.payment_mode);
+  });
+
+  document.getElementById('sc-back').disabled = (idx === 0);
+  document.getElementById('sc-back').style.opacity = (idx === 0) ? '.4' : '1';
+
+  var nextBtn = document.getElementById('sc-next');
+  if(idx === n - 1){
+    nextBtn.innerHTML = '<span class="lang-en">✓ Confirm All</span><span class="lang-hi">✓ पुष्टि करें</span>';
+  } else {
+    nextBtn.innerHTML = '<span class="lang-en">Next →</span><span class="lang-hi">आगे →</span>';
+  }
+
+  onConfirmInputChange();
+};
+
+window.setConfirmPay = function(mode){
+  if(!_splitFlow) return;
+  _splitFlow.splits[_splitFlow.idx].payment_mode = mode;
+  document.querySelectorAll('#split-confirm-modal .v7-pay-btn').forEach(function(b){
+    b.classList.toggle('on', b.getAttribute('data-pay') === mode);
+  });
+  onConfirmInputChange();
+};
+
+window.onConfirmInputChange = function(){
+  if(!_splitFlow) return;
+  var name = document.getElementById('sc-name').value.trim();
+  var pay  = _splitFlow.splits[_splitFlow.idx].payment_mode;
+  var warn = document.getElementById('sc-credit-warn');
+  var nextBtn = document.getElementById('sc-next');
+  if(pay === 'Credit' && !name){
+    warn.style.display = '';
+    nextBtn.disabled = true;
+  } else {
+    warn.style.display = 'none';
+    nextBtn.disabled = false;
+  }
+};
+
+window.navConfirm = function(direction){
+  if(!_splitFlow) return;
+  var sp = _splitFlow.splits[_splitFlow.idx];
+  sp.customer_name  = document.getElementById('sc-name').value.trim();
+  sp.customer_phone = document.getElementById('sc-phone').value.trim();
+  if(sp.payment_mode === 'Credit' && !sp.customer_name){
+    alert('Credit splits need a customer name');
+    return;
+  }
+  var newIdx = _splitFlow.idx + direction;
+  if(newIdx < 0) return;
+  if(newIdx >= _splitFlow.n){
+    commitSplit();
+    return;
+  }
+  _splitFlow.idx = newIdx;
+  renderConfirmStage();
+};
+
+window.commitSplit = async function(){
+  if(!_splitFlow) return;
+  var ord = _ord();
+  if(!ord || !ord.id){ alert('No order'); return; }
+  var btn = document.getElementById('sc-next');
   btn.disabled = true;
   btn.textContent = 'Working...';
 
   try {
     var data, error;
-    if(_splitMode === 'equal'){
-      var n = parseInt(document.getElementById('split-equal-n').value, 10);
+    if(_splitFlow.mode === 'equal'){
+      var p_splits = _splitFlow.splits.map(function(s){
+        return {
+          customer_name:  s.customer_name || null,
+          customer_phone: s.customer_phone || null,
+          payment_mode:   s.payment_mode || 'Cash'
+        };
+      });
       var resp = await window._sb.rpc('sbp_ro_split_equal', {
-        p_order_id: ord.id, p_n_ways: n, p_payment_mode: 'cash'
+        p_order_id: ord.id,
+        p_n_ways: _splitFlow.n,
+        p_splits: p_splits,
+        p_payment_mode: 'Cash'
       });
       data = resp.data; error = resp.error;
-    } else if(_splitMode === 'custom'){
-      var amounts = [];
-      document.querySelectorAll('#split-custom-list input').forEach(function(i){
-        amounts.push(Number(i.value || 0));
+    } else if(_splitFlow.mode === 'custom'){
+      var p_amounts = _splitFlow.splits.map(function(s){
+        return {
+          amount: s.amount,
+          customer_name:  s.customer_name || null,
+          customer_phone: s.customer_phone || null,
+          payment_mode:   s.payment_mode || 'Cash'
+        };
       });
       var resp2 = await window._sb.rpc('sbp_ro_split_custom', {
-        p_order_id: ord.id, p_amounts: amounts, p_payment_mode: 'cash'
+        p_order_id: ord.id,
+        p_amounts: p_amounts,
+        p_payment_mode: 'Cash'
       });
       data = resp2.data; error = resp2.error;
-    } else if(_splitMode === 'item'){
-      // Build groups from the dropdowns
-      var nPeople = parseInt(document.getElementById('split-item-n').value, 10);
-      var groups = [];
-      for(var p = 1; p <= nPeople; p++){
-        groups.push({ label: 'Person ' + p, item_ids: [] });
-      }
-      document.querySelectorAll('#split-item-list select').forEach(function(s){
-        var iid = s.getAttribute('data-iid');
-        var p = parseInt(s.value, 10);
-        if(iid && p >= 1 && p <= nPeople){
-          groups[p-1].item_ids.push(iid);
-        }
+    } else if(_splitFlow.mode === 'item'){
+      var p_groups = _splitFlow.splits.map(function(s){
+        return {
+          label: s.label.replace(/ \(\d+ of \d+\)$/, ''),
+          item_ids: s.item_ids,
+          customer_name:  s.customer_name || null,
+          customer_phone: s.customer_phone || null,
+          payment_mode:   s.payment_mode || 'Cash'
+        };
       });
-      // Drop empty groups (people who got no items)
-      var nonEmpty = groups.filter(function(g){ return g.item_ids.length > 0; });
-      if(nonEmpty.length < 2){
-        alert('At least 2 people must have items assigned');
-        btn.disabled = false; btn.textContent = 'Split Bill';
-        return;
-      }
       var resp3 = await window._sb.rpc('sbp_ro_split_by_item', {
-        p_order_id: ord.id, p_groups: nonEmpty, p_payment_mode: 'cash'
+        p_order_id: ord.id,
+        p_groups: p_groups,
+        p_payment_mode: 'Cash'
       });
       data = resp3.data; error = resp3.error;
     }
 
     if(error){ throw new Error(error.message || 'RPC failed'); }
     if(!data || !data.ok){
-      throw new Error((data && (data.message || data.error)) || 'Split failed');
+      var msg = (data && (data.message || data.error)) || 'Split failed';
+      if(data && data.split_index){ msg += ' (split ' + data.split_index + ')'; }
+      throw new Error(msg);
     }
 
-    closeSplitModal();
+    closeConfirmStage();
     alert('Split successful! ' + data.n_ways + ' bills created.\n\nReturning to tables.');
-    // Redirect to tables.html since the RO is now closed
     setTimeout(function(){ window.location.href = 'tables.html'; }, 300);
 
   } catch(e){
     alert('Split failed: ' + e.message);
     btn.disabled = false;
-    btn.innerHTML = '<span class="lang-en">Split Bill</span><span class="lang-hi">बांटें</span>';
+    btn.innerHTML = '<span class="lang-en">✓ Confirm All</span><span class="lang-hi">✓ पुष्टि</span>';
   }
 };
+
+// v7.1 state object - Stage-2 sequential confirm flow
+var _splitFlow = null;
 
 // === MERGE / MOVE modal ===
 let _mergeMode = null;

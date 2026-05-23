@@ -1,191 +1,65 @@
 -- ════════════════════════════════════════════════════════════════════
--- 100_bill_split_merge.sql
+-- 104_split_per_split_metadata.sql
 -- ════════════════════════════════════════════════════════════════════
 -- WHAT
---   Bill split (3 modes) + table merge (combine RO + move single item).
+--   v7.1 — Per-split customer name / phone / payment_mode for all 3
+--   split RPCs. Adds Credit support per split. Backward-compatible
+--   with v7.0.1 callers (NULL metadata → defaults to walk-in + cash).
 --
---   SPLIT (each split becomes a fully independent bill with own invoice_no):
---     • sbp_ro_split_equal(p_order_id, p_n_ways, p_payment_mode)
---         Divides total equally into N bills. Each bill has ONE line:
---         "Equal share (1 of N)". Paise round-off absorbed by the LAST split.
---     • sbp_ro_split_custom(p_order_id, p_amounts jsonb, p_payment_mode)
---         Splits by custom amounts. amounts is jsonb array of numerics.
---         MUST sum to running-order total exactly (to the paise).
---     • sbp_ro_split_by_item(p_order_id, p_groups jsonb, p_payment_mode)
---         Splits by item assignment. Each group = one bill with its items.
---         groups is jsonb array: [{label, item_ids:[uuid,...]}, ...]
---         Every non-voided RO item must belong to exactly one group.
+-- WHY
+--   v7.0.x writes a single payment_mode for the whole split operation
+--   and one customer (from the running order) only to the first bill.
+--   The sequential confirm UX needs each split to carry its own
+--   {customer_name, customer_phone, payment_mode}, and Credit splits
+--   need correct status / paid_amount / balance_due.
 --
---   MERGE:
---     • sbp_ro_merge_into(p_source_order_id, p_dest_order_id)
---         Moves all items from source RO into dest RO, frees source table.
---     • sbp_ro_move_item(p_source_order_id, p_dest_order_id, p_item_id)
---         Moves single item from source RO into dest RO. Both stay open.
+-- NEW BEHAVIOUR
+--   • sbp_ro_split_equal  — adds p_splits jsonb DEFAULT NULL
+--     Shape: [{customer_name, customer_phone, payment_mode}, ...]
+--     Must have exactly p_n_ways elements if provided.
 --
--- ARCHITECTURE DECISIONS (locked May 2026 per session spec)
---   • Each split = INDEPENDENT bill with own invoice_no (audit clean)
---   • Splits track lineage via new columns on `bills`:
---       split_kind ('equal'|'custom'|'item'), split_index, split_total_ways
---       split_session_id (uuid grouping siblings — reuses table_session_id pattern)
---   • Original running order marked 'billed', bill_id points to FIRST split
---     (so existing reports/queries continue to work; siblings findable via
---     table_session_id which all splits share)
---   • Stock NOT touched on split — it was already deducted when items were
---     added to the running order. Splits are paper-divisions.
---   • GST reconciles to the paise: SUM(split.grand_total) == RO total exactly.
---   • Invoice numbers allocated atomically via existing next_invoice_no RPC.
+--   • sbp_ro_split_custom — p_amounts elements may now be either:
+--       - bare number (legacy)               → use p_payment_mode + walk-in
+--       - object {amount, customer_name,
+--                 customer_phone,
+--                 payment_mode}              → per-split overrides
+--     Detection: jsonb_typeof of p_amounts->0.
 --
--- DEPENDENCIES
---   • bills, bill_items, sbp_running_orders, shops, sbp_restaurant_tables
---   • next_invoice_no(shop_id) RPC (from migration 025)
---   • _sbp_check_shop_owner helper
+--   • sbp_ro_split_by_item — p_groups objects already exist
+--     ({label, item_ids}). Now also read:
+--       - customer_name, customer_phone, payment_mode (optional)
+--
+--   • Payment-mode normalisation: 'cash'|'CASH'|'Cash' → 'Cash'.
+--     Allowed: Cash, UPI, Card, Credit. Others rejected.
+--
+--   • Credit split: status='Credit', paid_amount=0,
+--     balance_due=grand_total. Cash/UPI/Card: status='Paid',
+--     paid=grand_total, balance=0.
+--
+--   • Credit requires customer name. Returns:
+--       {ok:false, error:'credit_requires_customer', split_index:N}
+--     The entire split rolls back (one bad split aborts all).
+--
+--   • Customer_id lookup: if override name+phone match the RO's
+--     customer (via sbp_normalize_phone), reuse v_ro.customer_id.
+--     For Credit splits with a different customer, attempt
+--     sbp_resolve_customer_for_booking (exception-safe — same pattern
+--     mig 076 uses). Walk-in splits keep customer_id NULL.
 --
 -- DEPLOY
---   1. Run this migration
---   2. Replace running-order.html (adds 3 split modes + merge button)
---   3. Replace tables.html (merge into picker)
---   4. (Optional) bills.html update to show split lineage
+--   1. Run in Supabase SQL Editor.
+--   2. Deploy running-order.html (Stage-1 modal + new Stage-2
+--      sequential confirm modal + state machine).
 --
 -- ROLLBACK
---   DROP FUNCTION IF EXISTS sbp_ro_split_equal(uuid, int, text);
---   DROP FUNCTION IF EXISTS sbp_ro_split_custom(uuid, jsonb, text);
---   DROP FUNCTION IF EXISTS sbp_ro_split_by_item(uuid, jsonb, text);
---   DROP FUNCTION IF EXISTS sbp_ro_merge_into(uuid, uuid);
---   DROP FUNCTION IF EXISTS sbp_ro_move_item(uuid, uuid, text);
---   ALTER TABLE bills
---     DROP COLUMN IF EXISTS split_kind,
---     DROP COLUMN IF EXISTS split_index,
---     DROP COLUMN IF EXISTS split_total_ways,
---     DROP COLUMN IF EXISTS split_session_id;
+--   Re-run migration 103 (v7.0.1 hotfix). Loses Credit + per-split
+--   payment but split itself stays functional.
 -- ════════════════════════════════════════════════════════════════════
 
-BEGIN;
+-- ── _sbp_split_normalize_pay (internal helper) ──────────────────────
+-- Normalises any input to one of: Cash | UPI | Card | Credit.
+-- Returns NULL for unknown values (caller decides what to do).
 
--- ── 0. SCHEMA SAFETY CHECKS ───────────────────────────────────────
-DO $$
-BEGIN
-  IF to_regclass('public.bills') IS NULL THEN
-    RAISE EXCEPTION 'bills table missing — abort';
-  END IF;
-  IF to_regclass('public.bill_items') IS NULL THEN
-    RAISE EXCEPTION 'bill_items table missing — abort';
-  END IF;
-  IF to_regclass('public.sbp_running_orders') IS NULL THEN
-    RAISE EXCEPTION 'sbp_running_orders table missing — abort';
-  END IF;
-  -- next_invoice_no must exist (from migration 025)
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_proc WHERE proname = 'next_invoice_no'
-  ) THEN
-    RAISE EXCEPTION 'next_invoice_no RPC missing — run migration 025 first';
-  END IF;
-END $$;
-
--- ── 1. AUDIT LINEAGE COLUMNS ON BILLS ─────────────────────────────
-ALTER TABLE bills
-  ADD COLUMN IF NOT EXISTS split_kind        text,
-  ADD COLUMN IF NOT EXISTS split_index       int,
-  ADD COLUMN IF NOT EXISTS split_total_ways  int,
-  ADD COLUMN IF NOT EXISTS split_session_id  uuid;
-
-COMMENT ON COLUMN bills.split_kind       IS 'NULL for normal bill; equal|custom|item if this bill was a split';
-COMMENT ON COLUMN bills.split_index      IS '1-based position of this split among siblings';
-COMMENT ON COLUMN bills.split_total_ways IS 'How many splits total were generated together';
-COMMENT ON COLUMN bills.split_session_id IS 'Shared uuid linking all siblings of one split operation';
-
--- Index for "find all siblings of this split"
-CREATE INDEX IF NOT EXISTS idx_bills_split_session
-  ON bills(shop_id, split_session_id)
-  WHERE split_session_id IS NOT NULL;
-
--- Check constraint: split_kind must be valid when set
-DO $$
-BEGIN
-  ALTER TABLE bills DROP CONSTRAINT IF EXISTS chk_bills_split_kind;
-  ALTER TABLE bills ADD CONSTRAINT chk_bills_split_kind
-    CHECK (split_kind IS NULL OR split_kind IN ('equal','custom','item'));
-EXCEPTION WHEN OTHERS THEN
-  RAISE NOTICE 'split_kind constraint skipped: %', SQLERRM;
-END $$;
-
--- ── 2. HELPER: Compute totals from running-order items jsonb ──────
--- Each item: {item_id, name, qty, price (or rate), gst_rate, voided?, ...}
--- Returns: {subtotal, gst_amount, grand_total, item_count}
-DROP FUNCTION IF EXISTS _sbp_ro_compute_totals(jsonb);
-CREATE OR REPLACE FUNCTION _sbp_ro_compute_totals(p_items jsonb)
-RETURNS jsonb
-LANGUAGE plpgsql
-IMMUTABLE
-AS $$
-DECLARE
-  v_subtotal   numeric := 0;
-  v_gst        numeric := 0;
-  v_count      int := 0;
-  v_qty        numeric;
-  v_rate       numeric;
-  v_gst_rate   numeric;
-  v_line_total numeric;
-  it           jsonb;
-BEGIN
-  IF p_items IS NULL OR jsonb_array_length(p_items) = 0 THEN
-    RETURN jsonb_build_object('subtotal',0,'gst_amount',0,'grand_total',0,'item_count',0);
-  END IF;
-
-  FOR it IN SELECT jsonb_array_elements(p_items)
-  LOOP
-    IF COALESCE((it->>'voided')::boolean, false) THEN CONTINUE; END IF;
-
-    v_qty      := COALESCE((it->>'qty')::numeric, (it->>'q')::numeric, 1);
-    v_rate     := COALESCE((it->>'price')::numeric, (it->>'rate')::numeric, (it->>'r')::numeric, 0);
-    v_gst_rate := COALESCE((it->>'gst_rate')::numeric, (it->>'rate')::numeric, 0);
-    -- If item has explicit line_total/gst_amount fields use them; else compute.
-    v_line_total := COALESCE((it->>'line_total')::numeric, (it->>'tot')::numeric, v_qty * v_rate);
-
-    v_subtotal := v_subtotal + v_line_total;
-    -- Some items store gst inline (lineGST); else derive from gst_rate
-    v_gst := v_gst + COALESCE((it->>'lineGST')::numeric,
-                              (it->>'gst_amount')::numeric,
-                              ROUND(v_line_total * v_gst_rate / 100, 2));
-    v_count := v_count + 1;
-  END LOOP;
-
-  RETURN jsonb_build_object(
-    'subtotal',    ROUND(v_subtotal, 2),
-    'gst_amount',  ROUND(v_gst, 2),
-    'grand_total', ROUND(v_subtotal + v_gst, 2),
-    'item_count',  v_count
-  );
-END;
-$$;
-
-GRANT EXECUTE ON FUNCTION _sbp_ro_compute_totals(jsonb) TO authenticated;
-
--- ── 3. HELPER: Allocate next invoice number INTO a text value ─────
--- Wraps next_invoice_no for simpler use inside other RPCs.
--- Returns "INV-0042" style string.
-DROP FUNCTION IF EXISTS _sbp_alloc_invoice_no(uuid);
-CREATE OR REPLACE FUNCTION _sbp_alloc_invoice_no(p_shop_id uuid)
-RETURNS text
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  v_prefix  text;
-  v_counter int;
-BEGIN
-  SELECT invoice_prefix, invoice_counter
-    INTO v_prefix, v_counter
-  FROM next_invoice_no(p_shop_id);
-  RETURN COALESCE(v_prefix, 'INV') || '-' || LPAD(v_counter::text, 4, '0');
-END;
-$$;
-
-GRANT EXECUTE ON FUNCTION _sbp_alloc_invoice_no(uuid) TO authenticated;
-
--- ── 4. SPLIT EQUAL ────────────────────────────────────────────────
--- Divides total into N equal bills. Each bill: 1 line item "Equal share (i/N)".
--- Round-off absorbed by the LAST split so SUM(splits) == original exactly.
 DROP FUNCTION IF EXISTS _sbp_split_normalize_pay(text);
 CREATE OR REPLACE FUNCTION _sbp_split_normalize_pay(p_raw text)
 RETURNS text LANGUAGE plpgsql IMMUTABLE
@@ -201,6 +75,10 @@ BEGIN
   RETURN NULL;  -- unknown
 END;
 $$;
+
+-- ════════════════════════════════════════════════════════════════════
+-- 1. sbp_ro_split_equal — adds p_splits param
+-- ════════════════════════════════════════════════════════════════════
 
 DROP FUNCTION IF EXISTS sbp_ro_split_equal(uuid, int, text);
 DROP FUNCTION IF EXISTS sbp_ro_split_equal(uuid, int, jsonb, text);
@@ -466,10 +344,10 @@ $$;
 
 GRANT EXECUTE ON FUNCTION sbp_ro_split_equal(uuid, int, jsonb, text) TO authenticated;
 
--- ── 5. SPLIT CUSTOM ───────────────────────────────────────────────
--- p_amounts is jsonb array of grand-total amounts. Sum MUST equal RO total.
--- Each split gets ONE line "Custom share (i/N)" with their grand amount.
--- GST allocated proportionally to each split's amount.
+-- ════════════════════════════════════════════════════════════════════
+-- 2. sbp_ro_split_custom — p_amounts elements may be number OR object
+-- ════════════════════════════════════════════════════════════════════
+
 DROP FUNCTION IF EXISTS sbp_ro_split_custom(uuid, jsonb, text);
 
 CREATE OR REPLACE FUNCTION sbp_ro_split_custom(
@@ -721,10 +599,16 @@ $$;
 
 GRANT EXECUTE ON FUNCTION sbp_ro_split_custom(uuid, jsonb, text) TO authenticated;
 
--- ── 6. SPLIT BY ITEM ──────────────────────────────────────────────
--- p_groups: jsonb array of {label: "Vinay", item_ids: ["uuid", "uuid", ...]}
--- Every non-voided item in RO must belong to exactly one group.
--- Each group becomes a bill with ITS items (proper itemization).
+-- ════════════════════════════════════════════════════════════════════
+-- 3. sbp_ro_split_by_item — read optional metadata from group objects
+-- ════════════════════════════════════════════════════════════════════
+-- p_groups element shape (all fields except item_ids are optional):
+--   { item_ids: [uuid, ...],
+--     label:           text,
+--     customer_name:   text,
+--     customer_phone:  text,
+--     payment_mode:    'Cash'|'UPI'|'Card'|'Credit' }
+
 DROP FUNCTION IF EXISTS sbp_ro_split_by_item(uuid, jsonb, text);
 
 CREATE OR REPLACE FUNCTION sbp_ro_split_by_item(
@@ -1001,244 +885,4 @@ $$;
 
 GRANT EXECUTE ON FUNCTION sbp_ro_split_by_item(uuid, jsonb, text) TO authenticated;
 
--- ── 7. MERGE INTO (combine all items source → dest, free source table) ─
-DROP FUNCTION IF EXISTS sbp_ro_merge_into(uuid, uuid);
-CREATE OR REPLACE FUNCTION sbp_ro_merge_into(
-  p_source_order_id uuid,
-  p_dest_order_id   uuid
-)
-RETURNS jsonb
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  v_src   sbp_running_orders%ROWTYPE;
-  v_dest  sbp_running_orders%ROWTYPE;
-  v_merged_items jsonb;
-  v_merged_kots  jsonb;
-  v_total_kots   int;
-BEGIN
-  IF p_source_order_id = p_dest_order_id THEN
-    RETURN jsonb_build_object('ok', false, 'error', 'cannot_merge_into_self');
-  END IF;
-
-  -- Lock both ROs (deterministic order to prevent deadlocks)
-  IF p_source_order_id < p_dest_order_id THEN
-    SELECT * INTO v_src  FROM sbp_running_orders WHERE id = p_source_order_id FOR UPDATE;
-    SELECT * INTO v_dest FROM sbp_running_orders WHERE id = p_dest_order_id   FOR UPDATE;
-  ELSE
-    SELECT * INTO v_dest FROM sbp_running_orders WHERE id = p_dest_order_id   FOR UPDATE;
-    SELECT * INTO v_src  FROM sbp_running_orders WHERE id = p_source_order_id FOR UPDATE;
-  END IF;
-
-  IF v_src.id IS NULL OR v_dest.id IS NULL THEN
-    RETURN jsonb_build_object('ok', false, 'error', 'order_not_found');
-  END IF;
-  IF v_src.shop_id <> v_dest.shop_id THEN
-    RETURN jsonb_build_object('ok', false, 'error', 'shop_mismatch');
-  END IF;
-  IF v_src.status <> 'open' OR v_dest.status <> 'open' THEN
-    RETURN jsonb_build_object('ok', false, 'error', 'order_not_open');
-  END IF;
-
-  IF NOT _sbp_check_shop_owner(v_src.shop_id) THEN
-    RETURN jsonb_build_object('ok', false, 'error', 'not_authorized');
-  END IF;
-
-  -- Concat items + kots (items may have round numbers — keep source rounds as-is)
-  v_merged_items := v_dest.items || v_src.items;
-  v_merged_kots  := v_dest.kots  || v_src.kots;
-  v_total_kots   := v_dest.kot_count + v_src.kot_count;
-
-  -- Update dest with combined items
-  UPDATE sbp_running_orders
-  SET items      = v_merged_items,
-      kots       = v_merged_kots,
-      kot_count  = v_total_kots,
-      notes      = COALESCE(v_dest.notes, '') ||
-                   CASE WHEN v_dest.notes IS NOT NULL AND v_dest.notes <> '' THEN E'\n' ELSE '' END ||
-                   'Merged from T' || v_src.table_number ||
-                   ' on ' || to_char(now() AT TIME ZONE 'Asia/Kolkata', 'HH24:MI'),
-      updated_at = now()
-  WHERE id = p_dest_order_id;
-
-  -- Void source RO (status='void' is valid per check constraint)
-  UPDATE sbp_running_orders
-  SET status     = 'void',
-      notes      = COALESCE(notes, '') ||
-                   CASE WHEN notes IS NOT NULL AND notes <> '' THEN E'\n' ELSE '' END ||
-                   'Merged into T' || v_dest.table_number,
-      updated_at = now()
-  WHERE id = p_source_order_id;
-
-  -- Free source table
-  IF v_src.table_id IS NOT NULL THEN
-    UPDATE sbp_restaurant_tables
-    SET status='free', current_bill_id=NULL, updated_at=now()
-    WHERE id = v_src.table_id AND shop_id = v_src.shop_id;
-  END IF;
-
-  RETURN jsonb_build_object(
-    'ok', true,
-    'merged_into',  p_dest_order_id,
-    'merged_from',  p_source_order_id,
-    'item_count',   jsonb_array_length(v_merged_items),
-    'dest_table',   v_dest.table_number,
-    'src_table',    v_src.table_number
-  );
-END;
-$$;
-
-GRANT EXECUTE ON FUNCTION sbp_ro_merge_into(uuid, uuid) TO authenticated;
-
--- ── 8. MOVE SINGLE ITEM (granular: move one line item between ROs) ──
--- Both ROs stay open. Item identified by item_id within source's items jsonb.
-DROP FUNCTION IF EXISTS sbp_ro_move_item(uuid, uuid, text);
-CREATE OR REPLACE FUNCTION sbp_ro_move_item(
-  p_source_order_id uuid,
-  p_dest_order_id   uuid,
-  p_item_id         text
-)
-RETURNS jsonb
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  v_src   sbp_running_orders%ROWTYPE;
-  v_dest  sbp_running_orders%ROWTYPE;
-  v_item  jsonb := NULL;
-  v_remaining jsonb := '[]'::jsonb;
-  it      jsonb;
-BEGIN
-  IF p_source_order_id = p_dest_order_id THEN
-    RETURN jsonb_build_object('ok', false, 'error', 'cannot_move_to_self');
-  END IF;
-  IF p_item_id IS NULL OR p_item_id = '' THEN
-    RETURN jsonb_build_object('ok', false, 'error', 'item_id_required');
-  END IF;
-
-  -- Lock both ROs deterministically
-  IF p_source_order_id < p_dest_order_id THEN
-    SELECT * INTO v_src  FROM sbp_running_orders WHERE id = p_source_order_id FOR UPDATE;
-    SELECT * INTO v_dest FROM sbp_running_orders WHERE id = p_dest_order_id   FOR UPDATE;
-  ELSE
-    SELECT * INTO v_dest FROM sbp_running_orders WHERE id = p_dest_order_id   FOR UPDATE;
-    SELECT * INTO v_src  FROM sbp_running_orders WHERE id = p_source_order_id FOR UPDATE;
-  END IF;
-
-  IF v_src.id IS NULL OR v_dest.id IS NULL THEN
-    RETURN jsonb_build_object('ok', false, 'error', 'order_not_found');
-  END IF;
-  IF v_src.shop_id <> v_dest.shop_id THEN
-    RETURN jsonb_build_object('ok', false, 'error', 'shop_mismatch');
-  END IF;
-  IF v_src.status <> 'open' OR v_dest.status <> 'open' THEN
-    RETURN jsonb_build_object('ok', false, 'error', 'order_not_open');
-  END IF;
-
-  IF NOT _sbp_check_shop_owner(v_src.shop_id) THEN
-    RETURN jsonb_build_object('ok', false, 'error', 'not_authorized');
-  END IF;
-
-  -- Find and remove item from source
-  FOR it IN SELECT jsonb_array_elements(v_src.items)
-  LOOP
-    IF COALESCE(it->>'item_id', it->>'id') = p_item_id THEN
-      v_item := it;
-    ELSE
-      v_remaining := v_remaining || it;
-    END IF;
-  END LOOP;
-
-  IF v_item IS NULL THEN
-    RETURN jsonb_build_object('ok', false, 'error', 'item_not_found',
-      'message', 'Item ' || p_item_id || ' not found in source order');
-  END IF;
-
-  -- Update source: items without the moved item
-  UPDATE sbp_running_orders
-  SET items      = v_remaining,
-      updated_at = now()
-  WHERE id = p_source_order_id;
-
-  -- Update dest: append the item
-  UPDATE sbp_running_orders
-  SET items      = items || jsonb_build_array(v_item),
-      updated_at = now()
-  WHERE id = p_dest_order_id;
-
-  RETURN jsonb_build_object(
-    'ok', true,
-    'moved_item_id', p_item_id,
-    'from_table',    v_src.table_number,
-    'to_table',      v_dest.table_number,
-    'src_remaining', jsonb_array_length(v_remaining)
-  );
-END;
-$$;
-
-GRANT EXECUTE ON FUNCTION sbp_ro_move_item(uuid, uuid, text) TO authenticated;
-
--- ── 9. HELPER FOR UI: List all open running orders for merge picker ──
-DROP FUNCTION IF EXISTS sbp_ro_list_open(uuid);
-CREATE OR REPLACE FUNCTION sbp_ro_list_open(p_shop_id uuid)
-RETURNS jsonb
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  v_rows jsonb;
-BEGIN
-  IF NOT _sbp_check_shop_owner(p_shop_id) THEN
-    RETURN jsonb_build_object('ok', false, 'error', 'not_authorized');
-  END IF;
-
-  SELECT COALESCE(jsonb_agg(jsonb_build_object(
-    'order_id',     r.id,
-    'table_id',     r.table_id,
-    'table_number', r.table_number,
-    'item_count',   jsonb_array_length(r.items),
-    'opened_at',    r.opened_at
-  ) ORDER BY r.table_number), '[]'::jsonb)
-  INTO v_rows
-  FROM sbp_running_orders r
-  WHERE r.shop_id = p_shop_id AND r.status = 'open';
-
-  RETURN jsonb_build_object('ok', true, 'orders', v_rows);
-END;
-$$;
-
-GRANT EXECUTE ON FUNCTION sbp_ro_list_open(uuid) TO authenticated;
-
 NOTIFY pgrst, 'reload schema';
-
-COMMIT;
-
--- ════════════════════════════════════════════════════════════════════
--- POST-DEPLOY VERIFICATION
--- ════════════════════════════════════════════════════════════════════
--- 1. New columns:
---    SELECT split_kind, split_index, split_total_ways, split_session_id
---    FROM bills LIMIT 1;
---
--- 2. RPCs registered (expect 7 + helper):
---    SELECT proname FROM pg_proc WHERE proname IN (
---      '_sbp_ro_compute_totals', '_sbp_alloc_invoice_no',
---      'sbp_ro_split_equal', 'sbp_ro_split_custom', 'sbp_ro_split_by_item',
---      'sbp_ro_merge_into', 'sbp_ro_move_item', 'sbp_ro_list_open'
---    );
---    -- Expected: 8 rows
---
--- 3. Reconciliation test (after a real equal-split):
---    SELECT split_session_id,
---           SUM(grand_total) AS total_split,
---           split_total_ways
---    FROM bills
---    WHERE split_session_id IS NOT NULL
---    GROUP BY split_session_id, split_total_ways
---    ORDER BY MAX(created_at) DESC LIMIT 1;
---    -- total_split should match the original RO total to the paise
--- ════════════════════════════════════════════════════════════════════
