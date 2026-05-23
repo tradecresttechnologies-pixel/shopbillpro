@@ -404,7 +404,26 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
       </select>
     </div>
     <input id="nr-tablepref" placeholder="Table preference (e.g. window, AC, outdoor)" style="width:100%;padding:10px;margin-bottom:8px;border:1px solid var(--bord,#e5e7eb);border-radius:8px;box-sizing:border-box">
-    <textarea id="nr-notes" placeholder="Notes (optional)" style="width:100%;padding:10px;margin-bottom:14px;border:1px solid var(--bord,#e5e7eb);border-radius:8px;box-sizing:border-box"></textarea>
+    <textarea id="nr-notes" placeholder="Notes (optional)" style="width:100%;padding:10px;margin-bottom:10px;border:1px solid var(--bord,#e5e7eb);border-radius:8px;box-sizing:border-box"></textarea>
+
+    <!-- v6.2: Direct confirm + table assignment for manual entries -->
+    <div style="background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.3);border-radius:10px;padding:10px;margin-bottom:14px">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:8px;font-size:13.5px;font-weight:600">
+        <input type="checkbox" id="nr-confirm-now" checked style="width:16px;height:16px;cursor:pointer">
+        <span><span class="lang-en">Mark as confirmed (skip pending)</span><span class="lang-hi">कन्फर्म्ड (पेंडिंग छोड़ें)</span></span>
+      </label>
+      <div id="nr-table-row" style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:12px;color:var(--t2,#6b7280);min-width:62px">Assign:</span>
+        <select id="nr-table" style="flex:1;padding:8px 10px;border:1px solid var(--bord,#e5e7eb);border-radius:8px;font-size:13px;background:var(--surf,#fff)">
+          <option value="">— No specific table —</option>
+        </select>
+      </div>
+      <div style="font-size:11px;color:var(--t2,#6b7280);margin-top:6px;line-height:1.4">
+        <span class="lang-en">Tick this when the customer is on the phone or in person — saves you a tap.</span>
+        <span class="lang-hi">कस्टमर फ़ोन पर हो तो टिक करें — एक टैप कम होगा</span>
+      </div>
+    </div>
+
     <div style="display:flex;gap:8px">
       <button class="btn-sec" onclick="closeNewRes()" style="flex:1">Cancel</button>
       <button class="btn-pri" onclick="saveNewRes()" style="flex:1">Save</button>
@@ -595,7 +614,23 @@ async function setStatus(id,st){
   reloadAll();
 }
 
-function openNewRes(){ document.getElementById('nr-date').value=_today(); document.getElementById('new-res-modal').style.display='flex'; }
+function openNewRes(){
+  document.getElementById('nr-date').value=_today();
+  // v6.2: populate the table dropdown with current tables (same as Confirm modal)
+  var sel = document.getElementById('nr-table');
+  if(sel){
+    sel.innerHTML = '<option value="">— No specific table —</option>' +
+      _tables.map(function(t){
+        return '<option value="'+t.id+'">Table '+esc(t.table_number)+
+               (t.capacity?(' (seats '+t.capacity+')'):'') + '</option>';
+      }).join('');
+    sel.value = '';
+  }
+  // Reset checkbox to default-checked (manual entries usually = confirmed)
+  var cb = document.getElementById('nr-confirm-now');
+  if(cb) cb.checked = true;
+  document.getElementById('new-res-modal').style.display='flex';
+}
 function closeNewRes(){ document.getElementById('new-res-modal').style.display='none'; }
 
 async function saveNewRes(){
@@ -612,12 +647,45 @@ async function saveNewRes(){
   };
   if(!p.name){ alert('Name required'); return; }
   if(!p.date){ alert('Date required'); return; }
+
+  // v6.2: read the new fields
+  var confirmNow = !!document.getElementById('nr-confirm-now').checked;
+  var tableId    = document.getElementById('nr-table').value || null;
+
+  // Step 1: create the reservation (always starts as pending server-side)
   const { data, error } = await window._sb.rpc('sbp_reservation_create_staff', { p_payload:p });
   if(error||!data||!data.ok){ alert('Could not save: '+((data&&data.error)||'error')); return; }
+
+  // Step 2: if 'Mark as confirmed' was ticked, chain into sbp_reservation_confirm.
+  // This reuses the EXISTING confirm RPC so server-side validation is identical
+  // to the manual 'Confirm + Table' flow. If confirm fails, we still keep the
+  // reservation as pending (no data loss) — user gets a clear error.
+  if (confirmNow){
+    var newId = data.reservation_id || data.id || (data.reservation && data.reservation.id);
+    if (!newId){
+      // Defensive: if the create RPC doesn't return an id field we recognize,
+      // tell the user the reservation saved but they need to confirm manually.
+      console.warn('[saveNewRes] confirmNow=true but no reservation_id in response:', data);
+      alert('Reservation saved as pending. Please confirm it manually (create RPC did not return an id).');
+    } else {
+      const cf = await window._sb.rpc('sbp_reservation_confirm', {
+        p_reservation_id: newId,
+        p_table_id:       tableId
+      });
+      if (cf.error || !cf.data || !cf.data.ok){
+        alert('Saved, but auto-confirm failed: ' + ((cf.data&&cf.data.error)||cf.error?.message||'error') + '. You can confirm manually from the list.');
+      }
+    }
+  }
+
   closeNewRes();
   document.getElementById('nr-name').value='';document.getElementById('nr-phone').value='';
   document.getElementById('nr-email').value='';document.getElementById('nr-tablepref').value='';
   document.getElementById('nr-notes').value='';
+  // Reset checkbox/table for next entry
+  document.getElementById('nr-confirm-now').checked = true;
+  var ts = document.getElementById('nr-table'); if(ts) ts.value = '';
+
   reloadAll();
 }
 
