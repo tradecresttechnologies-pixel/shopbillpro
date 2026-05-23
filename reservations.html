@@ -28,6 +28,11 @@ function isFree(){return _sbpPlanInfo().plan==='free';}
 const SB_URL='https://jfqeirfrkjdkqqixivru.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmcWVpcmZya2pka3FxaXhpdnJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzNzQ4MzgsImV4cCI6MjA4OTk1MDgzOH0.akd4E0nil8ypLR4WOykkeYIL8g4uuNU6XdSVh_Y1utk';
 const _sb=supabase.createClient(SB_URL,SB_KEY,{auth:{autoRefreshToken:true,persistSession:true,detectSessionInUrl:false}});
+// v6.1 fix: resolve shop_id from localStorage (canonical pattern across the codebase)
+const _shopId = localStorage.getItem('sbp_shop_id') || '';
+// Also expose globally so window._sb-based helpers can use it
+window._sb = _sb;
+window._shopId = _shopId;
 window._sb=_sb;
 </script>
 <link rel="stylesheet" href="/styles.css"><!-- BATCH UI-1: canonical design system -->
@@ -434,6 +439,11 @@ async function boot(){
   if(typeof isBiz==='function' && !isBiz()){
     document.getElementById('locked-screen').style.display='block'; return;
   }
+  if(!_shopId){
+    document.getElementById('res-content').style.display='block';
+    document.getElementById('res-groups').innerHTML='<div style="padding:30px;text-align:center;color:#ef4444"><strong>No shop found</strong><br><span style="font-size:13px;color:var(--t2,#6b7280)">Please log in again.</span></div>';
+    return;
+  }
   document.getElementById('res-content').style.display='block';
   document.getElementById('f-from').value=_today();
   var d=new Date(); d.setDate(d.getDate()+30);
@@ -443,10 +453,31 @@ async function boot(){
 }
 
 async function loadTables(){
+  // v6.1 fix: sbp_tables_list REQUIRES p_shop_id. Calling without it returned
+  // empty/error silently, leaving the table dropdown empty in Confirm modal.
+  if (!_shopId){
+    console.warn('[loadTables] no _shopId in localStorage; tables dropdown will be empty');
+    _tables = [];
+    return;
+  }
   try{
-    const { data, error } = await window._sb.rpc('sbp_tables_list', {});
-    if(!error && data){ _tables=(data.tables||data||[]).filter(function(x){return x&&x.table_number!=null;}); }
-  }catch(e){ _tables=[]; }
+    const { data, error } = await window._sb.rpc('sbp_tables_list', { p_shop_id: _shopId });
+    if(error){
+      console.error('[loadTables] RPC error:', error.message || error);
+      _tables = [];
+      return;
+    }
+    if(!data || (!data.ok && !Array.isArray(data))){
+      console.error('[loadTables] RPC returned not-ok:', data);
+      _tables = [];
+      return;
+    }
+    _tables = (data.tables || data || []).filter(function(x){ return x && x.table_number != null; });
+    console.log('[loadTables] loaded ' + _tables.length + ' tables');
+  }catch(e){
+    console.error('[loadTables] threw:', e);
+    _tables = [];
+  }
 }
 
 async function reloadAll(){
