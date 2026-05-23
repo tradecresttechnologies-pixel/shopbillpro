@@ -983,6 +983,38 @@ html,body{height:100%;width:100%;margin:0;padding:0;overflow:hidden;background:v
 .bw-item-row .bi-name{flex:1;color:var(--text);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bw-item-row .bi-qty{color:var(--acc);font-weight:800;font-family:var(--font-h);min-width:34px;text-align:center;flex-shrink:0}
 .bw-item-row .bi-amt{color:var(--text);font-weight:700;min-width:74px;text-align:right;font-family:var(--font-h);flex-shrink:0}
+/* ── v7: Split + Merge modals ────────────────────────────────── */
+.v7-modal{position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.65);display:none;align-items:center;justify-content:center;padding:20px}
+.v7-modal.on{display:flex}
+.v7-modal-card{background:var(--surf,#fff);border-radius:16px;width:100%;max-width:520px;max-height:90vh;overflow:auto;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+.v7-modal-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.v7-modal-t{font-size:18px;font-weight:800;color:var(--text)}
+.v7-modal-x{width:32px;height:32px;border-radius:50%;border:0;background:var(--surf2,#f3f4f6);cursor:pointer;font-size:16px}
+.v7-mode-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:18px}
+.v7-mode-btn{padding:14px 6px;border:2px solid var(--bord,#e5e7eb);background:var(--surf,#fff);border-radius:10px;cursor:pointer;text-align:center;color:var(--text)}
+.v7-mode-btn:hover{border-color:var(--acc,#F5A623);background:rgba(245,166,35,.05)}
+.v7-mode-btn.on{border-color:var(--acc,#F5A623);background:rgba(245,166,35,.12)}
+.v7-mode-btn .v7-mode-em{font-size:24px;margin-bottom:4px;display:block}
+.v7-mode-btn .v7-mode-lbl{font-size:11.5px;font-weight:700;line-height:1.2}
+.v7-info{font-size:12px;color:var(--t2,#6b7280);margin-bottom:14px;line-height:1.5;background:rgba(245,166,35,.08);padding:10px 12px;border-radius:8px;border-left:3px solid var(--acc,#F5A623)}
+.v7-input{width:100%;padding:10px 12px;border:1px solid var(--bord,#e5e7eb);border-radius:8px;font-size:14px;box-sizing:border-box;margin-bottom:8px}
+.v7-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--bord,#e5e7eb);border-radius:8px;margin-bottom:6px;background:var(--surf,#fff)}
+.v7-row-name{flex:1;font-size:13px;font-weight:600}
+.v7-row-amt{font-weight:700;font-family:var(--font-h,inherit);min-width:80px;text-align:right}
+.v7-row-pick{padding:4px 8px;border:1px solid var(--bord,#e5e7eb);border-radius:6px;background:var(--surf,#fff);font-size:12px}
+.v7-actions{display:flex;gap:8px;margin-top:16px}
+.v7-btn{flex:1;padding:12px;border:0;border-radius:10px;font-weight:700;font-size:14px;cursor:pointer}
+.v7-btn-cancel{background:var(--surf2,#e5e7eb);color:var(--text,#1a1a1a)}
+.v7-btn-go{background:var(--acc,#F5A623);color:#fff}
+.v7-btn-go:disabled{opacity:.5;cursor:not-allowed}
+.v7-people-list{margin-bottom:8px}
+.v7-total-line{display:flex;justify-content:space-between;padding:10px 0;font-size:14px;border-top:1px solid var(--bord,#e5e7eb);margin-top:8px}
+.v7-total-line.grand{font-weight:800;font-size:16px}
+.v7-warn{font-size:12px;color:#ef4444;margin-top:4px;display:none}
+.v7-warn.on{display:block}
+.v7-item-pick{display:flex;align-items:center;gap:8px;padding:6px 10px;margin-bottom:4px;background:var(--surf,#fff);border:1px solid var(--bord,#e5e7eb);border-radius:6px}
+.v7-item-pick input[type=checkbox]{width:18px;height:18px}
+
 
 .bw-discount-block{display:flex;flex-direction:column;gap:8px}
 .bw-discount-row{display:flex;gap:8px;align-items:stretch}
@@ -1799,6 +1831,8 @@ html,body{height:100%;width:100%;margin:0;padding:0;overflow:hidden;background:v
           <button class="btn-bill" id="bill-btn-mobile" onclick="generateBill()" disabled>
             🧾 <span class="lang-en">Generate Bill</span><span class="lang-hi">बिल बनाएं</span>
           </button>
+          <button class="btn-void" id="split-btn-mobile" onclick="openSplitModal()" disabled style="background:#8B5CF6;color:#fff">✂️ <span class="lang-en">Split</span><span class="lang-hi">बांटें</span></button>
+          <button class="btn-void" onclick="openMergeModal()" style="background:#0EA5E9;color:#fff">🔀 <span class="lang-en">Move</span><span class="lang-hi">मूव</span></button>
         </div>
 
       </div><!-- /order-pane -->
@@ -1842,6 +1876,16 @@ html,body{height:100%;width:100%;margin:0;padding:0;overflow:hidden;background:v
           <button class="rail-btn primary" id="bill-btn" onclick="generateBill()" disabled title="Save the bill & free the table">
             <span class="rail-btn-em">🧾</span>
             <span><span class="lang-en">Generate Bill</span><span class="lang-hi">बिल बनाएं</span></span>
+          </button>
+          <!-- v7: Split Bill -->
+          <button class="rail-btn" id="split-btn" onclick="openSplitModal()" disabled title="Split this bill into multiple bills">
+            <span class="rail-btn-em">✂️</span>
+            <span><span class="lang-en">Split Bill</span><span class="lang-hi">बिल बांटें</span></span>
+          </button>
+          <!-- v7: Merge / Move items -->
+          <button class="rail-btn" id="merge-btn" onclick="openMergeModal()" title="Merge into another table or move items">
+            <span class="rail-btn-em">🔀</span>
+            <span><span class="lang-en">Merge / Move</span><span class="lang-hi">मर्ज / मूव</span></span>
           </button>
         </div>
       </div><!-- /action-rail -->
@@ -4615,6 +4659,536 @@ async function voidOrder(){
 
 // ── Boot ──────────────────────────────────────────────────────────
 init().catch(e => { console.error(e); toast('Error loading running order','e'); });
+</script>
+
+<!-- v7: Split Bill Modal -->
+<div class="v7-modal" id="split-modal">
+  <div class="v7-modal-card">
+    <div class="v7-modal-h">
+      <div class="v7-modal-t">✂️ <span class="lang-en">Split Bill</span><span class="lang-hi">बिल बांटें</span></div>
+      <button class="v7-modal-x" onclick="closeSplitModal()">✕</button>
+    </div>
+    <div class="v7-info" id="split-summary"><span class="lang-en">Loading...</span><span class="lang-hi">लोड हो रहा है...</span></div>
+
+    <!-- Mode picker -->
+    <div class="v7-mode-grid">
+      <button type="button" class="v7-mode-btn" onclick="setSplitMode('equal')">
+        <span class="v7-mode-em">➗</span>
+        <span class="v7-mode-lbl"><span class="lang-en">Equal</span><span class="lang-hi">बराबर</span></span>
+      </button>
+      <button type="button" class="v7-mode-btn" onclick="setSplitMode('custom')">
+        <span class="v7-mode-em">💰</span>
+        <span class="v7-mode-lbl"><span class="lang-en">Custom</span><span class="lang-hi">कस्टम</span></span>
+      </button>
+      <button type="button" class="v7-mode-btn" onclick="setSplitMode('item')">
+        <span class="v7-mode-em">🍽️</span>
+        <span class="v7-mode-lbl"><span class="lang-en">By Item</span><span class="lang-hi">आइटम से</span></span>
+      </button>
+    </div>
+
+    <!-- EQUAL mode -->
+    <div id="split-mode-equal" style="display:none">
+      <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px"><span class="lang-en">Split into how many?</span><span class="lang-hi">कितने में?</span></label>
+      <input type="number" id="split-equal-n" class="v7-input" min="2" max="50" value="2" onchange="updateSplitEqualPreview()" oninput="updateSplitEqualPreview()">
+      <div id="split-equal-preview" style="font-size:13px;color:var(--t2,#6b7280);margin-bottom:6px"></div>
+    </div>
+
+    <!-- CUSTOM mode -->
+    <div id="split-mode-custom" style="display:none">
+      <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px"><span class="lang-en">Number of people</span><span class="lang-hi">लोगों की संख्या</span></label>
+      <input type="number" id="split-custom-n" class="v7-input" min="2" max="50" value="2" onchange="buildCustomAmountInputs()" oninput="buildCustomAmountInputs()">
+      <div id="split-custom-list" class="v7-people-list"></div>
+      <div class="v7-total-line"><span><span class="lang-en">Sum entered</span><span class="lang-hi">कुल भरा</span></span><span id="split-custom-sum">₹0</span></div>
+      <div class="v7-total-line grand"><span><span class="lang-en">Bill total</span><span class="lang-hi">बिल कुल</span></span><span id="split-custom-target">₹0</span></div>
+      <div class="v7-warn" id="split-custom-warn"></div>
+    </div>
+
+    <!-- BY ITEM mode -->
+    <div id="split-mode-item" style="display:none">
+      <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px"><span class="lang-en">Number of people</span><span class="lang-hi">लोगों की संख्या</span></label>
+      <input type="number" id="split-item-n" class="v7-input" min="2" max="20" value="2" onchange="buildItemAssignInputs()" oninput="buildItemAssignInputs()">
+      <div style="font-size:11.5px;color:var(--t2,#6b7280);margin-bottom:8px"><span class="lang-en">Assign each item to a person:</span><span class="lang-hi">हर आइटम किसका है:</span></div>
+      <div id="split-item-list"></div>
+      <div class="v7-warn" id="split-item-warn"></div>
+    </div>
+
+    <div class="v7-actions">
+      <button class="v7-btn v7-btn-cancel" onclick="closeSplitModal()"><span class="lang-en">Cancel</span><span class="lang-hi">रद्द</span></button>
+      <button class="v7-btn v7-btn-go" id="split-confirm-btn" onclick="doSplit()" disabled><span class="lang-en">Split Bill</span><span class="lang-hi">बांटें</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- v7: Merge / Move Modal -->
+<div class="v7-modal" id="merge-modal">
+  <div class="v7-modal-card">
+    <div class="v7-modal-h">
+      <div class="v7-modal-t">🔀 <span class="lang-en">Merge or Move Items</span><span class="lang-hi">मर्ज / मूव</span></div>
+      <button class="v7-modal-x" onclick="closeMergeModal()">✕</button>
+    </div>
+
+    <!-- Tab picker -->
+    <div class="v7-mode-grid" style="grid-template-columns:1fr 1fr">
+      <button type="button" class="v7-mode-btn" onclick="setMergeMode('all')">
+        <span class="v7-mode-em">📦</span>
+        <span class="v7-mode-lbl"><span class="lang-en">Merge ALL into...</span><span class="lang-hi">सब मर्ज करें</span></span>
+      </button>
+      <button type="button" class="v7-mode-btn" onclick="setMergeMode('some')">
+        <span class="v7-mode-em">✂️</span>
+        <span class="v7-mode-lbl"><span class="lang-en">Move SOME items</span><span class="lang-hi">कुछ मूव करें</span></span>
+      </button>
+    </div>
+
+    <div id="merge-mode-all" style="display:none">
+      <div class="v7-info"><span class="lang-en">All items will move into the target table. This table becomes free.</span><span class="lang-hi">सारे आइटम दूसरी टेबल पर जाएंगे, यह फ्री हो जाएगी</span></div>
+      <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px"><span class="lang-en">Merge into table:</span><span class="lang-hi">किस टेबल में:</span></label>
+      <select id="merge-all-target" class="v7-input">
+        <option value="">— <span class="lang-en">Select target table</span><span class="lang-hi">टेबल चुनें</span> —</option>
+      </select>
+    </div>
+
+    <div id="merge-mode-some" style="display:none">
+      <div class="v7-info"><span class="lang-en">Pick items to move and a target table. This table stays open.</span><span class="lang-hi">आइटम चुनें और टेबल चुनें — यह टेबल खुली रहेगी</span></div>
+      <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px"><span class="lang-en">Items to move:</span><span class="lang-hi">कौनसे आइटम:</span></label>
+      <div id="merge-some-items" style="max-height:200px;overflow:auto;margin-bottom:10px"></div>
+      <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px"><span class="lang-en">Move to table:</span><span class="lang-hi">किस टेबल में:</span></label>
+      <select id="merge-some-target" class="v7-input">
+        <option value="">— <span class="lang-en">Select target table</span><span class="lang-hi">टेबल चुनें</span> —</option>
+      </select>
+    </div>
+
+    <div class="v7-actions">
+      <button class="v7-btn v7-btn-cancel" onclick="closeMergeModal()"><span class="lang-en">Cancel</span><span class="lang-hi">रद्द</span></button>
+      <button class="v7-btn v7-btn-go" id="merge-confirm-btn" onclick="doMerge()" disabled><span class="lang-en">Confirm</span><span class="lang-hi">कन्फर्म</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- v7: Split/Merge JS -->
+<script>
+// v7 — Bill Split + Table Merge
+// Uses: window._sb, _shopId, _order (current running order)
+// RPCs: sbp_ro_split_equal, sbp_ro_split_custom, sbp_ro_split_by_item,
+//       sbp_ro_merge_into, sbp_ro_move_item, sbp_ro_list_open
+
+(function(){
+'use strict';
+
+// === Helpers ===
+function _ord(){ return (typeof _order !== 'undefined') ? _order : null; }
+function _shop(){ return (typeof _shopId !== 'undefined' && _shopId) ? _shopId : (localStorage.getItem('sbp_shop_id')||''); }
+function _items(){
+  var o = _ord();
+  if(!o || !Array.isArray(o.items)) return [];
+  return o.items.filter(function(x){ return x && !x.voided; });
+}
+function _itemTotal(it){
+  var q = Number(it.qty || it.q || 1);
+  var p = Number(it.price || it.rate || it.r || 0);
+  var g = Number(it.gst_rate || 0);
+  var sub = q * p;
+  return sub + (sub * g / 100);
+}
+function _orderTotal(){
+  return _items().reduce(function(s, it){ return s + _itemTotal(it); }, 0);
+}
+function _itemId(it){ return it.item_id || it.id || null; }
+function _itemName(it){ return it.name || it.item_name || it.nm || 'Item'; }
+function _fINR(n){ return '₹' + Number(n||0).toFixed(2); }
+function _esc(s){ return String(s==null?'':s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+
+// === SPLIT modal ===
+let _splitMode = null;
+
+window.openSplitModal = function(){
+  var ord = _ord();
+  if(!ord || !ord.id){ alert('No active running order'); return; }
+  var items = _items();
+  if(items.length === 0){ alert('No items to split'); return; }
+  var total = _orderTotal();
+  if(total <= 0){ alert('Nothing to split (total is zero)'); return; }
+
+  document.getElementById('split-summary').innerHTML =
+    '<strong>T' + _esc(ord.table_number || '?') + '</strong> · ' +
+    items.length + ' item' + (items.length===1?'':'s') + ' · ' +
+    '<strong>' + _fINR(total) + '</strong> total';
+
+  // Reset state
+  _splitMode = null;
+  document.getElementById('split-mode-equal').style.display = 'none';
+  document.getElementById('split-mode-custom').style.display = 'none';
+  document.getElementById('split-mode-item').style.display = 'none';
+  document.getElementById('split-confirm-btn').disabled = true;
+  document.querySelectorAll('#split-modal .v7-mode-btn').forEach(function(b){ b.classList.remove('on'); });
+
+  document.getElementById('split-modal').classList.add('on');
+};
+window.closeSplitModal = function(){
+  document.getElementById('split-modal').classList.remove('on');
+};
+
+window.setSplitMode = function(mode){
+  _splitMode = mode;
+  document.getElementById('split-mode-equal').style.display  = mode==='equal'  ? '' : 'none';
+  document.getElementById('split-mode-custom').style.display = mode==='custom' ? '' : 'none';
+  document.getElementById('split-mode-item').style.display   = mode==='item'   ? '' : 'none';
+  document.getElementById('split-confirm-btn').disabled = false;
+
+  // Highlight active mode button
+  var modeBtns = document.querySelectorAll('#split-modal .v7-mode-btn');
+  var idxMap = {'equal':0,'custom':1,'item':2};
+  modeBtns.forEach(function(b,i){ b.classList.toggle('on', i === idxMap[mode]); });
+
+  // Initialize the active mode's UI
+  if(mode === 'equal'){
+    document.getElementById('split-equal-n').value = '2';
+    updateSplitEqualPreview();
+  } else if(mode === 'custom'){
+    document.getElementById('split-custom-n').value = '2';
+    buildCustomAmountInputs();
+  } else if(mode === 'item'){
+    document.getElementById('split-item-n').value = '2';
+    buildItemAssignInputs();
+  }
+};
+
+window.updateSplitEqualPreview = function(){
+  var n = parseInt(document.getElementById('split-equal-n').value, 10) || 0;
+  var total = _orderTotal();
+  var preview = document.getElementById('split-equal-preview');
+  if(n < 2){
+    preview.innerHTML = '<span style="color:#ef4444">Min 2 people</span>';
+    document.getElementById('split-confirm-btn').disabled = true;
+    return;
+  }
+  if(n > 50){
+    preview.innerHTML = '<span style="color:#ef4444">Max 50 splits</span>';
+    document.getElementById('split-confirm-btn').disabled = true;
+    return;
+  }
+  var per = total / n;
+  preview.innerHTML = 'Each person pays approximately <strong>' + _fINR(per) + '</strong>. ' +
+                       '<span style="font-size:11px;opacity:.7">Last split absorbs paise round-off.</span>';
+  document.getElementById('split-confirm-btn').disabled = false;
+};
+
+window.buildCustomAmountInputs = function(){
+  var n = parseInt(document.getElementById('split-custom-n').value, 10) || 0;
+  var total = _orderTotal();
+  var list = document.getElementById('split-custom-list');
+
+  document.getElementById('split-custom-target').textContent = _fINR(total);
+
+  if(n < 2 || n > 50){
+    list.innerHTML = '';
+    document.getElementById('split-custom-warn').textContent = 'Need 2-50 people';
+    document.getElementById('split-custom-warn').classList.add('on');
+    document.getElementById('split-confirm-btn').disabled = true;
+    return;
+  }
+
+  var even = Math.floor((total / n) * 100) / 100;
+  var html = '';
+  for(var i = 0; i < n; i++){
+    html += '<div class="v7-row">' +
+              '<span class="v7-row-name">Person ' + (i+1) + '</span>' +
+              '<input type="number" class="v7-row-pick" data-idx="' + i + '" min="0" step="0.01" value="' + even.toFixed(2) + '" oninput="updateCustomSum()" style="width:90px">' +
+            '</div>';
+  }
+  list.innerHTML = html;
+  updateCustomSum();
+};
+
+window.updateCustomSum = function(){
+  var total = _orderTotal();
+  var sum = 0;
+  document.querySelectorAll('#split-custom-list input').forEach(function(i){
+    sum += Number(i.value || 0);
+  });
+  sum = Math.round(sum * 100) / 100;
+  document.getElementById('split-custom-sum').textContent = _fINR(sum);
+  var diff = Math.abs(sum - total);
+  var warn = document.getElementById('split-custom-warn');
+  if(diff > 0.01){
+    warn.textContent = 'Difference: ' + _fINR(sum - total) + ' — amounts must sum to ' + _fINR(total);
+    warn.classList.add('on');
+    document.getElementById('split-confirm-btn').disabled = true;
+  } else {
+    warn.textContent = '';
+    warn.classList.remove('on');
+    document.getElementById('split-confirm-btn').disabled = false;
+  }
+};
+
+window.buildItemAssignInputs = function(){
+  var n = parseInt(document.getElementById('split-item-n').value, 10) || 0;
+  var list = document.getElementById('split-item-list');
+  var items = _items();
+
+  if(n < 2 || n > 20){
+    list.innerHTML = '';
+    document.getElementById('split-item-warn').textContent = 'Need 2-20 people';
+    document.getElementById('split-item-warn').classList.add('on');
+    document.getElementById('split-confirm-btn').disabled = true;
+    return;
+  }
+
+  // For each item with an item_id, render a row with a person picker
+  var html = '';
+  items.forEach(function(it, idx){
+    var iid = _itemId(it);
+    if(!iid){ return; }  // skip items without stable id (legacy)
+    var qty = Number(it.qty || it.q || 1);
+    var lineTot = _itemTotal(it);
+    var options = '';
+    for(var p = 1; p <= n; p++){
+      options += '<option value="' + p + '"' + (p===1?' selected':'') + '>P' + p + '</option>';
+    }
+    html += '<div class="v7-row">' +
+              '<span class="v7-row-name">' + _esc(_itemName(it)) + ' <span style="opacity:.6;font-weight:400">×' + qty + '</span></span>' +
+              '<span class="v7-row-amt">' + _fINR(lineTot) + '</span>' +
+              '<select class="v7-row-pick" data-iid="' + _esc(iid) + '">' + options + '</select>' +
+            '</div>';
+  });
+
+  if(!html){
+    list.innerHTML = '<div style="padding:14px;text-align:center;color:#ef4444;font-size:12.5px">No item-id stamped items found. Send to kitchen at least once first.</div>';
+    document.getElementById('split-confirm-btn').disabled = true;
+    return;
+  }
+
+  list.innerHTML = html;
+  document.getElementById('split-item-warn').classList.remove('on');
+  document.getElementById('split-confirm-btn').disabled = false;
+};
+
+window.doSplit = async function(){
+  var ord = _ord();
+  if(!ord || !ord.id){ alert('No order'); return; }
+  var btn = document.getElementById('split-confirm-btn');
+  btn.disabled = true;
+  btn.textContent = 'Working...';
+
+  try {
+    var data, error;
+    if(_splitMode === 'equal'){
+      var n = parseInt(document.getElementById('split-equal-n').value, 10);
+      var resp = await window._sb.rpc('sbp_ro_split_equal', {
+        p_order_id: ord.id, p_n_ways: n, p_payment_mode: 'cash'
+      });
+      data = resp.data; error = resp.error;
+    } else if(_splitMode === 'custom'){
+      var amounts = [];
+      document.querySelectorAll('#split-custom-list input').forEach(function(i){
+        amounts.push(Number(i.value || 0));
+      });
+      var resp2 = await window._sb.rpc('sbp_ro_split_custom', {
+        p_order_id: ord.id, p_amounts: amounts, p_payment_mode: 'cash'
+      });
+      data = resp2.data; error = resp2.error;
+    } else if(_splitMode === 'item'){
+      // Build groups from the dropdowns
+      var nPeople = parseInt(document.getElementById('split-item-n').value, 10);
+      var groups = [];
+      for(var p = 1; p <= nPeople; p++){
+        groups.push({ label: 'Person ' + p, item_ids: [] });
+      }
+      document.querySelectorAll('#split-item-list select').forEach(function(s){
+        var iid = s.getAttribute('data-iid');
+        var p = parseInt(s.value, 10);
+        if(iid && p >= 1 && p <= nPeople){
+          groups[p-1].item_ids.push(iid);
+        }
+      });
+      // Drop empty groups (people who got no items)
+      var nonEmpty = groups.filter(function(g){ return g.item_ids.length > 0; });
+      if(nonEmpty.length < 2){
+        alert('At least 2 people must have items assigned');
+        btn.disabled = false; btn.textContent = 'Split Bill';
+        return;
+      }
+      var resp3 = await window._sb.rpc('sbp_ro_split_by_item', {
+        p_order_id: ord.id, p_groups: nonEmpty, p_payment_mode: 'cash'
+      });
+      data = resp3.data; error = resp3.error;
+    }
+
+    if(error){ throw new Error(error.message || 'RPC failed'); }
+    if(!data || !data.ok){
+      throw new Error((data && (data.message || data.error)) || 'Split failed');
+    }
+
+    closeSplitModal();
+    alert('Split successful! ' + data.n_ways + ' bills created.\n\nReturning to tables.');
+    // Redirect to tables.html since the RO is now closed
+    setTimeout(function(){ window.location.href = 'tables.html'; }, 300);
+
+  } catch(e){
+    alert('Split failed: ' + e.message);
+    btn.disabled = false;
+    btn.innerHTML = '<span class="lang-en">Split Bill</span><span class="lang-hi">बांटें</span>';
+  }
+};
+
+// === MERGE / MOVE modal ===
+let _mergeMode = null;
+let _openOrders = [];
+
+window.openMergeModal = async function(){
+  var ord = _ord();
+  if(!ord || !ord.id){ alert('No active running order'); return; }
+
+  // Reset state
+  _mergeMode = null;
+  document.getElementById('merge-mode-all').style.display = 'none';
+  document.getElementById('merge-mode-some').style.display = 'none';
+  document.getElementById('merge-confirm-btn').disabled = true;
+  document.querySelectorAll('#merge-modal .v7-mode-btn').forEach(function(b){ b.classList.remove('on'); });
+
+  document.getElementById('merge-modal').classList.add('on');
+
+  // Load other open ROs for target picker
+  try {
+    var resp = await window._sb.rpc('sbp_ro_list_open', { p_shop_id: _shop() });
+    if(resp.error || !resp.data || !resp.data.ok){
+      throw new Error((resp.error && resp.error.message) || (resp.data && resp.data.error) || 'load_failed');
+    }
+    _openOrders = (resp.data.orders || []).filter(function(o){ return o.order_id !== ord.id; });
+  } catch(e){
+    _openOrders = [];
+    console.warn('[merge] could not load open orders:', e);
+  }
+
+  // Populate target dropdowns
+  var targetOptions = '<option value="">— Select target table —</option>' +
+    _openOrders.map(function(o){
+      return '<option value="' + _esc(o.order_id) + '">T' + _esc(o.table_number) +
+             ' (' + (o.item_count||0) + ' items)</option>';
+    }).join('');
+  document.getElementById('merge-all-target').innerHTML = targetOptions;
+  document.getElementById('merge-some-target').innerHTML = targetOptions;
+
+  if(_openOrders.length === 0){
+    document.getElementById('merge-all-target').innerHTML += '<option disabled>No other open tables</option>';
+    document.getElementById('merge-some-target').innerHTML += '<option disabled>No other open tables</option>';
+  }
+};
+
+window.closeMergeModal = function(){
+  document.getElementById('merge-modal').classList.remove('on');
+};
+
+window.setMergeMode = function(mode){
+  _mergeMode = mode;
+  document.getElementById('merge-mode-all').style.display  = mode==='all'  ? '' : 'none';
+  document.getElementById('merge-mode-some').style.display = mode==='some' ? '' : 'none';
+  document.getElementById('merge-confirm-btn').disabled = false;
+
+  var modeBtns = document.querySelectorAll('#merge-modal .v7-mode-btn');
+  modeBtns.forEach(function(b,i){ b.classList.toggle('on', (mode==='all' && i===0) || (mode==='some' && i===1)); });
+
+  if(mode === 'some'){ buildMergeSomeItems(); }
+};
+
+function buildMergeSomeItems(){
+  var box = document.getElementById('merge-some-items');
+  var items = _items();
+  var html = '';
+  items.forEach(function(it){
+    var iid = _itemId(it);
+    if(!iid){ return; }
+    var qty = Number(it.qty || it.q || 1);
+    var lineTot = _itemTotal(it);
+    html += '<label class="v7-item-pick">' +
+              '<input type="checkbox" data-iid="' + _esc(iid) + '">' +
+              '<span style="flex:1">' + _esc(_itemName(it)) + ' <span style="opacity:.6">×' + qty + '</span></span>' +
+              '<span style="font-weight:700">' + _fINR(lineTot) + '</span>' +
+            '</label>';
+  });
+  if(!html){
+    html = '<div style="padding:14px;text-align:center;color:#ef4444;font-size:12.5px">No item-id stamped items.</div>';
+  }
+  box.innerHTML = html;
+}
+
+window.doMerge = async function(){
+  var ord = _ord();
+  if(!ord || !ord.id){ alert('No order'); return; }
+  var btn = document.getElementById('merge-confirm-btn');
+  btn.disabled = true;
+  btn.textContent = 'Working...';
+
+  try {
+    if(_mergeMode === 'all'){
+      var dest = document.getElementById('merge-all-target').value;
+      if(!dest){ throw new Error('Pick a target table'); }
+      var resp = await window._sb.rpc('sbp_ro_merge_into', {
+        p_source_order_id: ord.id, p_dest_order_id: dest
+      });
+      if(resp.error){ throw new Error(resp.error.message); }
+      if(!resp.data || !resp.data.ok){ throw new Error((resp.data && (resp.data.message||resp.data.error)) || 'merge_failed'); }
+      closeMergeModal();
+      alert('Merged into T' + (resp.data.dest_table || '?') + '. This table is now free.');
+      setTimeout(function(){ window.location.href = 'tables.html'; }, 300);
+    } else if(_mergeMode === 'some'){
+      var dest2 = document.getElementById('merge-some-target').value;
+      if(!dest2){ throw new Error('Pick a target table'); }
+      var iids = [];
+      document.querySelectorAll('#merge-some-items input:checked').forEach(function(c){
+        iids.push(c.getAttribute('data-iid'));
+      });
+      if(iids.length === 0){ throw new Error('Select at least one item to move'); }
+
+      // Move one at a time (server RPC moves single item per call — chain them)
+      var moved = 0;
+      for(var i = 0; i < iids.length; i++){
+        var r = await window._sb.rpc('sbp_ro_move_item', {
+          p_source_order_id: ord.id, p_dest_order_id: dest2, p_item_id: iids[i]
+        });
+        if(r.error){ throw new Error('Move failed on item ' + (i+1) + ': ' + r.error.message); }
+        if(!r.data || !r.data.ok){ throw new Error('Move failed on item ' + (i+1) + ': ' + ((r.data && (r.data.message||r.data.error)) || 'unknown')); }
+        moved++;
+      }
+
+      closeMergeModal();
+      alert(moved + ' item(s) moved. Refreshing order...');
+      // Refresh the current order display
+      if(typeof refreshOrder === 'function'){ refreshOrder(); } else { location.reload(); }
+    }
+  } catch(e){
+    alert('Failed: ' + e.message);
+    btn.disabled = false;
+    btn.innerHTML = '<span class="lang-en">Confirm</span><span class="lang-hi">कन्फर्म</span>';
+  }
+};
+
+// === Enable Split/Merge buttons when there are items ===
+// The 'split-btn' is disabled until there are items in the order. Watch the
+// existing bill-btn for enabled state and mirror it.
+function _watchBillBtn(){
+  var src = document.getElementById('bill-btn');
+  var splitBtn = document.getElementById('split-btn');
+  var splitBtnMobile = document.getElementById('split-btn-mobile');
+  if(!src) return;
+  var sync = function(){
+    var enabled = !src.disabled;
+    if(splitBtn) splitBtn.disabled = !enabled;
+    if(splitBtnMobile) splitBtnMobile.disabled = !enabled;
+  };
+  sync();
+  // Watch attribute changes via MutationObserver
+  if(window.MutationObserver){
+    new MutationObserver(sync).observe(src, { attributes: true, attributeFilter: ['disabled'] });
+  } else {
+    setInterval(sync, 1000);
+  }
+}
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', _watchBillBtn);
+} else {
+  setTimeout(_watchBillBtn, 500);
+}
+})();
 </script>
 </body>
 </html>

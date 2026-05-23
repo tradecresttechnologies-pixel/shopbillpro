@@ -1,45 +1,38 @@
-# ShopBill Pro v6 — Reservation Polish
-
-## Drop-in file structure
-Paths in this zip = paths in your repo. Just copy them in.
+# ShopBill Pro v7.0 — Bill Split + Table Merge
 
 ## Deploy steps
 
-### 1. Enable pg_cron extension
-Supabase Dashboard → Database → Extensions → search "pg_cron" → Enable.
-(Skip if already enabled.)
+### 1. Run SQL migration
+`db/migrations/100_bill_split_merge.sql`
 
-### 2. Run SQL migration
-- `db/migrations/099_reservation_polish.sql`
+Creates 8 RPCs (3 split modes + merge + move-item + helpers) and adds
+4 audit-lineage columns to `bills` (split_kind, split_index, split_total_ways,
+split_session_id).
 
-### 3. Replace files in your repo (4 files)
-- `lib/reservation-state.js` (NEW FILE)
-- `tables.html` (REPLACE)
-- `settings.html` (REPLACE)
-- `reservations.html` (REPLACE)
+### 2. Replace running-order.html
+Adds **Split Bill** and **Merge / Move** buttons to the action rail and
+mobile bottom actions. Two modals with full handler logic.
 
-### 4. Push via GitHub Desktop → Vercel auto-deploys
+### 3. Push via GitHub Desktop → Vercel auto-deploys
 
-## Full deploy guide
-See `docs/DEPLOY_v6_reservation_polish.md` for:
-- 8-step test plan
-- Rollback procedure
-- Honest flags about schema assumptions
-
-## What's in this bundle
-
-| Path | Purpose | Size |
-|------|---------|------|
-| `db/migrations/099_reservation_polish.sql` | Schema + 6 RPCs + pg_cron job | 18KB |
-| `lib/reservation-state.js` | Shared helper for block-state lookups | 5KB |
-| `tables.html` | Block overlay + warning modal on walk-in | 63KB |
-| `settings.html` | New "Reservations" section (3 settings) | 162KB |
-| `reservations.html` | Notify button + WhatsApp flow + badges | 40KB |
-| `docs/DEPLOY_v6_reservation_polish.md` | Full deploy guide + test plan | 9KB |
+### 4. Hard-refresh and test
+See `docs/DEPLOY_v7_bill_split_merge.md` for the 7-step test plan with
+SQL reconciliation queries.
 
 ## What this delivers
 
-- **One-tap WhatsApp notify** for confirmed reservations
-- **Automatic table blocking** during reservation windows
-- **Auto no-show release** via pg_cron every 5 min
-- **Owner-configurable** windows per shop (not hard-coded)
+**Bill Split (3 modes)** — each split becomes an independent bill with its
+own invoice_no. Reconciles to the paise. Equal split / Custom amount / By-item.
+
+**Table Merge / Move** — combine all items from one table into another
+(source goes free), OR move selected items only (both stay open).
+
+## Honest flags
+- Items need `item_id` (sent to kitchen at least once) for by-item split + move-some
+- Payment mode defaults to 'cash' — separate dropdown per split is v7.1
+- Each split = own GST invoice (consumes invoice_no faster, audit-clean)
+- See deploy guide for full flag list (8 items)
+
+## Cumulative state
+v5 (websites) + v6.x (reservations) + v7.0 (bill split/merge) — this session.
+Next queued: SEO + auto-indexing.
