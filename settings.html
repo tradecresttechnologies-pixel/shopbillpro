@@ -774,6 +774,60 @@ html,body{height:100%;overflow:hidden}
         </div>
       </div>
 
+      <!-- ─── Reservations & Table Blocking (BIZ — added v6) ─── -->
+      <div class="sec-group" id="reservations-settings">
+        <div class="sec-group-hd">
+          <div class="sec-group-ic">📅</div>
+          <div class="sec-group-t"><span class="lang-en">Reservations</span><span class="lang-hi">आरक्षण</span></div>
+          <div class="sec-group-sub"><span class="lang-en">Table block window &amp; no-show timing</span><span class="lang-hi">टेबल ब्लॉक विंडो</span></div>
+        </div>
+        <div class="menu-it" style="flex-direction:column;align-items:stretch;gap:12px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div class="mi-ic" style="background:rgba(245,166,35,.18)">⏰</div>
+            <div class="mi-txt" style="flex:1">
+              <h4><span class="lang-en">Block table BEFORE arrival</span><span class="lang-hi">पहले से ब्लॉक करें</span></h4>
+              <p><span class="lang-en">Reserve the table this many minutes BEFORE the expected arrival time.</span><span class="lang-hi">अपेक्षित समय से इतने मिनट पहले टेबल आरक्षित करें</span></p>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px">
+              <input type="number" id="rsv-block-before" min="0" max="240" value="15"
+                style="width:64px;padding:8px 10px;border-radius:8px;border:1px solid var(--bord);background:var(--surf);color:var(--text);font:600 14px var(--font-h);text-align:center">
+              <span style="font-size:12px;color:var(--t2)">min</span>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div class="mi-ic" style="background:rgba(99,102,241,.18)">🕐</div>
+            <div class="mi-txt" style="flex:1">
+              <h4><span class="lang-en">Block table AFTER arrival</span><span class="lang-hi">बाद तक ब्लॉक रखें</span></h4>
+              <p><span class="lang-en">Keep the table blocked this many minutes AFTER the expected arrival time.</span><span class="lang-hi">अपेक्षित समय के इतने मिनट बाद तक टेबल ब्लॉक रहे</span></p>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px">
+              <input type="number" id="rsv-block-after" min="0" max="480" value="120"
+                style="width:64px;padding:8px 10px;border-radius:8px;border:1px solid var(--bord);background:var(--surf);color:var(--text);font:600 14px var(--font-h);text-align:center">
+              <span style="font-size:12px;color:var(--t2)">min</span>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div class="mi-ic" style="background:rgba(239,68,68,.18)">🚫</div>
+            <div class="mi-txt" style="flex:1">
+              <h4><span class="lang-en">Auto no-show release</span><span class="lang-hi">ऑटो रिलीज (नो-शो)</span></h4>
+              <p><span class="lang-en">Auto-mark as no-show this many minutes after arrival. Set 0 to disable.</span><span class="lang-hi">समय के इतने मिनट बाद ऑटो नो-शो; 0 = बंद</span></p>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px">
+              <input type="number" id="rsv-no-show" min="0" max="240" value="30"
+                style="width:64px;padding:8px 10px;border-radius:8px;border:1px solid var(--bord);background:var(--surf);color:var(--text);font:600 14px var(--font-h);text-align:center">
+              <span style="font-size:12px;color:var(--t2)">min</span>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:4px">
+            <button type="button" onclick="saveReservationSettings()"
+              style="flex:1;padding:12px;background:var(--acc);color:#fff;border:0;border-radius:10px;font:700 14px var(--font-h);cursor:pointer">
+              <span class="lang-en">Save</span><span class="lang-hi">सेव करें</span>
+            </button>
+          </div>
+          <div id="rsv-save-msg" style="font-size:12px;color:var(--t2);text-align:center;min-height:16px"></div>
+        </div>
+      </div>
+
       <!-- ─── Customer-Facing (id="website" fixes broken sidebar anchor) ─── -->
       <div class="sec-group" id="website">
         <div class="sec-group-hd">
@@ -2466,6 +2520,69 @@ function devSetPlan(plan) {
 const PUBLIC_SHOP_BASE_URL = 'https://app.shopbillpro.in';
 
 let _pspSlug = null;
+
+// ── v6: Reservations & Table Blocking settings ──────────────────
+async function loadReservationSettings(){
+  if (!window._sb) return;
+  try {
+    const { data, error } = await window._sb.rpc('sbp_get_reservation_settings');
+    if (error || !data || !data.ok) return;
+    const before = document.getElementById('rsv-block-before');
+    const after  = document.getElementById('rsv-block-after');
+    const noShow = document.getElementById('rsv-no-show');
+    if (before) before.value = (data.reservation_block_before_min ?? 15);
+    if (after)  after.value  = (data.reservation_block_after_min ?? 120);
+    if (noShow) noShow.value = (data.reservation_no_show_min ?? 30);
+  } catch (e) {
+    console.warn('[reservation-settings] load failed:', e);
+  }
+}
+
+async function saveReservationSettings(){
+  const msgEl = document.getElementById('rsv-save-msg');
+  if (!window._sb){
+    if (msgEl){ msgEl.textContent = 'Not signed in'; msgEl.style.color = '#ef4444'; }
+    return;
+  }
+  const before = parseInt(document.getElementById('rsv-block-before').value, 10);
+  const after  = parseInt(document.getElementById('rsv-block-after').value, 10);
+  const noShow = parseInt(document.getElementById('rsv-no-show').value, 10);
+
+  if (isNaN(before) || isNaN(after) || isNaN(noShow)){
+    if (msgEl){ msgEl.textContent = 'Please enter valid numbers'; msgEl.style.color = '#ef4444'; }
+    return;
+  }
+
+  if (msgEl){ msgEl.textContent = 'Saving...'; msgEl.style.color = 'var(--t2)'; }
+
+  try {
+    const { data, error } = await window._sb.rpc('sbp_update_reservation_settings', {
+      p_block_before_min: before,
+      p_block_after_min:  after,
+      p_no_show_min:      noShow
+    });
+    if (error){
+      if (msgEl){ msgEl.textContent = 'Save failed: ' + error.message; msgEl.style.color = '#ef4444'; }
+      return;
+    }
+    if (!data || !data.ok){
+      const reason = (data && data.error) || 'unknown';
+      if (msgEl){ msgEl.textContent = 'Save failed: ' + reason; msgEl.style.color = '#ef4444'; }
+      return;
+    }
+    if (msgEl){
+      msgEl.textContent = '✓ Saved';
+      msgEl.style.color = '#10B981';
+      setTimeout(function(){ if (msgEl) msgEl.textContent = ''; }, 3000);
+    }
+  } catch (e){
+    if (msgEl){ msgEl.textContent = 'Save error: ' + (e.message || e); msgEl.style.color = '#ef4444'; }
+  }
+}
+
+// Load reservation settings on page boot
+setTimeout(loadReservationSettings, 600);
+
 
 async function pspLoadSlug() {
   if (!window._sb) return;

@@ -23,6 +23,7 @@ function isFree(){return _sbpPlanInfo().plan==='free';}
 </script>
 <script src="lang.js"></script>
 <script src="lib/sidebar-engine.js"></script>
+<script src="lib/reservation-state.js"></script>
 <script src="conversion.js"></script>
 <script>
 const SB_URL='https://jfqeirfrkjdkqqixivru.supabase.co';
@@ -217,6 +218,22 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 }
 .tcard-edit:hover{opacity:1;border-color:var(--acc)}
 .tcard-time{font-size:10px;color:var(--t2);margin-top:2px}
+.tcard-reservation-badge{position:absolute;top:8px;left:8px;background:#F5A623;color:#1A1A1A;font-size:10.5px;font-weight:700;padding:4px 8px;border-radius:8px;line-height:1.2;letter-spacing:.2px;box-shadow:0 2px 6px rgba(245,166,35,.4);z-index:2;max-width:calc(100% - 50px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tcard-reservation-badge.notified::before{content:"✓ ";opacity:.85}
+.tcard.reserved-window{border:2px solid #F5A623;box-shadow:0 0 0 1px rgba(245,166,35,.25)}
+.tcard.reserved-window .tcard-num{color:#B45309}
+.reserve-warn-modal{position:fixed;inset:0;background:rgba(0,0,0,.66);z-index:99999;display:none;align-items:center;justify-content:center;padding:20px}
+.reserve-warn-modal.on{display:flex}
+.reserve-warn-card{background:#fff;border-radius:14px;max-width:420px;width:100%;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.reserve-warn-icon{font-size:42px;text-align:center;margin-bottom:8px}
+.reserve-warn-title{font-size:18px;font-weight:700;color:#1A1A1A;margin-bottom:8px;text-align:center}
+.reserve-warn-body{font-size:14px;color:#374151;line-height:1.5;margin-bottom:18px;text-align:center;background:#FEF3C7;padding:12px;border-radius:10px}
+.reserve-warn-body strong{color:#B45309}
+.reserve-warn-actions{display:flex;gap:10px}
+.reserve-warn-actions button{flex:1;padding:12px;border:0;border-radius:10px;font-size:14.5px;font-weight:600;cursor:pointer;font-family:inherit}
+.reserve-warn-cancel{background:#E5E7EB;color:#374151}
+.reserve-warn-confirm{background:#F5A623;color:#fff}
+.reserve-warn-actions button:hover{filter:brightness(.95)}
 .tcard-hint{font-size:10px;color:var(--t2);margin-top:7px;font-weight:600;opacity:.75;display:flex;align-items:center;justify-content:center;gap:4px}
 .tcard-hint::before{content:'👆';font-size:10px}
 .tcard:hover .tcard-hint{opacity:1;color:var(--acc)}
@@ -406,6 +423,18 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 </div>
 
 <!-- Status change modal -->
+<!-- v6: reservation-block warning modal -->
+<div class="reserve-warn-modal" id="reserve-warn-modal">
+  <div class="reserve-warn-card">
+    <div class="reserve-warn-icon">⏰</div>
+    <div class="reserve-warn-title">Table is reserved</div>
+    <div class="reserve-warn-body" id="reserve-warn-body"></div>
+    <div class="reserve-warn-actions">
+      <button type="button" class="reserve-warn-cancel" onclick="closeReserveWarn()">Cancel</button>
+      <button type="button" class="reserve-warn-confirm" id="reserve-warn-confirm-btn">Use Anyway</button>
+    </div>
+  </div>
+</div>
 <div class="overlay" id="status-modal">
   <div class="sheet">
     <div class="sheet-title">
@@ -454,6 +483,13 @@ async function reloadAll(){
   const { data, error } = await _sb.rpc('sbp_tables_list', { p_shop_id: _shopId });
   if(error || !data?.ok){ document.getElementById('pane-tables').innerHTML='<div class="empty"><div class="empty-emoji">⚠️</div><div class="empty-title">Could not load tables</div><div class="empty-msg">'+(error?.message||data?.error||'Unknown error')+'</div></div>'; return; }
   _tables = data.tables || [];
+
+  // v6: also load reservation-block state (parallel-safe, fail-soft)
+  if (window.SBPReservationState && window._sb){
+    try { await window.SBPReservationState.loadBlockedTables(_shopId); }
+    catch(e){ console.warn('[tables] block-state load failed:', e); }
+  }
+
   render();
 }
 
@@ -618,8 +654,19 @@ function render(){
             🔔 ${gp.count>1?gp.count+' new guest orders':'New guest order'} — tap to review
           </div>` : '';
 
+      // v6: check if this table is in a reservation block window
+      const _block = (window.SBPReservationState && window.SBPReservationState.getBlockForTable)
+                       ? window.SBPReservationState.getBlockForTable(t.id) : null;
+      const _resWindowCls = _block ? ' reserved-window' : '';
+      const _resBadge = _block ? `
+          <div class="tcard-reservation-badge${_block.notified ? ' notified' : ''}"
+               title="${escHtml(window.SBPReservationState.formatBlockTooltip(_block))}">
+            ${escHtml(window.SBPReservationState.formatBlockBadge(_block))}
+          </div>` : '';
+
       html += `
-        <div class="tcard ${st.cls}${hasOrder?' has-order':''}${gp?' guest-pending':''}" onclick="handleTableTap('${t.id}','${t.status}','${escHtml(t.table_number)}')">
+        <div class="tcard ${st.cls}${_resWindowCls}${hasOrder?' has-order':''}${gp?' guest-pending':''}" onclick="handleTableTap('${t.id}','${t.status}','${escHtml(t.table_number)}')">
+          ${_resBadge}
           <button class="tcard-edit" onclick="event.stopPropagation();openEditModal('${t.id}')">✎</button>
           <div class="tcard-num">T${escHtml(t.table_number)}</div>
           <div class="tcard-cap">👥 ${t.capacity} seats</div>
@@ -770,7 +817,40 @@ async function printAllQR(){
 // The primary (big) button is the obvious next step for that status;
 // for a Free table that is "Seat Guests", which is also exactly what
 // unblocks QR self-ordering — the whole point of the system.
+// v6: original handleTableTap renamed; new one wraps with block-state check
+// Public handleTableTap — checks reservation block, warns if applicable
 function handleTableTap(tableId, status, tableNum){
+  // Only warn when seating a free table that has a block window
+  if (status === 'free' && window.SBPReservationState){
+    const block = window.SBPReservationState.getBlockForTable(tableId);
+    if (block){
+      const body = document.getElementById('reserve-warn-body');
+      if (body){
+        const badge = window.SBPReservationState.formatBlockBadge(block);
+        body.innerHTML = 'This table is reserved.<br><strong>' +
+          (badge ? badge.replace(/&/g,'&amp;').replace(/</g,'&lt;') : 'Reservation pending') +
+          '</strong><br><br>You can still use this table — staff judgment overrides.';
+      }
+      const confirmBtn = document.getElementById('reserve-warn-confirm-btn');
+      if (confirmBtn){
+        confirmBtn.onclick = function(){
+          closeReserveWarn();
+          _handleTableTapRaw(tableId, status, tableNum);
+        };
+      }
+      document.getElementById('reserve-warn-modal').classList.add('on');
+      return;
+    }
+  }
+  _handleTableTapRaw(tableId, status, tableNum);
+}
+
+function closeReserveWarn(){
+  const m = document.getElementById('reserve-warn-modal');
+  if (m) m.classList.remove('on');
+}
+
+function _handleTableTapRaw(tableId, status, tableNum){
   openTableSheet(tableId);
 }
 

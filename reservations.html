@@ -511,6 +511,14 @@ function rowHtml(r){
   } else if(r.status==='confirmed'){
     actions='<button class="btn-sec" style="padding:6px 10px;font-size:12px" onclick="event.stopPropagation();setStatus(\''+r.id+'\',\'seated\')">Seated</button> '+
             '<button class="btn-sec" style="padding:6px 10px;font-size:12px" onclick="event.stopPropagation();setStatus(\''+r.id+'\',\'no_show\')">No-show</button>';
+    // v6: add notify button (WhatsApp confirmation) for reservations with a phone
+    if(r.customer_phone){
+      var _notifyLabel = r.notified_at ? '🔁 Resend' : '📱 Notify';
+      var _notifyStyle = r.notified_at
+        ? 'background:#10B981;color:#fff;border:0;padding:6px 10px;font-size:12px;border-radius:6px;cursor:pointer'
+        : 'background:#25D366;color:#fff;border:0;padding:6px 10px;font-size:12px;border-radius:6px;cursor:pointer';
+      actions = '<button style="'+_notifyStyle+'" onclick="event.stopPropagation();notifyGuest(\''+r.id+'\')">'+_notifyLabel+'</button> ' + actions;
+    }
   }
   if(r.status==='pending'||r.status==='confirmed'){
     actions+=' <button class="btn-sec" style="padding:6px 10px;font-size:12px" onclick="event.stopPropagation();setStatus(\''+r.id+'\',\'cancelled\')">Cancel</button>';
@@ -522,6 +530,7 @@ function rowHtml(r){
       '<span style="font-weight:800;font-size:13px;min-width:42px">'+esc(time)+'</span>'+
       '<span style="font-weight:700;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(r.customer_name)+' <span style="color:var(--t2,#6b7280);font-weight:400;font-size:12px">· '+esc(r.party_size)+'p</span></span>'+
       chip(r.status)+
+      (r.notified_at ? '<span title="Notified '+esc(r.notification_count||1)+'x" style="background:#10B98122;color:#10B981;padding:2px 6px;border-radius:99px;font-size:10px;font-weight:700;margin-left:4px">✓ NOTIFIED</span>' : '')+
       '<span style="font-size:11px;color:var(--t2,#6b7280)">'+esc(sub.join(' · '))+'</span>'+
       '<span style="color:var(--t2,#9ca3af);font-size:12px">▾</span>'+
     '</div>'+
@@ -579,6 +588,78 @@ async function saveNewRes(){
   document.getElementById('nr-email').value='';document.getElementById('nr-tablepref').value='';
   document.getElementById('nr-notes').value='';
   reloadAll();
+}
+
+// ── v6: WhatsApp notification flow ─────────────────────────────
+function _buildConfirmationMessage(r){
+  var shop = {};
+  try { shop = JSON.parse(localStorage.getItem('sbp_shop')||'{}'); } catch(e){}
+  var shopName = shop.name || shop.shop_name || 'our restaurant';
+  var shopAddress = shop.address || '';
+  var shopPhone = shop.phone || shop.wa || '';
+
+  // Format date nicely
+  var dateStr = r.reservation_date || '';
+  try {
+    var d = new Date(r.reservation_date+'T00:00:00');
+    dateStr = d.toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+  } catch(e){}
+
+  var timeStr = (r.time_slot||'').slice(0,5);
+
+  var lines = [
+    'Hi '+ (r.customer_name||'') +'! Your table reservation at '+ shopName +' is confirmed:',
+    '',
+    '📅 Date: '+ dateStr,
+    '🕐 Time: '+ timeStr,
+    '👥 Party of: '+ (r.party_size||1)
+  ];
+  if(r.table_number != null) lines.push('🪑 Table: T'+ r.table_number);
+  if(r.confirmation_code) lines.push('🔖 Ref: #'+ r.confirmation_code);
+  lines.push('');
+  if(shopAddress) lines.push('📍 '+ shopAddress);
+  if(shopPhone) lines.push('📞 '+ shopPhone);
+  lines.push('');
+  lines.push('Please call us if any changes. See you soon!');
+  return lines.join('\n');
+}
+
+function _digitsOnly(s){ return String(s||'').replace(/[^0-9]/g,''); }
+function _waNumber(phone){
+  var d = _digitsOnly(phone);
+  if(!d) return '';
+  if(d.length === 10) return '91' + d;
+  return d;
+}
+
+async function notifyGuest(id){
+  var r = _cache.find(function(x){ return x.id === id; });
+  if(!r){ alert('Reservation not found'); return; }
+  if(!r.customer_phone){ alert('No phone number on this reservation'); return; }
+
+  var waNum = _waNumber(r.customer_phone);
+  if(!waNum){ alert('Phone number is invalid'); return; }
+
+  var msg = _buildConfirmationMessage(r);
+  var url = 'https://wa.me/' + waNum + '?text=' + encodeURIComponent(msg);
+
+  // Open WhatsApp in a new tab BEFORE the RPC call (popup blockers prefer this)
+  window.open(url, '_blank', 'noopener');
+
+  // Record the click (best-effort; don't block the user if it fails)
+  try {
+    const { data, error } = await window._sb.rpc('sbp_reservation_notify_sent', { p_id: id });
+    if(error || !data || !data.ok){
+      console.warn('[notify] record failed:', error || data);
+      return;
+    }
+    // Update local cache so UI shows "✓ NOTIFIED" immediately
+    r.notified_at = data.notified_at || new Date().toISOString();
+    r.notification_count = data.notification_count || ((r.notification_count||0) + 1);
+    renderCached();
+  } catch(e){
+    console.warn('[notify] threw:', e);
+  }
 }
 
 window.addEventListener('load', function(){
