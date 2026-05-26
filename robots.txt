@@ -1,14 +1,65 @@
-# ShopBill Pro Marketing Site
+# ShopBill Pro — app.shopbillpro.in robots.txt
+# v8.0 (2026-05-25)
+#
+# This file is served for BOTH shopbillpro.in and app.shopbillpro.in
+# (same Vercel deployment). Rules below are written to be safe for both:
+# the marketing site stays fully crawlable; logged-in app pages are blocked.
 
 User-agent: *
+
+# Public shop pages — encouraged
+Allow: /s/
+Allow: /s
+
+# Marketing pages (these only exist on shopbillpro.in but Allow is harmless on app subdomain)
 Allow: /
 
-# Block app subdomain from getting indexed under marketing root
-# (app.shopbillpro.in has its own SEO/privacy needs)
+# Static assets — required for Google to render pages properly
+Allow: /icons/
+Allow: /css/
+Allow: /js/
+Allow: /lib/
+
+# Logged-in app pages — block (they require auth + serve no useful indexable content)
 Disallow: /admin
 Disallow: /admin-*
 Disallow: /admin-login
-Disallow: /js/
-Disallow: /css/
+Disallow: /dashboard
+Disallow: /running-order
+Disallow: /running-order.html
+Disallow: /bills
+Disallow: /bills.html
+Disallow: /customers
+Disallow: /customers.html
+Disallow: /settings
+Disallow: /settings.html
+Disallow: /website-builder
+Disallow: /website-builder.html
+Disallow: /reports
+Disallow: /reports.html
+Disallow: /products
+Disallow: /products.html
+Disallow: /services
+Disallow: /services.html
+Disallow: /staff
+Disallow: /staff.html
+Disallow: /bookings
+Disallow: /bookings.html
+Disallow: /appointments
+Disallow: /appointments.html
+Disallow: /menu
+Disallow: /menu.html
+Disallow: /tables
+Disallow: /tables.html
+Disallow: /rooms
+Disallow: /rooms.html
+Disallow: /folio
+Disallow: /folio.html
 
+# QR menus — noindex (they're per-table and don't help SEO)
+Disallow: /qr/
+Disallow: /qr-menu
+
+# Sitemaps — the marketing site has its own, the shop sitemap is dynamic
 Sitemap: https://shopbillpro.in/sitemap.xml
+Sitemap: https://app.shopbillpro.in/sitemap-shops.xml

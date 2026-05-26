@@ -15,6 +15,18 @@
   ],
   "rewrites": [
     {
+      "source": "/s/:slug",
+      "destination": "https://jfqeirfrkjdkqqixivru.supabase.co/functions/v1/shop-page?slug=:slug"
+    },
+    {
+      "source": "/s/:slug/:rest*",
+      "destination": "https://jfqeirfrkjdkqqixivru.supabase.co/functions/v1/shop-page?slug=:slug"
+    },
+    {
+      "source": "/sitemap-shops.xml",
+      "destination": "https://jfqeirfrkjdkqqixivru.supabase.co/functions/v1/shop-sitemap"
+    },
+    {
       "source": "/:path*",
       "missing": [
         {
@@ -23,14 +35,6 @@
         }
       ],
       "destination": "/domain-router"
-    },
-    {
-      "source": "/s/:slug/:page+",
-      "destination": "/s"
-    },
-    {
-      "source": "/s/:slug",
-      "destination": "/s"
     },
     {
       "source": "/qr/:slug/:table",
@@ -54,6 +58,13 @@
       "source": "/service-worker.js",
       "headers": [
         { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/.well-known/:key.txt",
+      "headers": [
+        { "key": "Content-Type", "value": "text/plain; charset=utf-8" },
+        { "key": "Cache-Control", "value": "public, max-age=86400" }
       ]
     }
   ]
