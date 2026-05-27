@@ -209,7 +209,18 @@ body{background:var(--bg);color:var(--text)}
 .cat-chip.on{background:rgba(245,166,35,.12);border-color:var(--acc);color:var(--acc)}
 .pos-body{flex:1;display:flex;overflow:hidden}
 .pos-items{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+/* Reserve room for fixed bnav + FAB so last product row is reachable */
+@media (max-width: 1023px){
+  .pos-items{padding-bottom:calc(140px + var(--safe-bottom, 0px))}
+}
 .pos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;padding:10px 12px}
+/* Tablet: bigger product cards make better use of horizontal space */
+@media (min-width: 640px) and (max-width: 1023px){
+  .pos-grid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;padding:12px 14px}
+  .pos-item-emoji{font-size:36px}
+  .pos-item-name{font-size:13px}
+  .pos-item-price{font-size:14px}
+}
 .pos-item{background:var(--surf);border:1.5px solid var(--bord);border-radius:var(--rs2);padding:12px 8px;text-align:center;cursor:pointer;transition:.2s cubic-bezier(.4,0,.2,1);position:relative;overflow:hidden;user-select:none}
 .pos-item:active{transform:scale(.93)}
 .pos-item.in-cart{border-color:var(--acc3);background:rgba(16,185,129,.06)}
@@ -282,14 +293,38 @@ body{background:var(--bg);color:var(--text)}
 @keyframes toastIn{from{opacity:0;transform:translateY(8px) scale(.95)}to{opacity:1;transform:translateY(0) scale(1)}}
 
 .spacer{height:80px}
-@media(max-width:540px){.pos-cart-panel{display:none}.pos-cart-fab{display:flex}}
-@media(min-width:640px){#app{max-width:480px;margin:0 auto;box-shadow:0 0 80px rgba(0,0,0,.6)}}
-/* v8.1 fix — bnav (position:fixed @ <=1023px) covers cart-foot in POS Mode.
-   Phones (<=540px) hide the cart panel entirely (use FAB+modal). Desktop
-   (>=1024px) hides bnav. The 541-1023px range needs internal padding so
-   the Bill Now button isn't hidden beneath the fixed nav. */
-@media(min-width:541px) and (max-width:1023px){
-  .pos-cart-panel,.pos-items{padding-bottom:calc(72px + var(--safe-bottom,0px))}
+/* v8.1 — POS Mode responsive layout (works at ALL viewport sizes)
+   --------------------------------------------------------------------
+   Strategy:
+     • <1024px (phones + tablets, any orientation): inline cart panel
+       is hidden; FAB + bottom-sheet modal used. Pattern works
+       identically on a 320px phone or a 768px tablet.
+     • >=1024px (desktop + sidebar layout): inline side cart panel
+       returns. Sidebar takes 220px from the left; remaining ~800px+
+       has enough room for products + cart side-by-side.
+
+   Drop the previous 480/600px #app letterbox for tablets — they're
+   wide for a reason; let the POS items grid fill the actual viewport
+   width. Phone view stays naturally narrow because phones already
+   have narrow viewports.
+*/
+@media (max-width: 1023px) {
+  .pos-cart-panel { display: none; }
+  .pos-cart-fab   { display: flex; }
+}
+@media (min-width: 640px) and (max-width: 1023px) {
+  /* Tablet: when POS Mode is active, let items grid use the full
+     viewport width. JS sets body.is-pos-mode (see switchMode below). */
+  body.is-pos-mode #app {
+    max-width: 100% !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+  }
+}
+@media (min-width: 640px) {
+  /* Non-POS pages keep the centered max-480px phone view (unchanged
+     from pre-v8.1 design — preserves all other pages' look). */
+  #app { max-width: 480px; margin: 0 auto; box-shadow: 0 0 80px rgba(0,0,0,.6); }
 }
 
 /* ══ Product Search Autocomplete ══ */
@@ -432,7 +467,7 @@ body{background:var(--bg);color:var(--text)}
 }
 @media(max-width:1023px){#dsb{display:none!important}}
 @media(min-width:640px) and (max-width:1023px){#app{max-width:600px;margin:0 auto}}
-@media(min-width:1024px){body{overflow:hidden}}}
+@media(min-width:1024px){body{overflow:hidden}}
 
 /* ══ Barcode Scanner ══ */
 #barcode-modal{display:none;position:fixed;inset:0;z-index:9000;background:#000;flex-direction:column}
@@ -1015,6 +1050,9 @@ function switchMode(mode){
   document.getElementById('tab-pos').classList.toggle('on',!isManual);
   document.getElementById('view-manual').style.display=isManual?'flex':'none';
   document.getElementById('view-pos').style.display=isManual?'none':'flex';
+  /* v8.1 — body class drives POS-mode-only CSS (e.g. wider grid on tablets) */
+  document.body.classList.toggle('is-pos-mode', !isManual);
+  document.body.classList.toggle('is-manual-mode', isManual);
   document.getElementById('page-title').textContent=isManual?'New Invoice':'POS — Quick Billing';
   if(!isManual){
     // Always reload products from localStorage when entering POS mode
@@ -1023,6 +1061,18 @@ function switchMode(mode){
     renderPOS();
   }
 }
+
+/* v8.1 — Initialize body mode class on first load so POS-only CSS
+   (e.g. wider grid on tablets) activates immediately. Default state
+   is Manual (matches the inline style on #view-manual / #view-pos). */
+(function(){
+  try {
+    var posView = document.getElementById('view-pos');
+    var isPosVisible = posView && getComputedStyle(posView).display !== 'none';
+    document.body.classList.toggle('is-pos-mode', !!isPosVisible);
+    document.body.classList.toggle('is-manual-mode', !isPosVisible);
+  } catch(e) { /* non-fatal */ }
+})();
 
 // ══════════════════════════════════════════
 // MANUAL BILL

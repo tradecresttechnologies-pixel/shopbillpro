@@ -45,23 +45,37 @@ Plus two smaller fixes folded in:
    register from root so this is technically redundant, but harmless
    and protects against future scope changes).
 
-Plus a critical layout bug that came in during the audit (separate from
-the PWA issue, but blocking enough that it ships in the same batch):
+Plus a critical responsive-layout overhaul that came in during the audit (separate from the PWA issue, but the same bundle):
 
-6. **POS Mode "🧾 Bill Now" button hidden under bottom-nav on tablets.**
-   On viewport widths 541-1023px (iPad portrait, small tablets), the
-   `.bnav` is `position:fixed` at the bottom but `.pos-cart-panel` has
-   no bottom padding to reserve space for it. Result: the cart-foot
-   (Total + Bill Now button) renders UNDER the fixed nav bar. The Total
-   text bleeds through in some cases but the button below it is
-   completely hidden, leaving users with a cart full of items and no
-   way to generate the bill. Fix: one CSS media query adding
-   `padding-bottom: calc(72px + safe-bottom)` to `.pos-cart-panel`
-   and `.pos-items` for the 541-1023px range.
+6. **POS Mode layout was broken on tablets — full responsive redesign.**
+   The previous CSS had a 540px break (phone hides cart panel, shows FAB)
+   and a 640px break (#app letterbox clamps to 480/600px) that together
+   produced a broken zone at 541-1023px: cart panel rendered inline,
+   bottom-nav was `position:fixed`, and there was no padding to keep
+   the "Bill Now" button visible above the nav. Users on iPad-portrait,
+   small Android tablets, and large foldables saw a cart with items but
+   no way to checkout.
 
-   Phones (≤540px) are unaffected (cart panel is hidden, FAB+modal used
-   instead). Desktop (≥1024px) is unaffected (bnav is hidden, sidebar
-   used instead).
+   **Fix scope:** Redesign POS Mode breakpoints to a coherent system
+   that works at *every* viewport size, not just patch the broken zone.
+
+   New responsive behavior:
+   - **<1024px (all phones + all tablets, any orientation):** Cart panel
+     hidden inline. FAB + bottom-sheet modal used. Same proven pattern
+     that worked on phones, now extended to tablets.
+   - **≥1024px (desktop + sidebar layout):** Inline side cart panel
+     returns. Sidebar takes 220px, leaving ~800px+ for products
+     side-by-side with the cart panel.
+
+   Plus tablet-specific polish: at 640-1023px in POS Mode, `#app` is
+   un-clamped (was forced to 480/600px); product grid uses 140px cells
+   (was 100px) so tablets actually use their extra screen width
+   instead of stretching tiny phone-sized cards. Manual Bill view and
+   other pages are unaffected — the un-clamp is gated by a new
+   `body.is-pos-mode` class that `switchMode()` toggles.
+
+   Bonus: removed a stray triple-closing-brace `}}}` at the original
+   line 428 that was a real CSS parse warning in strict browsers.
 
 ---
 
@@ -149,19 +163,28 @@ Expect: `StatusCode: 308` (or 307), `Location: /`
 Repeat for `/signup.html`. Both should redirect to `/` (which is
 `index.html`, the login/signup page).
 
-### Test 5 — POS Bill Now button visible on tablet
+### Test 5 — POS Mode works on every screen size
 
-Open `app.shopbillpro.in/billing.html` on an iPad (or Chrome DevTools
-emulating a tablet at 768x1024). Switch to **POS Mode** tab. Tap any
-product to add to cart.
+Open `app.shopbillpro.in/billing.html` in Chrome DevTools → toggle
+device toolbar → cycle through:
+- iPhone SE (375x667) — POS Mode → tap product → "🛒 Cart" FAB
+  appears bottom-right → tap → cart sheet opens → "🧾 Bill Now"
+  button visible at bottom → tap → checkout modal opens.
+- iPad mini portrait (768x1024) — POS Mode → product grid uses
+  bigger 140px tiles (better use of width) → "🛒 Cart" FAB
+  bottom-right → same modal flow.
+- iPad Pro landscape (1366x1024) — POS Mode → inline cart panel
+  appears on right side → products + cart side-by-side → "🧾 Bill
+  Now" visible at bottom of cart panel.
+- Desktop 1920x1080 — same as iPad landscape, sidebar on the left
+  is visible too.
 
-Expect to see the **🧾 Bill Now** orange button visible at the bottom
-of the cart panel, ABOVE the bottom-nav. Tapping it should open the
-Settlement/Checkout modal.
+All four should let users add items and generate a bill without
+hidden buttons.
 
-Before this fix: cart populated but Bill Now button hidden under the
-fixed bottom-nav. Users could see items + total but had no way to
-generate the bill.
+Before this fix: on iPad portrait (~768px), cart panel showed inline
+but the "Bill Now" button was hidden under the fixed bottom nav.
+Users could see items + total but had no way to checkout.
 
 ### Test 6 — Lighthouse PWA audit
 
