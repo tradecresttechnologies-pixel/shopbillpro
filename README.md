@@ -1,10 +1,11 @@
-# ShopBill Pro — v8.1 PWA Install Fix (Batch A)
+# ShopBill Pro — v8.1 PWA Install Fix + POS "Bill Now" Visibility Fix
 
 **Bundle:** `ShopBillPro_v8.1_pwa_install_fix.zip`
 **Date:** 2026-05-27
-**Goal:** Restore PWA installability on Android/Chrome/Edge by re-enabling
-a minimal pass-through service worker, fixing manifest icon paths, and
-unblocking the broken /login.html and /signup.html marketing-site CTAs.
+**Goal:** Restore PWA installability on Android/Chrome/Edge, fix manifest icon
+paths, unblock the broken /login.html and /signup.html marketing-site CTAs,
+AND fix the POS Mode "Bill Now" button being hidden behind the bottom nav on
+tablets.
 
 ---
 
@@ -44,6 +45,24 @@ Plus two smaller fixes folded in:
    register from root so this is technically redundant, but harmless
    and protects against future scope changes).
 
+Plus a critical layout bug that came in during the audit (separate from
+the PWA issue, but blocking enough that it ships in the same batch):
+
+6. **POS Mode "🧾 Bill Now" button hidden under bottom-nav on tablets.**
+   On viewport widths 541-1023px (iPad portrait, small tablets), the
+   `.bnav` is `position:fixed` at the bottom but `.pos-cart-panel` has
+   no bottom padding to reserve space for it. Result: the cart-foot
+   (Total + Bill Now button) renders UNDER the fixed nav bar. The Total
+   text bleeds through in some cases but the button below it is
+   completely hidden, leaving users with a cart full of items and no
+   way to generate the bill. Fix: one CSS media query adding
+   `padding-bottom: calc(72px + safe-bottom)` to `.pos-cart-panel`
+   and `.pos-items` for the 541-1023px range.
+
+   Phones (≤540px) are unaffected (cart panel is hidden, FAB+modal used
+   instead). Desktop (≥1024px) is unaffected (bnav is hidden, sidebar
+   used instead).
+
 ---
 
 ## DEPLOY PATHS
@@ -54,9 +73,10 @@ Plus two smaller fixes folded in:
 | REPLACE | `service-worker.js`   | Repo root. v1.5.0 kill-switch → v1.6.0 pass-through. |
 | REPLACE | `index.html`          | Repo root. Adds SW registration.               |
 | REPLACE | `dashboard.html`      | Repo root. Replaces SW cleanup block with SW registration. |
+| REPLACE | `billing.html`        | Repo root. CSS fix for POS "Bill Now" button visible on tablets. |
 | REPLACE | `vercel.json`         | Repo root. Adds 2 redirects + manifest Content-Type header. |
 
-All 5 files are at the repo root. No subdirectories touched. No SQL
+All 6 files are at the repo root. No subdirectories touched. No SQL
 migrations. No Edge Function changes. No Supabase work.
 
 ---
@@ -129,7 +149,21 @@ Expect: `StatusCode: 308` (or 307), `Location: /`
 Repeat for `/signup.html`. Both should redirect to `/` (which is
 `index.html`, the login/signup page).
 
-### Test 5 — Lighthouse PWA audit
+### Test 5 — POS Bill Now button visible on tablet
+
+Open `app.shopbillpro.in/billing.html` on an iPad (or Chrome DevTools
+emulating a tablet at 768x1024). Switch to **POS Mode** tab. Tap any
+product to add to cart.
+
+Expect to see the **🧾 Bill Now** orange button visible at the bottom
+of the cart panel, ABOVE the bottom-nav. Tapping it should open the
+Settlement/Checkout modal.
+
+Before this fix: cart populated but Bill Now button hidden under the
+fixed bottom-nav. Users could see items + total but had no way to
+generate the bill.
+
+### Test 6 — Lighthouse PWA audit
 
 Chrome DevTools → Lighthouse → check "Progressive Web App" → analyze.
 

@@ -284,6 +284,13 @@ body{background:var(--bg);color:var(--text)}
 .spacer{height:80px}
 @media(max-width:540px){.pos-cart-panel{display:none}.pos-cart-fab{display:flex}}
 @media(min-width:640px){#app{max-width:480px;margin:0 auto;box-shadow:0 0 80px rgba(0,0,0,.6)}}
+/* v8.1 fix — bnav (position:fixed @ <=1023px) covers cart-foot in POS Mode.
+   Phones (<=540px) hide the cart panel entirely (use FAB+modal). Desktop
+   (>=1024px) hides bnav. The 541-1023px range needs internal padding so
+   the Bill Now button isn't hidden beneath the fixed nav. */
+@media(min-width:541px) and (max-width:1023px){
+  .pos-cart-panel,.pos-items{padding-bottom:calc(72px + var(--safe-bottom,0px))}
+}
 
 /* ══ Product Search Autocomplete ══ */
 .item-search-wrap{position:relative}
