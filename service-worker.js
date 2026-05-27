@@ -1,79 +1,87 @@
-// ShopBill Pro Service Worker — v1.5.0 KILL-SWITCH (12 May 2026)
+// ShopBill Pro Service Worker — v1.6.0 MINIMAL-PWA-ENABLE (27 May 2026)
 //
-// Purpose: An earlier SW (v1.4.0, batch 1A) was registered in browsers but the
-// matching code on disk had been emptied. The browser kept the old SW + its
-// cache alive, serving stale HTML/JS to users even after we deployed fixes.
-// Result: shopkeepers saw "I deployed but nothing changed" repeatedly.
+// PURPOSE
+//   Chrome/Edge require an active service worker with a fetch handler for
+//   PWA installability (the "Install app" omnibox icon, beforeinstallprompt
+//   event, and Add to Home Screen flow on Android). Without a registered
+//   active SW these never appear.
 //
-// This v1.5.0 SW:
-//   1. skipWaiting() — activates immediately, doesn't wait for tabs to close
-//   2. clients.claim() — takes over any already-open tabs
-//   3. Wipes ALL caches from any prior SW
-//   4. Unregisters itself — so the next request goes straight to the network
-//   5. Reloads open tabs once so they pick up fresh assets immediately
+// HISTORY
+//   v1.4.0 (Apr 2026) — first SW with cache logic. Caused stale-HTML/JS
+//     bugs because users' browsers kept the cached old SW running long
+//     after we deployed fixes.
+//   v1.5.0 (12 May 2026) — kill-switch SW that wipes all caches and
+//     unregisters itself. Solved the staleness problem but eliminated
+//     PWA install capability as a side effect.
+//   v1.6.0 (THIS FILE) — minimal pass-through SW that:
+//     • Satisfies Chrome's install criteria (presence + fetch handler)
+//     • Never caches ANY resource (fetch handler is pure pass-through)
+//     • Cannot serve stale assets because it has no cache logic
+//     • Activates immediately and claims open tabs
+//     • Wipes any lingering caches from earlier SW versions
 //
-// After every existing user hits this once, no SW is active. Vercel serves
-// each request from its CDN. Hard-refreshes work normally. PWA offline
-// support is handled at the app layer via localStorage caching of shop +
-// customers + bills + products — we don't need a separate SW cache for it.
+// WHY THIS IS SAFE
+//   The stale-asset disaster of v1.4.0 was caused by cache.match() returning
+//   old cached responses. v1.6.0 has zero cache code. Every fetch goes to
+//   the network exactly as it would without an SW. Vercel CDN + browser
+//   HTTP cache handle freshness as normal. The only difference vs
+//   no-SW-at-all: the browser knows a SW is registered, which is what
+//   the install prompt engine checks for.
 //
-// If we ever want real SW-level offline caching later (precache routing,
-// background sync, etc.) we add it back as a NEW SW with a deliberate
-// strategy. This file kills the legacy SW and clears the slate.
+// DEPLOY NOTES
+//   • Cache-Control: no-store on this file (set in vercel.json) — browsers
+//     always re-fetch the SW source on update checks
+//   • skipWaiting() + clients.claim() — old kill-switch SW gets replaced
+//     immediately when users next visit, no waiting for tab close
+//   • dashboard.html previously had a block that unregistered any SW on
+//     load; that block is REMOVED in this batch (see DEPLOY PATHS)
 
-const SW_VERSION = 'v1.5.0-killswitch';
+const SW_VERSION = 'v1.6.0-minimal-pwa-enable';
 
 self.addEventListener('install', (event) => {
   console.log('[SW ' + SW_VERSION + '] install — skipping waiting');
-  // Activate immediately, don't wait for existing SW's clients to close
   event.waitUntil(self.skipWaiting());
 });
 
 self.addEventListener('activate', (event) => {
-  console.log('[SW ' + SW_VERSION + '] activate — cleaning up');
+  console.log('[SW ' + SW_VERSION + '] activate — claiming clients');
   event.waitUntil((async () => {
     try {
-      // 1. Take control of all open tabs immediately
+      // Take control of any open tabs
       await self.clients.claim();
 
-      // 2. Wipe ALL caches from any prior SW version
-      const cacheNames = await caches.keys();
-      console.log('[SW ' + SW_VERSION + '] deleting caches:', cacheNames);
-      await Promise.all(cacheNames.map((name) => caches.delete(name)));
-
-      // 3. Unregister this SW so future requests skip the SW layer entirely
-      if (self.registration) {
-        await self.registration.unregister();
-        console.log('[SW ' + SW_VERSION + '] unregistered');
-      }
-
-      // 4. Force every open tab to reload once so they pick up fresh assets
-      //    (cached pages are gone, so reload hits the network — which is what
-      //    we want). One-time pain, then everyone's on fresh code.
-      const allClients = await self.clients.matchAll({ type: 'window' });
-      for (const client of allClients) {
-        try {
-          client.navigate(client.url);
-        } catch (e) {
-          // Some browsers reject navigate() in certain states. Non-fatal —
-          // user will pick up fresh assets on their next navigation anyway.
+      // One-time housekeeping: wipe any lingering caches from v1.4.0 /
+      // v1.5.0. After every user has visited once post-v1.6.0, this is
+      // a no-op (caches.keys() returns []).
+      if (self.caches) {
+        const names = await caches.keys();
+        if (names.length > 0) {
+          console.log('[SW ' + SW_VERSION + '] cleaning legacy caches:', names);
+          await Promise.all(names.map((n) => caches.delete(n)));
         }
       }
     } catch (err) {
-      console.warn('[SW ' + SW_VERSION + '] cleanup error:', err);
+      console.warn('[SW ' + SW_VERSION + '] activate cleanup error:', err);
     }
   })());
 });
 
-// Fetch handler: pass-through. We do NOT cache anything. The browser's
-// own HTTP cache + Vercel's CDN cache headers are sufficient. The
-// `service-worker.js` file itself has Cache-Control: no-store via
-// vercel.json so any future SW update is picked up immediately.
+// PASS-THROUGH FETCH HANDLER
+//
+// Chrome's PWA install eligibility check requires the SW to have a fetch
+// event listener. This satisfies that requirement while doing NOTHING.
+// We do NOT call event.respondWith(), so the browser proceeds with its
+// default network fetch exactly as if no SW were present.
+//
+// THIS IS DELIBERATE. Adding caching here would resurrect the v1.4.0
+// staleness bugs. If we ever want real offline support, do it as a
+// deliberate new SW version (v1.7+) with explicit cache versioning,
+// cache-busting on deploy, and a kill-switch fallback.
 self.addEventListener('fetch', (event) => {
-  // Intentionally empty — let the browser handle the fetch normally.
+  // Intentionally empty — browser handles fetch normally
 });
 
-// Optional: catch messages from the page (e.g. for forced unregister)
+// Allow page-initiated SW updates
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();

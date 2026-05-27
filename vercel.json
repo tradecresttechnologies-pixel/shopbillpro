@@ -11,6 +11,16 @@
       "source": "/signup",
       "destination": "/",
       "permanent": false
+    },
+    {
+      "source": "/login.html",
+      "destination": "/",
+      "permanent": false
+    },
+    {
+      "source": "/signup.html",
+      "destination": "/",
+      "permanent": false
     }
   ],
   "rewrites": [
@@ -57,7 +67,15 @@
     {
       "source": "/service-worker.js",
       "headers": [
-        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" },
+        { "key": "Service-Worker-Allowed", "value": "/" }
+      ]
+    },
+    {
+      "source": "/manifest.json",
+      "headers": [
+        { "key": "Content-Type", "value": "application/manifest+json; charset=utf-8" },
+        { "key": "Cache-Control", "value": "public, max-age=300, must-revalidate" }
       ]
     },
     {

@@ -1064,6 +1064,23 @@ if(_theme==='light'){
   document.getElementById('theme-toggle-btn').textContent='🌙';
 }
 initDesktop();
+
+/* ══ Service Worker Registration (v1.6.0 minimal-PWA-enable) ═════════
+   Registers /service-worker.js so Chrome/Edge enable the "Install app"
+   prompt and Android shows Add-to-Home-Screen. The SW itself is a
+   no-op pass-through (no caching) — see service-worker.js for the
+   full rationale.
+
+   Registration happens on window 'load' so it never blocks first paint
+   or the login flow. Failures are logged but non-fatal.
+   ═════════════════════════════════════════════════════════════════════ */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('/service-worker.js', { scope: '/' })
+      .then(function(reg){ console.log('[App] SW registered:', reg.scope); })
+      .catch(function(err){ console.warn('[App] SW registration failed:', err); });
+  });
+}
 </script>
 </body>
 </html>

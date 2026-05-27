@@ -1,368 +1,210 @@
-# ShopBill Pro — v8.0 Shop Website SEO Phase 1
+# ShopBill Pro — v8.1 PWA Install Fix (Batch A)
 
-**Bundle:** `ShopBillPro_v8.0_seo_phase1.zip`
-**Date:** 2026-05-25
-**Goal:** Make every published shop website discoverable by Google,
-shareable on WhatsApp/Facebook with real previews, and re-indexed
-within minutes when an owner republishes.
+**Bundle:** `ShopBillPro_v8.1_pwa_install_fix.zip`
+**Date:** 2026-05-27
+**Goal:** Restore PWA installability on Android/Chrome/Edge by re-enabling
+a minimal pass-through service worker, fixing manifest icon paths, and
+unblocking the broken /login.html and /signup.html marketing-site CTAs.
 
 ---
 
-## What this ships
+## What was broken
 
-Three Supabase Edge Functions plus one SQL migration plus updates to
-`vercel.json`, `robots.txt`, and a new IndexNow key file.
+Three independent issues stacked together produced the "PWA install
+doesn't work" symptom:
 
-| Capability | Before v8.0 | After v8.0 |
-|---|---|---|
-| Google sees `<title>` for a shop page | Generic "Shop · ShopBill Pro" | Real shop name |
-| WhatsApp/FB share preview | Generic OG tags | Real shop name + photo + tagline |
-| Schema.org structured data | None | LocalBusiness / Restaurant / BeautySalon / Hotel / etc. (32 vertical mappings) |
-| Sitemap of all published shops | None | `/sitemap-shops.xml` dynamically generated, 1-hr CDN cache |
-| Bing/Yandex/Google reindex on publish | Manual, days | Auto via IndexNow within minutes |
-| `app.shopbillpro.in/robots.txt` | Marketing site's robots leaks here | App-specific rules |
-| Logged-in pages crawled | Possibly indexed | Disallowed |
+1. **`/login.html` and `/signup.html` returned 404** — the marketing site
+   has 13+ buttons linking to these URLs but only `/login` and `/signup`
+   (no `.html`) had redirects in `vercel.json`. Users clicking "Get
+   started — Free" from the marketing site bounced before ever reaching
+   the app where install would be offered.
+
+2. **The Service Worker was a kill-switch that unregistered itself.**
+   This was the right call back on 12-May-26 to escape the v1.4.0
+   stale-cache disaster, but it eliminated PWA install capability as a
+   side effect. Chrome/Edge require an active service worker with a
+   fetch handler for the "Install app" omnibox icon and
+   `beforeinstallprompt` event to fire. The v1.5.0 SW had neither.
+
+3. **All 11 icon paths in `manifest.json` were wrong** — referenced
+   `favicon32x32.png`, `icon48x48.png`, etc. (no hyphen, no folder)
+   while the actual files are at `icons/favicon-32x32.png`,
+   `icons/icon-48x48.png`. Chrome's PWA install criteria require at
+   least one valid icon ≥144x144 to fetch successfully. Currently zero
+   icons resolved → install criteria failed.
+
+Plus two smaller fixes folded in:
+
+4. **`manifest.json` Content-Type** — Vercel was serving as
+   `application/json`. Now explicitly `application/manifest+json` per
+   spec (matters for stricter browsers and Lighthouse audits).
+
+5. **`Service-Worker-Allowed: /` header** — explicitly allows the SW to
+   claim scope `/` from any registration path (defensive; we currently
+   register from root so this is technically redundant, but harmless
+   and protects against future scope changes).
 
 ---
 
 ## DEPLOY PATHS
 
-| Action  | Path                                                       | How                                         |
-|---------|------------------------------------------------------------|---------------------------------------------|
-| RUN     | `db/migrations/105_seo_phase1.sql`                         | Supabase SQL Editor                         |
-| DEPLOY  | `supabase/functions/shop-page/index.ts`                    | Supabase Dashboard → Functions → Deploy     |
-| DEPLOY  | `supabase/functions/shop-sitemap/index.ts`                 | Supabase Dashboard → Functions → Deploy     |
-| DEPLOY  | `supabase/functions/indexnow-flush/index.ts`               | Supabase Dashboard → Functions → Deploy     |
-| REPLACE | `vercel.json`                                              | GitHub Desktop → push                       |
-| REPLACE | `robots.txt`                                               | GitHub Desktop → push                       |
-| NEW     | `.well-known/f8488df6bad03b6684392d1eb63edd41.txt`         | GitHub Desktop → push                       |
+| Action  | Path                  | Notes                                          |
+|---------|-----------------------|------------------------------------------------|
+| REPLACE | `manifest.json`       | Repo root. Fixes all 11 icon paths.            |
+| REPLACE | `service-worker.js`   | Repo root. v1.5.0 kill-switch → v1.6.0 pass-through. |
+| REPLACE | `index.html`          | Repo root. Adds SW registration.               |
+| REPLACE | `dashboard.html`      | Repo root. Replaces SW cleanup block with SW registration. |
+| REPLACE | `vercel.json`         | Repo root. Adds 2 redirects + manifest Content-Type header. |
 
-⚠️ **The IndexNow key file MUST be deployed before submitting the first
-ping**, or IndexNow returns 403 (key file unreachable).
+All 5 files are at the repo root. No subdirectories touched. No SQL
+migrations. No Edge Function changes. No Supabase work.
 
 ---
 
-## Deploy order (do these in sequence, not in parallel)
+## Deploy steps
 
-### Step 1 — Run the SQL migration
+1. **GitHub Desktop:**
+   - Drag the 5 unzipped files into the repo root (overwrite existing)
+   - Commit: "v8.1 — Fix PWA install: SW + manifest icons + login.html redirects"
+   - Push to main
 
-1. Open **Supabase Dashboard → SQL Editor**.
-2. Paste contents of `db/migrations/105_seo_phase1.sql`.
-3. Click **Run**. Expect: 5 success messages
-   (`sbp_public_shop_sitemap` created, `_sbp_indexnow_queue` table created,
-   `_sbp_enqueue_indexnow` created, `sbp_set_ai_website_published` replaced,
-   `sbp_request_reindex` created), then `NOTIFY pgrst, 'reload schema'`.
-4. Verify with:
-   ```sql
-   SELECT * FROM sbp_public_shop_sitemap() LIMIT 5;
-   ```
-   Should return rows for every published shop.
+2. **Wait ~2 min** for Vercel auto-deploy.
 
-### Step 2 — Set the IndexNow secret
+3. **Verify deployment** (steps in next section).
 
-In **Supabase Dashboard → Edge Functions → Settings → Secrets**, add:
-
-```
-INDEXNOW_KEY = f8488df6bad03b6684392d1eb63edd41
-```
-
-(This MUST match the filename of the `.well-known` file you'll deploy
-in step 4. If you change one, change the other.)
-
-### Step 3 — Deploy the three Edge Functions
-
-For each of `shop-page`, `shop-sitemap`, `indexnow-flush`:
-
-1. Open **Supabase Dashboard → Edge Functions → Create a new function**.
-2. Name it exactly as listed (lowercase, dashes).
-3. Copy-paste the entire contents of the corresponding `index.ts` file.
-4. Click **Deploy**.
-
-Or via CLI if you prefer:
-```bash
-supabase functions deploy shop-page
-supabase functions deploy shop-sitemap
-supabase functions deploy indexnow-flush
-```
-
-After deploy, test each:
-
-```bash
-# shop-page (replace 'indian-curry' with a real published shop slug)
-curl -i "https://jfqeirfrkjdkqqixivru.supabase.co/functions/v1/shop-page?slug=indian-curry"
-
-# shop-sitemap
-curl -i "https://jfqeirfrkjdkqqixivru.supabase.co/functions/v1/shop-sitemap"
-
-# indexnow-flush (should return {"ok":true,"drained":0,"message":"queue_empty"})
-curl -i -X POST "https://jfqeirfrkjdkqqixivru.supabase.co/functions/v1/indexnow-flush"
-```
-
-### Step 4 — Push static files + vercel.json
-
-In GitHub Desktop:
-
-1. Replace `vercel.json` (root)
-2. Replace `robots.txt` (root)
-3. Add new file `.well-known/f8488df6bad03b6684392d1eb63edd41.txt`
-   (this is the IndexNow validation file — Bing/Yandex fetches it to
-   verify ownership before accepting submissions)
-4. Commit + push.
-5. Wait ~2 min for Vercel build.
-
-### Step 5 — Verify deploy
-
-```bash
-# Confirm robots.txt updated
-curl -s https://app.shopbillpro.in/robots.txt | head -10
-
-# Confirm key file accessible
-curl -s https://app.shopbillpro.in/.well-known/f8488df6bad03b6684392d1eb63edd41.txt
-# Expected: f8488df6bad03b6684392d1eb63edd41
-
-# Confirm shop page SSR works (use a real published shop slug)
-curl -s -A "Googlebot/2.1" https://app.shopbillpro.in/s/indian-curry | head -30
-# Expect: real <title>, JSON-LD <script>, full body HTML — NOT the JS shell
-
-# Confirm WhatsApp/FB preview works
-curl -s -A "facebookexternalhit/1.1" https://app.shopbillpro.in/s/indian-curry | grep "og:"
-# Expect: real og:title, og:description, og:image
-
-# Confirm sitemap accessible
-curl -s https://app.shopbillpro.in/sitemap-shops.xml | head -20
-```
-
-### Step 6 — (Optional) Enable pg_cron auto-flush
-
-The IndexNow queue currently sits idle until manually flushed. To
-auto-flush every 10 min:
-
-1. In Supabase Dashboard → Database → Extensions, enable **pg_cron**
-   and **pg_net**.
-2. Uncomment section 6 of `105_seo_phase1.sql` (the `cron.schedule`
-   block) and run that SQL alone in the editor.
-3. Verify with `SELECT * FROM cron.job;`.
-
-**Alternative if pg_net not preferred:** trigger from outside via
-GitHub Actions or any cron service — POST to
-`https://jfqeirfrkjdkqqixivru.supabase.co/functions/v1/indexnow-flush`
-every 10 min.
-
-### Step 7 — Submit sitemap to Google Search Console
-
-1. Open **GSC → Sitemaps** (under Indexing).
-2. Use the existing `app.shopbillpro.in` property (or add it if not present).
-3. Enter sitemap URL: `https://app.shopbillpro.in/sitemap-shops.xml`
-4. Click **Submit**.
-5. Google will process within ~24 hours. Status should change from
-   "Couldn't fetch" → "Success" with a discovered URL count.
-
-### Step 8 — (Optional) Submit to Bing Webmaster
-
-If you previously imported the marketing site to Bing Webmaster
-via GSC, the app subdomain is a separate property. Add it manually:
-
-1. Open Bing Webmaster Tools.
-2. Add site: `https://app.shopbillpro.in/`.
-3. Verify ownership (the IndexNow key file in `.well-known` already
-   counts as verification proof).
-4. Submit `https://app.shopbillpro.in/sitemap-shops.xml`.
-
-IndexNow submissions will auto-feed Bing once the key + sitemap are
-both in place.
+4. **Tell existing users to refresh once.** The old v1.5.0 SW will
+   detect the new v1.6.0 SW on next page load, `skipWaiting +
+   clients.claim` activates it immediately. After that single page
+   load, all install machinery works normally. New users have nothing
+   to do — they get v1.6.0 directly.
 
 ---
 
-## How the SSR works
+## Verification
 
+### Test 1 — Manifest icons load
+
+In a regular browser, open https://app.shopbillpro.in/manifest.json and
+confirm:
+- JSON loads (status 200)
+- `icons[]` paths start with `/icons/icon-...` (with hyphens)
+
+Then in browser DevTools → Application → Manifest, confirm:
+- No "Failed to load icon" errors
+- All icon sizes show preview thumbnails
+
+### Test 2 — Service worker registers
+
+DevTools → Application → Service Workers
+- Status: "activated and is running"
+- Source: `service-worker.js`
+- Scope: `https://app.shopbillpro.in/`
+
+Console should log:
 ```
-                  User opens
-   app.shopbillpro.in/s/indian-curry
-              │
-              ▼
-       Vercel CDN check
-          (5min TTL)
-              │
-   cache miss │  cache hit → serve cached HTML
-              ▼
-   Vercel rewrites to:
-   ...supabase.co/functions/v1/shop-page?slug=indian-curry
-              │
-              ▼
-       Edge Function:
-       1. Read User-Agent
-       2. Fetch sbp_resolve_shop_slug RPC
-       3. Crawler UA?  ──Yes──► Render full HTML with
-              │                  meta + JSON-LD + body
-              │                  (return to Vercel)
-              │No
-              ▼
-       Fetch s.html shell (cached in memory)
-       Inject meta tags + JSON-LD into <head>
-       Return shell with real meta
-              │
-              ▼
-       Vercel caches response 5 min,
-       serves stale up to 10 min during revalidation.
-              │
-              ▼
-       User's browser gets shell, JS executes,
-       Supabase client fetches shop data,
-       client-renders interactive widgets.
-       (Same UX as before v8.0.)
+[App] SW registered: https://app.shopbillpro.in/
+[SW v1.6.0-minimal-pwa-enable] install — skipping waiting
+[SW v1.6.0-minimal-pwa-enable] activate — claiming clients
 ```
 
-Crawlers see fully-rendered HTML on first byte. Humans see the same
-interactive experience as before, but with correct meta tags so
-share previews work.
+### Test 3 — Install prompt appears
+
+**Chrome desktop:** look at the right end of the URL bar. After ~30 sec
+on the app, an "Install" icon (monitor with down arrow) should appear.
+Clicking it opens the install dialog with the ShopBill icon, name, and
+description.
+
+**Android Chrome:** menu (⋮) → "Add to Home screen" or "Install app".
+
+**Edge desktop:** Settings (⋯) → "Apps" → "Install this site as an app".
+
+### Test 4 — Marketing-site CTAs no longer 404
+
+```powershell
+Invoke-WebRequest -Uri "https://app.shopbillpro.in/login.html" -MaximumRedirection 0 -ErrorAction SilentlyContinue | Select-Object StatusCode, @{N='Location';E={$_.Headers.Location}}
+```
+
+Expect: `StatusCode: 308` (or 307), `Location: /`
+
+Repeat for `/signup.html`. Both should redirect to `/` (which is
+`index.html`, the login/signup page).
+
+### Test 5 — Lighthouse PWA audit
+
+Chrome DevTools → Lighthouse → check "Progressive Web App" → analyze.
+
+Expect:
+- ✓ Web app manifest meets the installability requirements
+- ✓ Service worker registered
+- ✓ Configured for a custom splash screen
+- ✓ Sets theme color
+- ✓ Content sized correctly for viewport
+
+Some items will still flag (no `apple-touch-icon` link in some pages,
+no offline page) — these are Phase B polish items, not blockers.
 
 ---
 
-## How IndexNow works
+## What v1.6.0 SW does and doesn't do
 
-```
-   Owner clicks "Publish" in website-builder.html
-              │
-              ▼
-   sbp_set_ai_website_published(true) RPC
-              │
-              ▼
-   Updates sbp_shop_websites.ai_published = true
-              │
-              ▼
-   Calls _sbp_enqueue_indexnow() with:
-     • https://app.shopbillpro.in/s/{slug}
-     • https://{custom_domain}/  (if connected + active)
-              │
-              ▼
-   Rows inserted into _sbp_indexnow_queue
-              │
-              ▼
-       [waiting for pg_cron / manual flush]
-              │
-              ▼
-   indexnow-flush Edge Function runs:
-     1. Pull up to 100 URLs (oldest first)
-     2. Group by host
-     3. POST each host's URLs to api.indexnow.org/IndexNow
-     4. IndexNow verifies our key at
-        /.well-known/f8488df6...txt
-     5. On 200/202 → delete from queue
-     6. On error → increment attempts (max 5)
-              │
-              ▼
-   Bing, Yandex, and (per Nov 2024 docs) Google
-   reindex within minutes.
-```
+**Does:**
+- Install + activate immediately (`skipWaiting`, `clients.claim`)
+- Wipe any lingering caches from v1.4.0/v1.5.0 on first activation
+- Provide an empty `fetch` listener (satisfies Chrome's installability check)
+- Accept `SKIP_WAITING` messages from the page for future update flows
 
----
+**Does NOT:**
+- Cache anything. Zero. The `fetch` handler never calls
+  `event.respondWith()`, so the browser proceeds with its normal
+  network fetch every time. This is by design — the v1.4.0 staleness
+  bugs were caused by `cache.match()` returning old responses. v1.6.0
+  cannot do this because it has no cache code.
+- Offer offline support. Offline still relies on the app-layer
+  localStorage cache of shops/customers/bills/products, which is
+  already wired and unaffected by this change.
+- Auto-update on every deploy. The SW file has
+  `Cache-Control: no-store`, so browsers always re-fetch it on update
+  checks (typically once every 24h, plus on every page load by spec).
 
-## Test plan
-
-### Test 1 — Crawler sees real meta
-```bash
-curl -s -A "Googlebot/2.1" https://app.shopbillpro.in/s/<published-slug> > /tmp/seo-test.html
-grep -E "<title>|og:title|og:description|application/ld\+json" /tmp/seo-test.html
-```
-Expect: real shop name in `<title>`, JSON-LD script tag present, OG tags
-filled with shop content.
-
-### Test 2 — WhatsApp/FB preview
-1. Share a published shop URL in WhatsApp to yourself.
-2. Wait 3-5 seconds for preview card.
-3. Expect: shop name, tagline, photo. Not the generic "Shop · ShopBill Pro".
-
-If preview is wrong, paste URL into **Facebook Sharing Debugger**
-(developers.facebook.com/tools/debug) and click "Scrape Again".
-
-### Test 3 — Schema.org validation
-1. Open Google Rich Results Test: search.google.com/test/rich-results
-2. Enter a published shop URL.
-3. Expect: "Page is eligible for rich results" with at least
-   `LocalBusiness` or its subclass detected.
-
-### Test 4 — Sitemap freshness
-```bash
-curl -s https://app.shopbillpro.in/sitemap-shops.xml | grep -c "<url>"
-```
-Expect: one `<url>` per published shop.
-
-### Test 5 — IndexNow flow
-1. In website-builder, click Publish on a test shop.
-2. Inspect queue:
-   ```sql
-   SELECT * FROM _sbp_indexnow_queue ORDER BY enqueued_at DESC LIMIT 5;
-   ```
-   Expect: 1-2 fresh rows (app URL + custom domain if connected).
-3. Manually trigger flush:
-   ```bash
-   curl -X POST https://jfqeirfrkjdkqqixivru.supabase.co/functions/v1/indexnow-flush
-   ```
-   Expect: `{"ok":true,"drained":N,"hosts":1,"results":[{"host":"app.shopbillpro.in","status":200,"count":N}]}`
-4. Re-inspect queue — rows should be gone.
-
-### Test 6 — Human flow still works
-1. Open a published shop URL in a normal browser.
-2. Expect: same interactive UX as before (services pickable,
-   gallery scrolls, etc.) — JS is still in control of the body.
-3. View page source — expect to see real meta tags in `<head>`
-   (not the placeholders). This is what's new.
-
----
-
-## Caveats + known limitations
-
-- **Edge Function cold starts** add ~150-300ms latency on the first
-  request to a particular shop after a quiet period. Vercel CDN caches
-  the response for 5 min so this only happens occasionally. If this
-  becomes a problem in production we can extend `s-maxage` to 1 hour.
-
-- **AI-mode shops embed `ai_html` directly for crawlers**, bypassing
-  the live-site.js wrapper. The placeholders that live-site.js fills in
-  (services list, gallery, etc.) will appear as literal `<div data-sbp="services">…</div>` placeholders in the SSR'd HTML. This is fine for SEO
-  (text content is still there), but if you want services to render
-  in crawler HTML, that's a v8.1 enhancement (fetch services in the
-  Edge Function and inject them into the placeholder tags before
-  returning).
-
-- **Custom domain SSR uses domain-router.html flow, not this Edge
-  Function.** Custom-domain shops will still need the same SEO
-  treatment in domain-router — that's planned for v8.1.
-
-- **Sitemap excludes `/s/{slug}` for shops with active custom domain**
-  (to avoid duplicate-content signal). The custom-domain URL is the
-  canonical and is what appears in the sitemap.
-
-- **`pg_cron` auto-flush is OFF by default.** Until you enable it, the
-  queue will grow with each publish but nothing pings IndexNow. Trigger
-  manually for now via curl, or enable pg_cron in step 6.
+If you ever want real offline caching, build a v1.7+ as a deliberate
+feature with explicit cache versioning, kill-switch fallback, and
+staged rollout. Don't add it to v1.6.
 
 ---
 
 ## Rollback
 
-If anything breaks:
+If the new SW causes any issue (extremely unlikely given it's a
+no-op), three options in order of severity:
 
-1. **Revert vercel.json** to the previous version — `/s/:slug` will
-   route back to `s.html` (legacy client-side rendering). Loses SSR
-   but everything else still works.
-2. **Re-run mig 044's** `sbp_set_ai_website_published` definition to
-   restore pre-v8.0 publish behavior (no IndexNow enqueue).
-3. **Drop the queue table** via the rollback section at the bottom of
-   `105_seo_phase1.sql`.
-4. Edge Functions can be left deployed — they're idle if vercel.json
-   doesn't route to them.
+1. **Soft rollback** — Replace `service-worker.js` with a copy of the
+   v1.5.0 kill-switch from the previous deploy. Users on next page
+   load will unregister back to no-SW state.
+
+2. **Revert vercel.json and index.html/dashboard.html SW registration
+   blocks** to their pre-v8.1 state. Push. Existing v1.6.0 SW
+   installations will stay until manually unregistered (browser
+   DevTools → Application → Service Workers → Unregister), but new
+   visits won't register the SW.
+
+3. **Full revert** — `git revert` the v8.1 commit. Pushes everything
+   back to v8.0 state.
+
+The icon-path fix in manifest.json is strictly an improvement (current
+paths are broken) — no reason to roll that back even if SW issue.
 
 ---
 
-## v8.1 follow-ups
+## What's NOT in this batch (deferred to v8.1+)
 
-- Custom-domain SSR (extend domain-router to call shop-page Edge Function)
-- Services / gallery / reservation hours injected into crawler HTML
-- Per-shop SEO settings in website-builder (custom title, description, keywords)
-- Submit shop sitemap to IndexNow as a sitemap-URL (not just individual URLs)
-- Add `<meta name="robots" content="noindex">` to `qr-menu.html` (the
-  per-table QR menu page that shouldn't compete with the shop page in SERPs)
-- Google Indexing API integration (for shops with structured-data eligible
-  pages — JobPosting/Event style)
-- GSC URL Inspection API integration to monitor which shop URLs got indexed
+- **Marketing site "Download App" CTA** — the polish item from Batch B.
+  Marketing site currently has no install button at all. Users have to
+  visit `app.shopbillpro.in` to see the install banner. Adding a
+  cross-origin install relay is a v8.2 candidate.
+- **PWA screenshots** for richer install dialog — needs design work to
+  create proper 1080x1920 (mobile) and 1920x1080 (desktop) screenshot
+  images, then reference them in manifest.json.
+- **Offline fallback page** — Lighthouse will flag this. Real offline
+  needs the v1.7+ deliberate SW story above.
+- **Web Share Target** — letting other apps share photos/text TO
+  ShopBill would be cool but isn't a current pain point.

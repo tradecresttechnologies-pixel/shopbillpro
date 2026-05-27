@@ -1656,36 +1656,25 @@ function showPlanBanner() {
   if (statsGrid) statsGrid.parentNode.insertBefore(banner, statsGrid);
 }
 
-/* ══ Service Worker Cleanup (was: Registration) ══════════════════════
-   Batch 12-May-26 — SW disabled. The earlier SW (v1.4.0) caused stale
-   asset bugs and the v1.5.0 kill-switch + register combo created an
-   infinite reload loop. We no longer register any SW. This block just
-   cleans up: unregisters any leftover SW from prior versions and
-   wipes all SW caches. Runs once per page load — after the first
-   load, getRegistrations() returns empty and this becomes a no-op.
+/* ══ Service Worker Registration (v1.6.0 minimal-PWA-enable, 27-May-26)
+   Replaced the 12-May-26 kill-switch SW. The new SW is pass-through —
+   no caching at all — so the v1.4.0 staleness bugs cannot recur. The
+   SW exists solely to satisfy Chrome's PWA install eligibility check
+   (an active SW with a fetch handler is required for the omnibox
+   "Install app" icon and beforeinstallprompt to fire).
 
-   Offline support is handled at the app layer via localStorage cache
-   of shop/customers/bills/products. If we ever need real SW caching
-   again, we add it back as a deliberate strategy with versioning.
+   See service-worker.js for the full rationale and history.
+
+   Offline support is still handled at the app layer via localStorage
+   cache of shop/customers/bills/products. If we ever want real
+   SW-level offline caching, do it as a deliberate v1.7+ with explicit
+   versioning + kill-switch fallback.
 ═══════════════════════════════════════════════════════════════════════ */
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', async () => {
-    try {
-      const regs = await navigator.serviceWorker.getRegistrations();
-      for (const reg of regs) {
-        await reg.unregister();
-        console.log('[App] SW cleanup — unregistered:', reg.scope);
-      }
-      if (window.caches) {
-        const cs = await caches.keys();
-        for (const c of cs) {
-          await caches.delete(c);
-          console.log('[App] SW cleanup — deleted cache:', c);
-        }
-      }
-    } catch (e) {
-      console.warn('[App] SW cleanup failed (non-fatal):', e);
-    }
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('/service-worker.js', { scope: '/' })
+      .then(function(reg){ console.log('[App] SW registered:', reg.scope); })
+      .catch(function(err){ console.warn('[App] SW registration failed:', err); });
   });
 }
 
