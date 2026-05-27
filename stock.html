@@ -971,7 +971,8 @@ async function init(){
   buildCatChips();
   renderStock(_products);
 
-  if(isPro()&&_online&&_shopId){
+  /* v8.2 — Cloud-for-everyone: read products from cloud regardless of plan. */
+  if(_online&&_shopId){
     try{
       const{data}=await _sb.from('products').select('*').eq('shop_id',_shopId).order('name');
       if(data){

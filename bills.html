@@ -1506,7 +1506,8 @@ async function init(){
         try{await _sb.auth.signOut();}catch(e){}
         window.location.href='index.html';return;
       }
-      if(isPro()&&navigator.onLine&&_shopId){
+      /* v8.2 — Cloud-for-everyone: read bills from cloud regardless of plan. */
+      if(navigator.onLine&&_shopId){
         try{
           // Batch 021.5 — bill_items(*) so kind/product_id/booking_id/unit/
           // qty_unit_label come through. Previous explicit list missed `kind`

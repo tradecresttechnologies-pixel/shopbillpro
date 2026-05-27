@@ -1455,7 +1455,8 @@ async function saveCustomer(){
       // Create new
       const newC={...custData,shop_id:_shopId,balance:0,joined_at:todayISO()};
       let saved=null;
-      if(isPro()&&_online&&_shopId){
+      /* v8.2 — Cloud-for-everyone: any plan writes customers to cloud when online. */
+      if(_online&&_shopId){
         const{data,error}=await _sb.from('customers').insert(newC).select().single();
         if(!error&&data)saved=data;
       }
@@ -1678,7 +1679,8 @@ async function saveExpense(){
   };
 
   let saved=null;
-  if(isPro()&&_online&&_shopId){
+  /* v8.2 — Cloud-for-everyone: any plan writes expenses to cloud when online. */
+  if(_online&&_shopId){
     const{data,error}=await _sb.from('expenses').insert(exp).select().single();
     if(!error&&data)saved=data;
   }
@@ -1749,7 +1751,8 @@ async function backfillCustomersFromBills(){
 
   for(const newC of toCreate){
     try{
-      if(isPro()&&navigator.onLine&&_shopId){
+      /* v8.2 — Cloud-for-everyone: bulk-import customers go to cloud when online. */
+      if(navigator.onLine&&_shopId){
         const{data,error}=await _sb.from('customers').insert(newC).select().single();
         if(!error&&data){ _custs.push(data); added++; }
         else { _custs.push({...newC,id:'local_'+Date.now()+Math.random()}); added++; }
@@ -1928,7 +1931,8 @@ async function init(){
   else if(params.get('view')==='reminders')showTab('reminders');
 
   // Fetch fresh from Supabase
-  if(isPro()&&_online&&_shopId){
+  /* v8.2 — Cloud-for-everyone: read customers/bills/expenses from cloud regardless of plan. */
+  if(_online&&_shopId){
     try{
       const[custRes,billRes,expRes]=await Promise.all([
         _sb.from('customers').select('*').eq('shop_id',_shopId).order('name'),

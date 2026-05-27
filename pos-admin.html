@@ -1017,7 +1017,8 @@ async function saveProduct(){
       toast('✅ '+name+' updated!','s');
     }else{
       let saved=null;
-      if(isPro()&&_online&&_shopId){
+      /* v8.2 — Cloud-for-everyone: any plan writes products to cloud when online. */
+      if(_online&&_shopId){
         const{data,error}=await _sb.from('products').insert(prodData).select().single();
         if(!error&&data)saved=data;
       }
@@ -1144,7 +1145,8 @@ async function init(){
   if(params.get('tab')==='products')showAdmTab('products');
 
   // Fetch from Supabase
-  if(isPro()&&_online&&_shopId){
+  /* v8.2 — Cloud-for-everyone: read products from cloud regardless of plan. */
+  if(_online&&_shopId){
     try{
       const{data:prods}=await _sb.from('products').select('*').eq('shop_id',_shopId).order('name');
       if(prods){
@@ -1326,7 +1328,8 @@ function _photoLocalKey(sid,pid){ return 'sbp_photo_'+sid+'_'+pid; }
 async function _savePhotoAndGetUrl(shopId,prodId){
   if(!_prodPhotoB64) return null;
   try{ localStorage.setItem(_photoLocalKey(shopId,prodId),_prodPhotoB64); }catch(e){}
-  if(typeof isPro==='function'&&isPro()&&navigator.onLine&&window._sb){
+  /* v8.2 — Cloud-for-everyone: any plan uploads product photos to storage when online. */
+  if(navigator.onLine&&window._sb){
     try{
       const res=await fetch(_prodPhotoB64);
       const blob=await res.blob();
