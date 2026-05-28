@@ -2209,12 +2209,18 @@ html,body{height:100%;width:100%;margin:0;padding:0;overflow:hidden;background:v
       </label>
     </div>
 
-    <!-- Footer: Back / Next / Confirm -->
+    <!-- Footer: Back / Print (step 2 only) / Next / Confirm -->
     <div class="bw-foot">
       <button class="bw-btn bw-btn-back" id="bw-btn-back" onclick="bwBack()" style="visibility:hidden">
         ← <span class="lang-en">Back</span><span class="lang-hi">पीछे</span>
       </button>
       <div class="bw-foot-spacer"></div>
+      <!-- v8.4 — Print preliminary bill (Step 2 only; the customer reviews
+           the bill at the table BEFORE settlement, which is the standard
+           restaurant flow). Visibility is managed by showBwStep(). -->
+      <button class="bw-btn bw-btn-back" id="bw-btn-print" onclick="bwPrintPreliminaryBill()" style="display:none;margin-right:8px" title="Print bill for customer to review">
+        🖨️ <span class="lang-en">Print Bill</span><span class="lang-hi">बिल प्रिंट</span>
+      </button>
       <button class="bw-btn bw-btn-next" id="bw-btn-next" onclick="bwNext()">
         <span class="lang-en">Next</span><span class="lang-hi">आगे</span> →
       </button>
@@ -3706,6 +3712,12 @@ function showBwStep(n){
       next.innerHTML = '<span class="lang-en">Next</span><span class="lang-hi">आगे</span> →';
     }
   }
+  /* v8.4 — show the Print button only on Step 2 (Review).
+     This is when the customer wants to see the bill at the table before
+     paying. Step 1 = customer entry (nothing to print yet), Step 3 =
+     payment (the regular post-save print will run via printSavedBill). */
+  const printBtn = document.getElementById('bw-btn-print');
+  if(printBtn) printBtn.style.display = (n === 2) ? '' : 'none';
 
   // Step-specific setup
   if(n === 2){ recomputeBillTotal(); }
@@ -3933,6 +3945,156 @@ function onPayAmtInput(){
 // Called from confirmAndSaveBill when the "Auto-print receipt"
 // toggle is on, OR manually if we expose a Print button later.
 // ─────────────────────────────────────────────────────────────────
+/* v8.4 — Print a preliminary bill at Step 2 of the wizard.
+   This is the bill the customer reviews at the table BEFORE payment.
+   It deliberately:
+     • Has NO invoice number (the number is allocated at save time)
+     • Is clearly labeled "NOT A TAX INVOICE — FOR REVIEW ONLY"
+     • Has no payment block (settlement hasn't happened yet)
+     • Has no "Thank you, visit again" (customer hasn't paid yet)
+   Standard 80mm thermal receipt format. */
+function bwPrintPreliminaryBill(){
+  // Ensure totals are fresh in case user just changed the discount
+  if(typeof recomputeBillTotal === 'function') recomputeBillTotal();
+
+  const shop = JSON.parse(localStorage.getItem('sbp_shop') || '{}');
+  const ist  = new Date().toLocaleString('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    day: '2-digit', month: 'short', year: '2-digit',
+    hour: '2-digit', minute: '2-digit',
+  });
+  const fI = (n) => '₹' + (Number(n) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const esc = (s) => String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+  const items = Array.isArray(_bwItemsCache) ? _bwItemsCache : [];
+  if(!items.length){
+    toast('No items to print','e', 3000);
+    return;
+  }
+
+  const totals = _bwTotals || { subtotal:0, gst:0, discount:0, grand:0 };
+
+  // Get customer info from wizard state
+  let custName = 'Walk-in';
+  let custWA = '';
+  if(_bwCustomer){
+    if(_bwCustomer.isNew){
+      const waEl = document.getElementById('bw-cust-wa');
+      const nameEl = document.getElementById('bw-cust-name');
+      custName = (nameEl && nameEl.value.trim()) || 'Walk-in';
+      custWA   = (waEl && waEl.value.trim()) || '';
+    } else {
+      custName = _bwCustomer.name || 'Walk-in';
+      custWA   = _bwCustomer.whatsapp || _bwCustomer.phone || '';
+    }
+  }
+
+  const tableNum = (_order && _order.table_number) || '';
+
+  const itemsRows = items.map(it => {
+    const name = esc(it.nm || it.item_name || '');
+    const qty  = it.q || it.qty || 0;
+    const rate = it.r || it.rate || 0;
+    const tot  = it.tot || it.line_total || 0;
+    return `<tr>
+      <td class="ic-name">${name}</td>
+      <td class="ic-num">${qty}</td>
+      <td class="ic-num">${fI(rate)}</td>
+      <td class="ic-num">${fI(tot)}</td>
+    </tr>`;
+  }).join('');
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<title>Bill — ${esc(shop.name || 'Shop')}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Helvetica Neue', Arial, sans-serif; color:#000; background:#fff; padding:8px}
+  .rcpt{max-width:340px;margin:0 auto;font-size:12px;line-height:1.35}
+  .center{text-align:center}
+  .shop-name{font-size:18px;font-weight:900;letter-spacing:.5px;margin-bottom:2px}
+  .shop-meta{font-size:11px;color:#444;margin-bottom:1px}
+  .hr{border:none;border-top:1px dashed #000;margin:8px 0}
+  .meta-row{display:flex;justify-content:space-between;font-size:11px;margin:1px 0}
+  .meta-row strong{font-weight:700}
+  table{width:100%;border-collapse:collapse;margin:6px 0}
+  th{font-size:10px;text-transform:uppercase;letter-spacing:.5px;font-weight:800;padding:4px 2px;border-bottom:1px solid #000;text-align:left}
+  th.ic-num{text-align:right}
+  td{font-size:11px;padding:5px 2px;border-bottom:1px dotted #ccc;vertical-align:top}
+  td.ic-name{font-weight:600}
+  td.ic-num{text-align:right;font-variant-numeric:tabular-nums}
+  .totals{margin-top:6px}
+  .tot-row{display:flex;justify-content:space-between;font-size:12px;margin:3px 0;font-variant-numeric:tabular-nums}
+  .tot-row.grand{font-size:15px;font-weight:900;border-top:1.5px solid #000;border-bottom:3px double #000;padding:6px 0;margin:6px 0;}
+  .preview-banner{background:#000;color:#fff;text-align:center;padding:5px 4px;font-size:11px;font-weight:900;letter-spacing:1px;text-transform:uppercase;margin:6px 0}
+  .footer-note{text-align:center;margin-top:10px;font-size:10px;color:#555;font-style:italic;line-height:1.4}
+  @page{size:80mm auto;margin:4mm}
+  @media print{body{padding:0}.rcpt{max-width:100%}}
+</style></head>
+<body>
+<div class="rcpt">
+
+  <div class="center">
+    <div class="shop-name">${esc(shop.name || 'Shop')}</div>
+    ${shop.address ? `<div class="shop-meta">${esc(shop.address)}</div>` : ''}
+    ${shop.phone   ? `<div class="shop-meta">📞 ${esc(shop.phone)}</div>` : ''}
+    ${shop.gstin   ? `<div class="shop-meta">GSTIN: ${esc(shop.gstin)}</div>` : ''}
+  </div>
+
+  <div class="preview-banner">FOR REVIEW — NOT A TAX INVOICE</div>
+
+  <div class="meta-row"><strong>Date</strong><span>${esc(ist)}</span></div>
+  ${tableNum ? `<div class="meta-row"><strong>Table</strong><span>T${esc(tableNum)}</span></div>` : ''}
+  <div class="meta-row"><strong>Customer</strong><span>${esc(custName)}</span></div>
+  ${custWA ? `<div class="meta-row"><strong>Phone</strong><span>${esc(custWA)}</span></div>` : ''}
+
+  <table>
+    <thead>
+      <tr>
+        <th>Item</th>
+        <th class="ic-num">Qty</th>
+        <th class="ic-num">Rate</th>
+        <th class="ic-num">Total</th>
+      </tr>
+    </thead>
+    <tbody>${itemsRows}</tbody>
+  </table>
+
+  <div class="totals">
+    <div class="tot-row"><span>Subtotal</span><span>${fI(totals.subtotal)}</span></div>
+    ${totals.gst       > 0 ? `<div class="tot-row"><span>GST</span><span>${fI(totals.gst)}</span></div>`         : ''}
+    ${totals.discount  > 0 ? `<div class="tot-row"><span>Discount</span><span>−${fI(totals.discount)}</span></div>` : ''}
+    <div class="tot-row grand"><span>TOTAL</span><span>${fI(totals.grand)}</span></div>
+  </div>
+
+  <hr class="hr">
+
+  <div class="footer-note">
+    Please review the items above.<br>
+    A formal tax invoice will be issued after payment.
+  </div>
+
+</div>
+<script>
+  window.addEventListener('load', function(){
+    setTimeout(function(){
+      try { window.print(); } catch(e){}
+    }, 350);
+  });
+<\/script>
+</body></html>`;
+
+  const w = window.open('', '_blank', 'width=420,height=720');
+  if(!w){
+    toast('🚫 Popup blocked — allow popups for printing','e', 4000);
+    return false;
+  }
+  w.document.write(html);
+  w.document.close();
+  toast('🖨️ Print dialog opening...','s', 2500);
+  return true;
+}
+
 function printSavedBill(bill, items, totals, custName, custWA){
   const shop = JSON.parse(localStorage.getItem('sbp_shop') || '{}');
   const ist  = new Date().toLocaleString('en-IN', {

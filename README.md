@@ -1,157 +1,152 @@
-# ShopBill Pro — v8.2 Cloud-For-Everyone Sync Fix
+# ShopBill Pro — v8.4 Restaurant Bill Print + Service Badge Fix
 
-**Bundle:** `ShopBillPro_v8.2_cloud_for_everyone.zip`
+**Bundle:** `ShopBillPro_v8.4_restaurant_print.zip`
 **Date:** 2026-05-27
-**Files changed:** 5 (`customers.html`, `bills.html`, `stock.html`, `pos-admin.html`, `billing.html`)
-**Pricing rule change:** Free plan now gets cloud sync (locked May 27 2026, supersedes "Free = local-only" rule).
+**Files changed:** 2 (`running-order.html`, `bills.html`)
+**Independent of v8.2 / v8.3 — can be deployed standalone**
 
 ---
 
-## What changed and why
+## What this fixes
 
-Until now, four pages (customers, bills, stock, pos-admin) and the billing
-page had Pro-plan gates on every cloud read AND every cloud write:
+### Issue 1 — No way to print bill BEFORE settlement (restaurant flow)
 
-```js
-if (isPro() && _online && _shopId) {
-  // talk to cloud
-} else {
-  // localStorage only
-}
+In restaurants, the bill is brought to the customer's table for review
+BEFORE payment. The customer checks the items, then pays. Currently the
+running-order billing wizard goes:
+
+```
+[Customer details] → [Review & discount] → [Payment] → [Save + Print]
 ```
 
-This produced two real-world problems:
+There's no print step before payment. The customer has to either trust
+what's on screen or wait until settlement to see a printed bill — which
+is too late if they want to dispute an item.
 
-1. **Data invisible on second device.** A user creates a customer on their
-   laptop. Logs in from phone. Customer Book is empty — because Free plan
-   never wrote to cloud, and Pro plan reads were also gated (the gate
-   misfired when `localStorage.sbp_shop` was stale on the fresh device).
+**Fix:** Added a "🖨️ Print Bill" button on Step 2 (Review). Clicking it
+opens an 80mm thermal print preview clearly labeled "FOR REVIEW — NOT
+A TAX INVOICE", with all items, GST, discount, and total. No invoice
+number is allocated yet (the formal tax invoice gets one at settlement).
 
-2. **Beta-program weirdness.** Every active beta shop is Business-tier, so
-   `isPro()` *should* return true everywhere. But the moment `sbp_shop` is
-   missing or stale on a device, `_sbpPlanInfo()` falls back to `'free'`,
-   the gate blocks, and the user experiences total data invisibility on
-   that device.
+The wizard flow becomes:
 
-3. **Cross-device data loss when localStorage clears.** Free plan users
-   who clear browser cache, switch browsers, reinstall — lose everything.
+```
+[Customer details] → [Review & discount] ──[🖨️ Print Bill]──> Customer reviews
+                          ↓
+                     [Payment]
+                          ↓
+                     [Save + Print formal tax invoice]
+```
 
-**The fix:** drop `isPro()` from all 13 cloud-access gates (4 reads + 9
-writes/storage uploads across 5 files). Cloud sync now works for any
-plan whenever the user is online.
+The Print button appears only on Step 2. Step 1 (no items yet) and
+Step 3 (already at payment) don't show it.
 
-## What this does NOT change
+### Issue 2 — Bills show "🍽 SERVICE" badge on restaurant food items
 
-- **Free plan still has a watermark** on bills ("Powered by ShopBill Pro").
-  That's the viral acquisition channel and stays unchanged.
-- **Pro/Business feature gates are intact.** Loyalty program, WhatsApp
-  sending, advanced reports, GSTR, multi-vertical, online ordering,
-  multi-user PINs, audit log — all still Pro/Business only. These are
-  the actual value drivers.
-- **Offline behavior is unchanged.** Every page still reads localStorage
-  first (instant), only attempts cloud if `_online`, falls back
-  gracefully if cloud is unreachable. Offline writes still go to
-  localStorage with `local_*` IDs.
-- **No sync queue yet.** Offline writes created while disconnected
-  still don't auto-sync back to cloud on reconnect. That's the v8.3
-  work — a separate batch.
+In the bill view + print template, every restaurant menu item shows a
+pink "✂️ SERVICE" badge. Reason: restaurant menu items are stored in
+the `services` table (which makes sense at the DB level — they're not
+inventory items), so `bill_items.kind = 'service'`. The badge code at
+`bills.html:770` then renders "Service" for anything with kind=service.
 
-## Cost impact
+For a salon or repair shop this badge is helpful (distinguishes a
+haircut from a hair product sale). For a restaurant it's wrong — every
+item is a food item; the "service" label adds noise without
+information.
 
-At ~50 MB/year per active shop and your 1,000-paying-user target,
-Supabase storage cost is **₹0** (well within the 8 GB Pro tier
-included). At 10,000 active shops total, ~₹2,300/month. Negligible
-against revenue at that scale.
+**Fix:** Suppress the kind badge (Service / Room) entirely when the
+shop_type belongs to the `food` macro. Food shop_types:
+`restaurant, cafe, qsr, ice_cream, cloud_kitchen, tiffin, catering,
+bar_lounge, food_other` (matches `lib/sidebar-engine.js`
+`MACRO_BY_SHOP_TYPE`).
+
+Salons, repair shops, beauty parlors, etc. — badge stays unchanged.
 
 ---
 
 ## DEPLOY PATHS
 
-| Action  | Path                  | Notes                                          |
-|---------|-----------------------|------------------------------------------------|
-| REPLACE | `customers.html`      | Repo root. 4 cloud-access gates unlocked.      |
-| REPLACE | `bills.html`          | Repo root. 1 read gate unlocked.               |
-| REPLACE | `stock.html`          | Repo root. 1 read gate unlocked.               |
-| REPLACE | `pos-admin.html`      | Repo root. 3 gates unlocked (product CRUD + photo). |
-| REPLACE | `billing.html`        | Repo root. 4 gates unlocked (bill save, customer create, payment update, init read). |
+| Action  | Path                  | Notes                                  |
+|---------|-----------------------|----------------------------------------|
+| REPLACE | `running-order.html`  | Repo root. Print Bill button on Step 2 + bwPrintPreliminaryBill function. |
+| REPLACE | `bills.html`          | Repo root. Suppress Service/Room badge for food shops. |
 
-All 5 files at repo root. No SQL migrations. No Edge Functions. No
-Supabase changes. No vercel.json changes.
+Both files at repo root. No SQL changes. No Supabase work. No
+dependencies on v8.2 or v8.3 — deploys cleanly on top of the current
+live v8.1.
 
 ## Deploy steps
 
-1. GitHub Desktop → drop the 5 files into repo root (overwrite).
-2. Commit: "v8.2 — Cloud-for-everyone: unlock cloud sync for Free plan"
+1. GitHub Desktop → drop the 2 files into repo root (overwrite).
+2. Commit: "v8.4 — Restaurant: print bill before settlement, hide Service badge"
 3. Push to main → Vercel auto-deploys (~2 min).
-4. Existing users hard-refresh (Ctrl+Shift+R) on their devices. Cloud
-   sync becomes active immediately for every plan.
 
 ---
 
 ## Verification
 
-### Test 1 — Customer Book visible on second device (the original bug)
+### Test 1 — Print bill before settlement
 
-1. On Device A (laptop), open customers.html, create 3 customers.
-2. Check Supabase: `SELECT count(*) FROM customers WHERE shop_id = '<id>'`
-   → should be 3 (was 0 before v8.2 if shop was on Free).
-3. Open the app on Device B (different browser / incognito / phone)
-   with the same login.
-4. Open Customers page.
+1. Open a restaurant shop's `running-order.html`
+2. Add some items to a table's order
+3. Click "Generate Bill" → wizard opens on Step 1 (Customer)
+4. Click "Next →" → Step 2 (Review & discount)
+5. **You should see a "🖨️ Print Bill" button** to the left of "Next →"
+6. Click it → 80mm thermal print preview opens with:
+   - Shop name + address + phone
+   - Black banner: "FOR REVIEW — NOT A TAX INVOICE"
+   - Date, Table number, Customer
+   - All items with qty/rate/total
+   - Subtotal, GST, Discount, TOTAL
+   - Footer: "Please review the items above. A formal tax invoice will be issued after payment."
+   - NO invoice number
+   - NO payment block
+   - Print dialog auto-opens
+7. Close the print dialog. Go back to the wizard — it's still on Step 2 (the bill wasn't saved yet)
+8. Click "Next →" → Step 3 (Payment) → settle as normal → formal tax invoice gets a real invoice number and prints with status PAID
 
-**Expected after v8.2:** all 3 customers appear within 1-2 seconds.
+### Test 2 — Service badge hidden for restaurant bills
 
-### Test 2 — POS bill on Free plan syncs to cloud
+1. Open `bills.html` on a restaurant shop
+2. View any bill that has menu items (Dal, Naan, etc.)
+3. **The items should NOT show a "✂️ Service" / "🍽 SERVICE" badge anymore.**
+4. Print the bill (A4 or 80mm) — still no badge.
 
-1. Set a test shop to `plan = 'free'` in Supabase.
-2. Open billing.html → POS Mode → create a bill.
-3. Check Supabase: `SELECT count(*) FROM bills WHERE shop_id = '<id>'`
-   → should INCREASE by 1.
-4. **Before v8.2:** count stayed flat (Free wrote only locally).
-5. **After v8.2:** count increases.
+### Test 3 — Service badge still works for non-food shops
 
-### Test 3 — Stock decrement syncs on Free plan
-
-1. Same free-plan test shop.
-2. POS Mode → bill that includes a stocked product.
-3. Confirm bill.
-4. Check Supabase: `SELECT stock_qty FROM products WHERE id = '<pid>'`
-   → should DECREASE by the qty sold.
-
-### Test 4 — Offline behavior still works
-
-1. DevTools → Network → Offline mode.
-2. Open billing.html.
-3. Create a bill.
-4. **Expected:** "📶 Offline — data saved locally" banner visible;
-   bill saves with `local_*` ID in localStorage; UI shows it normally.
-5. No errors thrown.
-
-### Test 5 — Existing Pro/Business shops unaffected
-
-Open any Pro/Business shop. Everything that worked before still works.
-The change strictly adds capability for Free; it doesn't change anything
-for higher tiers.
+1. Switch (or test on a separate shop) to a salon `shop_type='salon'`
+2. View any salon bill with mixed services + products
+3. **Service items should still show the "✂️ Service" badge.**
+4. Product items show no badge (correct, kind='product').
 
 ---
 
-## What this enables
+## Design decisions
 
-After v8.2 deploys, the architecture is uniform: **cloud sync is plan-
-agnostic; Free vs Pro/Business is purely about feature access**.
+**Why no invoice number on the preliminary bill?**
+Indian restaurant practice: the "rough bill" given at the table doesn't
+need to be a tax invoice. Only the final receipt (issued post-payment)
+needs an invoice number for GST. If we reserved a number at Step 2 and
+the customer walked out without paying, we'd burn a number with no
+matching bill. Allocating at settlement (Step 3) is safer.
 
-This makes v8.3 (sync queue for offline writes) much cleaner to build —
-no need to special-case Free behavior. Just: every write attempts
-cloud, queues if offline, drains on reconnect.
+**Why suppress the kind badge instead of changing the label?**
+Considered renaming "Service" → "Food" for restaurants, but: (1) "Food"
+as a badge adds no info on a restaurant bill where everything is food;
+(2) the `kind=service` value in DB is still correct (it's a server-
+side classification, not a customer-facing label). Removing the badge
+in the UI for food shops is the simpler, more correct fix.
+
+**Why 80mm thermal and not A4 for the preliminary print?**
+80mm thermal is the standard for table-side restaurant printing — it's
+what most restaurant printers actually output. A4 would work too but
+wastes paper for a review-only bill. If the user wants A4 too, can
+add a size toggle in a follow-up.
 
 ---
 
 ## Rollback
 
-`git revert` the v8.2 commit. The 5 files return to their pre-v8.2
-state with `isPro()&&...&&_shopId` gates restored. Free plan returns
-to local-only behavior. No data loss (cloud-stored data stays in
-cloud regardless).
-
-Memory rule needs to be reverted separately if rolling back the
-strategic decision.
+`git revert` the v8.4 commit → both files return to pre-v8.4 state.
+Print button vanishes, Service badge reappears. No data loss (no
+schema change).

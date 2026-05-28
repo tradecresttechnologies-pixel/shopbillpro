@@ -764,13 +764,19 @@ function openBillPreview(billId){
       const voided=it.voided;
       const gstRate=parseFloat(it.gst_rate||0);
       const gstAmt=parseFloat(it.gst_amount||(parseFloat(it.line_total||0)*gstRate/(100+gstRate))||0);
-      // Batch 019: kind badge
+      // Batch 019 + v8.4: kind badge — suppressed for food shop_types
+      // because restaurant menu items are stored as `services` in DB but
+      // labeling them "Service" on the bill is wrong (they're food).
       const _kind = (it.kind || 'product').toLowerCase();
-      const _kindBadge = _kind === 'service'
-        ? '<span style="display:inline-block;padding:1px 6px;background:rgba(236,72,153,.15);color:#EC4899;font-size:9px;font-weight:700;border-radius:6px;margin-left:6px;text-transform:uppercase;letter-spacing:.5px">✂️ Service</span>'
-        : _kind === 'room'
-          ? '<span style="display:inline-block;padding:1px 6px;background:rgba(16,185,129,.15);color:#10B981;font-size:9px;font-weight:700;border-radius:6px;margin-left:6px;text-transform:uppercase;letter-spacing:.5px">🛏️ Room</span>'
-          : '';
+      const _shopType = (_shop && _shop.shop_type ? String(_shop.shop_type) : '').toLowerCase();
+      const _isFoodShop = ['restaurant','cafe','qsr','ice_cream','cloud_kitchen','tiffin','catering','bar_lounge','food_other'].indexOf(_shopType) !== -1;
+      const _kindBadge = _isFoodShop
+        ? ''
+        : _kind === 'service'
+          ? '<span style="display:inline-block;padding:1px 6px;background:rgba(236,72,153,.15);color:#EC4899;font-size:9px;font-weight:700;border-radius:6px;margin-left:6px;text-transform:uppercase;letter-spacing:.5px">✂️ Service</span>'
+          : _kind === 'room'
+            ? '<span style="display:inline-block;padding:1px 6px;background:rgba(16,185,129,.15);color:#10B981;font-size:9px;font-weight:700;border-radius:6px;margin-left:6px;text-transform:uppercase;letter-spacing:.5px">🛏️ Room</span>'
+            : '';
       const _qtyLabel = it.qty_unit_label || (it.unit ? `${it.qty||1} ${it.unit}${(it.qty||1)>1?'s':''}` : `Qty: ${it.qty||1}`);
       return `<div class="bdoc-table-row" style="${voided?'opacity:.4;text-decoration:line-through':''}">
         <div><div class="bdoc-item-nm">${it.item_name||'Item'}${_kindBadge}${voided?' <span style="color:var(--acc2);font-size:10px">[VOID]</span>':''}</div><div class="bdoc-item-sub">${_qtyLabel} × ₹${it.rate||0} | GST ${gstRate}%${gstRate>0?' (₹'+gstAmt.toFixed(2)+')':''}${it.hsn_code?' · HSN:'+it.hsn_code:''}</div></div>
@@ -1506,8 +1512,7 @@ async function init(){
         try{await _sb.auth.signOut();}catch(e){}
         window.location.href='index.html';return;
       }
-      /* v8.2 — Cloud-for-everyone: read bills from cloud regardless of plan. */
-      if(navigator.onLine&&_shopId){
+      if(isPro()&&navigator.onLine&&_shopId){
         try{
           // Batch 021.5 — bill_items(*) so kind/product_id/booking_id/unit/
           // qty_unit_label come through. Previous explicit list missed `kind`
