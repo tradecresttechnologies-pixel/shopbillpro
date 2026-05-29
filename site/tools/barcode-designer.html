@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="en" data-lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+<meta name="theme-color" content="#F5A623">
+<title>Free Barcode Designer & Generator — EAN, UPC, QR, Code 128, Label Sheets · ShopBill Pro</title>
+<meta name="description" content="Free universal barcode generator & label designer. Create EAN-13, UPC, Code 128, QR, Data Matrix &amp; more. Design price tags and product labels. Print on A4 sheets, thermal label printers (50×25mm) or 80mm rolls. No signup.">
+<link rel="canonical" href="https://shopbillpro.in/tools/barcode-designer">
+<link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32x32.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180x180.png">
+
+<script type="application/ld+json">
+{
+  "@context":"https://schema.org",
+  "@type":"SoftwareApplication",
+  "name":"ShopBill Pro Barcode Designer",
+  "applicationCategory":"BusinessApplication",
+  "operatingSystem":"Any (browser)",
+  "url":"https://shopbillpro.in/tools/barcode-designer",
+  "description":"Free universal barcode and QR generator with a label designer. Create EAN-13, UPC, Code 128, Data Matrix, QR and more, design price tags, and print on A4 sheets, thermal label printers or 80mm rolls.",
+  "offers":{"@type":"Offer","price":"0","priceCurrency":"INR"},
+  "publisher":{"@type":"Organization","name":"TradeCrest Technologies Private Limited"}
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context":"https://schema.org",
+  "@type":"FAQPage",
+  "mainEntity":[
+    {"@type":"Question","name":"Is this barcode generator really free?","acceptedAnswer":{"@type":"Answer","text":"Yes, it is 100% free with no signup. Generate, design and print as many barcodes and labels as you like, right in your browser."}},
+    {"@type":"Question","name":"Which barcode types does it support?","acceptedAnswer":{"@type":"Answer","text":"EAN-13, EAN-8, UPC-A, UPC-E, Code 128, Code 39, ITF-14, GS1-128, Interleaved 2of5, Data Matrix, GS1 DataMatrix, Pharmacode, ISBN, QR Code, PDF417, Aztec, Codabar and MSI."}},
+    {"@type":"Question","name":"Can I print on a thermal label printer?","acceptedAnswer":{"@type":"Answer","text":"Yes. Choose from common label sizes like 50x25mm, 40x30mm and 100x150mm, or A4 sticker sheets, or 80mm/58mm receipt rolls. Output is exact-size PDF that works with any printer."}},
+    {"@type":"Question","name":"Can I generate barcodes in bulk?","acceptedAnswer":{"@type":"Answer","text":"Yes. Turn on Batch mode to paste a list of codes, or use auto sequential numbering to generate a numbered series automatically."}},
+    {"@type":"Question","name":"Will these barcodes work with ShopBill Pro billing?","acceptedAnswer":{"@type":"Answer","text":"Yes. Print your product barcodes here, then scan and bill them in the free ShopBill Pro app to run a full GST billing POS."}}
+  ]
+}
+</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/marketing.css">
+
+<script>
+// Pre-paint language toggle (matches marketing site)
+(function(){ try { var l = localStorage.getItem('sbp_marketing_lang'); if (l === 'hi') document.documentElement.setAttribute('data-lang','hi'); } catch(e){} })();
+</script>
+
+<style>
+/* ===== Brand tokens (mirrors /css/marketing.css) ===== */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+:root{
+  --acc:#F5A623;--acc2:#FF6B35;--acc-grad:linear-gradient(135deg,#F5A623,#FF6B35);
+  --acc-soft:rgba(245,166,35,.08);--acc-bord:rgba(245,166,35,.25);
+  --ok:#10B981;--ok-soft:rgba(16,185,129,.08);--info:#3B82F6;--err:#EF4444;
+  --bg:#FFFFFF;--bg-soft:#FAFAFC;--surf:#FFFFFF;--surf-soft:#F4F4F8;
+  --bord:#E5E5EE;--bord-soft:#F0F0F5;
+  --text:#0F0E18;--text2:#5E5A7A;--text-mute:#8A8AA8;
+  --font-h:'Outfit','Noto Sans Devanagari',-apple-system,sans-serif;
+  --r-sm:8px;--r-md:12px;--r-lg:16px;--r-xl:20px;
+  --shadow-sm:0 1px 2px rgba(15,14,24,.05);--shadow-md:0 4px 12px rgba(15,14,24,.08);
+  --shadow-lg:0 12px 32px rgba(15,14,24,.12);--shadow-acc:0 8px 24px rgba(245,166,35,.25);
+}
+body{font-family:'Inter','Noto Sans Devanagari',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  color:var(--text);background:var(--bg-soft);line-height:1.6;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+button,input,select,textarea{font-family:inherit}
+button{cursor:pointer;border:none;background:none}
+img{max-width:100%;display:block}
+[data-lang="hi"] .lang-en{display:none}
+[data-lang="en"] .lang-hi{display:none}
+.lang-hi{font-family:'Noto Sans Devanagari','Inter',sans-serif}
+
+/* Header */
+.nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--bord-soft)}
+.nav-wrap{display:flex;align-items:center;justify-content:space-between;padding:14px 0;gap:24px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:17px;font-family:var(--font-h);color:var(--text)}
+.brand-mark{width:32px;height:32px;border-radius:9px;background:var(--acc-grad);box-shadow:var(--shadow-acc);object-fit:cover}
+.nav-right{display:flex;align-items:center;gap:10px}
+.lang-toggle{display:inline-flex;background:var(--surf-soft);border-radius:8px;padding:3px;gap:2px}
+.lang-toggle button{padding:5px 11px;border-radius:6px;font-size:12px;font-weight:700;color:var(--text2)}
+.lang-toggle button.on{background:var(--surf);color:var(--text);box-shadow:var(--shadow-sm)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 18px;border-radius:12px;font-weight:700;font-size:14px;transition:transform .15s,box-shadow .15s;white-space:nowrap;line-height:1}
+.btn:hover{transform:translateY(-1px)}
+.btn-pri{background:var(--acc-grad);color:#fff;box-shadow:var(--shadow-acc)}
+.btn-sec{background:var(--surf);color:var(--text);border:1.5px solid var(--bord)}
+.btn-sec:hover{border-color:var(--acc);color:var(--acc)}
+.btn-sm{padding:8px 13px;font-size:13px;border-radius:9px}
+.btn-block{width:100%}
+.btn[disabled]{opacity:.5;pointer-events:none}
+.btn-ghost{background:transparent;color:var(--text2);border:1.5px solid transparent}
+.btn-ghost:hover{background:var(--surf-soft);color:var(--text)}
+.btn-lg{padding:16px 28px;font-size:15px;border-radius:14px}
+
+/* ---- shell rules mirrored from /css/marketing.css (so this page matches & previews) ---- */
+.brand-mark{width:34px;height:34px;border-radius:9px;display:block;object-fit:cover;box-shadow:var(--shadow-acc);background:var(--acc-grad)}
+.container{max-width:1200px;margin:0 auto;padding:0 20px}
+.container-sm{max-width:840px;margin:0 auto;padding:0 20px}
+.section{padding:64px 0}
+@media(max-width:640px){.section{padding:48px 0}}
+.text-c{text-align:center}.muted{color:var(--text2)}
+.gradient-text{background:var(--acc-grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.h-display{font-family:var(--font-h);font-weight:900;font-size:clamp(36px,7vw,68px);line-height:1.05;letter-spacing:-0.02em}
+.h-1{font-family:var(--font-h);font-weight:800;font-size:clamp(30px,5vw,48px);line-height:1.1;letter-spacing:-0.015em}
+.h-2{font-family:var(--font-h);font-weight:800;font-size:clamp(24px,4vw,36px);line-height:1.15}
+.lead{font-size:clamp(16px,2.2vw,20px);color:var(--text2);line-height:1.55}
+.section-eyebrow{display:inline-block;padding:5px 14px;background:var(--acc-soft);border-radius:20px;color:var(--acc);font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:14px}
+.nav-links{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.nav-link{padding:8px 14px;border-radius:8px;color:var(--text2);font-weight:500;font-size:14px;transition:background .15s,color .15s}
+.nav-link:hover{background:var(--surf-soft);color:var(--text)}
+.nav-link.active{color:var(--acc);background:var(--acc-soft)}
+.nav-cta{display:flex;gap:8px;align-items:center}
+.hide-mobile{display:initial}
+@media(max-width:900px){.nav-links{display:none}.nav-mobile-toggle{display:flex !important}}
+@media(max-width:640px){.hide-mobile{display:none}}
+.nav-mobile-toggle{display:none;width:40px;height:40px;border-radius:10px;background:var(--surf-soft);align-items:center;justify-content:center;color:var(--text);font-size:20px}
+.nav-drawer{position:fixed;inset:0;background:rgba(15,14,24,.7);z-index:100;opacity:0;pointer-events:none;transition:opacity .2s}
+.nav-drawer.open{opacity:1;pointer-events:auto}
+.nav-drawer-panel{position:absolute;right:0;top:0;bottom:0;width:280px;background:var(--surf);padding:24px 20px;transform:translateX(100%);transition:transform .25s ease;display:flex;flex-direction:column;gap:6px;box-shadow:var(--shadow-lg)}
+.nav-drawer.open .nav-drawer-panel{transform:translateX(0)}
+.nav-drawer-close{align-self:flex-end;margin-bottom:18px;width:36px;height:36px;border-radius:9px;background:var(--surf-soft);color:var(--text);font-size:18px;display:flex;align-items:center;justify-content:center}
+.nav-drawer-link{padding:12px 14px;border-radius:10px;color:var(--text);font-weight:600;font-size:15px;transition:background .15s}
+.nav-drawer-link:hover,.nav-drawer-link.active{background:var(--acc-soft);color:var(--acc)}
+.page-hero{padding:72px 0 36px;background:linear-gradient(180deg,#FFFAF2 0%,#FFFFFF 100%);text-align:center;position:relative;overflow:hidden}
+.page-hero::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:600px;height:200px;background:radial-gradient(ellipse,rgba(245,166,35,.1),transparent 70%);pointer-events:none}
+.page-hero-inner{position:relative;z-index:1}
+.card{background:var(--surf);border:1px solid var(--bord);border-radius:var(--r-lg);padding:24px;transition:border-color .15s,box-shadow .15s,transform .15s}
+.card:hover{border-color:var(--acc-bord);box-shadow:var(--shadow-md);transform:translateY(-2px)}
+.card-icon{width:48px;height:48px;border-radius:12px;background:var(--acc-soft);display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:14px}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+@media(max-width:900px){.grid-3{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){.grid-3{grid-template-columns:1fr;gap:16px}}
+.foot{background:#0A0A12;color:#C5C5D5;padding:64px 0 32px;margin-top:64px}
+.foot-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:48px;margin-bottom:48px}
+@media(max-width:900px){.foot-grid{grid-template-columns:1fr 1fr;gap:32px}}
+@media(max-width:540px){.foot-grid{grid-template-columns:1fr}}
+.foot-brand{display:flex;align-items:center;gap:10px;font-family:var(--font-h);font-weight:800;font-size:20px;color:#fff;margin-bottom:14px}
+.foot-tag{font-size:14px;line-height:1.65;color:#C5C5D5;max-width:320px;margin-bottom:18px}
+.foot-h{font-size:13px;font-weight:700;color:#fff;margin-bottom:14px;text-transform:uppercase;letter-spacing:1px}
+.foot-link{display:block;padding:5px 0;font-size:14px;color:#C5C5D5;transition:color .15s}
+.foot-link:hover{color:var(--acc)}
+.foot-bottom{border-top:1px solid #2A2A3A;padding-top:24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;font-size:13px;color:var(--text-mute)}
+.foot-legal{display:flex;gap:18px;flex-wrap:wrap}
+.foot-legal a{color:var(--text-mute)}.foot-legal a:hover{color:#fff}
+
+/* Page head */
+.tool-head{max-width:1280px;margin:0 auto;padding:28px 20px 8px;text-align:center}
+.eyebrow{display:inline-flex;align-items:center;gap:7px;padding:5px 13px;background:var(--acc-soft);border:1px solid var(--acc-bord);border-radius:30px;color:var(--acc);font-size:12px;font-weight:700;letter-spacing:.3px;margin-bottom:12px}
+.tool-head h1{font-family:var(--font-h);font-weight:900;font-size:clamp(26px,4.5vw,40px);line-height:1.08;letter-spacing:-.015em;margin-bottom:8px}
+.tool-head h1 .g{background:var(--acc-grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.tool-head p{color:var(--text2);font-size:clamp(14px,1.8vw,16px);max-width:600px;margin:0 auto}
+
+/* App layout */
+.app{max-width:1280px;margin:0 auto;padding:20px;display:grid;grid-template-columns:380px 1fr;gap:20px;align-items:start}
+@media(max-width:980px){.app{grid-template-columns:1fr}}
+
+.panel{background:var(--surf);border:1px solid var(--bord);border-radius:var(--r-xl);box-shadow:var(--shadow-sm)}
+.panel-pad{padding:18px}
+.preview-panel{position:sticky;top:74px}
+@media(max-width:980px){.preview-panel{position:static}}
+
+/* Control sections */
+.sec{border-bottom:1px solid var(--bord-soft)}
+.sec:last-child{border-bottom:none}
+.sec-head{display:flex;align-items:center;gap:9px;width:100%;padding:15px 18px;font-weight:700;font-size:14px;color:var(--text);background:none}
+.sec-head .ic{width:26px;height:26px;border-radius:7px;background:var(--acc-soft);color:var(--acc);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.sec-head .ar{margin-left:auto;color:var(--text-mute);transition:transform .2s;font-size:12px}
+.sec.open .sec-head .ar{transform:rotate(180deg)}
+.sec-body{display:none;padding:0 18px 18px}
+.sec.open .sec-body{display:block}
+
+label.fl{display:block;font-size:12px;font-weight:600;color:var(--text2);margin:14px 0 6px}
+label.fl:first-child{margin-top:0}
+.inp,select.inp,textarea.inp{width:100%;padding:10px 12px;border:1.5px solid var(--bord);border-radius:var(--r-md);font-size:14px;color:var(--text);background:var(--surf);transition:border-color .15s}
+.inp:focus,select.inp:focus,textarea.inp:focus{outline:none;border-color:var(--acc)}
+textarea.inp{resize:vertical;min-height:78px;font-family:'Inter',monospace}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+
+/* symbology chips */
+.symgrp{margin-bottom:10px}
+.symgrp-t{font-size:11px;font-weight:700;color:var(--text-mute);text-transform:uppercase;letter-spacing:.6px;margin:10px 0 6px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{padding:6px 11px;border:1.5px solid var(--bord);border-radius:20px;font-size:12.5px;font-weight:600;color:var(--text2);transition:all .12s;background:var(--surf)}
+.chip:hover{border-color:var(--acc-bord)}
+.chip.on{background:var(--acc-soft);border-color:var(--acc);color:var(--acc)}
+
+/* template cards */
+.tpl-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tpl{border:1.5px solid var(--bord);border-radius:var(--r-md);padding:11px 12px;text-align:left;transition:all .12s;background:var(--surf)}
+.tpl:hover{border-color:var(--acc-bord)}
+.tpl.on{border-color:var(--acc);background:var(--acc-soft)}
+.tpl-n{font-weight:700;font-size:13px;color:var(--text);margin-bottom:2px}
+.tpl-d{font-size:11px;color:var(--text-mute);line-height:1.35}
+
+/* sliders */
+.slider-row{display:flex;align-items:center;gap:12px}
+.slider-row input[type=range]{flex:1;accent-color:var(--acc)}
+.slider-val{font-size:12px;font-weight:700;color:var(--text2);min-width:42px;text-align:right}
+.toggle{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0}
+.toggle-lbl{font-size:13px;font-weight:600;color:var(--text)}
+.sw{width:40px;height:23px;border-radius:20px;background:var(--bord);position:relative;transition:background .15s;flex-shrink:0}
+.sw::after{content:'';position:absolute;top:2px;left:2px;width:19px;height:19px;border-radius:50%;background:#fff;box-shadow:var(--shadow-sm);transition:transform .15s}
+.sw.on{background:var(--acc)}
+.sw.on::after{transform:translateX(17px)}
+.color-row{display:flex;align-items:center;gap:8px}
+.color-row input[type=color]{width:38px;height:34px;border:1.5px solid var(--bord);border-radius:9px;padding:2px;background:none;cursor:pointer}
+
+/* preview */
+.pv-head{display:flex;align-items:center;justify-content:space-between;padding:15px 18px;border-bottom:1px solid var(--bord-soft)}
+.pv-head h3{font-family:var(--font-h);font-size:15px;font-weight:700}
+.pv-stage{padding:30px 18px;min-height:280px;display:flex;align-items:center;justify-content:center;background:
+  linear-gradient(45deg,#fafafc 25%,transparent 25%),linear-gradient(-45deg,#fafafc 25%,transparent 25%),
+  linear-gradient(45deg,transparent 75%,#fafafc 75%),linear-gradient(-45deg,transparent 75%,#fafafc 75%);
+  background-size:18px 18px;background-position:0 0,0 9px,9px -9px,-9px 0;background-color:#fff;border-radius:0}
+.pv-err{color:var(--err);font-size:13px;font-weight:600;text-align:center;max-width:340px}
+
+/* label render (shared by preview + print) */
+.lbl{background:#fff;color:#000;font-family:'Inter',sans-serif;display:inline-flex;flex-direction:column;
+  box-shadow:var(--shadow-lg);border-radius:4px;overflow:hidden}
+.lbl .lbl-pad{padding:10px 12px;display:flex;flex-direction:column;align-items:center;gap:4px}
+.lbl-shop{font-weight:800;font-size:13px;letter-spacing:.3px;text-align:center;font-family:'Outfit',sans-serif}
+.lbl-prod{font-size:12px;font-weight:600;text-align:center;line-height:1.25}
+.lbl-price-row{display:flex;align-items:baseline;gap:8px;justify-content:center}
+.lbl-mrp{font-size:11px;color:#888;text-decoration:line-through}
+.lbl-price{font-size:20px;font-weight:900;font-family:'Outfit',sans-serif}
+.lbl-logo{max-height:26px;width:auto;object-fit:contain;margin-bottom:2px}
+.lbl-bc{display:block}
+.lbl-divider{width:100%;border-top:1px dashed #ccc;margin:3px 0}
+
+.export-bar{padding:16px 18px;border-top:1px solid var(--bord-soft)}
+.export-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:10px}
+.hint{font-size:11.5px;color:var(--text-mute);margin-top:8px;line-height:1.45}
+
+/* footer cta */
+.foot-cta{max-width:1280px;margin:8px auto 40px;padding:0 20px}
+.foot-cta-inner{background:linear-gradient(135deg,#13131C,#1C1C28);color:#fff;border-radius:var(--r-xl);padding:32px 28px;text-align:center;position:relative;overflow:hidden}
+.foot-cta-inner::before{content:'';position:absolute;top:-40%;right:-8%;width:300px;height:300px;background:radial-gradient(circle,rgba(245,166,35,.18),transparent 65%)}
+.foot-cta-inner h2{font-family:var(--font-h);font-size:clamp(20px,3vw,26px);margin-bottom:8px;position:relative}
+.foot-cta-inner p{color:#C5C5D5;font-size:14px;margin-bottom:18px;max-width:480px;margin-left:auto;margin-right:auto;position:relative}
+.foot-cta-inner .btn{position:relative}
+
+#printRoot{position:fixed;left:-99999px;top:0}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:sp .6s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* content + faq sections */
+.csec{max-width:840px;margin:0 auto;padding:8px 20px 0}
+.csec h2{font-family:var(--font-h);font-weight:800;font-size:clamp(22px,3.5vw,30px);text-align:center;margin-bottom:8px}
+.csec .sub{color:var(--text2);text-align:center;margin-bottom:28px}
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+@media(max-width:760px){.steps{grid-template-columns:1fr 1fr}}
+.step{background:var(--surf);border:1px solid var(--bord);border-radius:var(--r-lg);padding:18px}
+.step-n{width:30px;height:30px;border-radius:9px;background:var(--acc-grad);color:#fff;font-weight:800;font-family:var(--font-h);display:flex;align-items:center;justify-content:center;margin-bottom:10px;box-shadow:var(--shadow-acc)}
+.step-h{font-weight:700;font-size:14px;margin-bottom:4px}
+.step-p{font-size:13px;color:var(--text2);line-height:1.5}
+.faq-list{display:flex;flex-direction:column;gap:12px}
+.faq-item{background:var(--surf);border:1px solid var(--bord);border-radius:var(--r-lg);overflow:hidden}
+.faq-q{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:16px 20px;cursor:pointer;font-weight:700;font-size:15px}
+.faq-q .ar{width:22px;height:22px;border-radius:50%;background:var(--surf-soft);color:var(--text2);display:flex;align-items:center;justify-content:center;font-size:12px;transition:transform .2s;flex-shrink:0}
+.faq-item.open .faq-q .ar{transform:rotate(180deg);background:var(--acc-soft);color:var(--acc)}
+.faq-a{max-height:0;overflow:hidden;transition:max-height .25s ease;padding:0 20px;color:var(--text2);font-size:14px;line-height:1.65}
+.faq-item.open .faq-a{max-height:500px;padding:0 20px 18px}
+.sitefoot{background:#0A0A12;color:#C5C5D5;padding:40px 0 28px;margin-top:48px;text-align:center}
+.sitefoot a{color:#C5C5D5;font-size:13px;margin:0 9px}
+.sitefoot a:hover{color:var(--acc)}
+.sitefoot .fb{font-family:var(--font-h);font-weight:800;color:#fff;font-size:18px;margin-bottom:12px}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="nav">
+  <div class="container">
+    <div class="nav-wrap">
+      <a href="/" class="brand">
+        <img class="brand-mark" src="data:image/png;base64,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" alt="ShopBill Pro logo">
+        <span>ShopBill Pro</span>
+      </a>
+      <nav class="nav-links">
+        <a href="/features/gst-billing" class="nav-link"><span class="lang-en">Features</span><span class="lang-hi">फीचर्स</span></a>
+        <a href="/for/retail" class="nav-link"><span class="lang-en">For Business</span><span class="lang-hi">बिज़नेस के लिए</span></a>
+        <a href="/tools" class="nav-link active"><span class="lang-en">Free Tools</span><span class="lang-hi">मुफ्त टूल्स</span></a>
+        <a href="/pricing" class="nav-link"><span class="lang-en">Pricing</span><span class="lang-hi">कीमत</span></a>
+        <a href="/faq" class="nav-link"><span class="lang-en">FAQ</span><span class="lang-hi">सवाल</span></a>
+      </nav>
+      <div class="nav-cta">
+        <div class="lang-toggle hide-mobile">
+          <button onclick="setLang('en',this)" class="on" id="lt-en">EN</button>
+          <button onclick="setLang('hi',this)" id="lt-hi">हिं</button>
+        </div>
+        <a href="https://app.shopbillpro.in/login.html" class="btn btn-ghost btn-sm hide-mobile"><span class="lang-en">Sign in</span><span class="lang-hi">लॉगिन</span></a>
+        <a href="https://app.shopbillpro.in/signup.html" class="btn btn-pri btn-sm"><span class="lang-en">Get started — Free</span><span class="lang-hi">मुफ्त शुरू करें</span></a>
+        <button class="nav-mobile-toggle" onclick="openDrawer()" aria-label="Menu">☰</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- Mobile drawer -->
+<div class="nav-drawer" id="nav-drawer">
+  <div class="nav-drawer-panel">
+    <button class="nav-drawer-close" onclick="closeDrawer()" aria-label="Close">✕</button>
+    <a href="/features/gst-billing" class="nav-drawer-link"><span class="lang-en">Features</span><span class="lang-hi">फीचर्स</span></a>
+    <a href="/for/retail" class="nav-drawer-link"><span class="lang-en">For Business</span><span class="lang-hi">बिज़नेस के लिए</span></a>
+    <a href="/tools" class="nav-drawer-link active"><span class="lang-en">Free Tools</span><span class="lang-hi">मुफ्त टूल्स</span></a>
+    <a href="/pricing" class="nav-drawer-link"><span class="lang-en">Pricing</span><span class="lang-hi">कीमत</span></a>
+    <a href="/faq" class="nav-drawer-link"><span class="lang-en">FAQ</span><span class="lang-hi">सवाल</span></a>
+    <a href="https://app.shopbillpro.in/login.html" class="nav-drawer-link"><span class="lang-en">Sign in</span><span class="lang-hi">लॉगिन</span></a>
+    <div style="margin-top:14px">
+      <div class="lang-toggle">
+        <button onclick="setLang('en',this)" class="on" id="lt-en-m">EN</button>
+        <button onclick="setLang('hi',this)" id="lt-hi-m">हिं</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="tool-head">
+  <span class="eyebrow">🏷️ <span class="lang-en">100% Free · No signup</span><span class="lang-hi">100% मुफ्त · कोई साइनअप नहीं</span></span>
+  <h1><span class="lang-en">Universal <span class="g">Barcode Designer</span></span><span class="lang-hi">यूनिवर्सल <span class="g">बारकोड डिज़ाइनर</span></span></h1>
+  <p><span class="lang-en">Generate any barcode, design price tags &amp; labels, and print on A4, thermal label printers or 80mm rolls.</span><span class="lang-hi">कोई भी बारकोड बनाएं, प्राइस टैग व लेबल डिज़ाइन करें, और A4, थर्मल लेबल प्रिंटर या 80mm रोल पर प्रिंट करें।</span></p>
+</div>
+
+<div class="app">
+  <!-- ============ CONTROLS ============ -->
+  <div class="panel" id="controls">
+    <!-- 1. Barcode type -->
+    <div class="sec open">
+      <button class="sec-head" data-sec><span class="ic">▥</span><span class="lang-en">Barcode type</span><span class="lang-hi">बारकोड टाइप</span><span class="ar">▼</span></button>
+      <div class="sec-body" id="symBody"></div>
+    </div>
+    <!-- 2. Data -->
+    <div class="sec open">
+      <button class="sec-head" data-sec><span class="ic">⌨</span><span class="lang-en">Data</span><span class="lang-hi">डेटा</span><span class="ar">▼</span></button>
+      <div class="sec-body">
+        <label class="fl"><span class="lang-en">Content to encode</span><span class="lang-hi">एन्कोड करने का कंटेंट</span></label>
+        <input class="inp" id="data" value="5901234123457" autocomplete="off">
+        <div class="toggle"><span class="toggle-lbl"><span class="lang-en">Batch mode (many at once)</span><span class="lang-hi">बैच मोड (एक साथ कई)</span></span><span class="sw" id="swBatch" data-sw></span></div>
+        <div id="batchWrap" style="display:none">
+          <label class="fl"><span class="lang-en">One code per line</span><span class="lang-hi">हर लाइन में एक कोड</span></label>
+          <textarea class="inp" id="batchData" placeholder="5901234123457&#10;5901234123464&#10;5901234123471"></textarea>
+          <div class="toggle"><span class="toggle-lbl"><span class="lang-en">Auto sequential numbers</span><span class="lang-hi">ऑटो क्रम संख्या</span></span><span class="sw" id="swSeq" data-sw></span></div>
+          <div id="seqWrap" style="display:none" class="row2">
+            <div><label class="fl"><span class="lang-en">Start</span><span class="lang-hi">शुरू</span></label><input class="inp" id="seqStart" type="number" value="1001"></div>
+            <div><label class="fl"><span class="lang-en">Count</span><span class="lang-hi">कितने</span></label><input class="inp" id="seqCount" type="number" value="10"></div>
+          </div>
+        </div>
+        <div class="hint" id="dataHint"></div>
+      </div>
+    </div>
+    <!-- 3. Label template -->
+    <div class="sec open">
+      <button class="sec-head" data-sec><span class="ic">🏷</span><span class="lang-en">Label design</span><span class="lang-hi">लेबल डिज़ाइन</span><span class="ar">▼</span></button>
+      <div class="sec-body">
+        <div class="tpl-grid" id="tplGrid"></div>
+        <div id="tplFields"></div>
+      </div>
+    </div>
+    <!-- 4. Style -->
+    <div class="sec">
+      <button class="sec-head" data-sec><span class="ic">🎨</span><span class="lang-en">Style</span><span class="lang-hi">स्टाइल</span><span class="ar">▼</span></button>
+      <div class="sec-body">
+        <label class="fl"><span class="lang-en">Bar width (scale)</span><span class="lang-hi">बार चौड़ाई</span></label>
+        <div class="slider-row"><input type="range" id="scale" min="1" max="6" step="0.5" value="2.5"><span class="slider-val" id="scaleV">2.5×</span></div>
+        <label class="fl"><span class="lang-en">Height</span><span class="lang-hi">ऊँचाई</span></label>
+        <div class="slider-row"><input type="range" id="height" min="6" max="40" step="1" value="15"><span class="slider-val" id="heightV">15</span></div>
+        <div class="toggle"><span class="toggle-lbl"><span class="lang-en">Show human-readable text</span><span class="lang-hi">पढ़ने योग्य टेक्स्ट दिखाएं</span></span><span class="sw on" id="swText" data-sw></span></div>
+        <div class="row2">
+          <div><label class="fl"><span class="lang-en">Bar color</span><span class="lang-hi">बार रंग</span></label><div class="color-row"><input type="color" id="barColor" value="#000000"><input class="inp" id="barColorH" value="#000000"></div></div>
+          <div><label class="fl"><span class="lang-en">Background</span><span class="lang-hi">बैकग्राउंड</span></label><div class="color-row"><input type="color" id="bgColor" value="#ffffff"><input class="inp" id="bgColorH" value="#ffffff"></div></div>
+        </div>
+        <label class="fl"><span class="lang-en">Rotation</span><span class="lang-hi">घुमाव</span></label>
+        <select class="inp" id="rotate"><option value="N">0°</option><option value="R">90°</option><option value="I">180°</option><option value="L">270°</option></select>
+      </div>
+    </div>
+    <!-- 5. Print / Export -->
+    <div class="sec">
+      <button class="sec-head" data-sec><span class="ic">🖨</span><span class="lang-en">Print format</span><span class="lang-hi">प्रिंट फॉर्मेट</span><span class="ar">▼</span></button>
+      <div class="sec-body">
+        <label class="fl"><span class="lang-en">Output for</span><span class="lang-hi">किसके लिए</span></label>
+        <select class="inp" id="printMode">
+          <option value="a4">A4 sheet — sticker grid (inkjet/laser)</option>
+          <option value="label">Thermal label printer (roll)</option>
+          <option value="receipt">Receipt printer (80mm / 58mm)</option>
+          <option value="custom">Custom size (mm)</option>
+        </select>
+        <div id="pmA4">
+          <label class="fl"><span class="lang-en">Sheet layout</span><span class="lang-hi">शीट लेआउट</span></label>
+          <select class="inp" id="a4Preset">
+            <option value="65|38|21|3|4|5|2">65-up · 38×21mm (small)</option>
+            <option value="24|64|34|3|2|8|10">24-up · 64×34mm</option>
+            <option value="21|70|42|3|3|6|10">21-up · 70×42mm</option>
+            <option value="10|99|57|2|5|6|12">10-up · 99×57mm (large)</option>
+          </select>
+        </div>
+        <div id="pmLabel" style="display:none">
+          <label class="fl"><span class="lang-en">Label size</span><span class="lang-hi">लेबल साइज़</span></label>
+          <select class="inp" id="labelPreset">
+            <option value="50|25">50 × 25 mm (common 2-up)</option>
+            <option value="40|30">40 × 30 mm</option>
+            <option value="38|25">38 × 25 mm</option>
+            <option value="75|50">75 × 50 mm</option>
+            <option value="100|50">100 × 50 mm</option>
+            <option value="100|150">100 × 150 mm (shipping)</option>
+            <option value="custom">Custom…</option>
+          </select>
+          <div id="labelCustom" style="display:none" class="row2">
+            <div><label class="fl">W (mm)</label><input class="inp" id="lblW" type="number" value="50"></div>
+            <div><label class="fl">H (mm)</label><input class="inp" id="lblH" type="number" value="25"></div>
+          </div>
+        </div>
+        <div id="pmReceipt" style="display:none">
+          <label class="fl"><span class="lang-en">Roll width</span><span class="lang-hi">रोल चौड़ाई</span></label>
+          <select class="inp" id="receiptW"><option value="80">80 mm</option><option value="58">58 mm</option></select>
+        </div>
+        <div id="pmCustom" style="display:none" class="row2">
+          <div><label class="fl">W (mm)</label><input class="inp" id="cusW" type="number" value="60"></div>
+          <div><label class="fl">H (mm)</label><input class="inp" id="cusH" type="number" value="40"></div>
+        </div>
+        <label class="fl"><span class="lang-en">Copies of each label</span><span class="lang-hi">हर लेबल की कॉपी</span></label>
+        <input class="inp" id="copies" type="number" value="1" min="1">
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ PREVIEW + EXPORT ============ -->
+  <div class="panel preview-panel">
+    <div class="pv-head">
+      <h3><span class="lang-en">Live preview</span><span class="lang-hi">लाइव प्रीव्यू</span></h3>
+      <span id="batchBadge" style="font-size:12px;color:var(--text-mute);font-weight:600"></span>
+    </div>
+    <div class="pv-stage" id="stage"><div class="pv-err" id="err" style="display:none"></div><div id="labelHost"></div></div>
+    <div class="export-bar">
+      <button class="btn btn-pri btn-block" id="btnPrint"><span class="lang-en">🖨 Print now</span><span class="lang-hi">🖨 अभी प्रिंट करें</span></button>
+      <div class="export-grid">
+        <button class="btn btn-sec btn-sm" id="btnPDF"><span class="lang-en">⬇ PDF</span><span class="lang-hi">⬇ PDF</span></button>
+        <button class="btn btn-sec btn-sm" id="btnPNG"><span class="lang-en">⬇ PNG</span><span class="lang-hi">⬇ PNG</span></button>
+        <button class="btn btn-sec btn-sm" id="btnSVG"><span class="lang-en">⬇ SVG (barcode)</span><span class="lang-hi">⬇ SVG</span></button>
+        <button class="btn btn-sec btn-sm" id="btnCopy"><span class="lang-en">⧉ Copy PNG</span><span class="lang-hi">⧉ कॉपी</span></button>
+      </div>
+      <div class="hint"><span class="lang-en">PDF & Print use your selected print format so they fit your printer exactly. SVG exports the barcode only (vector, infinitely sharp).</span><span class="lang-hi">PDF और प्रिंट आपके चुने प्रिंट फॉर्मेट का उपयोग करते हैं। SVG सिर्फ बारकोड वेक्टर में देता है।</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- How to use -->
+<section style="padding:40px 0 8px">
+  <div class="csec">
+    <h2><span class="lang-en">How to use the Barcode Designer</span><span class="lang-hi">बारकोड डिज़ाइनर कैसे इस्तेमाल करें</span></h2>
+    <p class="sub"><span class="lang-en">Make print-ready barcode labels in four steps.</span><span class="lang-hi">चार स्टेप में प्रिंट-तैयार बारकोड लेबल बनाएं।</span></p>
+    <div class="steps">
+      <div class="step"><div class="step-n">1</div><div class="step-h"><span class="lang-en">Pick a type</span><span class="lang-hi">टाइप चुनें</span></div><div class="step-p"><span class="lang-en">Choose EAN-13 for retail, QR for links, or any of 18 types.</span><span class="lang-hi">रिटेल के लिए EAN-13, लिंक के लिए QR, या 18 में से कोई।</span></div></div>
+      <div class="step"><div class="step-n">2</div><div class="step-h"><span class="lang-en">Enter your data</span><span class="lang-hi">डेटा भरें</span></div><div class="step-p"><span class="lang-en">Type one code, or use Batch mode for a whole list at once.</span><span class="lang-hi">एक कोड लिखें, या पूरी लिस्ट के लिए बैच मोड।</span></div></div>
+      <div class="step"><div class="step-n">3</div><div class="step-h"><span class="lang-en">Design the label</span><span class="lang-hi">लेबल डिज़ाइन करें</span></div><div class="step-p"><span class="lang-en">Add shop name, price &amp; logo with a ready price-tag template.</span><span class="lang-hi">तैयार प्राइस-टैग टेम्पलेट से दुकान का नाम, कीमत व लोगो जोड़ें।</span></div></div>
+      <div class="step"><div class="step-n">4</div><div class="step-h"><span class="lang-en">Print or download</span><span class="lang-hi">प्रिंट या डाउनलोड</span></div><div class="step-p"><span class="lang-en">A4 sheet, thermal label or 80mm — exact-size PDF, PNG or SVG.</span><span class="lang-hi">A4 शीट, थर्मल लेबल या 80mm — PDF, PNG या SVG।</span></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section style="padding:40px 0 8px">
+  <div class="csec">
+    <h2><span class="lang-en">Frequently asked questions</span><span class="lang-hi">अक्सर पूछे जाने वाले सवाल</span></h2>
+    <div class="faq-list" style="margin-top:20px">
+      <div class="faq-item"><div class="faq-q"><span><span class="lang-en">Is this barcode generator really free?</span><span class="lang-hi">क्या यह बारकोड जनरेटर सच में मुफ्त है?</span></span><span class="ar">▼</span></div><div class="faq-a"><span class="lang-en">Yes — 100% free, no signup. Generate, design and print as many barcodes and labels as you like, right in your browser.</span><span class="lang-hi">हाँ — 100% मुफ्त, कोई साइनअप नहीं। जितने चाहें बारकोड और लेबल बनाएं, डिज़ाइन करें और प्रिंट करें।</span></div></div>
+      <div class="faq-item"><div class="faq-q"><span><span class="lang-en">Which barcode types are supported?</span><span class="lang-hi">कौन-कौन से बारकोड टाइप सपोर्ट हैं?</span></span><span class="ar">▼</span></div><div class="faq-a"><span class="lang-en">EAN-13, EAN-8, UPC-A/E, Code 128, Code 39, ITF-14, GS1-128, Data Matrix, GS1 DataMatrix, Pharmacode, ISBN, QR Code, PDF417, Aztec, Codabar and MSI.</span><span class="lang-hi">EAN-13, EAN-8, UPC, Code 128, Code 39, ITF-14, GS1-128, Data Matrix, Pharmacode, ISBN, QR, PDF417, Aztec, Codabar और MSI।</span></div></div>
+      <div class="faq-item"><div class="faq-q"><span><span class="lang-en">Can I print on a thermal label printer?</span><span class="lang-hi">क्या थर्मल लेबल प्रिंटर पर प्रिंट कर सकते हैं?</span></span><span class="ar">▼</span></div><div class="faq-a"><span class="lang-en">Yes. Pick label sizes like 50×25mm or 100×150mm, A4 sticker sheets, or 80mm/58mm rolls. Output is exact-size PDF that works with any printer.</span><span class="lang-hi">हाँ। 50×25mm या 100×150mm लेबल, A4 शीट, या 80mm/58mm रोल चुनें। आउटपुट सटीक-साइज़ PDF है जो किसी भी प्रिंटर पर चलता है।</span></div></div>
+      <div class="faq-item"><div class="faq-q"><span><span class="lang-en">Can I generate barcodes in bulk?</span><span class="lang-hi">क्या एक साथ कई बारकोड बना सकते हैं?</span></span><span class="ar">▼</span></div><div class="faq-a"><span class="lang-en">Yes. Turn on Batch mode to paste a list, or use auto sequential numbering to create a numbered series automatically.</span><span class="lang-hi">हाँ। बैच मोड चालू करें या ऑटो क्रम संख्या से नंबर वाली सीरीज़ बनाएं।</span></div></div>
+      <div class="faq-item"><div class="faq-q"><span><span class="lang-en">Do these work with ShopBill Pro billing?</span><span class="lang-hi">क्या ये ShopBill Pro बिलिंग के साथ चलते हैं?</span></span><span class="ar">▼</span></div><div class="faq-a"><span class="lang-en">Yes. Print product barcodes here, then scan and bill them in the free ShopBill Pro app for a full GST billing POS.</span><span class="lang-hi">हाँ। यहाँ बारकोड प्रिंट करें, फिर मुफ्त ShopBill Pro ऐप में स्कैन करके बिल बनाएं।</span></div></div>
+    </div>
+  </div>
+</section>
+
+<div class="foot-cta">
+  <div class="foot-cta-inner">
+    <h2><span class="lang-en">Now scan &amp; bill these barcodes</span><span class="lang-hi">अब इन बारकोड को स्कैन करके बिल बनाएं</span></h2>
+    <p><span class="lang-en">ShopBill Pro turns your phone into a barcode scanner + GST billing POS. Free forever plan.</span><span class="lang-hi">ShopBill Pro आपके फ़ोन को बारकोड स्कैनर + GST बिलिंग POS बनाता है। हमेशा मुफ्त प्लान।</span></p>
+    <a href="https://app.shopbillpro.in/signup.html" class="btn btn-pri"><span class="lang-en">Start free →</span><span class="lang-hi">मुफ्त शुरू करें →</span></a>
+  </div>
+</div>
+
+<footer class="foot">
+  <div class="container">
+    <div class="foot-grid">
+      <div>
+        <div class="foot-brand"><img class="brand-mark" src="data:image/png;base64,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" alt="ShopBill Pro logo">ShopBill Pro</div>
+        <p class="foot-tag"><span class="lang-en">India's operating system for small businesses. From your tea stall to your D2C brand — one app.</span><span class="lang-hi">भारत के छोटे बिज़नेस का ऐप। चाय की दुकान से D2C ब्रांड तक।</span></p>
+        <div class="lang-toggle">
+          <button onclick="setLang('en',this)" id="lt-en-f" class="on">EN</button>
+          <button onclick="setLang('hi',this)" id="lt-hi-f">हिं</button>
+        </div>
+      </div>
+      <div>
+        <div class="foot-h"><span class="lang-en">Free Tools</span><span class="lang-hi">मुफ्त टूल्स</span></div>
+        <a class="foot-link" href="/tools/barcode-designer"><span class="lang-en">Barcode Designer</span><span class="lang-hi">बारकोड डिज़ाइनर</span></a>
+        <a class="foot-link" href="/tools"><span class="lang-en">All Tools</span><span class="lang-hi">सभी टूल्स</span></a>
+      </div>
+      <div>
+        <div class="foot-h"><span class="lang-en">Product</span><span class="lang-hi">प्रोडक्ट</span></div>
+        <a class="foot-link" href="/features/gst-billing"><span class="lang-en">GST Billing</span><span class="lang-hi">GST बिलिंग</span></a>
+        <a class="foot-link" href="/features/whatsapp-bills"><span class="lang-en">WhatsApp Bills</span><span class="lang-hi">WhatsApp बिल</span></a>
+        <a class="foot-link" href="/pricing"><span class="lang-en">Pricing</span><span class="lang-hi">कीमत</span></a>
+      </div>
+      <div>
+        <div class="foot-h"><span class="lang-en">Company</span><span class="lang-hi">कंपनी</span></div>
+        <a class="foot-link" href="/why-choose-shopbill-pro"><span class="lang-en">Why ShopBill Pro</span><span class="lang-hi">क्यों ShopBill Pro</span></a>
+        <a class="foot-link" href="/faq"><span class="lang-en">FAQ</span><span class="lang-hi">सवाल</span></a>
+        <a class="foot-link" href="https://app.shopbillpro.in/signup.html"><span class="lang-en">Sign up</span><span class="lang-hi">साइनअप</span></a>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <div>© 2026 TradeCrest Technologies Private Limited. All rights reserved.</div>
+      <div class="foot-legal">
+        <a href="/terms">Terms</a>
+        <a href="/privacy">Privacy</a>
+        <a href="/refund">Refund Policy</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<div id="printRoot"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bwip-js@4.5.1/dist/bwip-js-min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+/* ===== Language toggle (matches marketing site) ===== */
+function setLang(lang){document.documentElement.setAttribute('data-lang',lang);try{localStorage.setItem('sbp_marketing_lang',lang);}catch(e){}
+  document.querySelectorAll('#lt-en, #lt-en-m, #lt-en-f').forEach(b=>b.classList.toggle('on',lang==='en'));
+  document.querySelectorAll('#lt-hi, #lt-hi-m, #lt-hi-f').forEach(b=>b.classList.toggle('on',lang==='hi'));}
+function openDrawer(){document.getElementById('nav-drawer').classList.add('open');document.body.style.overflow='hidden';}
+function closeDrawer(){document.getElementById('nav-drawer').classList.remove('open');document.body.style.overflow='';}
+document.getElementById('nav-drawer').addEventListener('click',e=>{if(e.target.id==='nav-drawer')closeDrawer();});
+(function(){var l=document.documentElement.getAttribute('data-lang')||'en';
+  document.querySelectorAll('#lt-en, #lt-en-m, #lt-en-f').forEach(b=>b.classList.toggle('on',l==='en'));
+  document.querySelectorAll('#lt-hi, #lt-hi-m, #lt-hi-f').forEach(b=>b.classList.toggle('on',l==='hi'));})();
+
+/* ===== Symbology catalog ===== */
+const SYMS=[
+ {g:'Retail / POS',items:[
+   {id:'ean13',n:'EAN-13',ex:'5901234123457',hint:'12 or 13 digits — the standard retail barcode in India.'},
+   {id:'ean8',n:'EAN-8',ex:'96385074',hint:'7 or 8 digits — small retail packs.'},
+   {id:'upca',n:'UPC-A',ex:'036000291452',hint:'11 or 12 digits — North American retail.'},
+   {id:'upce',n:'UPC-E',ex:'01234565',hint:'Compressed UPC, 6–8 digits.'}]},
+ {g:'Inventory / General',items:[
+   {id:'code128',n:'Code 128',ex:'SBP-12345',hint:'Letters, numbers & symbols — best all-rounder for stock.'},
+   {id:'code39',n:'Code 39',ex:'CODE39',hint:'Uppercase letters & digits, widely supported.'}]},
+ {g:'Logistics / Shipping',items:[
+   {id:'itf14',n:'ITF-14',ex:'00012345678905',hint:'14 digits — carton/case codes.'},
+   {id:'gs1-128',n:'GS1-128',ex:'(01)09501101020917',hint:'GS1 application identifiers for supply chain.'},
+   {id:'interleaved2of5',n:'Interleaved 2of5',ex:'1234567890',hint:'Even number of digits.'}]},
+ {g:'Pharma / Healthcare',items:[
+   {id:'datamatrix',n:'Data Matrix',ex:'SBP-DATA-001',hint:'Tiny 2D code — pharma, electronics, parts.'},
+   {id:'gs1datamatrix',n:'GS1 DataMatrix',ex:'(01)09501101020917(17)260531',hint:'GS1 2D for medicine packs.'},
+   {id:'pharmacode',n:'Pharmacode',ex:'117480',hint:'Pharmaceutical packaging control number.'}]},
+ {g:'Books / Publishing',items:[
+   {id:'isbn',n:'ISBN',ex:'978-1-56581-231-4',hint:'Book ISBN (with hyphens).'}]},
+ {g:'2D / Mobile / QR',items:[
+   {id:'qrcode',n:'QR Code',ex:'https://shopbillpro.in',hint:'URLs, text, UPI, anything.'},
+   {id:'pdf417',n:'PDF417',ex:'ShopBill Pro',hint:'High-capacity 2D — IDs, documents.'},
+   {id:'azteccode',n:'Aztec',ex:'ShopBill Pro',hint:'Tickets, boarding passes.'}]},
+ {g:'Other',items:[
+   {id:'rationalizedCodabar',n:'Codabar',ex:'A123456A',hint:'Libraries, blood banks. Wrap with A–D.'},
+   {id:'msi',n:'MSI Plessey',ex:'1234567',hint:'Warehouse shelf labels.'}]}
+];
+const SYM_MAP={};SYMS.forEach(grp=>grp.items.forEach(s=>SYM_MAP[s.id]=s));
+
+/* ===== Templates ===== */
+const TEMPLATES=[
+ {id:'plain',n:'Barcode only',d:'Just the code'},
+ {id:'price',n:'Price tag',d:'Shop · product · price'},
+ {id:'product',n:'Product label',d:'Name + barcode'},
+ {id:'shipping',n:'Shipping',d:'From / To + code'}
+];
+
+/* ===== State ===== */
+const S={bcid:'ean13',data:'5901234123457',batch:false,batchData:'',seq:false,seqStart:1001,seqCount:10,
+  scale:2.5,height:15,showText:true,barColor:'#000000',bgColor:'#ffffff',rotate:'N',
+  template:'price',fields:{shop:'GLITZ & GLAM',product:'Lipstick Matte Red',mrp:'499',price:'399',logo:null},
+  printMode:'a4',copies:1};
+
+let rt=null;const debounce=fn=>{clearTimeout(rt);rt=setTimeout(fn,120);};
+
+/* ===== Build symbology UI ===== */
+(function(){
+  const host=document.getElementById('symBody');
+  SYMS.forEach(grp=>{
+    const w=document.createElement('div');w.className='symgrp';
+    w.innerHTML='<div class="symgrp-t">'+grp.g+'</div>';
+    const c=document.createElement('div');c.className='chips';
+    grp.items.forEach(s=>{
+      const b=document.createElement('button');b.className='chip'+(s.id===S.bcid?' on':'');b.textContent=s.n;b.dataset.id=s.id;
+      b.onclick=()=>{S.bcid=s.id;S.data=s.ex;document.getElementById('data').value=s.ex;
+        document.querySelectorAll('#symBody .chip').forEach(x=>x.classList.toggle('on',x.dataset.id===s.id));
+        document.getElementById('dataHint').textContent=s.hint;render();};
+      c.appendChild(b);
+    });
+    w.appendChild(c);host.appendChild(w);
+  });
+  document.getElementById('dataHint').textContent=SYM_MAP[S.bcid].hint;
+})();
+
+/* ===== Build template UI ===== */
+(function(){
+  const grid=document.getElementById('tplGrid');
+  TEMPLATES.forEach(t=>{
+    const b=document.createElement('button');b.className='tpl'+(t.id===S.template?' on':'');b.dataset.id=t.id;
+    b.innerHTML='<div class="tpl-n">'+t.n+'</div><div class="tpl-d">'+t.d+'</div>';
+    b.onclick=()=>{S.template=t.id;document.querySelectorAll('.tpl').forEach(x=>x.classList.toggle('on',x.dataset.id===t.id));buildTplFields();render();};
+    grid.appendChild(b);
+  });
+  buildTplFields();
+})();
+
+function fld(label,key,val){return '<label class="fl">'+label+'</label><input class="inp" data-fk="'+key+'" value="'+(val||'')+'">';}
+function buildTplFields(){
+  const h=document.getElementById('tplFields');const f=S.fields;let html='';
+  if(S.template==='price'){
+    html+=fld('Shop name','shop',f.shop)+'<div class="row2"><div>'+fld('MRP ₹','mrp',f.mrp)+'</div><div>'+fld('Price ₹','price',f.price)+'</div></div>'+fld('Product','product',f.product);
+  }else if(S.template==='product'){
+    html+=fld('Product name','product',f.product);
+  }else if(S.template==='shipping'){
+    html+=fld('From','shop',f.shop)+fld('To','product',f.product);
+  }
+  if(S.template!=='plain'){
+    html+='<label class="fl">Logo (optional)</label><input type="file" accept="image/*" id="logoInp" class="inp">';
+  }
+  h.innerHTML=html;
+  h.querySelectorAll('[data-fk]').forEach(i=>i.oninput=()=>{S.fields[i.dataset.fk]=i.value;debounce(render);});
+  const li=document.getElementById('logoInp');
+  if(li)li.onchange=e=>{const file=e.target.files[0];if(!file)return;const r=new FileReader();r.onload=ev=>{S.fields.logo=ev.target.result;render();};r.readAsDataURL(file);};
+}
+
+/* ===== Controls wiring ===== */
+document.querySelectorAll('[data-sec]').forEach(b=>b.onclick=()=>b.parentElement.classList.toggle('open'));
+document.querySelectorAll('[data-sw]').forEach(sw=>sw.onclick=()=>{sw.classList.toggle('on');handleSwitch(sw.id,sw.classList.contains('on'));});
+function handleSwitch(id,on){
+  if(id==='swText'){S.showText=on;render();}
+  if(id==='swBatch'){S.batch=on;document.getElementById('batchWrap').style.display=on?'block':'none';render();}
+  if(id==='swSeq'){S.seq=on;document.getElementById('seqWrap').style.display=on?'grid':'none';render();}
+}
+const bind=(id,fn)=>{const e=document.getElementById(id);if(e)e.oninput=()=>{fn(e.value);debounce(render);};};
+bind('data',v=>S.data=v);bind('batchData',v=>S.batchData=v);
+bind('seqStart',v=>S.seqStart=v);bind('seqCount',v=>S.seqCount=v);bind('copies',v=>S.copies=v);
+document.getElementById('scale').oninput=e=>{S.scale=+e.target.value;document.getElementById('scaleV').textContent=S.scale+'×';debounce(render);};
+document.getElementById('height').oninput=e=>{S.height=+e.target.value;document.getElementById('heightV').textContent=S.height;debounce(render);};
+document.getElementById('rotate').onchange=e=>{S.rotate=e.target.value;render();};
+function syncColor(c,h,key){const ce=document.getElementById(c),he=document.getElementById(h);
+  ce.oninput=()=>{S[key]=ce.value;he.value=ce.value;debounce(render);};
+  he.oninput=()=>{if(/^#[0-9a-fA-F]{6}$/.test(he.value)){S[key]=he.value;ce.value=he.value;debounce(render);}};}
+syncColor('barColor','barColorH','barColor');syncColor('bgColor','bgColorH','bgColor');
+
+document.getElementById('printMode').onchange=e=>{S.printMode=e.target.value;
+  ['a4','label','receipt','custom'].forEach(m=>document.getElementById('pm'+m.charAt(0).toUpperCase()+m.slice(1)).style.display=(m===e.target.value)?'block':'none');};
+document.getElementById('labelPreset').onchange=e=>{document.getElementById('labelCustom').style.display=e.target.value==='custom'?'grid':'none';};
+
+/* ===== Barcode rendering core ===== */
+function bwipOpts(text){
+  return {bcid:S.bcid,text:String(text),scale:S.scale,height:S.height,
+    includetext:S.showText,textxalign:'center',textsize:Math.max(8,Math.round(S.scale*4)),
+    rotate:S.rotate,barcolor:S.barColor.replace('#',''),backgroundcolor:S.bgColor.replace('#',''),
+    paddingwidth:2,paddingheight:2};
+}
+function makeBarcodeCanvas(text){
+  const cv=document.createElement('canvas');
+  bwipjs.toCanvas(cv,bwipOpts(text));
+  return cv;
+}
+function buildLabel(text){
+  const bcCanvas=makeBarcodeCanvas(text);
+  const bcURL=bcCanvas.toDataURL('image/png');
+  const f=S.fields,t=S.template;
+  const lbl=document.createElement('div');lbl.className='lbl';
+  const pad=document.createElement('div');pad.className='lbl-pad';
+  const logoHTML=f.logo?'<img class="lbl-logo" src="'+f.logo+'">':'';
+  if(t==='plain'){
+    pad.innerHTML='<img class="lbl-bc" src="'+bcURL+'">';
+  }else if(t==='price'){
+    pad.innerHTML=logoHTML+'<div class="lbl-shop">'+esc(f.shop)+'</div><div class="lbl-prod">'+esc(f.product)+'</div>'+
+      '<div class="lbl-price-row">'+(f.mrp?'<span class="lbl-mrp">₹'+esc(f.mrp)+'</span>':'')+'<span class="lbl-price">₹'+esc(f.price)+'</span></div>'+
+      '<div class="lbl-divider"></div><img class="lbl-bc" src="'+bcURL+'">';
+  }else if(t==='product'){
+    pad.innerHTML=logoHTML+'<div class="lbl-prod" style="font-weight:700;font-size:13px">'+esc(f.product)+'</div><img class="lbl-bc" src="'+bcURL+'">';
+  }else if(t==='shipping'){
+    pad.innerHTML='<div style="width:100%;font-size:11px"><b>From:</b> '+esc(f.shop)+'</div><div style="width:100%;font-size:11px;margin-bottom:3px"><b>To:</b> '+esc(f.product)+'</div><img class="lbl-bc" src="'+bcURL+'">';
+  }
+  lbl.appendChild(pad);
+  return lbl;
+}
+function esc(s){return String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+/* ===== current code list ===== */
+function codeList(){
+  if(!S.batch)return [S.data||''];
+  if(S.seq){const out=[];const start=parseInt(S.seqStart)||0;const cnt=Math.min(parseInt(S.seqCount)||0,500);for(let i=0;i<cnt;i++)out.push(String(start+i));return out;}
+  return (S.batchData||'').split('\n').map(x=>x.trim()).filter(Boolean);
+}
+
+/* ===== Live preview ===== */
+function render(){
+  const host=document.getElementById('labelHost'),err=document.getElementById('err');
+  const badge=document.getElementById('batchBadge');
+  host.innerHTML='';err.style.display='none';
+  const list=codeList();
+  badge.textContent=(S.batch&&list.length>1)?(list.length+' labels'):'';
+  if(!list.length||!list[0]){err.style.display='block';err.textContent='Enter some data to encode.';return;}
+  try{
+    if(!window.bwipjs)throw new Error('Engine loading… try again in a second.');
+    host.appendChild(buildLabel(list[0]));
+  }catch(e){
+    err.style.display='block';
+    err.textContent=(SYM_MAP[S.bcid].n)+': '+(e.message||e)+' — check the data format. '+SYM_MAP[S.bcid].hint;
+  }
+}
+
+/* ===== Print sizing ===== */
+function getLayout(){
+  // returns {pageW,pageH (mm), cols, rows, marginX, marginY, gapX, gapY} for a4 grid,
+  // or {single:true, w,h} for single-label/receipt/custom
+  const m=S.printMode;
+  if(m==='a4'){
+    const p=document.getElementById('a4Preset').value.split('|').map(Number);
+    // up|labelW|labelH|marginX|marginY|gapX|gapY  -> derive cols/rows on A4 210x297
+    const labelW=p[1],labelH=p[2],mx=p[3],my=p[4],gx=p[5],gy=p[6];
+    const cols=Math.max(1,Math.floor((210-2*mx+gx)/(labelW+gx)));
+    const rows=Math.max(1,Math.floor((297-2*my+gy)/(labelH+gy)));
+    return {a4:true,pageW:210,pageH:297,labelW,labelH,cols,rows,mx,my,gx,gy};
+  }
+  if(m==='label'){
+    let v=document.getElementById('labelPreset').value;
+    if(v==='custom')return {single:true,w:+document.getElementById('lblW').value,h:+document.getElementById('lblH').value};
+    const a=v.split('|').map(Number);return {single:true,w:a[0],h:a[1]};
+  }
+  if(m==='receipt'){const w=+document.getElementById('receiptW').value;return {single:true,w,h:0,auto:true};}
+  return {single:true,w:+document.getElementById('cusW').value,h:+document.getElementById('cusH').value};
+}
+
+/* render a label to a high-res canvas via html2canvas */
+async function labelToCanvas(text){
+  const node=buildLabel(text);
+  node.style.boxShadow='none';
+  const root=document.getElementById('printRoot');root.innerHTML='';root.appendChild(node);
+  await new Promise(r=>setTimeout(r,30)); // let images decode
+  const cv=await html2canvas(node,{scale:3,backgroundColor:'#ffffff',logging:false});
+  return cv;
+}
+
+/* ===== PDF export ===== */
+async function exportPDF(doPrint){
+  const {jsPDF}=window.jspdf;
+  const lay=getLayout();
+  let codes=[];codeList().forEach(c=>{for(let i=0;i<(parseInt(S.copies)||1);i++)codes.push(c);});
+  if(!codes.length||!codes[0]){alert('Enter data first.');return;}
+  setBusy(true);
+  try{
+    let pdf;
+    if(lay.a4){
+      pdf=new jsPDF({unit:'mm',format:'a4'});
+      const perPage=lay.cols*lay.rows;let idx=0;
+      // build a cache of canvases per unique code
+      const cache={};
+      for(const code of [...new Set(codes)]) cache[code]=await labelToCanvas(code);
+      for(let i=0;i<codes.length;i++){
+        if(i>0&&i%perPage===0)pdf.addPage();
+        const pos=i%perPage,r=Math.floor(pos/lay.cols),c=pos%lay.cols;
+        const x=lay.mx+c*(lay.labelW+lay.gx),y=lay.my+r*(lay.labelH+lay.gy);
+        const cv=cache[codes[i]];
+        const img=cv.toDataURL('image/png');
+        // fit image within label cell preserving aspect
+        const ar=cv.width/cv.height;let w=lay.labelW,h=w/ar;if(h>lay.labelH){h=lay.labelH;w=h*ar;}
+        pdf.addImage(img,'PNG',x+(lay.labelW-w)/2,y+(lay.labelH-h)/2,w,h);
+      }
+    }else{
+      // single-label / receipt / custom — one label per page
+      const first=await labelToCanvas(codes[0]);
+      let w=lay.w,h=lay.auto?(w*first.height/first.width):lay.h;
+      pdf=new jsPDF({unit:'mm',format:[w,h],orientation:w>h?'l':'p'});
+      const cache={};for(const code of [...new Set(codes)])cache[code]=await labelToCanvas(code);
+      for(let i=0;i<codes.length;i++){
+        if(i>0)pdf.addPage([w,h],w>h?'l':'p');
+        const cv=cache[codes[i]];const ar=cv.width/cv.height;
+        let iw=w-2,ih=iw/ar;if(ih>h-2){ih=h-2;iw=ih*ar;}
+        pdf.addImage(cv.toDataURL('image/png'),'PNG',(w-iw)/2,(h-ih)/2,iw,ih);
+      }
+    }
+    if(doPrint){pdf.autoPrint();window.open(pdf.output('bloburl'),'_blank');}
+    else pdf.save('shopbillpro-barcodes.pdf');
+  }catch(e){alert('Export failed: '+(e.message||e));}
+  setBusy(false);
+}
+
+async function exportPNG(){
+  setBusy(true);
+  try{const cv=await labelToCanvas(codeList()[0]);const a=document.createElement('a');a.download='barcode-label.png';a.href=cv.toDataURL('image/png');a.click();}
+  catch(e){alert('Failed: '+(e.message||e));}
+  setBusy(false);
+}
+async function copyPNG(){
+  setBusy(true);
+  try{const cv=await labelToCanvas(codeList()[0]);cv.toBlob(async b=>{try{await navigator.clipboard.write([new ClipboardItem({'image/png':b})]);flash('btnCopy','Copied!');}catch(e){alert('Clipboard blocked — use Download PNG.');}});}
+  catch(e){alert('Failed: '+(e.message||e));}
+  setBusy(false);
+}
+function exportSVG(){
+  try{const svg=bwipjs.toSVG(bwipOpts(codeList()[0]));const blob=new Blob([svg],{type:'image/svg+xml'});const a=document.createElement('a');a.download='barcode.svg';a.href=URL.createObjectURL(blob);a.click();}
+  catch(e){alert('SVG failed: '+(e.message||e));}
+}
+
+function setBusy(on){['btnPrint','btnPDF','btnPNG','btnSVG','btnCopy'].forEach(id=>{const b=document.getElementById(id);b.disabled=on;});
+  document.getElementById('btnPrint').innerHTML=on?'<span class="spin"></span>':'<span class="lang-en">🖨 Print now</span><span class="lang-hi">🖨 अभी प्रिंट करें</span>';}
+function flash(id,msg){const b=document.getElementById(id);const old=b.innerHTML;b.textContent=msg;setTimeout(()=>b.innerHTML=old,1200);}
+
+document.getElementById('btnPrint').onclick=()=>exportPDF(true);
+document.getElementById('btnPDF').onclick=()=>exportPDF(false);
+document.getElementById('btnPNG').onclick=exportPNG;
+document.getElementById('btnSVG').onclick=exportSVG;
+document.getElementById('btnCopy').onclick=copyPNG;
+
+/* ===== FAQ accordion ===== */
+document.querySelectorAll('.faq-q').forEach(q=>q.addEventListener('click',()=>q.parentElement.classList.toggle('open')));
+
+/* ===== boot ===== */
+function boot(){if(window.bwipjs){render();}else{setTimeout(boot,150);}}
+boot();
+</script>
+</body>
+</html>
