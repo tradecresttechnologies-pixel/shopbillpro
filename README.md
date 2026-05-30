@@ -1,48 +1,37 @@
-# ShopBill Pro — Add "Free Tools" to nav on ALL marketing pages
+# FIX: Shop pages (/s/{slug}) showing raw code instead of rendering
 
-## WHY
-The site isn't templated — each marketing page has its own copy of the nav, drawer,
-and footer. The first batch only added "Free Tools" to the homepage, so every other
-page still showed the old menu. This batch adds it everywhere.
+## ROOT CAUSE
+The Supabase edge function `shop-page` returns the correct HTML body, but on
+**GET** requests Supabase's gateway labels the response `content-type: text/plain`
+with `x-content-type-options: nosniff`. `nosniff` forces browsers to obey that
+label, so they display the HTML as source text (and ignore `<meta charset>`,
+causing the `Curry Â·` / `dark→light` mojibake).
 
-## WHAT CHANGED (each file)
-- Top nav: added **Free Tools** (`/tools`) between "For Business" and "Pricing".
-- Mobile drawer: same link (skipped on the 3 legal pages, which have no drawer).
-- Footer "Product" column: added **Barcode Designer** + **All Free Tools** links.
-No other markup, styles, or scripts touched. Active-link highlighting per page preserved.
+Vercel proxied that wrong header straight through. The `/sitemap-shops.xml` route
+already had a `headers` override for this exact issue — `/s/{slug}` never did.
+(HEAD requests returned text/html, which is why earlier header checks looked fine.)
 
-## DEPLOY PATHS — all 20 are REPLACE
+## THE FIX (1 file)
+`vercel.json` — added a `headers` override for `/s/:slug` and `/s/:slug/:rest*`
+forcing `Content-Type: text/html; charset=utf-8`. Mirrors the proven sitemap fix.
+Verified live that a Vercel headers rule DOES override the proxied upstream
+content-type (the sitemap route already does this successfully).
 
-```
-site/faq.html
-site/free-billing-software-india.html
-site/pricing.html
-site/privacy.html
-site/refund.html
-site/terms.html
-site/why-choose-shopbill-pro.html
-site/features/gst-billing.html
-site/features/inventory-stock.html
-site/features/pos-billing.html
-site/features/whatsapp-bills.html
-site/for/education.html
-site/for/healthcare.html
-site/for/hospitality.html
-site/for/online-brand.html
-site/for/restaurants.html
-site/for/retail.html
-site/for/salon-wellness.html
-site/for/services.html
-site/for/wholesale.html
-```
+## DEPLOY PATHS
+| File | Destination | Action |
+|---|---|---|
+| `vercel.json` | `vercel.json` (repo ROOT — the app project) | **REPLACE** |
 
-> `site/index.html` is NOT here — it already has the link from the previous deploy.
+> This is the ROOT vercel.json (app.shopbillpro.in project), NOT site/vercel.json.
 
-## TEST AFTER DEPLOY
-Open any inner page (e.g. `/pricing`, `/faq`, `/for/retail`) → top nav now shows
-**Free Tools** → clicking it opens `/tools`. Check the mobile menu (☰) too.
+## TEST AFTER DEPLOY (~1–2 min)
+PowerShell:
+  (Invoke-WebRequest "https://app.shopbillpro.in/s/glitz-glam").Headers["Content-Type"]
+  → should be: text/html; charset=utf-8
+Then open https://app.shopbillpro.in/s/glitz-glam in any browser/phone → renders
+as the real website, not code. No service worker / cache clearing needed.
 
-## NOTE — long-term
-Because the nav is duplicated across ~21 files, every future nav change means editing
-all of them. When you have time, worth extracting the header/footer into a shared
-include (or a tiny JS injector) so it's edited once. Not urgent — flagging for later.
+## NOTE
+No function redeploy needed — fix is purely at the Vercel proxy layer.
+Any other route that proxies a Supabase function and must render/serve a specific
+type will need the same headers override (pattern now established for 2 routes).
