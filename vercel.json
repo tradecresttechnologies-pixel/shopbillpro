@@ -95,14 +95,16 @@
       "source": "/s/:slug",
       "headers": [
         { "key": "Content-Type", "value": "text/html; charset=utf-8" },
-        { "key": "X-Content-Type-Options", "value": "nosniff" }
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "Content-Security-Policy", "value": "default-src 'self' https: data: blob: 'unsafe-inline' 'unsafe-eval'; img-src 'self' https: data: blob:; style-src 'self' https: 'unsafe-inline'; font-src 'self' https: data:; script-src 'self' https: 'unsafe-inline' 'unsafe-eval'; connect-src 'self' https:; frame-ancestors 'none'" }
       ]
     },
     {
       "source": "/s/:slug/:rest*",
       "headers": [
         { "key": "Content-Type", "value": "text/html; charset=utf-8" },
-        { "key": "X-Content-Type-Options", "value": "nosniff" }
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "Content-Security-Policy", "value": "default-src 'self' https: data: blob: 'unsafe-inline' 'unsafe-eval'; img-src 'self' https: data: blob:; style-src 'self' https: 'unsafe-inline'; font-src 'self' https: data:; script-src 'self' https: 'unsafe-inline' 'unsafe-eval'; connect-src 'self' https:; frame-ancestors 'none'" }
       ]
     }
   ]
