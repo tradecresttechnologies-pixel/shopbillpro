@@ -152,6 +152,29 @@ body{background:var(--bg);color:var(--text)}
 .pm-card.on{background:rgba(245,166,35,.1);border-color:var(--acc)}
 .pm-ic{font-size:20px}.pm-nm{font-size:11px;font-weight:700;color:var(--t2)}
 .pm-card.on .pm-nm{color:var(--acc)}
+/* ── v9 POS Checkout redesign ── */
+.co-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.co-x{width:30px;height:30px;border-radius:9px;background:var(--surf2);border:1px solid var(--bord);color:var(--t2);font-size:18px;cursor:pointer;line-height:1}
+.co-total{background:linear-gradient(135deg,rgba(245,166,35,.14),rgba(245,166,35,.06));border:1px solid rgba(245,166,35,.25);border-radius:var(--rs);padding:13px;text-align:center;margin-bottom:12px}
+.co-total-lbl{font-size:10px;color:var(--t2);font-weight:700;letter-spacing:.5px;text-transform:uppercase}
+.co-total-amt{font-family:var(--font-h);font-size:32px;font-weight:900;color:var(--acc);line-height:1.15;margin:2px 0}
+.co-total-sub{font-size:11px;color:var(--t2)}
+.co-sec{font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.6px;margin:0 2px 6px}
+.co-disc-row{display:flex;gap:6px;margin-bottom:12px}
+.co-disc-seg{display:flex;background:var(--surf2);border:1.5px solid var(--bord);border-radius:var(--rs);overflow:hidden;flex-shrink:0}
+.co-disc-seg>div{padding:0 14px;display:flex;align-items:center;font-size:13px;font-weight:700;color:var(--t2);cursor:pointer;transition:var(--tr)}
+.co-disc-seg>div.on{background:rgba(245,166,35,.12);color:var(--acc)}
+.co-disc-val{flex:1;background:var(--surf2);border:1.5px solid var(--bord);border-radius:var(--rs);padding:10px 12px;color:var(--text);font-size:14px;font-weight:700;outline:none;font-family:var(--font-h)}
+.co-disc-val:focus{border-color:var(--acc)}
+.pay-more{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;max-height:0;overflow:hidden;transition:max-height .25s ease,margin .25s ease;margin-bottom:0}
+.pay-more.open{max-height:90px;margin-bottom:12px}
+.co-prepay-row{display:flex;gap:8px;margin-bottom:12px}
+.co-ghost{padding:11px;border-radius:var(--rs);background:var(--surf2);border:1.5px solid var(--bord);color:var(--text);font-family:var(--font-h);font-size:13px;font-weight:700;cursor:pointer}
+.co-ghost.half{flex:1}
+.co-ghost:active{transform:scale(.97)}
+.co-send-row{display:flex;gap:7px;margin-bottom:12px}
+.co-send-opt{flex:1;padding:9px;border-radius:var(--rs);border:1.5px solid var(--bord);background:var(--surf2);text-align:center;cursor:pointer;font-size:12px;font-weight:700;color:var(--t2);transition:var(--tr);user-select:none}
+.co-send-opt.on{background:rgba(16,185,129,.12);border-color:var(--acc3);color:var(--acc3)}
 
 /* ── Buttons ── */
 .btn-pri{width:100%;padding:14px;border-radius:var(--rs);background:linear-gradient(135deg,var(--acc),#FF8A00);border:none;color:#0A0E1A;font-family:var(--font-h);font-size:15px;font-weight:700;cursor:pointer;transition:.2s cubic-bezier(.4,0,.2,1);box-shadow:0 4px 16px rgba(245,166,35,.4);letter-spacing:.3px;display:flex;align-items:center;justify-content:center;gap:8px}
@@ -825,58 +848,74 @@ html,body{height:100%;overflow:hidden}
 <div class="overlay" id="pos-checkout-modal">
   <div class="sheet">
     <div class="handle"></div>
-    <div class="sheet-title">🧾 POS Checkout</div>
+    <div class="co-head">
+      <div class="sheet-title"><span data-e="1F9FE"></span> POS Checkout</div>
+      <button class="co-x" onclick="closeModal('pos-checkout-modal')">&times;</button>
+    </div>
 
-    <!-- Cart Summary -->
-    <div id="pco-cart-summary" style="background:var(--surf2);border-radius:var(--rs);padding:10px;margin-bottom:12px;max-height:200px;overflow-y:auto"></div>
+    <!-- 1. TOTAL hero -->
+    <div class="co-total">
+      <div class="co-total-lbl">Grand Total</div>
+      <div class="co-total-amt" id="pco-grand-big">₹0</div>
+      <div class="co-total-sub" id="pco-items-count">0 items</div>
+    </div>
 
-    <!-- Customer -->
-    <div class="row2">
-      <div class="ff" style="position:relative"><label>Customer Name</label>
+    <!-- cart summary (collapsible) -->
+    <div id="pco-cart-summary" style="background:var(--surf2);border-radius:var(--rs);padding:8px 10px;margin-bottom:12px;max-height:120px;overflow-y:auto;font-size:12px"></div>
+
+    <!-- 2. Customer -->
+    <div class="co-sec">Customer (optional)</div>
+    <div class="row2" style="margin-bottom:12px">
+      <div class="ff" style="position:relative;margin-bottom:0"><label style="display:none">Customer</label>
         <input type="text" id="pco-cust-name" placeholder="Walk-in / Name" oninput="autofillPCOCustomer(this.value)" onfocus="autofillPCOCustomer(this.value)" autocomplete="off">
         <div class="cust-suggestions" id="pco-cust-suggestions"></div>
       </div>
-      <div class="ff"><label>WhatsApp No.</label>
-        <input type="tel" id="pco-cust-wa" placeholder="Optional" maxlength="10" inputmode="tel">
+      <div class="ff" style="margin-bottom:0"><label style="display:none">WhatsApp</label>
+        <input type="tel" id="pco-cust-wa" placeholder="WhatsApp No." maxlength="10" inputmode="tel">
       </div>
     </div>
 
-    <!-- Discount -->
-    <div class="fsec" style="margin-bottom:12px">
-      <div class="fsec-t" style="margin-bottom:8px">Discount</div>
-      <div class="disc-type-row">
-        <div class="disc-type-btn on" id="pco-flat-btn" onclick="setPCODiscType('flat',this)">₹ Flat</div>
-        <div class="disc-type-btn"    id="pco-pct-btn"  onclick="setPCODiscType('pct',this)">% Percent</div>
+    <!-- 3. Discount inline -->
+    <div class="co-sec">Discount</div>
+    <div class="co-disc-row">
+      <div class="co-disc-seg">
+        <div class="on" id="pco-flat-btn" onclick="setPCODiscType('flat',this)">₹</div>
+        <div id="pco-pct-btn" onclick="setPCODiscType('pct',this)">%</div>
       </div>
-      <input type="number" id="pco-disc-val" placeholder="0" oninput="pcoCalcTotal()" style="width:100%;background:var(--surf);border:1.5px solid var(--bord);border-radius:var(--rs);padding:10px 12px;color:var(--text);font-size:14px;font-weight:700;font-family:var(--font-h);outline:none">
+      <input type="number" id="pco-disc-val" placeholder="0" oninput="pcoCalcTotal()" class="co-disc-val">
     </div>
 
-    <!-- Total -->
-    <div style="background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.2);border-radius:var(--rs);padding:13px;margin-bottom:12px;text-align:center">
-      <div style="font-size:11px;color:var(--t2);font-weight:600;margin-bottom:4px">GRAND TOTAL</div>
-      <div style="font-family:var(--font-h);font-size:32px;font-weight:900;color:var(--acc)" id="pco-grand-big">₹0</div>
-      <div style="font-size:11px;color:var(--t2);margin-top:4px" id="pco-items-count">0 items</div>
+    <!-- 4. Payment: 3 + More -->
+    <div class="co-sec">Payment Method</div>
+    <div class="pay-grid" id="pco-pay-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:10px">
+      <div class="pm-card on" onclick="selPCOPay('Cash',this)"><span class="pm-ic" data-e="1F4B5"></span><span class="pm-nm">Cash</span></div>
+      <div class="pm-card" onclick="selPCOPay('UPI',this)"><span class="pm-ic" data-e="1F4F2"></span><span class="pm-nm">UPI/QR</span></div>
+      <div class="pm-card" onclick="selPCOPay('Card',this)"><span class="pm-ic" data-e="1F4B3"></span><span class="pm-nm">Card</span></div>
+      <div class="pm-card" onclick="togglePCOMore(this)"><span class="pm-ic" data-e="2795"></span><span class="pm-nm">More</span></div>
+    </div>
+    <div class="pay-more" id="pco-pay-more">
+      <div class="pm-card" onclick="selPCOPay('Bank',this)"><span class="pm-ic" data-e="1F3E6"></span><span class="pm-nm">Bank</span></div>
+      <div class="pm-card" onclick="selPCOPay('Cheque',this)"><span class="pm-ic" data-e="1F4D1"></span><span class="pm-nm">Cheque</span></div>
+      <div class="pm-card" onclick="selPCOPay('Credit',this)"><span class="pm-ic" data-e="1F4D2"></span><span class="pm-nm">Credit</span></div>
     </div>
 
-    <!-- Payment -->
-    <div class="pay-grid" id="pco-pay-grid" style="margin-bottom:12px">
-      <div class="pm-card on" onclick="selPCOPay('Cash',this)"><span class="pm-ic">💵</span><span class="pm-nm">Cash</span></div>
-      <div class="pm-card" onclick="selPCOPay('UPI',this)"><span class="pm-ic">📲</span><span class="pm-nm">UPI/QR</span></div>
-      <div class="pm-card" onclick="selPCOPay('Card',this)"><span class="pm-ic">💳</span><span class="pm-nm">Card</span></div>
-      <div class="pm-card" onclick="selPCOPay('Bank',this)"><span class="pm-ic">🏦</span><span class="pm-nm">Bank</span></div>
-      <div class="pm-card" onclick="selPCOPay('Cheque',this)"><span class="pm-ic">📑</span><span class="pm-nm">Cheque</span></div>
-      <div class="pm-card" onclick="selPCOPay('Credit',this)"><span class="pm-ic">📒</span><span class="pm-nm">Credit</span></div>
+    <!-- 5a. Before payment: preview / provisional print -->
+    <div class="co-sec">Before Payment</div>
+    <div class="co-prepay-row">
+      <button class="co-ghost half" onclick="previewPOSBill()"><span data-e="1F441"></span> Preview Bill</button>
+      <button class="co-ghost half" onclick="printProvisionalPOS()"><span data-e="1F5A8"></span> Print Bill</button>
     </div>
 
-    <!-- Send options -->
-    <div style="display:flex;gap:8px;margin-bottom:12px">
-      <div id="pco-sopt-wa" onclick="togglePCOOpt(this,'wa')" style="flex:1;padding:9px;border-radius:var(--rs);border:1.5px solid var(--bord);background:var(--surf2);text-align:center;cursor:pointer;font-size:12px;font-weight:700;color:var(--t2);transition:var(--tr)">📲 WA</div>
-      <div id="pco-sopt-pdf" onclick="togglePCOOpt(this,'pdf')" style="flex:1;padding:9px;border-radius:var(--rs);border:1.5px solid var(--bord);background:var(--surf2);text-align:center;cursor:pointer;font-size:12px;font-weight:700;color:var(--t2);transition:var(--tr)">📄 PDF</div>
-      <div id="pco-sopt-print" onclick="togglePCOOpt(this,'print')" style="flex:1;padding:9px;border-radius:var(--rs);border:1.5px solid var(--bord);background:var(--surf2);text-align:center;cursor:pointer;font-size:12px;font-weight:700;color:var(--t2);transition:var(--tr)">🖨️ Print</div>
+    <!-- 5b. After confirm: auto-share final bill -->
+    <div class="co-sec">After Confirm — auto-share</div>
+    <div class="co-send-row">
+      <div id="pco-sopt-wa" onclick="togglePCOOpt(this,'wa')" class="co-send-opt"><span data-e="1F4F2"></span> WA</div>
+      <div id="pco-sopt-pdf" onclick="togglePCOOpt(this,'pdf')" class="co-send-opt"><span data-e="1F4C4"></span> PDF</div>
+      <div id="pco-sopt-print" onclick="togglePCOOpt(this,'print')" class="co-send-opt"><span data-e="1F5A8"></span> Print</div>
     </div>
 
-    <button onclick="previewPOSBill()" style="width:100%;padding:12px;border-radius:12px;background:var(--surf2);border:1.5px solid var(--bord);color:var(--text);font-family:var(--font-h);font-size:14px;font-weight:700;cursor:pointer;margin-bottom:8px">👁️ Preview Bill</button>
-    <button class="btn-pri" id="pco-confirm-btn" onclick="confirmPOSCheckout()">✅ Confirm — Cash · ₹0</button>
+    <!-- 6. Confirm -->
+    <button class="btn-pri" id="pco-confirm-btn" onclick="confirmPOSCheckout()"><span data-e="2705"></span> Confirm — Cash · ₹0</button>
     <div style="height:8px"></div>
   </div>
 </div>
@@ -2903,14 +2942,14 @@ function posCheckout(){
   if(localStorage.getItem('sbp_auto_pdf')==='1') _pcoSend.pdf=true;
   if(localStorage.getItem('sbp_auto_print')==='1') _pcoSend.print=true;
   document.querySelectorAll('#pco-pay-grid .pm-card').forEach((c,i)=>c.classList.toggle('on',i===0));
+  // reset 'More' payment expander + its selection
+  const moreBox=document.getElementById('pco-pay-more'); if(moreBox){moreBox.classList.remove('open');moreBox.querySelectorAll('.pm-card').forEach(c=>c.classList.remove('on'));}
   ['pco-sopt-wa','pco-sopt-pdf','pco-sopt-print'].forEach(id=>{
     const el=document.getElementById(id);if(!el)return;
     const key=id.replace('pco-sopt-','');
-    const on=_pcoSend[key];
-    el.style.background=on?'rgba(245,166,35,.1)':'var(--surf2)';
-    el.style.borderColor=on?'var(--acc)':'var(--bord)';
-    el.style.color=on?'var(--acc)':'var(--t2)';
+    el.classList.toggle('on', !!_pcoSend[key]);
   });
+  pcoRenderCheckoutEmojis();
   pcoRenderSummary();pcoCalcTotal();
   closeModal('pos-cart-sheet');
   openModal('pos-checkout-modal');
@@ -2946,16 +2985,19 @@ function pcoCalcTotal(){
   document.getElementById('pco-grand-big').textContent='₹'+grand.toLocaleString('en-IN');
   document.getElementById('pco-items-count').textContent=count+' item'+(count!==1?'s':'')+' · GST ₹'+gstTotal.toFixed(0);
   const btn=document.getElementById('pco-confirm-btn');
-  if(btn)btn.textContent='✅ Confirm — '+_pcoPayMethod+' · ₹'+grand.toLocaleString('en-IN');
+  if(btn)btn.textContent=String.fromCodePoint(0x2705)+' Confirm — '+_pcoPayMethod+' · ₹'+grand.toLocaleString('en-IN');
   return{sub,gstTotal,billDisc,grand};
 }
 
 function selPCOPay(method,el){
   _pcoPayMethod=method;
-  document.querySelectorAll('#pco-pay-grid .pm-card').forEach(c=>c.classList.remove('on'));
-  el.classList.add('on');
-  const{grand}=pcoCalcTotal();
-  document.getElementById('pco-confirm-btn').textContent='✅ Confirm — '+method+' · ₹'+grand.toLocaleString('en-IN');
+  document.querySelectorAll('#pco-pay-grid .pm-card, #pco-pay-more .pm-card').forEach(c=>{
+    // keep the 'More' toggle card itself unhighlighted
+    const nm=c.querySelector('.pm-nm'); if(nm && nm.textContent==='More') return;
+    c.classList.remove('on');
+  });
+  if(el) el.classList.add('on');
+  pcoCalcTotal(); // updates confirm label with method + grand (emoji-safe)
 }
 
 function setPCODiscType(type,el){
@@ -2968,9 +3010,47 @@ function setPCODiscType(type,el){
 function togglePCOOpt(el,key){
   _pcoSend[key]=!_pcoSend[key];
   localStorage.setItem('sbp_auto_'+key,_pcoSend[key]?'1':'0');
-  el.style.background=_pcoSend[key]?'rgba(245,166,35,.1)':'var(--surf2)';
-  el.style.borderColor=_pcoSend[key]?'var(--acc)':'var(--bord)';
-  el.style.color=_pcoSend[key]?'var(--acc)':'var(--t2)';
+  el.classList.toggle('on', _pcoSend[key]);
+}
+// v9: expand/collapse the 'More' payment methods
+function togglePCOMore(el){
+  const box=document.getElementById('pco-pay-more');
+  if(box) box.classList.toggle('open');
+}
+// v9: render checkout emojis from data-e (encoding-proof)
+function pcoRenderCheckoutEmojis(){
+  document.querySelectorAll('#pos-checkout-modal [data-e]').forEach(sp=>{
+    try{ sp.textContent=String.fromCodePoint(parseInt(sp.dataset.e,16)); }catch(_){}
+  });
+}
+// v9: print a PROVISIONAL bill before payment (marked NOT PAID, no PAID stamp)
+function printProvisionalPOS(){
+  const keys=Object.keys(cart); if(!keys.length){toast('Cart is empty','e');return;}
+  const {sub,gstTotal,billDisc,grand}=pcoCalcTotal();
+  const custName=document.getElementById('pco-cust-name').value.trim()||'Walk-in Customer';
+  const custWA=document.getElementById('pco-cust-wa').value.trim();
+  const shop=JSON.parse(localStorage.getItem('sbp_shop')||'{}');
+  const items=keys.map(id=>{
+    const item=_posItems.find(p=>String(p.id)===String(id));
+    if(!item)return null;
+    const lineAmt=item.price*(cart[id]||0);
+    const lineGST=lineAmt*(item.gst_rate||0)/100;
+    return{nm:item.name,q:cart[id],r:item.price,rate:item.gst_rate||0,disc:0,lineAmt,lineNet:lineAmt,lineGST,tot:(lineAmt+lineGST).toFixed(2)};
+  }).filter(Boolean);
+  const provB={nm:custName,wa:custWA,invno:(shop.invoice_prefix||'INV')+'-EST',invdate:sbpToday(),duedate:'',paymode:_pcoPayMethod,note:'',sub,gstAmt:gstTotal,discAmt:billDisc,grand,items,isGSTInvoice:false,supplyType:'intra',placeOfSupply:'',custGSTIN:'',gst:'',hsn:'',billDiscount:billDisc};
+  const html=buildBillHTML(provB,'NOT PAID');
+  const win=window.open('','_blank');
+  if(!win){toast('Allow popups for print','e');return;}
+  win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Estimate</title>'+
+    '<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Noto+Sans:wght@400;600;700&display=swap" rel="stylesheet">'+
+    '<style>*{box-sizing:border-box}body{margin:0;padding:0;background:#fff;font-family:\'Noto Sans\',sans-serif}@page{size:A4;margin:10mm}'+
+    '.prov-banner{background:#fff3cd;border:2px dashed #d39e00;color:#7a5b00;text-align:center;font-weight:800;padding:8px;margin:0 0 10px;font-family:\'Outfit\',sans-serif;letter-spacing:1px}</style></head><body>'+
+    '<div class="prov-banner">PROVISIONAL ESTIMATE — NOT PAID — NOT A TAX INVOICE</div>'+
+    html+
+    '<scr'+'ipt>window.addEventListener("load",function(){setTimeout(function(){window.print();},600)});</scr'+'ipt>'+
+    '</body></html>');
+  win.document.close();
+  toast('\ud83d\udda8\ufe0f Provisional bill printing...','s');
 }
 
 async function confirmPOSCheckout(){
