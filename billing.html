@@ -1994,38 +1994,38 @@ function buildWAMsg(b){
   let taxLines='';
   if(hasGST){
     if(isIntra){
-      taxLines=`\n🏛️ CGST: ₹${(gstAmt/2).toFixed(2)}\n🏛️ SGST: ₹${(gstAmt/2).toFixed(2)}`;
+      taxLines=`\n${String.fromCodePoint(0x1F3DB)}${String.fromCodePoint(0xFE0F)} CGST: ₹${(gstAmt/2).toFixed(2)}\n${String.fromCodePoint(0x1F3DB)}${String.fromCodePoint(0xFE0F)} SGST: ₹${(gstAmt/2).toFixed(2)}`;
     }else{
-      taxLines=`\n🏛️ IGST: ₹${gstAmt.toFixed(2)}`;
+      taxLines=`\n${String.fromCodePoint(0x1F3DB)}${String.fromCodePoint(0xFE0F)} IGST: ₹${gstAmt.toFixed(2)}`;
     }
-    taxLines+=`\n🏛️ Total Tax: ₹${gstAmt.toFixed(2)}`;
+    taxLines+=`\n${String.fromCodePoint(0x1F3DB)}${String.fromCodePoint(0xFE0F)} Total Tax: ₹${gstAmt.toFixed(2)}`;
   }
 
   let msg;
   if(isHindi){
-    msg=`🧾 *${hasGST?'TAX INVOICE':'बिल'} — ${s.name||'ShopBill Pro'}*\n━━━━━━━━━━━━━`;
-    if(s.gstin) msg+=`\n🏛️ GSTIN: ${s.gstin}`;
-    msg+=`\n📋 *${b.invno}*\n📅 ${b.invdate}\n👤 *${b.nm}*`;
-    if(b.custGSTIN) msg+=`\n🏛️ ग्राहक GSTIN: ${b.custGSTIN}`;
-    msg+=`\n\n📦 *सामान:*\n${lines}\n━━━━━━━━━━━━━\n💰 उप-कुल: ₹${parseFloat(b.sub).toFixed(2)}`;
+    msg=`${String.fromCodePoint(0x1F9FE)} *${hasGST?'TAX INVOICE':'बिल'} — ${s.name||'ShopBill Pro'}*\n━━━━━━━━━━━━━`;
+    if(s.gstin) msg+=`\n${String.fromCodePoint(0x1F3DB)}${String.fromCodePoint(0xFE0F)} GSTIN: ${s.gstin}`;
+    msg+=`\n${String.fromCodePoint(0x1F4CB)} *${b.invno}*\n${String.fromCodePoint(0x1F4C5)} ${b.invdate}\n${String.fromCodePoint(0x1F464)} *${b.nm}*`;
+    if(b.custGSTIN) msg+=`\n${String.fromCodePoint(0x1F3DB)}${String.fromCodePoint(0xFE0F)} ग्राहक GSTIN: ${b.custGSTIN}`;
+    msg+=`\n\n${String.fromCodePoint(0x1F4E6)} *सामान:*\n${lines}\n━━━━━━━━━━━━━\n${String.fromCodePoint(0x1F4B0)} उप-कुल: ₹${parseFloat(b.sub).toFixed(2)}`;
     msg+=taxLines;
-    if(b.itemDiscAmt>0) msg+=`\n🎁 आइटम छूट: -₹${parseFloat(b.itemDiscAmt).toFixed(2)}`;
-    if(b.discAmt>0) msg+=`\n🎁 बिल छूट: -₹${parseFloat(b.discAmt).toFixed(2)}`;
-    msg+=`\n\n✅ *कुल: ₹${parseFloat(b.grand).toFixed(2)}*\n💳 ${b.paymode||_payMethod||'Cash'}`;
-    if(s.upi) msg+=`\n\n📲 *UPI से भुगतान करें:* ${s.upi}\n_(बिल प्रिंट में QR कोड देखें)_`;
-    msg+=`\n\n🙏 धन्यवाद! फिर आइए।`;
+    if(b.itemDiscAmt>0) msg+=`\n${String.fromCodePoint(0x1F381)} आइटम छूट: -₹${parseFloat(b.itemDiscAmt).toFixed(2)}`;
+    if(b.discAmt>0) msg+=`\n${String.fromCodePoint(0x1F381)} बिल छूट: -₹${parseFloat(b.discAmt).toFixed(2)}`;
+    msg+=`\n\n${String.fromCodePoint(0x2705)} *कुल: ₹${parseFloat(b.grand).toFixed(2)}*\n${String.fromCodePoint(0x1F4B3)} ${b.paymode||_payMethod||'Cash'}`;
+    if(s.upi) msg+=`\n\n${String.fromCodePoint(0x1F4F2)} *UPI से भुगतान करें:* ${s.upi}\n_(बिल प्रिंट में QR कोड देखें)_`;
+    msg+=`\n\n${String.fromCodePoint(0x1F64F)} धन्यवाद! फिर आइए।`;
   }else{
-    msg=`🧾 *${hasGST?'TAX INVOICE':'INVOICE'} — ${s.name||'ShopBill Pro'}*\n━━━━━━━━━━━━━`;
-    if(s.gstin) msg+=`\n🏛️ GSTIN: ${s.gstin}`;
-    msg+=`\n📋 *${b.invno}*\n📅 ${b.invdate}\n👤 *${b.nm}*`;
-    if(b.custGSTIN) msg+=`\n🏛️ Cust GSTIN: ${b.custGSTIN}`;
-    msg+=`\n\n📦 *Items:*\n${lines}\n━━━━━━━━━━━━━\n💰 Subtotal: ₹${parseFloat(b.sub).toFixed(2)}`;
+    msg=`${String.fromCodePoint(0x1F9FE)} *${hasGST?'TAX INVOICE':'INVOICE'} — ${s.name||'ShopBill Pro'}*\n━━━━━━━━━━━━━`;
+    if(s.gstin) msg+=`\n${String.fromCodePoint(0x1F3DB)}${String.fromCodePoint(0xFE0F)} GSTIN: ${s.gstin}`;
+    msg+=`\n${String.fromCodePoint(0x1F4CB)} *${b.invno}*\n${String.fromCodePoint(0x1F4C5)} ${b.invdate}\n${String.fromCodePoint(0x1F464)} *${b.nm}*`;
+    if(b.custGSTIN) msg+=`\n${String.fromCodePoint(0x1F3DB)}${String.fromCodePoint(0xFE0F)} Cust GSTIN: ${b.custGSTIN}`;
+    msg+=`\n\n${String.fromCodePoint(0x1F4E6)} *Items:*\n${lines}\n━━━━━━━━━━━━━\n${String.fromCodePoint(0x1F4B0)} Subtotal: ₹${parseFloat(b.sub).toFixed(2)}`;
     msg+=taxLines;
-    if(b.itemDiscAmt>0) msg+=`\n🎁 Item Disc: -₹${parseFloat(b.itemDiscAmt).toFixed(2)}`;
-    if(b.discAmt>0) msg+=`\n🎁 Bill Disc: -₹${parseFloat(b.discAmt).toFixed(2)}`;
-    msg+=`\n\n✅ *Total: ₹${parseFloat(b.grand).toFixed(2)}*\n💳 ${b.paymode||_payMethod||'Cash'}`;
-    if(s.upi) msg+=`\n\n📲 *Pay via UPI:* ${s.upi}\n_(See QR code on printed bill)_`;
-    msg+=`\n\n🙏 Thank you! Visit Again.`;
+    if(b.itemDiscAmt>0) msg+=`\n${String.fromCodePoint(0x1F381)} Item Disc: -₹${parseFloat(b.itemDiscAmt).toFixed(2)}`;
+    if(b.discAmt>0) msg+=`\n${String.fromCodePoint(0x1F381)} Bill Disc: -₹${parseFloat(b.discAmt).toFixed(2)}`;
+    msg+=`\n\n${String.fromCodePoint(0x2705)} *Total: ₹${parseFloat(b.grand).toFixed(2)}*\n${String.fromCodePoint(0x1F4B3)} ${b.paymode||_payMethod||'Cash'}`;
+    if(s.upi) msg+=`\n\n${String.fromCodePoint(0x1F4F2)} *Pay via UPI:* ${s.upi}\n_(See QR code on printed bill)_`;
+    msg+=`\n\n${String.fromCodePoint(0x1F64F)} Thank you! Visit Again.`;
   }
   if(!isPaid) msg+=`\n_ShopBill Pro_`;
   return msg;
