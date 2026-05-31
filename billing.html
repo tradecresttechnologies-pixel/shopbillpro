@@ -2013,21 +2013,27 @@ async function confirmSettle(){
 // ── WhatsApp ──
 // ── v9: build bill link (via RPC) + UPI intent link, attach to bill obj ──
 async function attachBillLinks(b, savedBillId){
+  b._billUrl=''; b._payUrl='';
   try{
     const s=_shop||JSON.parse(localStorage.getItem('sbp_shop')||'{}');
-    // UPI pay link (works for everyone if shop UPI is set)
+    // (A) Hosted bill page = ONE clickable https link that shows the bill,
+    //     a Download-PDF button, AND a Pay-via-UPI button. Works on desktop + phone.
+    if(savedBillId && window._sb && !String(savedBillId).startsWith('local_')){
+      try{
+        const {data}=await _sb.rpc('sbp_get_bill_pay_token',{p_bill_id:savedBillId});
+        if(data&&data.ok&&data.token){
+          b._billUrl='https://app.shopbillpro.in/bill?b='+encodeURIComponent(savedBillId)+'&t='+encodeURIComponent(data.token);
+        }else{ console.warn('bill link: token RPC said', data&&data.error); }
+      }catch(rpcErr){ console.warn('bill link RPC error:', rpcErr); }
+    }else{
+      console.warn('bill link skipped: id=', savedBillId, '(offline/local or no _sb)');
+    }
+    // (B) Direct UPI intent — fallback text (phones can tap it). Only if shop UPI set.
     if(s.upi){
       const am=parseFloat(b.grand||0).toFixed(2);
       const tn=encodeURIComponent('Bill '+(b.invno||''));
       const pn=encodeURIComponent(s.name||'Shop');
-      b._payUrl=`upi://pay?pa=${encodeURIComponent(s.upi)}&pn=${pn}&am=${am}&tn=${tn}&cu=INR`;
-    }
-    // Bill view/PDF link — needs a saved cloud bill id + token (Pro/Business RPC)
-    if(savedBillId && window._sb && !String(savedBillId).startsWith('local_')){
-      const {data}=await _sb.rpc('sbp_get_bill_pay_token',{p_bill_id:savedBillId});
-      if(data&&data.ok&&data.token){
-        b._billUrl=`https://app.shopbillpro.in/bill?b=${encodeURIComponent(savedBillId)}&t=${encodeURIComponent(data.token)}`;
-      }
+      b._payUrl='upi://pay?pa='+encodeURIComponent(s.upi)+'&pn='+pn+'&am='+am+'&tn='+tn+'&cu=INR';
     }
   }catch(e){ console.warn('attachBillLinks:',e); }
   return b;
@@ -2085,10 +2091,13 @@ function buildWAMsg(b){
   msg += `\n\n*${labels.total}: ${RS}${parseFloat(b.grand).toFixed(2)}*`;
   msg += `\n${labels.pay}: ${b.paymode||_payMethod||'Cash'}`;
 
-  // ── v9: bill link (always) + UPI pay link (always when shop UPI set) ──
-  if(b._billUrl)  msg += `\n\n${CK} ${labels.view}:\n${b._billUrl}`;
-  if(b._payUrl)   msg += `\n\n${CK} ${labels.upi}:\n${b._payUrl}`;
-  else if(s.upi)  msg += `\n\n${labels.upi}: ${s.upi}`;
+  // ── v9: ONE clickable link (view bill + download PDF + pay) ──
+  if(b._billUrl){
+    const viewPay = isHindi ? 'बिल देखें / PDF / भुगतान' : 'View bill / PDF / Pay';
+    msg += `\n\n${CK} ${viewPay}:\n${b._billUrl}`;
+  }
+  // UPI shown as quick fallback (tap on phone, or scan)
+  if(s.upi) msg += `\n\n${labels.upi}: ${s.upi}`;
 
   msg += `\n\n${labels.thanks}`;
   if(!isPaid) msg += `\n_ShopBill Pro_`;
@@ -3046,11 +3055,16 @@ function printViaIframe(innerHTML, title, pageCss){
   f.style.cssText='position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
   document.body.appendChild(f);
   const doc=f.contentWindow.document; doc.open();
-  doc.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+(title||'Bill')+'</title>'+
-    '<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Noto+Sans:wght@400;600;700&display=swap" rel="stylesheet">'+
-    '<style>*{box-sizing:border-box}body{margin:0;padding:0;background:#fff;font-family:\'Noto Sans\',sans-serif}'+(pageCss||'@page{size:A4;margin:10mm}')+
-    '.prov-banner{background:#fff3cd;border:2px dashed #d39e00;color:#7a5b00;text-align:center;font-weight:800;padding:8px;margin:0 0 10px;font-family:\'Outfit\',sans-serif;letter-spacing:1px}</style></head><body>'+
-    innerHTML+'</body></html>');
+  if(pageCss==='__FULLDOC__'){
+    // innerHTML is already a complete, self-styled HTML document (e.g. thermal receipt)
+    doc.write(innerHTML.replace(/<script[\s\S]*?<\/script>/gi,''));
+  }else{
+    doc.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+(title||'Bill')+'</title>'+
+      '<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Noto+Sans:wght@400;600;700&display=swap" rel="stylesheet">'+
+      '<style>*{box-sizing:border-box}body{margin:0;padding:0;background:#fff;font-family:\'Noto Sans\',sans-serif}'+(pageCss||'@page{size:A4;margin:10mm}')+
+      '.prov-banner{background:#fff3cd;border:2px dashed #d39e00;color:#7a5b00;text-align:center;font-weight:800;padding:8px;margin:0 0 10px;font-family:\'Outfit\',sans-serif;letter-spacing:1px}</style></head><body>'+
+      innerHTML+'</body></html>');
+  }
   doc.close();
   setTimeout(function(){ try{ f.contentWindow.focus(); f.contentWindow.print(); }catch(e){ console.warn(e);} }, 350);
   f.contentWindow.onafterprint=function(){ setTimeout(function(){f.remove();}, 200); };
@@ -4069,11 +4083,8 @@ function printThermal(size){
 
 </body></html>`;
 
-  // thermal: extract body inner content + use iframe with thermal page size
-  const inner = html.replace(/^[\s\S]*?<body[^>]*>/i,'').replace(/<\/body>[\s\S]*$/i,'')
-                    .replace(/<script[\s\S]*?<\/script>/gi,'');
-  const pageCss = `@page{size:${size===80?'80mm':'58mm'} auto;margin:0}body{width:${size===80?'80mm':'58mm'}}`;
-  printViaIframe(inner, size+'mm', pageCss);
+  // thermal: pass the complete self-styled doc so its 58/80mm <style> is preserved
+  printViaIframe(html, size+'mm', '__FULLDOC__');
   toast(String.fromCodePoint(0x2713)+' '+(size)+'mm print opening...','s');
 }
 
