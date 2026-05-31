@@ -963,7 +963,7 @@ html,body{height:100%;overflow:hidden}
 const SB_URL='https://jfqeirfrkjdkqqixivru.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmcWVpcmZya2pka3FxaXhpdnJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzNzQ4MzgsImV4cCI6MjA4OTk1MDgzOH0.akd4E0nil8ypLR4WOykkeYIL8g4uuNU6XdSVh_Y1utk';
 let _sb=null;
-try{_sb=supabase.createClient(SB_URL,SB_KEY);}catch(e){console.warn('Supabase unavailable, local-only mode:',e);}
+try{_sb=supabase.createClient(SB_URL,SB_KEY); window._sb=_sb;}catch(e){console.warn('Supabase unavailable, local-only mode:',e);}
 
 // ── Plan Helper ──
 
