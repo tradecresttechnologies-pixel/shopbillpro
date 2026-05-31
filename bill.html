@@ -1,12 +1,5 @@
 <!DOCTYPE html>
-<!-- ═══════════════════════════════════════════════════════════════════════
-  bill.html  —  ShopBill Pro v9, Payments Phase 1 (REBUILT)
-  Public, no-auth bill copy opened from a WhatsApp link:
-     https://app.shopbillpro.in/bill?b=<bill_id>&t=<token>
-  Proper tax-invoice layout (qty/rate/GST/total + subtotal + GST + grand total),
-  Pay via UPI (upi:// intent), Download PDF (A4-fit, no cut-off), watermark for FREE.
-  Reads via token-gated RPC sbp_get_bill_public (migration 106).
-═══════════════════════════════════════════════════════════════════════ -->
+<!-- bill.html — ShopBill Pro v9 public bill page. Renders IDENTICAL invoice via lib/bill-template.js -->
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
@@ -14,76 +7,21 @@
 <meta name="robots" content="noindex" />
 <title>Bill — ShopBill Pro</title>
 <style>
-  :root{ --brand:#FF6600; --ink:#111827; --muted:#6b7280; --line:#e5e7eb; --bg:#f4f5f7; }
   *{ box-sizing:border-box; margin:0; padding:0; }
-  body{ font-family:'Poppins',system-ui,'Segoe UI',Roboto,sans-serif; background:var(--bg); color:var(--ink); padding:16px; }
-  .wrap{ max-width:480px; margin:0 auto; }
-  /* The printable invoice surface */
-  .card{ background:#fff; border-radius:16px; box-shadow:0 6px 24px rgba(0,0,0,.08); overflow:hidden; }
-  .head{ background:var(--brand); color:#fff; padding:18px 20px; }
-  .head h1{ font-size:19px; font-weight:700; letter-spacing:.2px; }
-  .head .meta{ opacity:.95; font-size:12.5px; margin-top:4px; line-height:1.5; }
-  .body{ padding:18px 20px; }
-
-  table.items{ width:100%; border-collapse:collapse; font-size:13px; }
-  table.items th{ text-align:left; color:var(--muted); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.4px; padding:0 0 8px; border-bottom:1px solid var(--line); }
-  table.items th.r, table.items td.r{ text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums; }
-  table.items td{ padding:9px 0; border-bottom:1px dashed var(--line); vertical-align:top; }
-  table.items td .sub{ color:var(--muted); font-size:11px; margin-top:2px; }
-  .nm{ font-weight:600; }
-
-  .tot-block{ margin-top:14px; }
-  .tot-row{ display:flex; justify-content:space-between; font-size:13px; padding:4px 0; color:var(--muted); }
-  .tot-row .v{ color:var(--ink); font-variant-numeric:tabular-nums; }
-  .grand{ display:flex; justify-content:space-between; align-items:center; margin-top:8px; padding-top:12px; border-top:2px solid var(--ink); font-size:20px; font-weight:800; }
-  .grand .v{ color:var(--brand); }
-
-  .badge{ display:inline-block; margin-top:12px; padding:5px 12px; border-radius:999px; font-size:12px; font-weight:600; }
-  .badge.paid{ background:#dcfce7; color:#166534; } .badge.due{ background:#fef3c7; color:#92400e; }
-  .pmode{ font-size:12px; color:var(--muted); margin-top:6px; }
-
-  .wm{ text-align:center; color:var(--muted); font-size:11px; padding:12px 0 2px; border-top:1px dashed var(--line); margin-top:14px; }
-  .wm b{ color:var(--brand); }
-
-  /* actions live OUTSIDE the printable card so they never appear in the PDF */
-  .actions{ display:grid; gap:10px; margin-top:16px; }
+  body{ background:#f4f5f7; padding:14px; font-family:'Poppins',system-ui,'Segoe UI',Roboto,sans-serif; }
+  .wrap{ max-width:600px; margin:0 auto; }
+  #billHost{ background:#fff; border-radius:14px; overflow:hidden; box-shadow:0 6px 24px rgba(0,0,0,.08); }
+  .actions{ display:grid; gap:10px; margin-top:14px; }
   .btn{ display:flex; align-items:center; justify-content:center; gap:8px; padding:14px; border-radius:12px; border:0; font-size:15px; font-weight:700; cursor:pointer; text-decoration:none; }
-  .btn-pay{ background:var(--brand); color:#fff; } .btn-pdf{ background:#111827; color:#fff; }
-  .state{ text-align:center; padding:48px 16px; color:var(--muted); }
+  .btn-pay{ background:#FF6600; color:#fff; } .btn-pdf{ background:#111827; color:#fff; }
+  .state{ text-align:center; padding:48px 16px; color:#6b7280; }
   .err{ color:#b91c1c; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <div id="state" class="state">Loading bill…</div>
-
-  <!-- printable invoice -->
-  <div id="card" class="card" style="display:none;">
-    <div class="head">
-      <h1 id="shopName">—</h1>
-      <div class="meta" id="metaLine"></div>
-    </div>
-    <div class="body">
-      <table class="items">
-        <thead>
-          <tr><th>Item</th><th class="r">Qty×Rate</th><th class="r">Amount</th></tr>
-        </thead>
-        <tbody id="itemsBody"></tbody>
-      </table>
-
-      <div class="tot-block">
-        <div class="tot-row" id="subRow"><span>Subtotal</span><span class="v" id="subVal">₹0</span></div>
-        <div class="tot-row" id="gstRow"><span>GST</span><span class="v" id="gstVal">₹0</span></div>
-        <div class="grand"><span>Total</span><span class="v" id="grandVal">₹0</span></div>
-      </div>
-
-      <div id="status"></div>
-      <div class="pmode" id="pmode"></div>
-      <div class="wm" id="wm" style="display:none;">Billed with <b>ShopBill Pro</b> · shopbillpro.in</div>
-    </div>
-  </div>
-
-  <!-- actions (kept outside the card so they're excluded from the PDF) -->
+  <div id="billHost" style="display:none;"></div>
   <div id="actions" class="actions" style="display:none;">
     <a id="payBtn" class="btn btn-pay" style="display:none;">Pay via UPI</a>
     <button id="pdfBtn" class="btn btn-pdf">Download PDF</button>
@@ -92,28 +30,20 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="/lib/bill-template.js"></script>
 <script>
   const SUPABASE_URL = "https://jfqeirfrkjdkqqixivru.supabase.co";
   const ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmcWVpcmZya2pka3FxaXhpdnJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzNzQ4MzgsImV4cCI6MjA4OTk1MDgzOH0.akd4E0nil8ypLR4WOykkeYIL8g4uuNU6XdSVh_Y1utk";
-  const fmt = (n) => "₹" + Number(n||0).toLocaleString("en-IN", {minimumFractionDigits:2, maximumFractionDigits:2});
 
   const qs = new URLSearchParams(location.search);
   const billId = qs.get("b"), token = qs.get("t");
-
-  // bill_items accessors (Supabase snake_case, with local fallbacks)
-  const itName = (it)=> it.item_name ?? it.nm ?? "Item";
-  const itQty  = (it)=> Number(it.qty ?? it.q ?? 1);
-  const itRate = (it)=> Number(it.rate ?? it.r ?? 0);
-  const itGstR = (it)=> Number(it.gst_rate ?? it.rate_gst ?? 0);
-  const itGstA = (it)=> Number(it.gst_amount ?? it.lineGST ?? 0);
-  const itTot  = (it)=> Number(it.line_total ?? it.tot ?? (itRate(it)*itQty(it)));
-  const itHsn  = (it)=> it.hsn_code ?? it.hsn ?? "";
+  let _grand = 0, _shopUpi = "", _shopName = "", _invNo = "", _paid = false;
 
   async function load(){
     const st = document.getElementById("state");
     if(!billId || !token){ st.innerHTML = '<span class="err">Invalid link.</span>'; return; }
     try{
-      const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/sbp_get_bill_public`, {
+      const r = await fetch(SUPABASE_URL + "/rest/v1/rpc/sbp_get_bill_public", {
         method:"POST",
         headers:{ "apikey":ANON_KEY, "Authorization":"Bearer "+ANON_KEY, "Content-Type":"application/json" },
         body: JSON.stringify({ p_bill_id: billId, p_token: token })
@@ -125,96 +55,52 @@
   }
 
   function render(d){
-    document.getElementById("state").style.display = "none";
-    document.getElementById("card").style.display = "block";
-    document.getElementById("actions").style.display = "grid";
+    _grand = Number(d.bill && d.bill.grand_total || 0);
+    _shopUpi = (d.shop && d.shop.upi) || "";
+    _shopName = (d.shop && d.shop.name) || "Shop";
+    _invNo = (d.bill && d.bill.invoice_no) || "";
+    _paid = !!(d.bill && d.bill.paid);
 
-    document.getElementById("shopName").textContent = d.shop?.name ?? "Shop";
-
-    const inv = d.bill?.invoice_no ? "Invoice #"+d.bill.invoice_no : "";
-    const dt  = d.bill?.invoice_date ? new Date(d.bill.invoice_date).toLocaleDateString("en-IN") : "";
-    const cust= d.bill?.customer_name ? "Customer: "+d.bill.customer_name : "";
-    document.getElementById("metaLine").innerHTML =
-      [ [inv, dt].filter(Boolean).join(" &middot; "), cust ].filter(Boolean).join("<br>");
-
-    const body = document.getElementById("itemsBody");
-    let sub = 0, gst = 0;
-    (d.items||[]).forEach(it=>{
-      const q=itQty(it), rate=itRate(it), gstR=itGstR(it), gstA=itGstA(it), tot=itTot(it);
-      const lineNet = tot - gstA;           // amount before GST for this line
-      sub += lineNet; gst += gstA;
-      const hsn = itHsn(it);
-      const subBits = [];
-      if(gstR>0) subBits.push(`GST ${gstR}%`);
-      if(hsn)    subBits.push(`HSN ${hsn}`);
-      const tr = document.createElement("tr");
-      tr.innerHTML =
-        `<td><div class="nm">${itName(it)}</div>${subBits.length?`<div class="sub">${subBits.join(" · ")}</div>`:""}</td>
-         <td class="r">${q} × ${fmt(rate)}</td>
-         <td class="r">${fmt(tot)}</td>`;
-      body.appendChild(tr);
+    const html = window.renderShopBill({
+      shop: d.shop || {},
+      bill: d.bill || {},
+      items: d.items || [],
+      opts: { showQR: true, watermark: !!d.watermark }
     });
 
-    // Subtotal/GST: prefer computed from items; fall back to grand if no item GST
-    const grand = Number(d.bill?.grand_total||0);
-    if(gst>0){
-      document.getElementById("subVal").textContent = fmt(sub);
-      document.getElementById("gstVal").textContent = fmt(gst);
-    }else{
-      // no per-item GST data — hide the split, show only total
-      document.getElementById("subRow").style.display = "none";
-      document.getElementById("gstRow").style.display = "none";
-    }
-    document.getElementById("grandVal").textContent = fmt(grand);
+    const inner = html.replace(/^[\s\S]*?<body[^>]*>/i,'').replace(/<\/body>[\s\S]*$/i,'');
+    const styleM = html.match(/<style>([\s\S]*?)<\/style>/i);
+    const host = document.getElementById("billHost");
+    host.innerHTML = (styleM ? "<style>"+styleM[1]+"</style>" : "") + inner;
 
-    document.getElementById("status").innerHTML = d.bill?.paid
-      ? '<span class="badge paid">&#10003; Paid</span>'
-      : '<span class="badge due">Payment due</span>';
+    document.getElementById("state").style.display = "none";
+    host.style.display = "block";
+    document.getElementById("actions").style.display = "grid";
 
-    // UPI pay button (outside card, not in PDF)
-    const vpa = d.shop?.upi;
     const payBtn = document.getElementById("payBtn");
-    if(vpa && !d.bill?.paid){
-      const amt = grand.toFixed(2);
-      const tn = encodeURIComponent("Bill "+(d.bill?.invoice_no||""));
-      const pn = encodeURIComponent(d.shop?.name||"Shop");
-      payBtn.href = `upi://pay?pa=${encodeURIComponent(vpa)}&pn=${pn}&am=${amt}&tn=${tn}&cu=INR`;
+    if(_shopUpi && !_paid){
+      const amt = _grand.toFixed(2);
+      const tn = encodeURIComponent("Bill "+_invNo);
+      const pn = encodeURIComponent(_shopName);
+      payBtn.href = "upi://pay?pa="+encodeURIComponent(_shopUpi)+"&pn="+pn+"&am="+amt+"&tn="+tn+"&cu=INR";
       payBtn.style.display = "flex";
     }
-
-    if(d.watermark){ document.getElementById("wm").style.display="block"; }
   }
 
-  // ── PDF: A4-fit, no cut-off ──
-  document.getElementById("pdfBtn").addEventListener("click", async ()=>{
-    const el = document.getElementById("card");
+  document.getElementById("pdfBtn").addEventListener("click", async function(){
+    const el = document.getElementById("billHost");
     const canvas = await html2canvas(el, { scale:2, backgroundColor:"#ffffff", useCORS:true });
     const img = canvas.toDataURL("image/png");
-    const { jsPDF } = window.jspdf;
-
-    // A4 portrait in mm
+    const jsPDF = window.jspdf.jsPDF;
     const pdf = new jsPDF({ unit:"mm", format:"a4" });
-    const pageW = pdf.internal.pageSize.getWidth();   // 210mm
-    const pageH = pdf.internal.pageSize.getHeight();  // 297mm
-    const margin = 10;
-    const maxW = pageW - margin*2;                    // usable width
-    const maxH = pageH - margin*2;                    // usable height
-
-    // Fit by WIDTH first (keeps aspect ratio, never cuts the right edge).
-    let imgW = maxW;
-    let imgH = (canvas.height / canvas.width) * imgW;
-
-    // If the result is taller than one page, scale DOWN to fit height instead.
-    if(imgH > maxH){
-      imgH = maxH;
-      imgW = (canvas.width / canvas.height) * imgH;
-    }
-    // centre horizontally
-    const x = (pageW - imgW) / 2;
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+    const margin = 10, maxW = pageW - margin*2, maxH = pageH - margin*2;
+    let imgW = maxW, imgH = (canvas.height / canvas.width) * imgW;
+    if(imgH > maxH){ imgH = maxH; imgW = (canvas.width / canvas.height) * imgH; }
+    const x = (pageW - imgW)/2;
     pdf.addImage(img, "PNG", x, margin, imgW, imgH);
-
-    const fname = "bill" + (qs.get("b") ? ("-"+qs.get("b").slice(0,8)) : "") + ".pdf";
-    pdf.save(fname);
+    pdf.save("bill" + (billId ? ("-"+billId.slice(0,8)) : "") + ".pdf");
   });
 
   load();

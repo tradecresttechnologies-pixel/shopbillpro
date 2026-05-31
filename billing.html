@@ -1477,7 +1477,7 @@ function buildBillHTML(b, status='DRAFT'){
     <div class="invoice-badge">
       <div class="inv-label">${displayGST ? 'Tax Invoice' : 'Invoice'}</div>
       <div class="inv-number">${invoiceNo}</div>
-      <div class="inv-date">📅 ${invoiceDate}</div>
+      <div class="inv-date">🕒 ${invoiceDate}${(b.invtime||b._time)?(', '+(b.invtime||b._time)):(', '+new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Kolkata'}))}</div>
       <div><span class="status-badge">${paymentStatus}</span></div>
     </div>
   </div>
@@ -2020,11 +2020,12 @@ async function attachBillLinks(b, savedBillId){
     //     a Download-PDF button, AND a Pay-via-UPI button. Works on desktop + phone.
     if(savedBillId && window._sb && !String(savedBillId).startsWith('local_')){
       try{
-        const {data}=await _sb.rpc('sbp_get_bill_pay_token',{p_bill_id:savedBillId});
+        const {data,error}=await _sb.rpc('sbp_get_bill_pay_token',{p_bill_id:savedBillId});
+        if(error){ console.warn('bill link: RPC ERROR =>', JSON.stringify(error)); }
         if(data&&data.ok&&data.token){
           b._billUrl='https://app.shopbillpro.in/bill?b='+encodeURIComponent(savedBillId)+'&t='+encodeURIComponent(data.token);
-        }else{ console.warn('bill link: token RPC said', data&&data.error); }
-      }catch(rpcErr){ console.warn('bill link RPC error:', rpcErr); }
+        }else{ console.warn('bill link: RPC returned =>', JSON.stringify(data), '| error =>', JSON.stringify(error)); }
+      }catch(rpcErr){ console.warn('bill link RPC threw:', rpcErr); }
     }else{
       console.warn('bill link skipped: id=', savedBillId, '(offline/local or no _sb)');
     }
