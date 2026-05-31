@@ -2011,6 +2011,28 @@ async function confirmSettle(){
 }
 
 // ── WhatsApp ──
+// ── v9: build bill link (via RPC) + UPI intent link, attach to bill obj ──
+async function attachBillLinks(b, savedBillId){
+  try{
+    const s=_shop||JSON.parse(localStorage.getItem('sbp_shop')||'{}');
+    // UPI pay link (works for everyone if shop UPI is set)
+    if(s.upi){
+      const am=parseFloat(b.grand||0).toFixed(2);
+      const tn=encodeURIComponent('Bill '+(b.invno||''));
+      const pn=encodeURIComponent(s.name||'Shop');
+      b._payUrl=`upi://pay?pa=${encodeURIComponent(s.upi)}&pn=${pn}&am=${am}&tn=${tn}&cu=INR`;
+    }
+    // Bill view/PDF link — needs a saved cloud bill id + token (Pro/Business RPC)
+    if(savedBillId && window._sb && !String(savedBillId).startsWith('local_')){
+      const {data}=await _sb.rpc('sbp_get_bill_pay_token',{p_bill_id:savedBillId});
+      if(data&&data.ok&&data.token){
+        b._billUrl=`https://app.shopbillpro.in/bill?b=${encodeURIComponent(savedBillId)}&t=${encodeURIComponent(data.token)}`;
+      }
+    }
+  }catch(e){ console.warn('attachBillLinks:',e); }
+  return b;
+}
+
 function buildWAMsg(b){
   const s=_shop||JSON.parse(localStorage.getItem('sbp_shop')||'{}');
   const isPaid=(s.plan||'free')!=='free';
@@ -2033,40 +2055,43 @@ function buildWAMsg(b){
   let taxLines='';
   if(hasGST){
     if(isIntra){
-      taxLines=`\n${String.fromCodePoint(0x1F3DB)}${String.fromCodePoint(0xFE0F)} CGST: ₹${(gstAmt/2).toFixed(2)}\n${String.fromCodePoint(0x1F3DB)}${String.fromCodePoint(0xFE0F)} SGST: ₹${(gstAmt/2).toFixed(2)}`;
+      taxLines=`\nCGST: \u20b9${(gstAmt/2).toFixed(2)}\nSGST: \u20b9${(gstAmt/2).toFixed(2)}`;
     }else{
-      taxLines=`\n${String.fromCodePoint(0x1F3DB)}${String.fromCodePoint(0xFE0F)} IGST: ₹${gstAmt.toFixed(2)}`;
+      taxLines=`\nIGST: \u20b9${gstAmt.toFixed(2)}`;
     }
-    taxLines+=`\n${String.fromCodePoint(0x1F3DB)}${String.fromCodePoint(0xFE0F)} Total Tax: ₹${gstAmt.toFixed(2)}`;
+    taxLines+=`\nTotal Tax: \u20b9${gstAmt.toFixed(2)}`;
   }
-
   let msg;
-  if(isHindi){
-    msg=`${String.fromCodePoint(0x1F9FE)} *${hasGST?'TAX INVOICE':'बिल'} — ${s.name||'ShopBill Pro'}*\n━━━━━━━━━━━━━`;
-    if(s.gstin) msg+=`\n${String.fromCodePoint(0x1F3DB)}${String.fromCodePoint(0xFE0F)} GSTIN: ${s.gstin}`;
-    msg+=`\n${String.fromCodePoint(0x1F4CB)} *${b.invno}*\n${String.fromCodePoint(0x1F4C5)} ${b.invdate}\n${String.fromCodePoint(0x1F464)} *${b.nm}*`;
-    if(b.custGSTIN) msg+=`\n${String.fromCodePoint(0x1F3DB)}${String.fromCodePoint(0xFE0F)} ग्राहक GSTIN: ${b.custGSTIN}`;
-    msg+=`\n\n${String.fromCodePoint(0x1F4E6)} *सामान:*\n${lines}\n━━━━━━━━━━━━━\n${String.fromCodePoint(0x1F4B0)} उप-कुल: ₹${parseFloat(b.sub).toFixed(2)}`;
-    msg+=taxLines;
-    if(b.itemDiscAmt>0) msg+=`\n${String.fromCodePoint(0x1F381)} आइटम छूट: -₹${parseFloat(b.itemDiscAmt).toFixed(2)}`;
-    if(b.discAmt>0) msg+=`\n${String.fromCodePoint(0x1F381)} बिल छूट: -₹${parseFloat(b.discAmt).toFixed(2)}`;
-    msg+=`\n\n${String.fromCodePoint(0x2705)} *कुल: ₹${parseFloat(b.grand).toFixed(2)}*\n${String.fromCodePoint(0x1F4B3)} ${b.paymode||_payMethod||'Cash'}`;
-    if(s.upi) msg+=`\n\n${String.fromCodePoint(0x1F4F2)} *UPI से भुगतान करें:* ${s.upi}\n_(बिल प्रिंट में QR कोड देखें)_`;
-    msg+=`\n\n${String.fromCodePoint(0x1F64F)} धन्यवाद! फिर आइए।`;
-  }else{
-    msg=`${String.fromCodePoint(0x1F9FE)} *${hasGST?'TAX INVOICE':'INVOICE'} — ${s.name||'ShopBill Pro'}*\n━━━━━━━━━━━━━`;
-    if(s.gstin) msg+=`\n${String.fromCodePoint(0x1F3DB)}${String.fromCodePoint(0xFE0F)} GSTIN: ${s.gstin}`;
-    msg+=`\n${String.fromCodePoint(0x1F4CB)} *${b.invno}*\n${String.fromCodePoint(0x1F4C5)} ${b.invdate}\n${String.fromCodePoint(0x1F464)} *${b.nm}*`;
-    if(b.custGSTIN) msg+=`\n${String.fromCodePoint(0x1F3DB)}${String.fromCodePoint(0xFE0F)} Cust GSTIN: ${b.custGSTIN}`;
-    msg+=`\n\n${String.fromCodePoint(0x1F4E6)} *Items:*\n${lines}\n━━━━━━━━━━━━━\n${String.fromCodePoint(0x1F4B0)} Subtotal: ₹${parseFloat(b.sub).toFixed(2)}`;
-    msg+=taxLines;
-    if(b.itemDiscAmt>0) msg+=`\n${String.fromCodePoint(0x1F381)} Item Disc: -₹${parseFloat(b.itemDiscAmt).toFixed(2)}`;
-    if(b.discAmt>0) msg+=`\n${String.fromCodePoint(0x1F381)} Bill Disc: -₹${parseFloat(b.discAmt).toFixed(2)}`;
-    msg+=`\n\n${String.fromCodePoint(0x2705)} *Total: ₹${parseFloat(b.grand).toFixed(2)}*\n${String.fromCodePoint(0x1F4B3)} ${b.paymode||_payMethod||'Cash'}`;
-    if(s.upi) msg+=`\n\n${String.fromCodePoint(0x1F4F2)} *Pay via UPI:* ${s.upi}\n_(See QR code on printed bill)_`;
-    msg+=`\n\n${String.fromCodePoint(0x1F64F)} Thank you! Visit Again.`;
-  }
-  if(!isPaid) msg+=`\n_ShopBill Pro_`;
+  const CK=String.fromCodePoint(0x2713); // ✓ renders everywhere
+  const RS='\u20b9';
+  const labels = isHindi
+    ? {inv:'बिल',date:'दिनांक',cust:'ग्राहक',items:'सामान',sub:'उप-कुल',disc:'छूट',total:'कुल',pay:'भुगतान',view:'बिल देखें / PDF',upi:'UPI से भुगतान करें',thanks:'धन्यवाद! फिर आइए।'}
+    : {inv:'Invoice',date:'Date',cust:'Customer',items:'Items',sub:'Subtotal',disc:'Discount',total:'Total',pay:'Payment',view:'View bill / PDF',upi:'Pay via UPI',thanks:'Thank you! Visit again.'};
+  const title = hasGST ? 'TAX INVOICE' : (isHindi?'बिल':'INVOICE');
+
+  msg  = `*${title} — ${s.name||'ShopBill Pro'}*`;
+  if(s.gstin) msg += `\nGSTIN: ${s.gstin}`;
+  msg += `\n${labels.inv}: *${b.invno}*`;
+  msg += `\n${labels.date}: ${b.invdate}`;
+  msg += `\n${labels.cust}: *${b.nm}*`;
+  if(b.custGSTIN) msg += `\n${labels.cust} GSTIN: ${b.custGSTIN}`;
+  msg += `\n----------------------------------------`;
+  msg += `\n*${labels.items}:*\n${lines}`;
+  msg += `\n----------------------------------------`;
+  msg += `\n${labels.sub}: ${RS}${parseFloat(b.sub).toFixed(2)}`;
+  msg += taxLines;
+  if(b.itemDiscAmt>0) msg += `\n${labels.disc} (item): -${RS}${parseFloat(b.itemDiscAmt).toFixed(2)}`;
+  if(b.discAmt>0) msg += `\n${labels.disc}: -${RS}${parseFloat(b.discAmt).toFixed(2)}`;
+  msg += `\n\n*${labels.total}: ${RS}${parseFloat(b.grand).toFixed(2)}*`;
+  msg += `\n${labels.pay}: ${b.paymode||_payMethod||'Cash'}`;
+
+  // ── v9: bill link (always) + UPI pay link (always when shop UPI set) ──
+  if(b._billUrl)  msg += `\n\n${CK} ${labels.view}:\n${b._billUrl}`;
+  if(b._payUrl)   msg += `\n\n${CK} ${labels.upi}:\n${b._payUrl}`;
+  else if(s.upi)  msg += `\n\n${labels.upi}: ${s.upi}`;
+
+  msg += `\n\n${labels.thanks}`;
+  if(!isPaid) msg += `\n_ShopBill Pro_`;
   return msg;
 }
 
@@ -2220,12 +2245,13 @@ async function sendWAWithUPIQR(){
   }
 }
 
-function sendWAText(){
+async function sendWAText(){
   const b=_billSnap; if(!b) return;
   document.getElementById('wa-send-modal').style.display='none';
   const wa=(b.wa||'').replace(/\D/g,'');
+  await attachBillLinks(b, b.id||b.cloudId);
   window.open('https://wa.me/91'+String(wa).replace(/\D/g,'').slice(-10)+'?text='+encodeURIComponent(buildWAMsg(b)),'_blank');
-  toast('📲 Opening WhatsApp...','s');
+  toast(String.fromCodePoint(0x2713)+' Opening WhatsApp...','s');
 }
 
 async function sendWAPDF(){
@@ -2406,20 +2432,8 @@ function printBill(){
   const b=_billSnap||gatherBill();
   const html=buildBillHTML(b,'Paid');
   const invNo=b.invno||b.invoiceNo||'INV';
-  const win=window.open('','_blank');
-  if(!win){toast('Allow popups for print','e');return}
-  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${invNo}</title>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Noto+Sans:wght@400;600;700&display=swap" rel="stylesheet">
-    <style>
-      *{box-sizing:border-box}body{margin:0;padding:0;background:#fff;font-family:'Noto Sans',sans-serif}
-      @page{size:A4;margin:10mm}
-      @media print{body{padding:0;background:#fff}}
-    </style></head><body>
-    ${html}
-    <script>window.addEventListener('load',function(){setTimeout(function(){window.print();},600)});<\/script>
-  </body></html>`);
-  win.document.close();
-  toast('🖨️ Print dialog opening...','s');
+  printViaIframe(html, invNo, '@page{size:A4;margin:10mm}');
+  toast(String.fromCodePoint(0x2713)+' Opening print...','s');
 }
 
 // ── Save Draft ──
@@ -3024,6 +3038,24 @@ function pcoRenderCheckoutEmojis(){
   });
 }
 // v9: print a PROVISIONAL bill before payment (marked NOT PAID, no PAID stamp)
+// v9: print via hidden iframe (NO new tab — dialog opens directly)
+function printViaIframe(innerHTML, title, pageCss){
+  const old=document.getElementById('sbp-print-frame'); if(old) old.remove();
+  const f=document.createElement('iframe');
+  f.id='sbp-print-frame';
+  f.style.cssText='position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
+  document.body.appendChild(f);
+  const doc=f.contentWindow.document; doc.open();
+  doc.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+(title||'Bill')+'</title>'+
+    '<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Noto+Sans:wght@400;600;700&display=swap" rel="stylesheet">'+
+    '<style>*{box-sizing:border-box}body{margin:0;padding:0;background:#fff;font-family:\'Noto Sans\',sans-serif}'+(pageCss||'@page{size:A4;margin:10mm}')+
+    '.prov-banner{background:#fff3cd;border:2px dashed #d39e00;color:#7a5b00;text-align:center;font-weight:800;padding:8px;margin:0 0 10px;font-family:\'Outfit\',sans-serif;letter-spacing:1px}</style></head><body>'+
+    innerHTML+'</body></html>');
+  doc.close();
+  setTimeout(function(){ try{ f.contentWindow.focus(); f.contentWindow.print(); }catch(e){ console.warn(e);} }, 350);
+  f.contentWindow.onafterprint=function(){ setTimeout(function(){f.remove();}, 200); };
+  setTimeout(function(){ const el=document.getElementById('sbp-print-frame'); if(el) el.remove(); }, 60000);
+}
 function printProvisionalPOS(){
   const keys=Object.keys(cart); if(!keys.length){toast('Cart is empty','e');return;}
   const {sub,gstTotal,billDisc,grand}=pcoCalcTotal();
@@ -3039,18 +3071,9 @@ function printProvisionalPOS(){
   }).filter(Boolean);
   const provB={nm:custName,wa:custWA,invno:(shop.invoice_prefix||'INV')+'-EST',invdate:sbpToday(),duedate:'',paymode:_pcoPayMethod,note:'',sub,gstAmt:gstTotal,discAmt:billDisc,grand,items,isGSTInvoice:false,supplyType:'intra',placeOfSupply:'',custGSTIN:'',gst:'',hsn:'',billDiscount:billDisc};
   const html=buildBillHTML(provB,'NOT PAID');
-  const win=window.open('','_blank');
-  if(!win){toast('Allow popups for print','e');return;}
-  win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Estimate</title>'+
-    '<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Noto+Sans:wght@400;600;700&display=swap" rel="stylesheet">'+
-    '<style>*{box-sizing:border-box}body{margin:0;padding:0;background:#fff;font-family:\'Noto Sans\',sans-serif}@page{size:A4;margin:10mm}'+
-    '.prov-banner{background:#fff3cd;border:2px dashed #d39e00;color:#7a5b00;text-align:center;font-weight:800;padding:8px;margin:0 0 10px;font-family:\'Outfit\',sans-serif;letter-spacing:1px}</style></head><body>'+
-    '<div class="prov-banner">PROVISIONAL ESTIMATE — NOT PAID — NOT A TAX INVOICE</div>'+
-    html+
-    '<scr'+'ipt>window.addEventListener("load",function(){setTimeout(function(){window.print();},600)});</scr'+'ipt>'+
-    '</body></html>');
-  win.document.close();
-  toast('\ud83d\udda8\ufe0f Provisional bill printing...','s');
+  const banner='<div class="prov-banner">PROVISIONAL ESTIMATE — NOT PAID — NOT A TAX INVOICE</div>';
+  printViaIframe(banner+html, 'Estimate '+(provB.invno||''));
+  toast(String.fromCodePoint(0x2713)+' Opening print...','s');
 }
 
 async function confirmPOSCheckout(){
@@ -3187,7 +3210,10 @@ async function confirmPOSCheckout(){
 
     if(_pcoSend.wa&&custWA){
       const wa=custWA.replace(/\D/g,'');
-      if(wa.length>=10)window.open('https://wa.me/91'+String(wa).replace(/\D/g,'').slice(-10)+'?text='+encodeURIComponent(buildWAMsg(posB)),'_blank');
+      if(wa.length>=10){
+        await attachBillLinks(posB, savedBill&&savedBill.id);
+        window.open('https://wa.me/91'+String(wa).replace(/\D/g,'').slice(-10)+'?text='+encodeURIComponent(buildWAMsg(posB)),'_blank');
+      }
     }
     if(_pcoSend.pdf)downloadPDF();
     if(_pcoSend.print){
@@ -4041,18 +4067,14 @@ function printThermal(size){
   <div class="center bold" style="margin:4px 0">Thank you! Visit Again 🙏</div>
   ${(s.plan||'free')==='free' ? `<div class="center sm" style="margin-top:4px">--- Powered by ShopBill Pro ---</div>` : ''}
 
-<script>
-  window.addEventListener('load', function(){
-    setTimeout(function(){ window.print(); }, 400);
-  });
-<\/script>
 </body></html>`;
 
-  const win = window.open('', '_blank', `width=${size===80?380:300},height=700,menubar=no,toolbar=no`);
-  if(!win){ toast('Allow popups for print','e'); return; }
-  win.document.write(html);
-  win.document.close();
-  toast('🧾 '+(size)+'mm print opening...','s');
+  // thermal: extract body inner content + use iframe with thermal page size
+  const inner = html.replace(/^[\s\S]*?<body[^>]*>/i,'').replace(/<\/body>[\s\S]*$/i,'')
+                    .replace(/<script[\s\S]*?<\/script>/gi,'');
+  const pageCss = `@page{size:${size===80?'80mm':'58mm'} auto;margin:0}body{width:${size===80?'80mm':'58mm'}}`;
+  printViaIframe(inner, size+'mm', pageCss);
+  toast(String.fromCodePoint(0x2713)+' '+(size)+'mm print opening...','s');
 }
 
 // ══════════════════════════════════════════
