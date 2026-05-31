@@ -437,6 +437,9 @@ body{background:var(--bg);color:var(--text)}
     #app{height:100dvh!important;display:flex!important;flex-direction:column!important;overflow:hidden!important}
   .bnav{position:fixed!important;bottom:0!important;left:0!important;right:0!important;z-index:100!important}
   .sb{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+  /* v9 fix: the fixed bottom nav (~64px) overlapped the POS cart footer.
+     Reserve that space at the bottom of the POS view so 'Bill Now' is reachable. */
+  #view-pos{padding-bottom:calc(64px + var(--safe-bottom))!important;box-sizing:border-box!important}
 }
 
 
