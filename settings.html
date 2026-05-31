@@ -1145,15 +1145,6 @@ html,body{height:100%;overflow:hidden}
       <div class="ff"><label>GSTIN</label><input type="text" id="ss-gstin" placeholder="Optional" style="text-transform:uppercase"></div>
       <div class="ff"><label>UPI ID</label><input type="text" id="ss-upi" placeholder="name@upi"></div>
     </div>
-    <!-- v9 Payments: Razorpay connect (Pro/Business only; shown by refreshRzpPanel) -->
-    <div id="rzp-connect" class="ff" style="display:none;flex-direction:column;gap:8px;margin-top:10px;padding:14px;border:1px solid var(--bd,#e5e7eb);border-radius:12px">
-      <label style="font-weight:700">Razorpay — auto-confirm customer payments</label>
-      <input type="text" id="rzp-key-id" placeholder="Key ID (rzp_live_… / rzp_test_…)">
-      <input type="password" id="rzp-key-secret" placeholder="Key Secret">
-      <input type="password" id="rzp-wh-secret" placeholder="Webhook Secret">
-      <button type="button" class="btn" onclick="saveRzpCreds()">Connect Razorpay</button>
-      <div id="rzp-status" style="font-size:12px;color:var(--t2)"></div>
-    </div>
     <div class="row2">
       <div class="ff"><label>Invoice Prefix</label><input type="text" id="ss-prefix" placeholder="INV" maxlength="6"></div>
       <div class="ff"><label>Invoice Start No.</label><input type="number" id="ss-counter" placeholder="1" min="1"></div>
@@ -2317,6 +2308,21 @@ function updateStorageBadge() {
   }
 }
 document.addEventListener('DOMContentLoaded', updateStorageBadge);
+// ── Vertical gating: hide options that don't apply to this shop's macro ──
+// Single source of truth = SBPSidebar.macroFor() (lib/sidebar-engine.js).
+function applyVerticalGating(){
+  try{
+    var macro = (window.SBPSidebar && typeof SBPSidebar.macroFor==='function')
+                  ? SBPSidebar.macroFor() : 'retail';
+    // Reservations (table block before/after, no-show) = food + hospitality only.
+    var resv = document.getElementById('reservations-settings');
+    if(resv){
+      var showResv = (macro==='food' || macro==='hospitality');
+      resv.style.display = showResv ? '' : 'none';
+    }
+  }catch(e){ console.warn('verticalGating:', e); }
+}
+document.addEventListener('DOMContentLoaded', applyVerticalGating);
 document.addEventListener('DOMContentLoaded', loadPrinterSettings);
 document.addEventListener('DOMContentLoaded', loadAutoSendSettings);
 
@@ -2652,40 +2658,6 @@ if (document.readyState === 'loading') {
 }
 </script>
 
-<script>
-/* v9 Payments — Razorpay connect panel (Pro/Business) */
-async function refreshRzpPanel(){
-  const panel=document.getElementById('rzp-connect'); if(!panel) return;
-  if(typeof isPro!=='function' || !isPro()){ panel.style.display='none'; return; }
-  panel.style.display='flex';
-  try{
-    const shopId=window._shopId||localStorage.getItem('sbp_shop_id');
-    const {data}=await _sb.rpc('sbp_payment_connection_status',{p_shop_id:shopId});
-    const el=document.getElementById('rzp-status');
-    if(data&&data.connected){ el.textContent='✓ Connected'; el.style.color='#16a34a'; }
-    else { el.textContent='Not connected yet'; el.style.color='var(--t2)'; }
-  }catch(_){}
-}
-async function saveRzpCreds(){
-  const shopId=window._shopId||localStorage.getItem('sbp_shop_id');
-  const el=document.getElementById('rzp-status');
-  el.textContent='Connecting…'; el.style.color='var(--t2)';
-  try{
-    const {data,error}=await _sb.rpc('sbp_save_payment_creds',{
-      p_shop_id:shopId,
-      p_key_id:document.getElementById('rzp-key-id').value.trim(),
-      p_key_secret:document.getElementById('rzp-key-secret').value.trim(),
-      p_webhook_secret:document.getElementById('rzp-wh-secret').value.trim()
-    });
-    if(error){ el.textContent='Error: '+error.message; el.style.color='#b91c1c'; return; }
-    if(data&&data.ok){ el.textContent='✓ Connected'; el.style.color='#16a34a';
-      document.getElementById('rzp-key-secret').value='';
-      document.getElementById('rzp-wh-secret').value='';
-    } else { el.textContent='Error: '+((data&&data.error)||'failed'); el.style.color='#b91c1c'; }
-  }catch(e){ el.textContent='Error: '+e.message; el.style.color='#b91c1c'; }
-}
-document.addEventListener('DOMContentLoaded', function(){ setTimeout(refreshRzpPanel, 1200); });
-</script>
 <script src="lib/beta-banner.js"></script>
 
 <!-- ═══════════════════════════════════════════════════════════════
