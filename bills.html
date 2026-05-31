@@ -63,11 +63,6 @@ function sbpY(){return sbpToday().slice(0,4);}
 <script src="lib/sidebar-engine.js"></script>
 <script src="lib/auth-pin.js"></script>
 <script src="conversion.js"></script>
-<!-- v9 Payments -->
-<script src="lib/pay-link.js"></script>
-<script src="lib/pay-announce.js"></script>
-<script src="lib/pay-realtime.js"></script>
-<script src="lib/pay-push.js"></script>
 
 
 <link rel="stylesheet" href="/styles.css"><!-- BATCH UI-1: canonical design system -->
@@ -856,24 +851,12 @@ function openBillPreview(billId){
   openModal('bill-preview-modal');
 }
 
-async function sendBillWA(){
+function sendBillWA(){
   const b=_curPreviewBill;if(!b)return;
   const wa=(b.customer_wa||'').replace(/\D/g,'');
   if(!wa||wa.length<10){toast('No WhatsApp number for this customer','e');return}
   const s=_shop||{};
-  // v9 Payments: public bill link (+ Razorpay auto-confirm link for Pro/Business)
-  let linkLine='', payLine='';
-  try{
-    if(window.SBPPay){
-      const link=await SBPPay.getBillLink(b.id);
-      if(link&&link.ok){ linkLine='\n🔗 View/Download: '+link.url; }
-      if(typeof isPro==='function' && isPro()){
-        const g=await SBPPay.createGatewayLink(b.id,'link');
-        if(g && g.ok && g.short_url){ payLine='\n💸 Pay online: '+g.short_url; }
-      }
-    }
-  }catch(_){}
-  const msg=`🧾 *INVOICE — ${s.name||'ShopBill Pro'}*\n━━━━━━━━━━━━━━━━━━\n📋 Invoice: *${b.invoice_no}*\n📅 Date: ${fDate(b.invoice_date)}\n━━━━━━━━━━━━━━━━━━\n👤 *${b.customer_name}*\n\n✅ *Grand Total: ${fINR(b.grand_total)}*\n💳 Payment: ${b.payment_mode}\n${s.upi?'📲 UPI: '+s.upi:''}${linkLine}${payLine}\n\n🙏 Thank you!\n_ShopBill Pro by TradeCrest Technologies_`;
+  const msg=`🧾 *INVOICE — ${s.name||'ShopBill Pro'}*\n━━━━━━━━━━━━━━━━━━\n📋 Invoice: *${b.invoice_no}*\n📅 Date: ${fDate(b.invoice_date)}\n━━━━━━━━━━━━━━━━━━\n👤 *${b.customer_name}*\n\n✅ *Grand Total: ${fINR(b.grand_total)}*\n💳 Payment: ${b.payment_mode}\n${s.upi?'📲 UPI: '+s.upi:''}\n\n🙏 Thank you!\n_ShopBill Pro by TradeCrest Technologies_`;
   window.open('https://wa.me/91'+String(wa).replace(/\D/g,'').slice(-10)+'?text='+encodeURIComponent(msg),'_blank');
 }
 
@@ -1487,16 +1470,6 @@ async function init(){
   _shopId = localStorage.getItem('sbp_shop_id');
   _shop   = JSON.parse(localStorage.getItem('sbp_shop')||'{}');
   _bills  = JSON.parse(localStorage.getItem('sbp_bills')||'[]');
-  // v9 Payments: unlock audio on first tap + start the soundbox (Pro/Business)
-  document.addEventListener('click', function _sbpUnlock(){
-    if(window.SBPAnnounce) SBPAnnounce.unlock();
-    document.removeEventListener('click', _sbpUnlock);
-  }, {once:true});
-  try{
-    if(typeof isPro==='function' && isPro() && _shopId && window.SBPPayRealtime){
-      SBPPayRealtime.start(_shopId);
-    }
-  }catch(_){}
   // Force clear any stale content before rendering
   const _bl=document.getElementById('bills-list');
   if(_bl&&_bl.querySelector('.spinner'))_bl.innerHTML='';
