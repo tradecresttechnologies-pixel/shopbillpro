@@ -36,7 +36,7 @@
 //   • dashboard.html previously had a block that unregistered any SW on
 //     load; that block is REMOVED in this batch (see DEPLOY PATHS)
 
-const SW_VERSION = 'v1.6.0-minimal-pwa-enable';
+const SW_VERSION = 'v1.7.0-pwa-push';
 
 self.addEventListener('install', (event) => {
   console.log('[SW ' + SW_VERSION + '] install — skipping waiting');
@@ -86,4 +86,36 @@ self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// v9 Payments — Web Push handlers (app-closed "₹X received" alert)
+// Added in v1.7.0. The pass-through fetch handler above is unchanged:
+// no caching is introduced here.
+// ═══════════════════════════════════════════════════════════════════
+self.addEventListener('push', (event) => {
+  let data = { title: 'Payment received', body: 'Payment received' };
+  try { data = event.data ? event.data.json() : data; } catch (_) {}
+  event.waitUntil(
+    self.registration.showNotification(data.title || 'Payment received', {
+      body: data.body || '',
+      icon: '/icons/icon-192x192.png',
+      badge: '/icons/icon-72x72.png',
+      vibrate: [180, 80, 180],
+      tag: 'sbp-payment',
+      renotify: true,
+      data: { url: '/bills' }
+    })
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || '/';
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((wins) => {
+      for (const w of wins) { if ('focus' in w) return w.focus(); }
+      if (self.clients.openWindow) return self.clients.openWindow(url);
+    })
+  );
 });
