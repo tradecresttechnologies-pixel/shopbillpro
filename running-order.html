@@ -2113,7 +2113,11 @@ html,body{height:100%;width:100%;margin:0;padding:0;overflow:hidden;background:v
       </div>
       <div class="bw-field">
         <label class="bw-lbl"><span class="lang-en">Name</span><span class="lang-hi">नाम</span></label>
-        <input type="text" class="bw-inp" id="bw-cust-name" placeholder="Customer name (optional)">
+        <div class="bw-cust-input-wrap">
+          <input type="text" class="bw-inp" id="bw-cust-name" placeholder="Customer name (optional)"
+            autocomplete="off"
+            oninput="onCustNameInput(this.value)">
+        </div>
       </div>
       <div class="bw-walkin-hint">
         💡 <span class="lang-en">Leave blank for a walk-in customer. We'll just print "Walk-in" on the bill.</span><span class="lang-hi">वॉक-इन ग्राहक के लिए खाली छोड़ें</span>
@@ -3772,6 +3776,23 @@ function onCustPhoneInput(val){
   _bwCustSearchT = setTimeout(()=> searchCustomers(v), 250);
 }
 
+// Live lookup by NAME — mirrors onCustPhoneInput so customers can be
+// found by typing either the number OR the name. Suggestions render in
+// the same dropdown under Step 1.
+function onCustNameInput(val){
+  const v = (val || '').trim();
+  _bwCustomer = null;
+  const stEl  = document.getElementById('bw-cust-status');
+  const sugEl = document.getElementById('bw-cust-suggest');
+  if(stEl){ stEl.textContent = ''; stEl.classList.remove('found'); }
+  if(v.length < 2){
+    if(sugEl){ sugEl.style.display='none'; sugEl.innerHTML=''; }
+    return;
+  }
+  clearTimeout(_bwCustSearchT);
+  _bwCustSearchT = setTimeout(()=> searchCustomers(v), 250);
+}
+
 async function searchCustomers(q){
   const stEl  = document.getElementById('bw-cust-status');
   const sugEl = document.getElementById('bw-cust-suggest');
@@ -4109,49 +4130,56 @@ function printSavedBill(bill, items, totals, custName, custWA){
   const change  = Math.max(0, (bill.paid_amount || 0) - (bill.grand_total || 0));
   const balance = Math.max(0, (bill.grand_total || 0) - (bill.paid_amount || 0));
   const isPaid  = (bill.status || '') === 'Paid';
+  const isFree  = (shop.plan || 'free') === 'free';
+  const shopUPI = shop.upi || '';
+  const gstTotal = Number(totals.gst) || 0;
+  const hasGST   = gstTotal > 0;
 
   const itemsRows = items.map(it => {
     const name = esc(it.nm || it.item_name || '');
     const qty  = it.q || it.qty || 0;
     const rate = it.r || it.rate || 0;
     const tot  = it.tot || it.line_total || 0;
-    return `<tr>
-      <td class="ic-name">${name}</td>
-      <td class="ic-num">${qty}</td>
-      <td class="ic-num">${fI(rate)}</td>
-      <td class="ic-num">${fI(tot)}</td>
-    </tr>`;
+    return `<div class="it">
+      <div class="it-top"><span class="it-name">${name}</span><span class="it-amt">${fI(tot)}</span></div>
+      <div class="it-sub">${qty} × ${fI(rate)}</div>
+    </div>`;
   }).join('');
 
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
 <title>${esc(bill.invoice_no || 'Bill')}</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Helvetica Neue', Arial, sans-serif; color:#000; background:#fff; padding:8px}
-  .rcpt{max-width:340px;margin:0 auto;font-size:12px;line-height:1.35}
+  body{font-family:'Helvetica Neue',Arial,sans-serif;color:#000;background:#fff;padding:8px}
+  .rcpt{max-width:300px;margin:0 auto;font-size:12px;line-height:1.4}
   .center{text-align:center}
-  .shop-name{font-size:18px;font-weight:900;letter-spacing:.5px;margin-bottom:2px}
-  .shop-meta{font-size:11px;color:#444;margin-bottom:1px}
-  .hr{border:none;border-top:1px dashed #000;margin:8px 0}
-  .meta-row{display:flex;justify-content:space-between;font-size:11px;margin:1px 0}
-  .meta-row strong{font-weight:700}
-  table{width:100%;border-collapse:collapse;margin:6px 0}
-  th{font-size:10px;text-transform:uppercase;letter-spacing:.5px;font-weight:800;padding:4px 2px;border-bottom:1px solid #000;text-align:left}
-  th.ic-num{text-align:right}
-  td{font-size:11px;padding:5px 2px;border-bottom:1px dotted #ccc;vertical-align:top}
-  td.ic-name{font-weight:600}
-  td.ic-num{text-align:right;font-variant-numeric:tabular-nums}
-  .totals{margin-top:6px}
+  .shop-name{font-size:17px;font-weight:900;letter-spacing:.3px;margin-bottom:3px}
+  .shop-meta{font-size:10px;color:#333;line-height:1.45}
+  .doctype{font-size:10px;font-weight:800;letter-spacing:2px;margin-top:5px}
+  .hr{border:none;border-top:1px dashed #999;margin:9px 0}
+  .meta-row{display:flex;justify-content:space-between;font-size:11px;margin:2px 0}
+  .meta-row .lbl{color:#555}
+  .meta-row .val{font-weight:700;text-align:right}
+  .it{margin:6px 0}
+  .it-top{display:flex;justify-content:space-between;align-items:baseline;gap:6px}
+  .it-name{font-weight:700;flex:1;word-break:break-word}
+  .it-amt{font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums}
+  .it-sub{font-size:10px;color:#666;margin-top:1px}
   .tot-row{display:flex;justify-content:space-between;font-size:12px;margin:3px 0;font-variant-numeric:tabular-nums}
-  .tot-row.grand{font-size:15px;font-weight:900;border-top:1.5px solid #000;border-bottom:3px double #000;padding:6px 0;margin:6px 0;}
-  .pay-block{margin-top:6px;font-size:11px}
-  .pay-row{display:flex;justify-content:space-between;margin:2px 0}
-  .status-badge{display:inline-block;padding:3px 12px;border-radius:4px;font-size:11px;font-weight:900;letter-spacing:1px;margin:6px auto;text-transform:uppercase}
+  .tot-row .neg{}
+  .grand{display:flex;justify-content:space-between;align-items:center;font-size:16px;font-weight:900;border-top:2px solid #000;border-bottom:2px solid #000;padding:7px 0;margin:8px 0}
+  .pay-row{display:flex;justify-content:space-between;font-size:11px;margin:2px 0}
+  .pay-row .lbl{color:#555}
+  .pay-row .val{font-weight:700}
+  .status-badge{display:inline-block;padding:4px 16px;border-radius:4px;font-size:12px;font-weight:900;letter-spacing:1.5px;margin:8px auto 2px;text-transform:uppercase}
   .status-paid{background:#000;color:#fff}
-  .status-credit{background:#fff;color:#000;border:2px solid #000}
-  .thanks{text-align:center;margin-top:10px;font-size:11px;font-weight:600;font-style:italic}
-  .footer-line{text-align:center;font-size:9px;color:#666;margin-top:8px;letter-spacing:.5px}
-  @page{size:80mm auto;margin:4mm}
+  .status-credit{background:#fff;color:#000;border:1.5px solid #000}
+  .upi-box{text-align:center;margin:8px 0;padding:7px;border:1px dashed #999;border-radius:6px}
+  .upi-h{font-size:9px;letter-spacing:1px;color:#666;text-transform:uppercase}
+  .upi-id{font-size:13px;font-weight:800;margin-top:2px;word-break:break-all}
+  .thanks{text-align:center;margin-top:10px;font-size:12px;font-weight:700}
+  .footer-line{text-align:center;font-size:9px;color:#888;margin-top:6px;letter-spacing:.3px}
+  @page{size:80mm auto;margin:3mm}
   @media print{body{padding:0}.rcpt{max-width:100%}}
 </style></head>
 <body>
@@ -4160,52 +4188,51 @@ function printSavedBill(bill, items, totals, custName, custWA){
   <div class="center">
     <div class="shop-name">${esc(shop.name || 'Shop')}</div>
     ${shop.address ? `<div class="shop-meta">${esc(shop.address)}</div>` : ''}
-    ${shop.phone   ? `<div class="shop-meta">📞 ${esc(shop.phone)}</div>` : ''}
+    ${shop.phone   ? `<div class="shop-meta">Ph: ${esc(shop.phone)}</div>` : ''}
     ${shop.gstin   ? `<div class="shop-meta">GSTIN: ${esc(shop.gstin)}</div>` : ''}
+    ${hasGST ? `<div class="doctype">TAX INVOICE</div>` : ''}
   </div>
 
   <hr class="hr">
 
-  <div class="meta-row"><strong>Bill</strong><span>${esc(bill.invoice_no || '')}</span></div>
-  <div class="meta-row"><strong>Date</strong><span>${esc(ist)}</span></div>
-  ${bill.table_number ? `<div class="meta-row"><strong>Table</strong><span>T${esc(bill.table_number)}</span></div>` : ''}
-  <div class="meta-row"><strong>Customer</strong><span>${esc(custName || 'Walk-in')}</span></div>
-  ${custWA ? `<div class="meta-row"><strong>Phone</strong><span>${esc(custWA)}</span></div>` : ''}
+  <div class="meta-row"><span class="lbl">Bill No</span><span class="val">${esc(bill.invoice_no || '')}</span></div>
+  <div class="meta-row"><span class="lbl">Date</span><span class="val">${esc(ist)}</span></div>
+  ${bill.table_number ? `<div class="meta-row"><span class="lbl">Table</span><span class="val">T${esc(bill.table_number)}</span></div>` : ''}
+  <div class="meta-row"><span class="lbl">Customer</span><span class="val">${esc(custName || 'Walk-in')}</span></div>
+  ${custWA ? `<div class="meta-row"><span class="lbl">Phone</span><span class="val">${esc(custWA)}</span></div>` : ''}
 
-  <table>
-    <thead>
-      <tr>
-        <th>Item</th>
-        <th class="ic-num">Qty</th>
-        <th class="ic-num">Rate</th>
-        <th class="ic-num">Total</th>
-      </tr>
-    </thead>
-    <tbody>${itemsRows}</tbody>
-  </table>
+  <hr class="hr">
 
-  <div class="totals">
-    <div class="tot-row"><span>Subtotal</span><span>${fI(totals.subtotal)}</span></div>
-    ${totals.gst       > 0 ? `<div class="tot-row"><span>GST</span><span>${fI(totals.gst)}</span></div>`         : ''}
-    ${totals.discount  > 0 ? `<div class="tot-row"><span>Discount</span><span>−${fI(totals.discount)}</span></div>` : ''}
-    <div class="tot-row grand"><span>TOTAL</span><span>${fI(totals.grand)}</span></div>
-  </div>
+  ${itemsRows}
 
-  <div class="pay-block">
-    <div class="pay-row"><strong>Payment</strong><span>${esc(bill.payment_mode || '—')}</span></div>
-    <div class="pay-row"><strong>Paid</strong><span>${fI(bill.paid_amount)}</span></div>
-    ${change  > 0 ? `<div class="pay-row"><strong>Change</strong><span>${fI(change)}</span></div>`   : ''}
-    ${balance > 0 ? `<div class="pay-row"><strong>Balance</strong><span>${fI(balance)}</span></div>` : ''}
-  </div>
+  <hr class="hr">
+
+  <div class="tot-row"><span>Subtotal</span><span>${fI(totals.subtotal)}</span></div>
+  ${hasGST ? `<div class="tot-row"><span>CGST</span><span>${fI(gstTotal/2)}</span></div>
+  <div class="tot-row"><span>SGST</span><span>${fI(gstTotal/2)}</span></div>` : ''}
+  ${totals.discount > 0 ? `<div class="tot-row"><span>Discount</span><span>-${fI(totals.discount)}</span></div>` : ''}
+
+  <div class="grand"><span>TOTAL</span><span>${fI(totals.grand)}</span></div>
+
+  <div class="pay-row"><span class="lbl">Payment</span><span class="val">${esc(bill.payment_mode || '—')}</span></div>
+  <div class="pay-row"><span class="lbl">Paid</span><span class="val">${fI(bill.paid_amount)}</span></div>
+  ${change  > 0 ? `<div class="pay-row"><span class="lbl">Change</span><span class="val">${fI(change)}</span></div>`   : ''}
+  ${balance > 0 ? `<div class="pay-row"><span class="lbl">Balance Due</span><span class="val">${fI(balance)}</span></div>` : ''}
 
   <div class="center">
-    <span class="status-badge ${isPaid ? 'status-paid' : 'status-credit'}">${isPaid ? '✓ PAID' : 'CREDIT'}</span>
+    <span class="status-badge ${isPaid ? 'status-paid' : 'status-credit'}">${isPaid ? 'PAID' : 'CREDIT'}</span>
   </div>
+
+  ${shopUPI && !isPaid ? `
+  <div class="upi-box">
+    <div class="upi-h">Pay via UPI</div>
+    <div class="upi-id">${esc(shopUPI)}</div>
+  </div>` : ''}
 
   <hr class="hr">
 
   <div class="thanks">Thank you, visit again!</div>
-  <div class="footer-line">Powered by ShopBill Pro · shopbillpro.in</div>
+  ${isFree ? `<div class="footer-line">Powered by ShopBill Pro · shopbillpro.in</div>` : `<div class="footer-line">${esc(shop.name || '')}</div>`}
 
 </div>
 <script>
@@ -4231,6 +4258,72 @@ function printSavedBill(bill, items, totals, custName, custWA){
 
 // ─────────────────────────────────────────────────────────────────
 // FINAL: save bill, mark RO billed, free table, redirect
+// ─────────────────────────────────────────────────────────────────
+
+// ── WhatsApp: attach hosted bill link (view + PDF + pay) ──────────
+// Reuses the SAME server RPC (sbp_get_bill_pay_token) and link format
+// as the POS/manual sender in billing.html, so restaurant bills follow
+// the identical "View bill / PDF / Pay" flow.
+async function roAttachBillLink(billId, grandTotal, invNo){
+  const out = { billUrl:'', payUrl:'' };
+  const s = JSON.parse(localStorage.getItem('sbp_shop')||'{}');
+  try{
+    if(billId && window._sb && !String(billId).startsWith('local_')){
+      const { data, error } = await _sb.rpc('sbp_get_bill_pay_token', { p_bill_id: billId });
+      if(error){ console.warn('[ro bill link] RPC error', JSON.stringify(error)); }
+      if(data && data.ok && data.token){
+        out.billUrl = 'https://app.shopbillpro.in/bill?b=' + encodeURIComponent(billId) +
+                      '&t=' + encodeURIComponent(data.token);
+      }
+    }
+  }catch(e){ console.warn('[ro bill link] threw', e); }
+  // UPI fallback (tap/scan) if shop has a UPI id set
+  try{
+    if(s.upi){
+      const am = parseFloat(grandTotal||0).toFixed(2);
+      out.payUrl = 'upi://pay?pa=' + encodeURIComponent(s.upi) +
+                   '&pn=' + encodeURIComponent((s.name||'Shop').replace(/[^\w\s]/g,'').slice(0,40)) +
+                   '&am=' + am + '&cu=INR' +
+                   '&tn=' + encodeURIComponent(('Bill '+(invNo||'')).slice(0,40));
+    }
+  }catch(_){}
+  return out;
+}
+
+// ── Short, crisp WhatsApp bill message ────────────────────────────
+// Compact on purpose: shop name, invoice, total, one tappable link,
+// UPI id, thanks. No per-line item dump, no long tax breakdown.
+function roBuildWAMsg(o){
+  const s = JSON.parse(localStorage.getItem('sbp_shop')||'{}');
+  const isPaid  = (s.plan||'free') !== 'free';
+  const isHindi = (localStorage.getItem('sbp_lang')||'en') === 'hi';
+  const RS = '\u20b9';
+  const CK = String.fromCodePoint(0x2713);
+  const L = isHindi
+    ? { thanks:'धन्यवाद! फिर आइए।', viewPay:'बिल देखें / भुगतान करें', upi:'UPI', total:'कुल' }
+    : { thanks:'Thank you! Visit again.', viewPay:'View bill / Pay', upi:'Pay via UPI', total:'Total' };
+
+  let msg = `*${s.name || 'ShopBill Pro'}*`;
+  if(o.custName && o.custName !== 'Walk-in') msg += `\nHi ${o.custName} 👋`;
+  msg += `\n${o.invNo}  ·  ${L.total}: *${RS}${parseFloat(o.grand||0).toFixed(2)}*`;
+  if(o.billUrl) msg += `\n\n${CK} ${L.viewPay}:\n${o.billUrl}`;
+  if(s.upi)     msg += `\n${L.upi}: ${s.upi}`;
+  msg += `\n\n${L.thanks}`;
+  if(!isPaid) msg += `\n_ShopBill Pro_`;
+  return msg;
+}
+
+// Fire the WhatsApp share if a valid number is present. Non-fatal:
+// any failure just skips the send (bill is already saved).
+function roSendWA(custWA, msg){
+  try{
+    const wa = String(custWA||'').replace(/\D/g,'').slice(-10);
+    if(wa.length < 10) return false;
+    window.open('https://wa.me/91' + wa + '?text=' + encodeURIComponent(msg), '_blank');
+    return true;
+  }catch(e){ console.warn('[ro WA send]', e); return false; }
+}
+
 // ─────────────────────────────────────────────────────────────────
 async function confirmAndSaveBill(){
   const next = document.getElementById('bw-btn-next');
@@ -4362,6 +4455,25 @@ async function confirmAndSaveBill(){
         await _sb.rpc('sbp_tables_free', { p_shop_id: _shopId, p_table_id: _tableId });
       } catch(e){ console.warn('[tables_free]', e); }
     }
+
+    // 8. WhatsApp the bill — same hosted link + pay flow as POS/manual.
+    //    Sends when the customer has a number AND either the WA toggle is
+    //    on OR there's nothing to print. Non-fatal: bill is already saved.
+    try {
+      const waDigits = String(custWA||'').replace(/\D/g,'').slice(-10);
+      const waPref   = localStorage.getItem('sbp_auto_wa') !== '0'; // default ON
+      if(waDigits.length >= 10 && waPref){
+        const links = await roAttachBillLink(bill.id, _bwTotals.grand, invNo);
+        const msg   = roBuildWAMsg({
+          invNo:    invNo,
+          grand:    _bwTotals.grand,
+          custName: custName,
+          billUrl:  links.billUrl,
+          payUrl:   links.payUrl,
+        });
+        roSendWA(custWA, msg);
+      }
+    } catch(e){ console.warn('[ro WA]', e); }
 
     // Auto-print receipt before redirecting (default ON for paid + credit).
     const printOn = document.getElementById('bw-print-on-save')?.checked;
