@@ -1204,11 +1204,11 @@ function renderActionBar(){
   const bar = $('#action-bar');
 
   const phoneRaw = (b.customer_wa || b.customer_phone || '').replace(/\D/g,'');
-  const waUrl = phoneRaw ? `https://wa.me/91${phoneRaw}` : '';
+  const hasPhone = phoneRaw.length >= 10;
 
   let actions = `
     <button onclick="printFolio()">🖨️ <span><span class="lang-en">Print</span><span class="lang-hi">प्रिंट</span></span></button>
-    ${waUrl ? `<a class="btn-wa" href="${waUrl}" target="_blank" rel="noopener">📱 WhatsApp</a>` : ''}`;
+    ${hasPhone ? `<button class="btn-wa" onclick="folioWhatsApp()">📱 WhatsApp</button>` : ''}`;
 
   // BATCH 022C — Check Out & Finalize (silent bill generation)
   if(b.status === 'checked_in' && !b.bill_id){
@@ -1595,6 +1595,78 @@ async function voidPayment(id){
 // ════════════════════════════════════════════════════════════════════
 // Check Out & Finalize  (Batch 022C — silent bill generation)
 // ════════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════════
+// WhatsApp folio/bill send — same hosted link + UPI flow as POS/manual.
+// Sends a short, crisp message with the View-bill/Pay link (once the
+// folio is finalized and has a bill_id) plus the shop UPI id.
+// ════════════════════════════════════════════════════════════════════
+async function folioAttachBillLink(billId, grand, invNo){
+  const out = { billUrl:'', payUrl:'' };
+  const s = _shop || JSON.parse(localStorage.getItem('sbp_shop')||'{}');
+  try{
+    if(billId && window._sb && !String(billId).startsWith('local_')){
+      const { data, error } = await _sb.rpc('sbp_get_bill_pay_token', { p_bill_id: billId });
+      if(error){ console.warn('[folio bill link] RPC', JSON.stringify(error)); }
+      if(data && data.ok && data.token){
+        out.billUrl = 'https://app.shopbillpro.in/bill?b=' + encodeURIComponent(billId) +
+                      '&t=' + encodeURIComponent(data.token);
+      }
+    }
+  }catch(e){ console.warn('[folio bill link] threw', e); }
+  try{
+    if(s.upi){
+      out.payUrl = 'upi://pay?pa=' + encodeURIComponent(s.upi) +
+                   '&pn=' + encodeURIComponent((s.name||'Hotel').replace(/[^\w\s]/g,'').slice(0,40)) +
+                   '&am=' + parseFloat(grand||0).toFixed(2) + '&cu=INR' +
+                   '&tn=' + encodeURIComponent(('Bill '+(invNo||'')).slice(0,40));
+    }
+  }catch(_){}
+  return out;
+}
+
+function folioBuildWAMsg(o){
+  const s = _shop || JSON.parse(localStorage.getItem('sbp_shop')||'{}');
+  const isPaid  = (s.plan||'free') !== 'free';
+  const isHindi = (localStorage.getItem('sbp_lang')||'en') === 'hi';
+  const RS = '\u20b9';
+  const CK = String.fromCodePoint(0x2713);
+  const L = isHindi
+    ? { thanks:'ठहरने के लिए धन्यवाद!', viewPay:'बिल देखें / भुगतान करें', upi:'UPI', total:'कुल' }
+    : { thanks:'Thank you for staying with us!', viewPay:'View bill / Pay', upi:'Pay via UPI', total:'Total' };
+  let msg = `*${s.name || 'ShopBill Pro'}*`;
+  if(o.guestName && o.guestName !== 'Guest') msg += `\nHi ${o.guestName} 👋`;
+  msg += `\n${o.invNo}  ·  ${L.total}: *${RS}${parseFloat(o.grand||0).toFixed(2)}*`;
+  if(o.billUrl) msg += `\n\n${CK} ${L.viewPay}:\n${o.billUrl}`;
+  if(s.upi)     msg += `\n${L.upi}: ${s.upi}`;
+  msg += `\n\n${L.thanks}`;
+  if(!isPaid) msg += `\n_ShopBill Pro_`;
+  return msg;
+}
+
+function folioSendWA(phone, msg){
+  try{
+    const wa = String(phone||'').replace(/\D/g,'').slice(-10);
+    if(wa.length < 10){ toast('No valid WhatsApp number for this guest','e'); return false; }
+    window.open('https://wa.me/91' + wa + '?text=' + encodeURIComponent(msg), '_blank');
+    return true;
+  }catch(e){ console.warn('[folio WA]', e); return false; }
+}
+
+// Build the message for the CURRENT folio and open WhatsApp. Used by the
+// action-bar button. Resolves the hosted link if the folio is finalized.
+async function folioWhatsApp(){
+  if(!_folio || !_folio.booking){ toast('Folio not loaded','e'); return; }
+  const b = _folio.booking, t = _folio.totals || {};
+  const phone = b.customer_wa || b.customer_phone || '';
+  if(String(phone).replace(/\D/g,'').length < 10){ toast('No valid WhatsApp number for this guest','e'); return; }
+  const invNo = _folio._billInvoiceNo || (b.bill_id ? (b.bill_id||'').slice(0,8).toUpperCase() : 'Folio');
+  const grand = t.grand_total || 0;
+  let links = { billUrl:'', payUrl:'' };
+  if(b.bill_id){ links = await folioAttachBillLink(b.bill_id, grand, invNo); }
+  const msg = folioBuildWAMsg({ invNo, grand, guestName:(b.customer_name||'Guest'), billUrl:links.billUrl });
+  folioSendWA(phone, msg);
+}
+
 async function checkOutAndBill(){
   if(_busy) return;
   if(!_folio || !_folio.booking){ toast('Folio not loaded', 'e'); return; }
@@ -1633,6 +1705,21 @@ async function checkOutAndBill(){
 
     // Refresh folio — the RPC has updated booking.bill_id, status, room.status
     await loadFolio();
+
+    // Auto-send the bill on WhatsApp (default ON) once finalized, mirroring
+    // the restaurant/POS flow. Non-fatal: checkout already succeeded.
+    try {
+      const fb = _folio && _folio.booking;
+      const ft = (_folio && _folio.totals) || {};
+      const phone = fb ? (fb.customer_wa || fb.customer_phone || '') : '';
+      const waPref = localStorage.getItem('sbp_auto_wa') !== '0';
+      if(fb && fb.bill_id && waPref && String(phone).replace(/\D/g,'').length >= 10){
+        const invNo = _folio._billInvoiceNo || data.invoice_no || (fb.bill_id||'').slice(0,8).toUpperCase();
+        const links = await folioAttachBillLink(fb.bill_id, ft.grand_total||0, invNo);
+        const msg   = folioBuildWAMsg({ invNo, grand:ft.grand_total||0, guestName:(fb.customer_name||'Guest'), billUrl:links.billUrl });
+        folioSendWA(phone, msg);
+      }
+    } catch(e){ console.warn('[folio auto-WA]', e); }
 
   } catch(e){
     toast('Could not finalize: ' + (e.message || 'unknown error'), 'e', 4500);

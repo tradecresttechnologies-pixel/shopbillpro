@@ -136,6 +136,14 @@ body{background:var(--bg);color:var(--text);min-height:100dvh;overflow-x:hidden}
 .ff input:focus,.ff textarea:focus,.ff select:focus{border-color:var(--acc)}
 .ff textarea{resize:vertical;min-height:60px}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.nb-cust-ff{position:relative}
+.nb-cust-suggest{position:absolute;top:100%;left:0;right:0;z-index:50;margin-top:4px;background:var(--surf);border:1px solid var(--bord);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.18);max-height:240px;overflow-y:auto}
+.nb-cust-item{display:flex;align-items:center;gap:10px;padding:9px 11px;cursor:pointer;border-bottom:1px solid var(--bord)}
+.nb-cust-item:last-child{border-bottom:none}
+.nb-cust-item:hover{background:rgba(245,166,35,.10)}
+.nb-cust-av{width:30px;height:30px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:#fff;background:linear-gradient(135deg,var(--acc,#F5A623),#FF6B35)}
+.nb-cust-nm{font-size:13px;font-weight:600;color:var(--text)}
+.nb-cust-ph{font-size:11px;color:var(--t2);margin-top:1px}
 .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
 
 .btn-pri{width:100%;padding:13px;background:linear-gradient(135deg,var(--acc),var(--acc2));color:#0A0E1A;border:none;border-radius:12px;font-family:var(--font-h);font-size:14px;font-weight:800;cursor:pointer}
@@ -376,9 +384,13 @@ body{background:var(--bg);color:var(--text);min-height:100dvh;overflow-x:hidden}
     <div class="handle"></div>
     <div class="sheet-title">📆 <span class="lang-en">New Booking</span><span class="lang-hi">नई बुकिंग</span></div>
 
-    <div class="ff"><label>Guest Name *</label><input type="text" id="nb-name" placeholder="Full name"></div>
+    <div class="ff nb-cust-ff"><label>Guest Name *</label>
+      <input type="text" id="nb-name" placeholder="Full name" autocomplete="off"
+        oninput="nbCustInput(this.value,'name')">
+      <div id="nb-cust-suggest" class="nb-cust-suggest" style="display:none"></div>
+    </div>
     <div class="row2">
-      <div class="ff"><label>Phone</label><input type="tel" id="nb-phone" placeholder="9876543210"></div>
+      <div class="ff"><label>Phone</label><input type="tel" id="nb-phone" placeholder="9876543210" autocomplete="off" oninput="nbCustInput(this.value,'phone')"></div>
       <div class="ff"><label>WhatsApp (optional)</label><input type="tel" id="nb-wa" placeholder="9876543210"></div>
     </div>
     <div class="ff"><label>Email (optional)</label><input type="email" id="nb-email"></div>
@@ -717,6 +729,7 @@ function openNewBooking(){
   $('#nb-adults').value=1;$('#nb-children').value=0;
   $('#nb-rate').value='';$('#nb-idtype').value='';$('#nb-idnum').value='';$('#nb-notes').value='';
   $('#nb-room').innerHTML='<option value="">— Pick dates first —</option>';
+  const _ncs=document.getElementById('nb-cust-suggest'); if(_ncs){_ncs.style.display='none';_ncs.innerHTML='';}
   $('#nb-nights').textContent='1 night';
   $('#nb-total').textContent='Total: ₹0';
   // Batch 021: advance + foreign reset
@@ -780,6 +793,57 @@ function recalcTotal(){
   const nights=Math.max(0,Math.round((new Date(co)-new Date(ci))/86400000));
   const rate=parseFloat($('#nb-rate').value)||0;
   $('#nb-total').textContent=`Total: ${fINR(rate*nights)} (${nights} × ${fINR(rate)})`;
+}
+
+// ────────────────────────────────────────────────────────────────
+// Guest autosuggest — look up past guests by NAME or PHONE from the
+// customers table (shop-scoped) and autofill name/phone/wa/email.
+// Mirrors the restaurant billing customer picker.
+// ────────────────────────────────────────────────────────────────
+let _nbCustT = null;
+function nbCustInput(val, field){
+  const v = (val || '').trim();
+  const min = field === 'phone' ? 3 : 2;
+  const sug = document.getElementById('nb-cust-suggest');
+  if(v.length < min){ if(sug){ sug.style.display='none'; sug.innerHTML=''; } return; }
+  clearTimeout(_nbCustT);
+  _nbCustT = setTimeout(()=> nbSearchGuests(v), 250);
+}
+
+async function nbSearchGuests(q){
+  const sug = document.getElementById('nb-cust-suggest');
+  if(!sug) return;
+  try {
+    const { data, error } = await _sb.from('customers')
+      .select('id, name, whatsapp, phone, email')
+      .eq('shop_id', _shopId)
+      .or('whatsapp.ilike.%'+q+'%,phone.ilike.%'+q+'%,name.ilike.%'+q+'%')
+      .limit(6);
+    if(error){ console.warn('[guest search]', error); return; }
+    const rows = data || [];
+    if(rows.length === 0){ sug.style.display='none'; sug.innerHTML=''; return; }
+    sug.style.display = '';
+    sug.innerHTML = rows.map(c => {
+      const phone = c.whatsapp || c.phone || '';
+      const init  = (c.name || '?').slice(0,1).toUpperCase();
+      const cJson = JSON.stringify(c).replace(/"/g,'&quot;');
+      return '<div class="nb-cust-item" onclick="nbPickGuest('+cJson+')">'+
+        '<div class="nb-cust-av">'+escHtml(init)+'</div>'+
+        '<div><div class="nb-cust-nm">'+escHtml(c.name||'(no name)')+'</div>'+
+        '<div class="nb-cust-ph">📱 '+escHtml(phone)+'</div></div>'+
+      '</div>';
+    }).join('');
+  } catch(e){ console.warn('[guest search threw]', e); }
+}
+
+function nbPickGuest(c){
+  const ph = c.phone || c.whatsapp || '';
+  if($('#nb-name'))  $('#nb-name').value  = c.name || '';
+  if($('#nb-phone')) $('#nb-phone').value = ph;
+  if($('#nb-wa'))    $('#nb-wa').value    = c.whatsapp || ph;
+  if($('#nb-email') && c.email) $('#nb-email').value = c.email;
+  const sug = document.getElementById('nb-cust-suggest');
+  if(sug){ sug.style.display='none'; sug.innerHTML=''; }
 }
 
 async function saveBooking(){
