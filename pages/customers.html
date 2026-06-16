@@ -1339,8 +1339,9 @@ function custLiveSales(custName){
 
 async function backfillCustomersFromBills(){
   if(!_bills.length) return;
+  // FIX: Removed one-time guard — backfill runs every load to catch new bills
   const DONE_KEY = 'sbp_backfill_done_' + (_shopId||'local');
-  if(localStorage.getItem(DONE_KEY)) return; // already ran
+  // (no longer skips on repeat — ensures new customers from new bills always appear)
 
   let added = 0;
   const toCreate = [];
@@ -1348,7 +1349,11 @@ async function backfillCustomersFromBills(){
   _bills.forEach(b=>{
     const nm = (b.customer_name||'').trim();
     if(!nm || nm==='Walk-in Customer') return;
-    const alreadyInList = _custs.find(x=>x.name.toLowerCase()===nm.toLowerCase());
+    const ph = String(b.customer_wa||'').replace(/\D/g,'').slice(-10);
+    const alreadyInList = _custs.find(x=>
+      x.name.toLowerCase()===nm.toLowerCase() ||
+      (ph.length>=10 && String(x.whatsapp||x.phone||'').replace(/\D/g,'').slice(-10)===ph)
+    );
     const alreadyQueued = toCreate.find(x=>x.name.toLowerCase()===nm.toLowerCase());
     if(alreadyInList || alreadyQueued) return;
     toCreate.push({
@@ -1362,7 +1367,7 @@ async function backfillCustomersFromBills(){
     });
   });
 
-  if(!toCreate.length){ localStorage.setItem(DONE_KEY,'1'); return; }
+  if(!toCreate.length) return; // nothing to add
 
   for(const newC of toCreate){
     try{

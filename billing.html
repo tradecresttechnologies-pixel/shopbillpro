@@ -1706,6 +1706,39 @@ function setPartial(type){
   document.getElementById('settle-note').textContent=type==='full'?'Full amount will be marked as Paid.':'Enter how much is being paid now.';
 }
 
+
+// ── AUTO-SAVE CUSTOMER (injected fix) ──
+async function sbpAutoSaveCustomer(name, phone, gstin) {
+  if (!name || !name.trim() || name.trim() === 'Walk-in Customer') return null;
+  const cleanName = name.trim();
+  const cleanPhone = (phone || '').replace(/\D/g, '').slice(-10);
+  // Already in list?
+  let existing = _custs.find(c => (c.name||'').toLowerCase().trim() === cleanName.toLowerCase());
+  if (!existing && cleanPhone.length >= 10)
+    existing = _custs.find(c => String(c.whatsapp||c.phone||'').replace(/\D/g,'').slice(-10) === cleanPhone);
+  if (existing) return existing;
+  const shopId = _shopId || localStorage.getItem('sbp_shop_id');
+  const newC = {
+    shop_id: shopId, name: cleanName,
+    whatsapp: cleanPhone || '', phone: cleanPhone || '',
+    email: '', address: '', gstin: gstin || '',
+    customer_type: 'Regular', balance: 0
+  };
+  let saved = null;
+  const online = navigator.onLine;
+  if (online && shopId && typeof _sb !== 'undefined' && _sb) {
+    try {
+      const { data, error } = await _sb.from('customers').insert(newC).select().single();
+      if (!error && data) saved = data;
+    } catch(e) { console.warn('[AutoSaveCust]', e); }
+  }
+  if (!saved) saved = { ...newC, id: 'local_' + Date.now() + Math.random().toString(36).slice(2,7) };
+  _custs.unshift(saved);
+  localStorage.setItem('sbp_customers', JSON.stringify(_custs));
+  console.log('[AutoSaveCust] Saved:', cleanName);
+  return saved;
+}
+
 async function confirmSettle(){
   const b=_billSnap;
   if(!b)return;
@@ -1988,6 +2021,11 @@ async function confirmSettle(){
         cust.balance=newBal;
         localStorage.setItem('sbp_customers',JSON.stringify(_custs));
       }
+    }
+
+    // ── AUTO-SAVE NEW CUSTOMER (injected fix) ──
+    if (b.nm && b.nm.trim() && b.nm.trim() !== 'Walk-in Customer') {
+      try { await sbpAutoSaveCustomer(b.nm, b.wa||'', b.custGSTIN||b.gst||''); } catch(e) {}
     }
 
     closeModal('bill-preview-modal');
@@ -2518,7 +2556,11 @@ function autofillFromName(val){
     if(sugg)sugg.classList.remove('show');
     return;
   }
-  const matches=_custs.filter(c=>c.name?.toLowerCase().includes(val.toLowerCase())).slice(0,8);
+  // Search by name OR phone number
+  const matches=_custs.filter(c=>
+    c.name?.toLowerCase().includes(val.toLowerCase()) ||
+    String(c.whatsapp||c.phone||'').replace(/\D/g,'').includes(val.replace(/\D/g,''))
+  ).slice(0,8);
   if(!matches.length){sugg.classList.remove('show');return}
   sugg.innerHTML=matches.map(c=>`
     <div class="cust-sugg-item" onmousedown="selectManualCust('${(c.name||'').replace(/'/g,"\\'")}','${(c.whatsapp||c.phone||'').replace(/'/g,"\\'")}','${(c.gstin||'').replace(/'/g,"\\'")}','${(c.email||'').replace(/'/g,"\\'")}','${((c.address||'')+(c.city?', '+c.city:'')).replace(/'/g,"\\'")}')">
@@ -2591,7 +2633,9 @@ async function saveAsCustomer(){
   const name=document.getElementById('cust-nm').value.trim();
   const wa=document.getElementById('cust-wa').value.trim();
   if(!name){toast('Enter customer name first','e');return}
-  if(_custs.find(c=>c.name===name)){toast('Customer already saved','i');return}
+  // Check by name or phone to avoid duplicates
+  const _cleanPh=(document.getElementById('cust-wa').value||'').replace(/\D/g,'').slice(-10);
+  if(_custs.find(c=>c.name===name||((_cleanPh.length>=10)&&String(c.whatsapp||c.phone||'').replace(/\D/g,'').slice(-10)===_cleanPh))){toast('Customer already saved','i');return}
   const newC={
     shop_id:_shopId,name,whatsapp:wa,
     phone:document.getElementById('cust-ph2').value||'',
@@ -2902,7 +2946,10 @@ function autofillPCOCustomer(val){
     if(sugg)sugg.classList.remove('show');
     return;
   }
-  const matches=_custs.filter(x=>x.name?.toLowerCase().includes(val.toLowerCase())).slice(0,8);
+  const matches=_custs.filter(x=>
+    x.name?.toLowerCase().includes(val.toLowerCase()) ||
+    String(x.whatsapp||x.phone||'').replace(/\D/g,'').includes(val.replace(/\D/g,''))
+  ).slice(0,8);
   if(!matches.length){sugg.classList.remove('show');return}
   sugg.innerHTML=matches.map(c=>`
     <div class="cust-sugg-item" onmousedown="selectPCOCust('${(c.name||'').replace(/'/g,"\\'")}','${(c.whatsapp||c.phone||'').replace(/'/g,"\\'")}')">
@@ -3238,6 +3285,11 @@ async function confirmPOSCheckout(){
       else printBill();
     }
 
+    // ── AUTO-SAVE NEW CUSTOMER from POS (injected fix) ──
+    if (custName && custName !== 'Walk-in Customer') {
+      try { await sbpAutoSaveCustomer(custName, custWA, ''); } catch(e) {}
+    }
+
     closeModal('pos-checkout-modal');
     cart={};renderCart();renderPOS();
     toast('✅ '+(_pcoPayMethod==='Credit'?'Added to ledger':'PAID — ')+invNo,'s');
@@ -3334,7 +3386,14 @@ async function init(){
       _sb.from('customers').select('*').eq('shop_id',_shopId).order('name'),
       _sb.from('products').select('*').eq('shop_id',_shopId).order('name')
     ]);
-    if(custRes.data){_custs=custRes.data;localStorage.setItem('sbp_customers',JSON.stringify(_custs))}
+    if(custRes.data){
+      // Merge cloud + local (keep local-only customers not yet synced)
+      const cloudCusts = custRes.data;
+      const localOnly = _custs.filter(lc => String(lc.id||'').startsWith('local_') &&
+        !cloudCusts.find(cc => cc.name.toLowerCase().trim() === (lc.name||'').toLowerCase().trim()));
+      _custs = [...cloudCusts, ...localOnly];
+      localStorage.setItem('sbp_customers',JSON.stringify(_custs));
+    }
     if(prodRes.data){
       // Merge with local_ products
       const localOnly=_posItems.filter(p=>String(p.id).startsWith('local_'));

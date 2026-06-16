@@ -773,6 +773,38 @@ function onFieldChange(){
 // ════════════════════════════════════════════════════════════════════
 // Submit
 // ════════════════════════════════════════════════════════════════════
+
+// ── AUTO-SAVE CUSTOMER (injected fix) ──
+async function sbpAutoSaveCustomer(name, phone, gstin) {
+  if (!name || !name.trim()) return null;
+  const cleanName = name.trim();
+  const cleanPhone = (phone || '').replace(/\D/g, '').slice(-10);
+  const custs = JSON.parse(localStorage.getItem('sbp_customers') || '[]');
+  let existing = custs.find(c => (c.name||'').toLowerCase().trim() === cleanName.toLowerCase());
+  if (!existing && cleanPhone.length >= 10)
+    existing = custs.find(c => String(c.whatsapp||c.phone||'').replace(/\D/g,'').slice(-10) === cleanPhone);
+  if (existing) return existing;
+  const shopId = localStorage.getItem('sbp_shop_id');
+  const newC = {
+    shop_id: shopId, name: cleanName,
+    whatsapp: cleanPhone || '', phone: cleanPhone || '',
+    email: '', address: '', gstin: '',
+    customer_type: 'Regular', balance: 0
+  };
+  let saved = null;
+  if (navigator.onLine && shopId && typeof _sb !== 'undefined' && _sb) {
+    try {
+      const { data, error } = await _sb.from('customers').insert(newC).select().single();
+      if (!error && data) saved = data;
+    } catch(e) {}
+  }
+  if (!saved) saved = { ...newC, id: 'local_' + Date.now() + Math.random().toString(36).slice(2,7) };
+  custs.unshift(saved);
+  localStorage.setItem('sbp_customers', JSON.stringify(custs));
+  console.log('[AutoSaveCust] Saved from walk-in:', cleanName);
+  return saved;
+}
+
 async function submitWalkin(){
   if(_saving) return;
   if(!_selectedRoom){ toast('Pick a room first', 'e'); return; }
@@ -830,6 +862,12 @@ async function submitWalkin(){
     }
 
     _lastBookingId = data.booking_id;
+    // AUTO-SAVE CUSTOMER after successful check-in
+    try {
+      const _wiName = $('#g-name').value.trim();
+      const _wiPhone = $('#g-phone').value.trim() || $('#g-wa').value.trim();
+      if (_wiName) await sbpAutoSaveCustomer(_wiName, _wiPhone, '');
+    } catch(e) {}
     showSuccess(data);
 
   } catch(e){
