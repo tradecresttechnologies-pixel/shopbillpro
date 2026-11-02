@@ -271,11 +271,7 @@ body{background:var(--bg);color:var(--text);min-height:100dvh;display:flex;overf
     </div>
     <div class="auth-tabs">
       <button class="auth-tab on" id="tab-login" onclick="showTab('login')"><span id="lbl-login">Login</span></button>
-    <div style="display:flex; align-items:center; margin: 15px 0;">
-      <div style="flex-grow:1; height:1px; background:#e0e0e0;"></div>
-      <span style="padding:0 10px; color:#888; font-size:12px;">OR</span>
-      <div style="flex-grow:1; height:1px; background:#e0e0e0;"></div>
-    </div>
+    
     
       <button class="auth-tab" id="tab-signup" onclick="showTab('signup')"><span id="lbl-create">Create Account</span></button>
     </div>
@@ -372,15 +368,8 @@ body{background:var(--bg);color:var(--text);min-height:100dvh;display:flex;overf
     <div class="form-sub" id="ds-form-sub">Login to your ShopBill Pro account</div>
     <div class="auth-tabs" id="ds-auth-tabs">
       <button class="auth-tab on" id="ds-tab-login" onclick="showTab('login','ds')"><span id="ds-lbl-login">Login</span></button>
-    <div style="display:flex; align-items:center; margin: 15px 0;">
-      <div style="flex-grow:1; height:1px; background:#e0e0e0;"></div>
-      <span style="padding:0 10px; color:#888; font-size:12px;">OR</span>
-      <div style="flex-grow:1; height:1px; background:#e0e0e0;"></div>
-    </div>
-    <button id="google-login-btn" style="width: 100%; padding: 12px; background: #fff; border: 1px solid #ccc; border-radius: 8px; cursor: pointer; display: flex; justify-content: center; align-items: center; font-weight: 600; color: #333; font-size: 14px; transition: background 0.2s; margin-bottom: 15px;">
-      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="18" style="margin-right: 10px;">
-      Continue with Google
-    </button>
+    
+    
       <button class="auth-tab" id="ds-tab-signup" onclick="showTab('signup','ds')"><span id="ds-lbl-create">Create Account</span></button>
     </div>
     <div id="ds-forms"></div>
@@ -457,15 +446,8 @@ function loginFormHTML(prefix){return `
   <span class="btn-txt">${_t('loginbtn')}</span>
   <div class="spinner"></div>
 </button>
-    <div style="display:flex; align-items:center; margin: 15px 0;">
-      <div style="flex-grow:1; height:1px; background:#e0e0e0;"></div>
-      <span style="padding:0 10px; color:#888; font-size:12px;">OR</span>
-      <div style="flex-grow:1; height:1px; background:#e0e0e0;"></div>
-    </div>
-    <button id="google-login-btn" style="width: 100%; padding: 12px; background: #fff; border: 1px solid #ccc; border-radius: 8px; cursor: pointer; display: flex; justify-content: center; align-items: center; font-weight: 600; color: #333; font-size: 14px; transition: background 0.2s; margin-bottom: 15px;">
-      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="18" style="margin-right: 10px;">
-      Continue with Google
-    </button>
+    
+    
 <div class="terms-txt">${_t('terms')}</div>`}
 
 function signupFormHTML(prefix){return `
@@ -1107,23 +1089,38 @@ if ('serviceWorker' in navigator) {
 }
 </script>
     
+    
     <script>
     document.addEventListener('DOMContentLoaded', () => {
-      document.querySelectorAll('#google-login-btn').forEach(btn => {
-        btn.addEventListener('click', async () => {
-          btn.innerHTML = 'Connecting...';
+      // Find the button
+      const googleBtn = document.getElementById('google-login-btn');
+      
+      if (googleBtn) {
+        googleBtn.addEventListener('click', async () => {
+          googleBtn.innerHTML = 'Connecting...';
+          
           try {
-            const { error } = await window._sb.auth.signInWithOAuth({
+            // Safely check for your Supabase client (it might be named _sb or supabaseClient)
+            const sbClient = window._sb || window.supabaseClient || window.supabase;
+            
+            if (!sbClient || !sbClient.auth) {
+              throw new Error("Supabase client is not initialized. Check your console.");
+            }
+
+            const { error } = await sbClient.auth.signInWithOAuth({
               provider: 'google',
               options: { redirectTo: 'https://app.shopbillpro.in/dashboard.html' }
             });
+            
             if (error) throw error;
+            
           } catch (error) {
+            console.error("Google Login Error:", error);
             alert("Google login failed: " + error.message);
-            btn.innerHTML = 'Continue with Google';
+            googleBtn.innerHTML = 'Continue with Google';
           }
         });
-      });
+      }
     });
     </script>
 </body>
