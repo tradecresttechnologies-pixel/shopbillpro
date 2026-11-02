@@ -276,10 +276,7 @@ body{background:var(--bg);color:var(--text);min-height:100dvh;display:flex;overf
       <span style="padding:0 10px; color:#888; font-size:12px;">OR</span>
       <div style="flex-grow:1; height:1px; background:#e0e0e0;"></div>
     </div>
-    <button id="google-login-btn" style="width: 100%; padding: 12px; background: #fff; border: 1px solid #ccc; border-radius: 8px; cursor: pointer; display: flex; justify-content: center; align-items: center; font-weight: 600; color: #333; font-size: 14px; transition: background 0.2s; margin-bottom: 15px;">
-      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="18" style="margin-right: 10px;">
-      Continue with Google
-    </button>
+    
       <button class="auth-tab" id="tab-signup" onclick="showTab('signup')"><span id="lbl-create">Create Account</span></button>
     </div>
     <div id="mobile-forms"></div>
@@ -1109,27 +1106,23 @@ if ('serviceWorker' in navigator) {
   });
 }
 </script>
+    
     <script>
     document.addEventListener('DOMContentLoaded', () => {
-      document.querySelectorAll('#google-login-btn').forEach(btn => { btn.addEventListener('click', async () => {
-        const btn = document.getElementById('google-login-btn');
-        const originalText = btn.innerHTML;
-        btn.innerHTML = 'Connecting...';
-        btn.disabled = true;
-
-        try {
-          const { error } = await window._sb.auth.signInWithOAuth({
-            provider: 'google',
-            options: { redirectTo: 'https://app.shopbillpro.in/dashboard.html' }
-          });
-          if (error) throw error;
-        } catch (error) {
-          console.error("Google login error:", error.message);
-          alert("Google login failed: " + error.message);
-          btn.innerHTML = originalText;
-          btn.disabled = false;
-        }
-      });
+      document.querySelectorAll('#google-login-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          btn.innerHTML = 'Connecting...';
+          try {
+            const { error } = await window._sb.auth.signInWithOAuth({
+              provider: 'google',
+              options: { redirectTo: 'https://app.shopbillpro.in/dashboard.html' }
+            });
+            if (error) throw error;
+          } catch (error) {
+            alert("Google login failed: " + error.message);
+            btn.innerHTML = 'Continue with Google';
+          }
+        });
       });
     });
     </script>
