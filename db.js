@@ -308,6 +308,16 @@ const DB = (() => {
       return localBill;
     }
 
+        // --- SAFE E-INVOICING INJECTION START ---
+    if (bill.customer_gstin && bill.customer_gstin.length === 15) {
+        try {
+            const eInv = await window.EInvoiceEngine.process(bill, items, window._shop || {});
+            bill.irn = eInv.irn || null; bill.ack_no = eInv.ack_no || null;
+            bill.ack_date = eInv.ack_date || null; bill.signed_qr = eInv.signed_qr || null;
+            bill.e_invoice_status = eInv.status; bill.e_invoice_error = eInv.error || null;
+        } catch(e) { console.warn('E-Invoice failed', e); }
+    }
+    // --- SAFE E-INVOICING INJECTION END ---
     const { data: billRow, error: billErr } = await _sb.from('bills').insert(bill).select().single();
     if (billErr) {
       const localBill = { ...bill, id: tempId, bill_items: items, created_at: new Date().toISOString() };

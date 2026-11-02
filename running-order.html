@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en" translate="no" class="notranslate">
 <head>
+<script src="einvoice.js"></script>
 <script>(function(){try{var t=localStorage.getItem('sbp_theme');if(t==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}})();</script>
 <script>(function(){try{document.documentElement.lang=localStorage.getItem('sbp_lang')||'en';}catch(e){}})();</script>
 <meta charset="UTF-8">
@@ -4399,6 +4400,16 @@ async function confirmAndSaveBill(){
       server_name:    (_order && _order.server_name) ? _order.server_name : null,
       notes:          '',
     };
+        // --- SAFE E-INVOICING INJECTION START ---
+    if (billData.customer_gstin && billData.customer_gstin.length === 15) {
+        try {
+            const eInv = await window.EInvoiceEngine.process(billData, _bwItemsCache, window._shop || {});
+            billData.irn = eInv.irn || null; billData.ack_no = eInv.ack_no || null;
+            billData.ack_date = eInv.ack_date || null; billData.signed_qr = eInv.signed_qr || null;
+            billData.e_invoice_status = eInv.status; billData.e_invoice_error = eInv.error || null;
+        } catch(e) { console.warn('E-Invoice failed', e); }
+    }
+    // --- SAFE E-INVOICING INJECTION END ---
     const { data: bill, error: bErr } = await _sb.from('bills').insert(billData).select().single();
     if(bErr) throw new Error('Bill insert: ' + bErr.message);
 
