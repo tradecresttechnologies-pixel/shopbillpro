@@ -1111,7 +1111,7 @@ if ('serviceWorker' in navigator) {
 </script>
     <script>
     document.addEventListener('DOMContentLoaded', () => {
-      document.getElementById('google-login-btn')?.addEventListener('click', async () => {
+      document.querySelectorAll('#google-login-btn').forEach(btn => { btn.addEventListener('click', async () => {
         const btn = document.getElementById('google-login-btn');
         const originalText = btn.innerHTML;
         btn.innerHTML = 'Connecting...';
@@ -1129,6 +1129,7 @@ if ('serviceWorker' in navigator) {
           btn.innerHTML = originalText;
           btn.disabled = false;
         }
+      });
       });
     });
     </script>
